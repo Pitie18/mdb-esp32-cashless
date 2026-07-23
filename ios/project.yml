@@ -18,6 +18,10 @@ settings:
     CURRENT_PROJECT_VERSION: 1
     GENERATE_INFOPLIST_FILE: false
     INFOPLIST_FILE: VMflow/Resources/Info.plist
+    # Universal app: 1 = iPhone, 2 = iPad. Both targets ship universal so the
+    # app runs natively on iPad (NavigationSplitView sidebar) instead of the
+    # iPhone-compatibility scaler.
+    TARGETED_DEVICE_FAMILY: "1,2"
 
 packages:
   Supabase:
