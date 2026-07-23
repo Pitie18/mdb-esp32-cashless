@@ -5,7 +5,15 @@
 # have "iPhone 17 Pro Max" (no "iPhone 16 Pro Max"); CI's Xcode 16.4 has the
 # reverse. Both are the same 6.9-inch class (1320x2868) — the App Store asset
 # slot cares about the resolution class, not the exact device name.
-devices([ENV.fetch("SNAPSHOT_DEVICE", "iPhone 17 Pro Max")])
+# Two App Store device classes are captured each run — iPhone 6.9" and iPad
+# 13". snapshot prefixes every file with the device name, so both sets live
+# side by side under fastlane/screenshots/<lang>/ without colliding. Each name
+# is env-overridable because the exact simulator differs by Xcode version
+# (this Mac's Xcode 26 vs CI's Xcode 16.4) — see ios-release.yml's env block.
+devices([
+  ENV.fetch("SNAPSHOT_DEVICE", "iPhone 17 Pro Max"),          # iPhone 6.9"
+  ENV.fetch("SNAPSHOT_IPAD_DEVICE", "iPad Pro 13-inch (M5)"), # iPad 13"
+])
 
 languages(["en-US", "de-DE"])
 

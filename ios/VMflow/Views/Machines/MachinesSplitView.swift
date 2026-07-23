@@ -69,6 +69,10 @@ struct MachinesSplitView: View {
                                 )
                         }
                         .buttonStyle(.plain)
+                        // Same anchor MachineListView uses on iPhone, so the
+                        // screenshot UITest taps the first machine the same way
+                        // in both layouts.
+                        .accessibilityIdentifier("machine-cell")
                     }
                 }
                 .padding(.horizontal, 12)

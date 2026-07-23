@@ -55,6 +55,10 @@ jobs:
           # "iPhone 17 Pro Max" — both are the same 6.9-inch (1320x2868)
           # class, so either produces the correct App Store asset size.
           SNAPSHOT_DEVICE: "iPhone 16 Pro Max"
+          # iPad 13" companion (2064x2752 App Store slot). Same Xcode-version
+          # caveat as above: this image exposes the M4 iPad Pro 13" rather than
+          # the M5 that local Xcode 26 has — same display class either way.
+          SNAPSHOT_IPAD_DEVICE: "iPad Pro 13-inch (M4)"
         run: bundle exec fastlane ${{ github.event.inputs.lane }}
 
       - name: Upload logs on failure

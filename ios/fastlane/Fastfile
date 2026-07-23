@@ -129,9 +129,18 @@ platform :ios do
   end
 
   desc "Generate localized App Store screenshots (phase 5)"
-  lane :screenshots do
+  lane :screenshots do |options|
     # Deterministic, offline, from fixtures (-UITestFixtures) — needs no ASC
     # secrets, so it also runs locally without any of the asc_auth env vars.
-    capture_screenshots
+    #
+    # Per-run overrides (both optional; defaults come from the Snapfile):
+    #   devices: comma-separated sim names to capture instead of the Snapfile set
+    #   clear:   pass clear:false to ADD to the committed PNGs instead of wiping
+    # Refresh only the iPad set, keeping the iPhone PNGs:
+    #   fastlane screenshots 'devices:iPad Pro 13-inch (M5)' clear:false
+    overrides = {}
+    overrides[:devices] = options[:devices].split(",").map(&:strip) if options[:devices]
+    overrides[:clear_previous_screenshots] = false if options[:clear].to_s == "false"
+    capture_screenshots(**overrides)
   end
 end
