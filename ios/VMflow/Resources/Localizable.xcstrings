@@ -35,6 +35,30 @@
         }
       }
     },
+    "%@ has %lld product(s). Remove products from this category first.": {
+      "extractionState": "manual",
+      "comment": "Error shown when trying to delete a category that still has products assigned to it",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ contient encore %lld produit(s). Retirez d'abord les produits de cette catégorie."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ enthält noch %lld Produkt(e). Entferne zuerst die Produkte aus dieser Kategorie."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ heeft nog %lld product(en). Verwijder eerst de producten uit deze categorie."
+          }
+        }
+      }
+    },
     "-%@ short": {
       "localizations": {
         "fr": {
@@ -47,6 +71,198 @@
           "stringUnit": {
             "state": "translated",
             "value": "-%@ tekort"
+          }
+        }
+      }
+    },
+    "Active": {
+      "extractionState": "manual",
+      "comment": "Deal validity status: the deal is currently active",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actif"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiv"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actief"
+          }
+        }
+      }
+    },
+    "Critical / expired": {
+      "extractionState": "manual",
+      "comment": "Expiration filter option: products that are critical or already expired",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Critique / expiré"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kritisch / abgelaufen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kritiek / verlopen"
+          }
+        }
+      }
+    },
+    "Expiring soon": {
+      "extractionState": "manual",
+      "comment": "Expiration filter option / deal validity status: expiring soon",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expire bientôt"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft bald ab"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verloopt binnenkort"
+          }
+        }
+      }
+    },
+    "Filter": {
+      "extractionState": "manual",
+      "comment": "Label for the warehouse stock list's filter menu button",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter"
+          }
+        }
+      }
+    },
+    "Reset filters": {
+      "extractionState": "manual",
+      "comment": "Button to reset the warehouse stock list filters to their defaults",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réinitialiser les filtres"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter zurücksetzen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filters resetten"
+          }
+        }
+      }
+    },
+    "Show archived": {
+      "extractionState": "manual",
+      "comment": "Toggle to include archived products in the warehouse stock list",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher les archivés"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivierte anzeigen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gearchiveerd tonen"
+          }
+        }
+      }
+    },
+    "Show out of stock": {
+      "extractionState": "manual",
+      "comment": "Toggle to include out-of-stock products in the warehouse stock list",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher les ruptures de stock"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht auf Lager anzeigen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet op voorraad tonen"
+          }
+        }
+      }
+    },
+    "Upcoming": {
+      "extractionState": "manual",
+      "comment": "Deal validity status: the deal hasn't started yet",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À venir"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bevorstehend"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Binnenkort"
           }
         }
       }
@@ -2206,6 +2422,12 @@
       "comment": "A description of how to archive deals.",
       "isCommentAutoGenerated": true,
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiviere Angebote, die dich nicht interessieren, um die Liste übersichtlich zu halten."
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -2222,6 +2444,12 @@
     },
     "Archived": {
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiviert"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -6741,6 +6969,30 @@
         }
       }
     },
+    "No archived deals": {
+      "extractionState": "manual",
+      "comment": "Empty state title on the Deals screen when the Archived list has no items",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine archivierten Angebote"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune offre archivée"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen gearchiveerde aanbiedingen"
+          }
+        }
+      }
+    },
     "No batches": {
       "comment": "A message displayed when a warehouse has no batches.",
       "isCommentAutoGenerated": true,
@@ -6777,6 +7029,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen categorieën"
+          }
+        }
+      }
+    },
+    "No deals found": {
+      "extractionState": "manual",
+      "comment": "Empty state title on the Deals screen when the Active list has no items",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Angebote gefunden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune offre trouvée"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen aanbiedingen gevonden"
           }
         }
       }
@@ -6821,6 +7097,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen enkele machine hoeft nu bijgevuld te worden."
+          }
+        }
+      }
+    },
+    "No open items": {
+      "extractionState": "manual",
+      "comment": "Empty state title on the Inbox screen when filtered to open items only",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine offenen Einträge"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun élément ouvert"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen open items"
           }
         }
       }
@@ -8215,6 +8515,30 @@
         }
       }
     },
+    "Retailer": {
+      "extractionState": "manual",
+      "comment": "Deal grouping option: group by retailer",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Händler"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enseigne"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Winkel"
+          }
+        }
+      }
+    },
     "Retry": {
       "extractionState": "stale",
       "localizations": {
@@ -8528,6 +8852,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scan de code van uw webdashboard"
+          }
+        }
+      }
+    },
+    "Search deals...": {
+      "extractionState": "manual",
+      "comment": "Search field placeholder on the Deals screen",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angebote suchen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher des offres"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aanbiedingen zoeken"
           }
         }
       }
@@ -9886,6 +10234,12 @@
       "comment": "A description of the empty results view.",
       "isCommentAutoGenerated": true,
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versuche einen anderen Suchbegriff."
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -9927,6 +10281,12 @@
       "comment": "A description of the empty state when the user has not searched for any deals.",
       "isCommentAutoGenerated": true,
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versuche zu aktualisieren oder überprüfe deine Postleitzahl in den Einstellungen."
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -10696,6 +11056,30 @@
         }
       },
       "comment": "More tab menu item label for the customer feedback inbox."
+    },
+    "Inbox is empty": {
+      "extractionState": "manual",
+      "comment": "Empty state title on the Inbox screen when showing all items (not filtered to open only)",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posteingang ist leer"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La boîte de réception est vide"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inbox is leeg"
+          }
+        }
+      }
     },
     "Recorded prices": {
       "extractionState": "manual",

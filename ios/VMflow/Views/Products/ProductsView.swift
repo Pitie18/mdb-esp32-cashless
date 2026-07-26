@@ -301,7 +301,10 @@ struct CategoriesTabView: View {
                         let category = viewModel.categories[index]
                         let count = viewModel.productCount(for: category.id)
                         if count > 0 {
-                            viewModel.error = "\(category.name) has \(count) product(s). Remove products from this category first."
+                            viewModel.error = String(
+                                localized: "\(category.name) has \(count) product(s). Remove products from this category first.",
+                                comment: "Error shown when trying to delete a category that still has products assigned to it"
+                            )
                         } else {
                             await viewModel.deleteCategory(id: category.id)
                         }

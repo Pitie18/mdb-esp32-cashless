@@ -74,9 +74,9 @@ struct DealsView: View {
             Picker("List mode", selection: $viewModel.listMode) {
                 ForEach(DealsViewModel.ListMode.allCases, id: \.self) { mode in
                     if mode == .archived && viewModel.archivedCount > 0 {
-                        Text("\(mode.rawValue) (\(viewModel.archivedCount))").tag(mode)
+                        Text("\(mode.label) (\(viewModel.archivedCount))").tag(mode)
                     } else {
-                        Text(mode.rawValue).tag(mode)
+                        Text(mode.label).tag(mode)
                     }
                 }
             }
@@ -94,7 +94,7 @@ struct DealsView: View {
             // Grouping Picker
             Picker("Group by", selection: $viewModel.groupBy) {
                 ForEach(DealsViewModel.GroupMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(mode)
+                    Text(mode.label).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
@@ -302,7 +302,9 @@ struct DealsView: View {
             Image(systemName: viewModel.listMode == .archived ? "archivebox" : "magnifyingglass")
                 .font(.title)
                 .foregroundStyle(.secondary)
-            Text(viewModel.listMode == .archived ? "No archived deals" : "No deals found")
+            Text(viewModel.listMode == .archived
+                 ? String(localized: "No archived deals", comment: "Empty state title on the Deals screen when the Archived list has no items")
+                 : String(localized: "No deals found", comment: "Empty state title on the Deals screen when the Active list has no items"))
                 .font(.subheadline.weight(.medium))
             if !viewModel.searchText.isEmpty {
                 Text("Try a different search term.")

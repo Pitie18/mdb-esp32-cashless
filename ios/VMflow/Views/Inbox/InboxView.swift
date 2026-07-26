@@ -136,7 +136,9 @@ struct InboxView: View {
             Image(systemName: "tray")
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
-            Text(viewModel.showOnlyOpen ? "No open items" : "Inbox is empty")
+            Text(viewModel.showOnlyOpen
+                 ? String(localized: "No open items", comment: "Empty state title on the Inbox screen when filtered to open items only")
+                 : String(localized: "Inbox is empty", comment: "Empty state title on the Inbox screen when showing all items (not filtered to open only)"))
                 .font(.title3.weight(.semibold))
             Text("When customers report a problem, leave feedback or submit a product wish from a machine page, it will appear here.")
                 .font(.subheadline)
