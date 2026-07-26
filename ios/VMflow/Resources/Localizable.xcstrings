@@ -7101,6 +7101,30 @@
         }
       }
     },
+    "No open items": {
+      "extractionState": "manual",
+      "comment": "Empty state title on the Inbox screen when filtered to open items only",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine offenen Einträge"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun élément ouvert"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen open items"
+          }
+        }
+      }
+    },
     "No Organization": {
       "localizations": {
         "fr": {
@@ -8828,6 +8852,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scan de code van uw webdashboard"
+          }
+        }
+      }
+    },
+    "Search deals...": {
+      "extractionState": "manual",
+      "comment": "Search field placeholder on the Deals screen",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angebote suchen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher des offres"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aanbiedingen zoeken"
           }
         }
       }
@@ -11008,6 +11056,30 @@
         }
       },
       "comment": "More tab menu item label for the customer feedback inbox."
+    },
+    "Inbox is empty": {
+      "extractionState": "manual",
+      "comment": "Empty state title on the Inbox screen when showing all items (not filtered to open only)",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posteingang ist leer"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La boîte de réception est vide"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inbox is leeg"
+          }
+        }
+      }
     },
     "Recorded prices": {
       "extractionState": "manual",
