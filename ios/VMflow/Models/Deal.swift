@@ -100,10 +100,10 @@ struct Deal: Codable, Identifiable {
 
         var label: String {
             switch self {
-            case .upcoming: return "Upcoming"
-            case .active: return "Active"
-            case .expiring: return "Expiring soon"
-            case .expired: return "Expired"
+            case .upcoming: return String(localized: "Upcoming")
+            case .active: return String(localized: "Active")
+            case .expiring: return String(localized: "Expiring soon")
+            case .expired: return String(localized: "Expired")
             }
         }
     }

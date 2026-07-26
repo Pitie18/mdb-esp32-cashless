@@ -35,6 +35,30 @@
         }
       }
     },
+    "%@ has %lld product(s). Remove products from this category first.": {
+      "extractionState": "manual",
+      "comment": "Error shown when trying to delete a category that still has products assigned to it",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ contient encore %lld produit(s). Retirez d'abord les produits de cette catégorie."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ enthält noch %lld Produkt(e). Entferne zuerst die Produkte aus dieser Kategorie."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ heeft nog %lld product(en). Verwijder eerst de producten uit deze categorie."
+          }
+        }
+      }
+    },
     "-%@ short": {
       "localizations": {
         "fr": {
@@ -47,6 +71,198 @@
           "stringUnit": {
             "state": "translated",
             "value": "-%@ tekort"
+          }
+        }
+      }
+    },
+    "Active": {
+      "extractionState": "manual",
+      "comment": "Deal validity status: the deal is currently active",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actif"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiv"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actief"
+          }
+        }
+      }
+    },
+    "Critical / expired": {
+      "extractionState": "manual",
+      "comment": "Expiration filter option: products that are critical or already expired",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Critique / expiré"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kritisch / abgelaufen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kritiek / verlopen"
+          }
+        }
+      }
+    },
+    "Expiring soon": {
+      "extractionState": "manual",
+      "comment": "Expiration filter option / deal validity status: expiring soon",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expire bientôt"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft bald ab"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verloopt binnenkort"
+          }
+        }
+      }
+    },
+    "Filter": {
+      "extractionState": "manual",
+      "comment": "Label for the warehouse stock list's filter menu button",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter"
+          }
+        }
+      }
+    },
+    "Reset filters": {
+      "extractionState": "manual",
+      "comment": "Button to reset the warehouse stock list filters to their defaults",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réinitialiser les filtres"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter zurücksetzen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filters resetten"
+          }
+        }
+      }
+    },
+    "Show archived": {
+      "extractionState": "manual",
+      "comment": "Toggle to include archived products in the warehouse stock list",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher les archivés"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivierte anzeigen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gearchiveerd tonen"
+          }
+        }
+      }
+    },
+    "Show out of stock": {
+      "extractionState": "manual",
+      "comment": "Toggle to include out-of-stock products in the warehouse stock list",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher les ruptures de stock"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht auf Lager anzeigen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet op voorraad tonen"
+          }
+        }
+      }
+    },
+    "Upcoming": {
+      "extractionState": "manual",
+      "comment": "Deal validity status: the deal hasn't started yet",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À venir"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bevorstehend"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Binnenkort"
           }
         }
       }

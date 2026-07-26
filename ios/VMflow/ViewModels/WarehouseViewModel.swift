@@ -30,9 +30,9 @@ final class WarehouseViewModel: ObservableObject {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .all: return "All"
-            case .expiringSoon: return "Expiring soon"
-            case .critical: return "Critical / expired"
+            case .all: return String(localized: "All")
+            case .expiringSoon: return String(localized: "Expiring soon")
+            case .critical: return String(localized: "Critical / expired")
             }
         }
     }
