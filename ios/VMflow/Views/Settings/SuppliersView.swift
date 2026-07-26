@@ -22,6 +22,7 @@ struct SuppliersView: View {
 
     @StateObject private var vm = SuppliersViewModel()
     @State private var activeSheet: ActiveSheet?
+    @State private var supplierPendingDelete: Supplier?
 
     var body: some View {
         List {
@@ -41,13 +42,35 @@ struct SuppliersView: View {
                         }
                     }
                 }
-                .swipeActions {
+                .swipeActions(allowsFullSwipe: false) {
                     Button(role: .destructive) {
-                        Task { await vm.deleteSupplier(id: supplier.id) }
+                        supplierPendingDelete = supplier
                     } label: {
                         Label(String(localized: "Delete"), systemImage: "trash")
                     }
                 }
+            }
+        }
+        .confirmationDialog(
+            Text("Delete Supplier", comment: "Confirmation dialog title before deleting a supplier"),
+            isPresented: Binding(
+                get: { supplierPendingDelete != nil },
+                set: { if !$0 { supplierPendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "Delete", comment: "Confirm supplier deletion button"), role: .destructive) {
+                if let supplier = supplierPendingDelete {
+                    Task { await vm.deleteSupplier(id: supplier.id) }
+                }
+                supplierPendingDelete = nil
+            }
+            Button(String(localized: "Cancel", comment: "Cancel supplier deletion button"), role: .cancel) {
+                supplierPendingDelete = nil
+            }
+        } message: {
+            if let supplier = supplierPendingDelete {
+                Text(supplier.name)
             }
         }
         .navigationTitle(String(localized: "Suppliers"))
