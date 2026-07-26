@@ -35,11 +35,25 @@ final class DealsViewModel: ObservableObject {
     enum GroupMode: String, CaseIterable {
         case retailer = "Retailer"
         case product = "Product"
+
+        var label: String {
+            switch self {
+            case .retailer: return String(localized: "Retailer")
+            case .product: return String(localized: "Product")
+            }
+        }
     }
 
     enum ListMode: String, CaseIterable {
         case active = "Active"
         case archived = "Archived"
+
+        var label: String {
+            switch self {
+            case .active: return String(localized: "Active")
+            case .archived: return String(localized: "Archived")
+            }
+        }
     }
 
     struct DealUserState {
