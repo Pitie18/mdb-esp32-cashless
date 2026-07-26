@@ -158,6 +158,8 @@ private struct InboxRow: View {
     let onReopen: () -> Void
     let onDelete: () -> Void
 
+    @State private var confirmDelete = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
@@ -192,7 +194,7 @@ private struct InboxRow: View {
             }
         }
         .opacity(item.isOpen ? 1.0 : 0.55)
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+        .swipeActions(edge: .trailing, allowsFullSwipe: item.isOpen) {
             if item.isOpen {
                 Button(role: .destructive, action: onDismiss) {
                     Label("Dismiss", systemImage: "xmark.circle")
@@ -202,7 +204,9 @@ private struct InboxRow: View {
                 }
                 .tint(.green)
             } else {
-                Button(role: .destructive, action: onDelete) {
+                Button(role: .destructive) {
+                    confirmDelete = true
+                } label: {
                     Label("Delete", systemImage: "trash")
                 }
                 Button(action: onReopen) {
@@ -212,6 +216,14 @@ private struct InboxRow: View {
             }
         }
         .disabled(isUpdating)
+        .confirmationDialog(
+            Text("Delete Notification", comment: "Confirmation dialog title before deleting an inbox notification"),
+            isPresented: $confirmDelete,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "Delete", comment: "Confirm inbox item deletion button"), role: .destructive, action: onDelete)
+            Button(String(localized: "Cancel", comment: "Cancel inbox item deletion button"), role: .cancel) {}
+        }
     }
 
     private var emailSubject: String {

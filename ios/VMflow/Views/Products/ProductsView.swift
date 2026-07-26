@@ -39,6 +39,7 @@ struct ProductsTabView: View {
     @ObservedObject var viewModel: ProductsViewModel
     @State private var showAddSheet = false
     @State private var detailProduct: Product?
+    @State private var productPendingDelete: Product?
 
     var body: some View {
         Group {
@@ -129,17 +130,38 @@ struct ProductsTabView: View {
                 .onTapGesture {
                     detailProduct = product
                 }
-            }
-            .onDelete { indexSet in
-                Task {
-                    for index in indexSet {
-                        let product = viewModel.filteredProducts[index]
-                        await viewModel.deleteProduct(id: product.id)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        productPendingDelete = product
+                    } label: {
+                        Label(String(localized: "Delete"), systemImage: "trash")
                     }
                 }
             }
         }
         .listStyle(.plain)
+        .confirmationDialog(
+            Text("Delete Product", comment: "Confirmation dialog title before deleting a product"),
+            isPresented: Binding(
+                get: { productPendingDelete != nil },
+                set: { if !$0 { productPendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "Delete", comment: "Confirm product deletion button"), role: .destructive) {
+                if let product = productPendingDelete {
+                    Task { await viewModel.deleteProduct(id: product.id) }
+                }
+                productPendingDelete = nil
+            }
+            Button(String(localized: "Cancel", comment: "Cancel product deletion button"), role: .cancel) {
+                productPendingDelete = nil
+            }
+        } message: {
+            if let product = productPendingDelete {
+                Text(product.name ?? "")
+            }
+        }
     }
 }
 
@@ -196,6 +218,7 @@ struct CategoriesTabView: View {
     @State private var showAddAlert = false
     @State private var newCategoryName = ""
     @State private var selectedCategory: CategorySelection?
+    @State private var categoryPendingDelete: ProductCategory?
 
     /// Navigation payload for pushing into a category's product list. `.unassigned`
     /// isn't backed by a real `product_category` row — it's a synthetic bucket for
@@ -294,17 +317,16 @@ struct CategoriesTabView: View {
                 .onTapGesture {
                     selectedCategory = .category(category)
                 }
-            }
-            .onDelete { indexSet in
-                Task {
-                    for index in indexSet {
-                        let category = viewModel.categories[index]
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
                         let count = viewModel.productCount(for: category.id)
                         if count > 0 {
                             viewModel.error = "\(category.name) has \(count) product(s). Remove products from this category first."
                         } else {
-                            await viewModel.deleteCategory(id: category.id)
+                            categoryPendingDelete = category
                         }
+                    } label: {
+                        Label(String(localized: "Delete"), systemImage: "trash")
                     }
                 }
             }
@@ -331,6 +353,28 @@ struct CategoriesTabView: View {
             }
         }
         .listStyle(.plain)
+        .confirmationDialog(
+            Text("Delete Category", comment: "Confirmation dialog title before deleting a category"),
+            isPresented: Binding(
+                get: { categoryPendingDelete != nil },
+                set: { if !$0 { categoryPendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "Delete", comment: "Confirm category deletion button"), role: .destructive) {
+                if let category = categoryPendingDelete {
+                    Task { await viewModel.deleteCategory(id: category.id) }
+                }
+                categoryPendingDelete = nil
+            }
+            Button(String(localized: "Cancel", comment: "Cancel category deletion button"), role: .cancel) {
+                categoryPendingDelete = nil
+            }
+        } message: {
+            if let category = categoryPendingDelete {
+                Text(category.name)
+            }
+        }
     }
 }
 
