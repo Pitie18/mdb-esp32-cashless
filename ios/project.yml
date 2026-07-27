@@ -45,6 +45,8 @@ targets:
         script: |
           BUILD_NUM=$(git -C "${SRCROOT}/.." rev-list --count HEAD)
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" "${SRCROOT}/VMflow/Resources/Info.plist"
+          SHORT_VERSION="${MARKETING_VERSION}.$(date +%y%m%d)"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $SHORT_VERSION" "${SRCROOT}/VMflow/Resources/Info.plist"
         runOnlyWhenInstalling: false
         basedOnDependencyAnalysis: false
     dependencies:
@@ -71,5 +73,7 @@ targets:
         script: |
           BUILD_NUM=$(git -C "${SRCROOT}/.." rev-list --count HEAD)
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" "${SRCROOT}/NotificationService/Info.plist"
+          SHORT_VERSION="${MARKETING_VERSION}.$(date +%y%m%d)"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $SHORT_VERSION" "${SRCROOT}/NotificationService/Info.plist"
         runOnlyWhenInstalling: false
         basedOnDependencyAnalysis: false

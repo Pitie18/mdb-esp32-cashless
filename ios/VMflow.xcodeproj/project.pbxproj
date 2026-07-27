@@ -755,7 +755,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "BUILD_NUM=$(git -C \"${SRCROOT}/..\" rev-list --count HEAD)\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD_NUM\" \"${SRCROOT}/NotificationService/Info.plist\"\n";
+			shellScript = "BUILD_NUM=$(git -C \"${SRCROOT}/..\" rev-list --count HEAD)\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD_NUM\" \"${SRCROOT}/NotificationService/Info.plist\"\nSHORT_VERSION=\"${MARKETING_VERSION}.$(date +%y%m%d)\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString $SHORT_VERSION\" \"${SRCROOT}/NotificationService/Info.plist\"\n";
 		};
 		D8695835E12245D68B90C6BF /* Auto-increment build number from git */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -774,7 +774,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "BUILD_NUM=$(git -C \"${SRCROOT}/..\" rev-list --count HEAD)\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD_NUM\" \"${SRCROOT}/VMflow/Resources/Info.plist\"\n";
+			shellScript = "BUILD_NUM=$(git -C \"${SRCROOT}/..\" rev-list --count HEAD)\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD_NUM\" \"${SRCROOT}/VMflow/Resources/Info.plist\"\nSHORT_VERSION=\"${MARKETING_VERSION}.$(date +%y%m%d)\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString $SHORT_VERSION\" \"${SRCROOT}/VMflow/Resources/Info.plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
