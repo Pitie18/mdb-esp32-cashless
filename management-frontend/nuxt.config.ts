@@ -1,4 +1,14 @@
 import pkg from './package.json'
+import { baseFromSemver, formatVersion } from './app/lib/appVersion'
+
+const buildDateRaw = process.env.BUILD_DATE ?? ''
+const buildDateObj = buildDateRaw && !isNaN(new Date(buildDateRaw).getTime())
+  ? new Date(buildDateRaw)
+  : new Date()
+const { real: appVersionReal, display: appVersionDisplay } = formatVersion(
+  baseFromSemver(pkg.version),
+  buildDateObj,
+)
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -45,7 +55,8 @@ export default defineNuxtConfig({
     public: {
       vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? '',
       githubFirmwareRepo: process.env.GITHUB_FIRMWARE_REPO ?? '',
-      appVersion: pkg.version,
+      appVersion: appVersionReal,
+      appVersionDisplay: appVersionDisplay,
       gitHash: process.env.GIT_HASH ?? 'dev',
       buildDate: process.env.BUILD_DATE ?? '',
       envName: process.env.ENV_NAME ?? '',

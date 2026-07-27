@@ -41,7 +41,7 @@ onMounted(() => { checkIsPlatformAdmin().catch(() => {}) })
 const config = useRuntimeConfig()
 
 const versionLine = computed(() => {
-  const v = `v${config.public.appVersion}`
+  const v = `v${config.public.appVersionDisplay}`
   const raw = config.public.buildDate
   if (!raw) return v
   const d = new Date(raw)
