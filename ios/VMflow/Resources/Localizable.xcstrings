@@ -1981,6 +1981,16 @@
         }
       }
     },
+    "About": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über"
+          }
+        }
+      }
+    },
     "Account": {
       "extractionState": "stale",
       "localizations": {
@@ -10508,6 +10518,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "v%@"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
           }
         }
       }
