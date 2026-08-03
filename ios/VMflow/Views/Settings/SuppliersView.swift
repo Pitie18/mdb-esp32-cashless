@@ -86,7 +86,7 @@ struct SuppliersView: View {
             }
         }
         .task { await vm.loadSuppliers() }
-        .refreshable { await vm.loadSuppliers() }
+        .dataRefreshable { await vm.loadSuppliers() }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .new:

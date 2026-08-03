@@ -103,7 +103,7 @@ struct TrayListView: View {
             }
             .padding(.bottom, 20)
         }
-        .refreshable {
+        .dataRefreshable {
             await viewModel.loadTrays()
             await onRefresh()
         }

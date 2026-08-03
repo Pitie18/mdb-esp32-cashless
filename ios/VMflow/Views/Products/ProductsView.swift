@@ -53,7 +53,7 @@ struct ProductsTabView: View {
             }
         }
         .searchable(text: $viewModel.searchText, prompt: "Search products")
-        .refreshable {
+        .dataRefreshable {
             await viewModel.loadAll()
         }
         .toolbar {

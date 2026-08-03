@@ -32,7 +32,7 @@ struct MachineListView: View {
                 .padding(.bottom, 20)
             }
         }
-        .refreshable {
+        .dataRefreshable {
             await viewModel.loadMachines()
         }
         .searchable(text: $viewModel.searchText, prompt: "Search machines")

@@ -339,7 +339,7 @@ struct MachineDetailView: View {
             .padding(.horizontal)
             .padding(.bottom, 20)
         }
-        .refreshable {
+        .dataRefreshable {
             await viewModel.loadDetail()
             await trayVM.loadTrays()
         }
@@ -403,7 +403,7 @@ struct MachineDetailView: View {
                 .listStyle(.plain)
             }
         }
-        .refreshable {
+        .dataRefreshable {
             await viewModel.loadDetail()
             await trayVM.loadTrays()
         }

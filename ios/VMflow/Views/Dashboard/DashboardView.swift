@@ -58,7 +58,7 @@ struct DashboardView: View {
         .navigationDestination(isPresented: $showCashBook) {
             CashBookView()
         }
-        .refreshable {
+        .dataRefreshable {
             await viewModel.loadDashboard()
         }
         .navigationTitle(auth.organization?.name ?? "Dashboard")
