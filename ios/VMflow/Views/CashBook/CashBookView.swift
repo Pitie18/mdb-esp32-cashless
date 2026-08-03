@@ -36,7 +36,7 @@ struct CashBookView: View {
                 }
             }
         }
-        .refreshable {
+        .dataRefreshable {
             await cashBookVM.refresh()
         }
         .task {

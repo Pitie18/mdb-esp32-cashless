@@ -174,7 +174,7 @@ struct DealsView: View {
         }
         .listStyle(.insetGrouped)
         .searchable(text: $viewModel.searchText, prompt: "Search deals...")
-        .refreshable {
+        .dataRefreshable {
             await viewModel.fetchUserStates()
             await viewModel.fetchDeals(forceRefresh: true)
             await viewModel.fetchNewDealKeys()

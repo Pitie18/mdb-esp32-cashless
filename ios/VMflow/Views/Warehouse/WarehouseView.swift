@@ -85,7 +85,7 @@ struct WarehouseView: View {
         .onChange(of: realtime.warehouseVersion) { _, _ in
             Task { await viewModel.loadAll() }
         }
-        .refreshable {
+        .dataRefreshable {
             await viewModel.loadAll()
         }
         .sheet(isPresented: $showScanner) {

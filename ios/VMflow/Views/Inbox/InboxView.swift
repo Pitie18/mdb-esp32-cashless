@@ -47,7 +47,7 @@ struct InboxView: View {
                 .frame(maxWidth: 160)
             }
         }
-        .refreshable { await viewModel.load() }
+        .dataRefreshable { await viewModel.load() }
         .task { await viewModel.load() }
         .alert("Error", isPresented: .init(
             get: { viewModel.error != nil },

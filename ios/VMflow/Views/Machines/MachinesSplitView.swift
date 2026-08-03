@@ -80,7 +80,7 @@ struct MachinesSplitView: View {
             }
         }
         .searchable(text: $viewModel.searchText, prompt: "Search machines")
-        .refreshable {
+        .dataRefreshable {
             await viewModel.loadMachines()
         }
         .overlay {

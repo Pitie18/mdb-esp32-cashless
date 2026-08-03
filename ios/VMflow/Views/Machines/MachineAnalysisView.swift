@@ -32,7 +32,7 @@ struct MachineAnalysisView: View {
             }
             .padding()
         }
-        .refreshable { await reload() }
+        .dataRefreshable { await reload() }
         .task { await reload() }
         .sheet(item: $replacingSlot) { slot in
             ReplaceProductSheet(
