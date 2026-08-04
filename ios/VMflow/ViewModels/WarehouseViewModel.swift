@@ -20,8 +20,16 @@ final class WarehouseViewModel: ObservableObject {
     @Published var searchText = ""
 
     // Stock list filters (parity with management frontend)
+    /// When false (the default), zero-stock products are hidden **unless the
+    /// product still sits in a machine slot** — there a zero warehouse stock is
+    /// the actionable signal (the slot needs refilling and there is nothing to
+    /// refill it with). Zero-stock products in no machine are catalogue noise
+    /// and stay hidden until this is switched on.
     @Published var includeOutOfStock = false
     @Published var includeArchived = false
+    /// Product IDs assigned to at least one `machine_trays` slot, company-wide
+    /// (RLS scopes it). Drives the out-of-stock exemption above.
+    @Published var assignedProductIds: Set<UUID> = []
     @Published var expirationFilter: ExpirationFilterOption = .all
 
     /// Filter options for the stock list's expiration severity.
@@ -37,7 +45,7 @@ final class WarehouseViewModel: ObservableObject {
         }
     }
 
-    /// True when any filter deviates from the default (active in-stock) view.
+    /// True when any filter deviates from the default view.
     var hasActiveFilters: Bool {
         includeOutOfStock || includeArchived || expirationFilter != .all
     }
@@ -63,8 +71,10 @@ final class WarehouseViewModel: ObservableObject {
 
     // MARK: - Computed
 
-    /// Product summaries after search + filters, sorted: archived last, then
-    /// out of stock first, then low, then by name.
+    /// Product summaries after search + filters, sorted purely by name (web
+    /// parity). Stock level deliberately does NOT influence the order — a
+    /// zero-stock product sits where its name puts it and is identified by its
+    /// red quantity + "Out of Stock" badge instead of by position.
     var filteredSummaries: [WarehouseProductSummary] {
         var items = productSummaries
 
@@ -76,7 +86,7 @@ final class WarehouseViewModel: ObservableObject {
             items = items.filter { !$0.discontinued }
         }
         if !includeOutOfStock {
-            items = items.filter { !$0.isOutOfStock }
+            items = items.filter { !$0.isOutOfStock || assignedProductIds.contains($0.productId) }
         }
         switch expirationFilter {
         case .all:
@@ -88,10 +98,7 @@ final class WarehouseViewModel: ObservableObject {
         }
 
         return items.sorted { lhs, rhs in
-            if lhs.discontinued != rhs.discontinued { return !lhs.discontinued }
-            if lhs.isOutOfStock != rhs.isOutOfStock { return lhs.isOutOfStock }
-            if lhs.isLow != rhs.isLow { return lhs.isLow }
-            return lhs.productName.localizedCaseInsensitiveCompare(rhs.productName) == .orderedAscending
+            lhs.productName.localizedCaseInsensitiveCompare(rhs.productName) == .orderedAscending
         }
     }
 
@@ -201,6 +208,33 @@ final class WarehouseViewModel: ObservableObject {
                     expirationStatus: WarehouseProductSummary.expirationStatus(for: s?.earliest)
                 )
             }
+        } catch is CancellationError {
+            // Ignore — SwiftUI cancels refreshable tasks routinely
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    // MARK: - Load Machine Assignments
+
+    /// Loads the set of products that currently occupy at least one machine
+    /// slot. Warehouse-independent (a product is "in use" no matter which
+    /// warehouse supplies it), so this is not reloaded on warehouse switch.
+    func loadAssignedProductIds() async {
+        do {
+            struct TrayProduct: Decodable {
+                let productId: UUID?
+                enum CodingKeys: String, CodingKey { case productId = "product_id" }
+            }
+
+            let rows: [TrayProduct] = try await client
+                .from("machine_trays")
+                .select("product_id")
+                .not("product_id", operator: .is, value: "null")
+                .execute()
+                .value
+
+            assignedProductIds = Set(rows.compactMap(\.productId))
         } catch is CancellationError {
             // Ignore — SwiftUI cancels refreshable tasks routinely
         } catch {
@@ -379,8 +413,9 @@ final class WarehouseViewModel: ObservableObject {
         async let intakesTask: () = loadRecentIntakes()
         async let productsTask: () = loadProducts()
         async let suppliersTask: () = loadSuppliersForIntake()
+        async let assignmentsTask: () = loadAssignedProductIds()
 
-        _ = await (summariesTask, intakesTask, productsTask, suppliersTask)
+        _ = await (summariesTask, intakesTask, productsTask, suppliersTask, assignmentsTask)
 
         isLoading = false
     }

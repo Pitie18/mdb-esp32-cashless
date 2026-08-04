@@ -195,6 +195,30 @@
         }
       }
     },
+    "Show all out of stock": {
+      "extractionState": "manual",
+      "comment": "Toggle to also include out-of-stock products that are in no machine slot; out-of-stock products still assigned to a machine are always shown",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher toutes les ruptures de stock"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle nicht auf Lager anzeigen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle niet op voorraad tonen"
+          }
+        }
+      }
+    },
     "Show archived": {
       "extractionState": "manual",
       "comment": "Toggle to include archived products in the warehouse stock list",
@@ -215,30 +239,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gearchiveerd tonen"
-          }
-        }
-      }
-    },
-    "Show out of stock": {
-      "extractionState": "manual",
-      "comment": "Toggle to include out-of-stock products in the warehouse stock list",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Afficher les ruptures de stock"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nicht auf Lager anzeigen"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Niet op voorraad tonen"
           }
         }
       }

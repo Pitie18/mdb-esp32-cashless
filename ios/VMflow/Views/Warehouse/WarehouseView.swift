@@ -177,7 +177,9 @@ struct WarehouseView: View {
 
     private var stockFilterMenu: some View {
         Menu {
-            Toggle("Show out of stock", isOn: $viewModel.includeOutOfStock)
+            // Off by default, but zero-stock products that still occupy a
+            // machine slot are shown regardless — hence "all".
+            Toggle("Show all out of stock", isOn: $viewModel.includeOutOfStock)
             Toggle("Show archived", isOn: $viewModel.includeArchived)
 
             Picker("Expiration", selection: $viewModel.expirationFilter) {
