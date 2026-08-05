@@ -840,6 +840,7 @@
     "showDiscontinued": "Afficher les discontinués",
     "notAssignedBadge": "Non assigné",
     "showUnassigned": "Afficher les non assignés",
+    "showAllOutOfStock": "Afficher toutes les ruptures de stock",
     "outOfStock": "En rupture de stock",
     "outOfStockCount": "En rupture de stock",
     "reorderNeeded": "Réapprovisionnement requis",

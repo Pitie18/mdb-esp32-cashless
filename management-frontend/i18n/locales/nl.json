@@ -840,6 +840,7 @@
     "showDiscontinued": "Uit assortiment tonen",
     "notAssignedBadge": "Niet toegewezen",
     "showUnassigned": "Niet-toegewezen tonen",
+    "showAllOutOfStock": "Alle niet op voorraad tonen",
     "outOfStock": "Geen voorraad",
     "outOfStockCount": "Geen voorraad",
     "reorderNeeded": "Herbestelling nodig",

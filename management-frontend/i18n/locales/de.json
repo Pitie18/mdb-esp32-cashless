@@ -1030,6 +1030,7 @@
     "showDiscontinued": "Auslaufartikel anzeigen",
     "notAssignedBadge": "Nicht zugewiesen",
     "showUnassigned": "Nicht zugewiesene anzeigen",
+    "showAllOutOfStock": "Alle nicht vorrätigen anzeigen",
     "outOfStock": "Nicht vorrätig",
     "outOfStockCount": "Nicht vorrätig",
     "reorderNeeded": "Nachbestellung nötig",

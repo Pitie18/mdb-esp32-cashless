@@ -108,11 +108,22 @@ async function loadWarehouseData() {
 
 const showDiscontinued = ref(true)
 const showUnassigned = ref(true)
+/**
+ * When false (the default), zero-stock products are hidden **unless the product
+ * still occupies a machine slot** — there a zero warehouse stock is the
+ * actionable signal (the slot needs refilling and there is nothing to refill it
+ * with). Zero-stock products in no machine are catalogue noise. Mirrors the iOS
+ * warehouse tab.
+ */
+const showAllOutOfStock = ref(false)
 
 const activeProductSummaries = computed(() => {
   let items = productSummaries.value
   if (!showDiscontinued.value) items = items.filter(p => !p.discontinued)
   if (!showUnassigned.value) items = items.filter(p => assignedProductIds.value.has(p.product_id))
+  if (!showAllOutOfStock.value) {
+    items = items.filter(p => p.total_quantity > 0 || assignedProductIds.value.has(p.product_id))
+  }
   return items
 })
 
@@ -1204,6 +1215,10 @@ async function onVelocityDaysChange(e: Event) {
               <input type="checkbox" v-model="showDiscontinued" class="rounded border-input" />
               {{ t('warehouse.showDiscontinued') }}
             </label>
+            <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+              <input type="checkbox" v-model="showAllOutOfStock" class="rounded border-input" />
+              {{ t('warehouse.showAllOutOfStock') }}
+            </label>
           </div>
 
           <!-- Product summary table -->
@@ -1367,6 +1382,12 @@ async function onVelocityDaysChange(e: Event) {
               <label class="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
                 <input type="checkbox" v-model="showDiscontinued" class="rounded border-input" />
                 {{ t('warehouse.showDiscontinued') }}
+              </label>
+              <!-- Off by default; zero-stock products still sitting in a
+                   machine slot are shown regardless — hence "all". -->
+              <label class="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
+                <input type="checkbox" v-model="showAllOutOfStock" class="rounded border-input" />
+                {{ t('warehouse.showAllOutOfStock') }}
               </label>
             </div>
             <button

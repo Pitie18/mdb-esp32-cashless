@@ -1030,6 +1030,7 @@
     "showDiscontinued": "Show discontinued",
     "notAssignedBadge": "Not assigned",
     "showUnassigned": "Show unassigned",
+    "showAllOutOfStock": "Show all out of stock",
     "outOfStock": "Out of stock",
     "outOfStockCount": "Out of stock",
     "reorderNeeded": "Reorder needed",
