@@ -1748,7 +1748,13 @@ final class RefillWizardViewModel: ObservableObject {
 
         var deductions: [Deduction] = []
         for machine in machines where machine.isPacked {
-            let productIds = Set(machine.trays.compactMap { $0.tray.productId })
+            // Only products the user actually ticked off in the packing step.
+            // `startTour()` gates tour inclusion on the same `packedItems` set
+            // (products left unchecked get `fillAmount = 0` / `isInTour = false`),
+            // so deducting every tray product instead billed the warehouse for
+            // goods that never left the shelf.
+            let trayProductIds = Set(machine.trays.compactMap { $0.tray.productId })
+            let productIds = (packedItems[machine.id] ?? []).intersection(trayProductIds)
             for productId in productIds {
                 let qty = packingQuantity(machineId: machine.id, productId: productId)
                 guard qty > 0 else { continue }
