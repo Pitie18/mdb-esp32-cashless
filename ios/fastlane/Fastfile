@@ -20,6 +20,11 @@
 
 default_platform(:ios)
 
+# `assert_review_submission_started` queries App Store Connect directly. deliver
+# pulls spaceship in anyway, but requiring it here means the Fastfile doesn't
+# depend on load order inside another action.
+require "spaceship"
+
 # --- snapshot / simctl gem workaround (Xcode 26 CoreSimulator) --------------
 # fastlane's `snapshot` action resolves each configured device name to a
 # `SimCtl::DeviceType` via the (effectively unmaintained) `simctl` gem, purely
@@ -104,16 +109,90 @@ platform :ios do
     )
   end
 
-  desc "Build, sign, upload binary + metadata to App Store Connect (no review submission)"
-  lane :release do
+  # Regenerate fastlane/metadata/<locale>/release_notes.txt from the commits
+  # since the last ios-v* tag. See ios/scripts/release_notes.rb for the rules
+  # and for the `Release-Note-DE:` / `Release-Note: skip` commit trailers.
+  private_lane :stamp_release_notes do |options|
+    root = sh("git", "rev-parse", "--show-toplevel", log: false).strip
+    cmd = ["ruby", File.join(root, "ios", "scripts", "release_notes.rb")]
+    cmd += ["--since", options[:since]] unless options[:since].to_s.empty?
+    sh(*cmd)
+  end
+
+  # deliver treats precheck findings as warnings by default and then simply
+  # skips `submit_for_review` when precheck returns false — a green lane with
+  # nothing actually in review. The whole point of this lane is never opening
+  # App Store Connect, so confirm the submission exists before we call it done.
+  private_lane :assert_review_submission_started do
+    platform = Spaceship::ConnectAPI::Platform::IOS
+    bundle_id = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+    submitted = false
+    verifiable = true
+
+    3.times do |attempt|
+      sleep(20) if attempt.positive? # ASC lags a little behind the submit call
+      begin
+        app = Spaceship::ConnectAPI::App.find(bundle_id)
+        submitted = !app.nil? && !app.get_in_progress_review_submission(platform: platform).nil?
+      rescue StandardError => e
+        # Never fail on a flaky or changed API surface: deliver already reported
+        # a successful submission, and a false alarm here would send you to App
+        # Store Connect for no reason — exactly what this lane exists to avoid.
+        UI.important("Could not verify the review submission (#{e.class}: #{e.message})")
+        verifiable = false
+      end
+      break if submitted || !verifiable
+    end
+
+    if submitted
+      UI.success("Review submission is in progress; it auto-releases once approved ✅")
+    elsif verifiable
+      UI.user_error!("deliver finished but no review submission is in progress for #{bundle_id}. " \
+                     "Check the precheck output above, then re-run this lane.")
+    end
+  end
+
+  desc "Build, sign, upload binary + metadata, submit for review, auto-release on approval"
+  lane :release do |options|
+    # Options (all optional):
+    #   notes:keep   use the committed release_notes.txt verbatim instead of
+    #                regenerating them (for hand-written notes)
+    #   since:REF    generate notes against REF instead of the last ios-v* tag
+    #   submit:false upload only, leave the version sitting in ASC (old behaviour)
+    #
+    # Notes are stamped BEFORE the upload because deliver pushes metadata ahead
+    # of the binary (Deliver::Runner#run).
+    stamp_release_notes(since: options[:since]) unless options[:notes].to_s == "keep"
+
+    submit = options[:submit].to_s != "false"
     api_key = build_signed
+
     upload_to_app_store(
       api_key: api_key,
       force: true, # non-interactive CI: the HTML-preview prompt would hard-error
-      submit_for_review: false,
-      automatic_release: false,
+      # deliver selects the freshly uploaded build itself: SubmitForReview
+      # waits out build processing and calls version.select_build.
+      submit_for_review: submit,
+      # true -> releaseType AFTER_APPROVAL: App Store Connect publishes the
+      # version the moment review passes, no button to press.
+      automatic_release: submit,
+      # deliver reads exactly these two keys out of this hash. IDFA and the age
+      # rating are app-level answers in ASC now, not per-submission ones, and
+      # export compliance is already answered via ITSAppUsesNonExemptEncryption
+      # in Info.plist — this only covers the extension's build record.
+      submission_information: {
+        export_compliance_uses_encryption: false,
+        content_rights_contains_third_party_content: false
+      },
       precheck_include_in_app_purchases: false # precheck can't check IAP with an API key
     )
+
+    assert_review_submission_started if submit
+  end
+
+  desc "Preview the auto-generated release notes without building or uploading"
+  lane :release_notes do |options|
+    stamp_release_notes(since: options[:since])
   end
 
   desc "Upload metadata + screenshots only (no binary)"

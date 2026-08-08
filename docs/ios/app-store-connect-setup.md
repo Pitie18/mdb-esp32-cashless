@@ -49,11 +49,41 @@ submission if empty:
   fill the demo user/password/phone placeholders there first (see below).
 - **Encryption** — already answered via `ITSAppUsesNonExemptEncryption=false`.
 
-## 7. Before you submit for review
+## 7. Before your first `release`
 - Fill the placeholders in `ios/fastlane/metadata/review_information/`:
   `demo_user.txt`, `demo_password.txt`, `phone_number.txt`.
 - Provision the demo account and its organisation on `supabase.kerl-handel.de`
   with seeded data, per `app-store-review-notes.md`. The reviewer will test
   account deletion — the account must be **disposable and re-seedable**.
-- Run lane `release` (uploads binary + metadata + screenshots, **stops before
-  submission**), then submit from the ASC UI once you've eyeballed the listing.
+- That folder is git-ignored and therefore absent in CI, so deliver never
+  uploads review information. Enter the demo account, phone and notes **once by
+  hand** in App Store Connect — ASC carries them over to every later version,
+  which is what lets the automated submissions below go through untouched.
+
+## 8. Releasing (no App Store Connect visit needed)
+Actions → **iOS Release** → Run workflow → lane `release`. That single dispatch:
+
+1. regenerates the localized release notes from the commits since the last
+   `ios-v*` tag (see `release-notes.md`) and prints them to the job summary,
+2. builds, signs and uploads the binary plus all metadata and screenshots,
+3. **selects the uploaded build** — deliver waits out build processing and
+   attaches it to the version by itself,
+4. **submits for review**, and
+5. sets the release type to *after approval*, so App Store Connect publishes
+   the version the moment review passes.
+
+Afterwards the workflow tags the released commit `ios-v<version>-<build>` and
+commits the generated notes back, so the next run knows where to start.
+
+Escape hatches, all on the same dispatch form:
+- `submit: false` — upload only and leave the version sitting in ASC (the old
+  behaviour).
+- `notes: keep` — upload `fastlane/metadata/<locale>/release_notes.txt` exactly
+  as committed instead of regenerating it.
+- `notes_since: <ref>` — generate the notes against `<ref>` rather than the last
+  tag. Needed after a rejected review, where the tag was already pushed.
+- lane `release_notes` — dry run: generates and prints the notes, builds
+  nothing, uploads nothing, needs no secrets.
+
+The one thing that still needs a human in ASC is a **rejection**: read the
+resolution centre, fix, dispatch `release` again.

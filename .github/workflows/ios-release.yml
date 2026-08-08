@@ -7,8 +7,28 @@ on:
         description: "fastlane lane"
         required: true
         type: choice
-        options: [beta, metadata, release, screenshots]
+        options: [beta, metadata, release, screenshots, release_notes]
         default: beta
+      notes:
+        description: "release lane — release notes source"
+        required: false
+        type: choice
+        options:
+          - auto # regenerate from the commits since the last ios-v* tag
+          - keep # upload fastlane/metadata/<locale>/release_notes.txt as committed
+        default: auto
+      notes_since:
+        description: "Optional git ref to generate the notes against (default: last ios-v* tag)"
+        required: false
+        type: string
+      submit:
+        description: "release lane — submit for review and auto-release once approved"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # the release lane pushes the ios-v* tag it releases from
 
 jobs:
   fastlane:
@@ -22,7 +42,8 @@ jobs:
         with:
           # Build number = git rev-list --count HEAD (both prebuild scripts).
           # A shallow clone yields 1 and App Store Connect rejects any build
-          # number at or below the last upload.
+          # number at or below the last upload. Full history also gives us the
+          # ios-v* tags the release notes are generated against.
           fetch-depth: 0
 
       - uses: ruby/setup-ruby@v1
@@ -59,7 +80,65 @@ jobs:
           # caveat as above: this image exposes the M4 iPad Pro 13" rather than
           # the M5 that local Xcode 26 has — same display class either way.
           SNAPSHOT_IPAD_DEVICE: "iPad Pro 13-inch (M4)"
-        run: bundle exec fastlane ${{ github.event.inputs.lane }}
+          # Referenced via the environment rather than interpolated into the
+          # script body, so a crafted ref can't become shell.
+          LANE: ${{ inputs.lane }}
+          NOTES: ${{ inputs.notes }}
+          NOTES_SINCE: ${{ inputs.notes_since }}
+          SUBMIT: ${{ inputs.submit }}
+        run: |
+          ARGS=()
+          case "$LANE" in
+            release)
+              ARGS+=("notes:$NOTES" "submit:$SUBMIT")
+              if [ -n "$NOTES_SINCE" ]; then ARGS+=("since:$NOTES_SINCE"); fi
+              ;;
+            release_notes)
+              if [ -n "$NOTES_SINCE" ]; then ARGS+=("since:$NOTES_SINCE"); fi
+              ;;
+          esac
+          bundle exec fastlane "$LANE" "${ARGS[@]}"
+
+      # Two things, in this order:
+      #
+      # 1. Tag the commit that was built. This anchors the next run's release
+      #    notes (the generator diffs against the most recent ios-v* tag
+      #    reachable from HEAD) and records what actually went into review. The
+      #    build number is part of the tag because the marketing version is
+      #    date-based (1.0.YYMMDD), so two releases on one day would collide.
+      #
+      # 2. Commit the regenerated release_notes.txt back. The `metadata` lane
+      #    uploads whatever is committed, so without this a later metadata-only
+      #    run would overwrite the live notes with the stale committed ones.
+      #    Best-effort: a protected branch or a concurrent push must not fail a
+      #    release that already went through. The `chore(ios):` subject keeps
+      #    this commit out of the next release's notes.
+      - name: Tag the submitted version and persist its release notes
+        if: success() && inputs.lane == 'release' && inputs.submit
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" VMflow/Resources/Info.plist)
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" VMflow/Resources/Info.plist)
+          TAG="ios-v${VERSION}-${BUILD}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::warning::Tag $TAG already exists — leaving it alone"
+          else
+            git tag -a "$TAG" -m "iOS $VERSION (build $BUILD) submitted for App Store review"
+            git push origin "$TAG"
+            echo "Tagged \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -n "$(git status --porcelain -- fastlane/metadata)" ]; then
+            git add fastlane/metadata
+            git commit -m "chore(ios): release notes for $VERSION (build $BUILD)"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "Committed the generated release notes to \`${GITHUB_REF_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::Could not push the release-notes commit to ${GITHUB_REF_NAME} — commit fastlane/metadata by hand so the metadata lane stays in sync"
+            fi
+          fi
 
       - name: Upload logs on failure
         if: failure()
