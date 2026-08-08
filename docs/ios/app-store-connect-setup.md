@@ -72,8 +72,18 @@ Actions → **iOS Release** → Run workflow → lane `release`. That single dis
 5. sets the release type to *after approval*, so App Store Connect publishes
    the version the moment review passes.
 
-Afterwards the workflow tags the released commit `ios-v<version>-<build>` and
-commits the generated notes back, so the next run knows where to start.
+Afterwards the workflow commits the generated notes back and tags the commit it
+built, so you can always trace a build back to its source:
+
+| tag | meaning |
+|-----|---------|
+| `ios-v<version>-<build>` | went into App Store review |
+| `ios-build-<version>-<build>` | uploaded but not submitted — a `beta`/TestFlight run, or `release` with `submit: false` |
+
+Only `ios-v*` anchors the release notes. That is why an upload that never
+shipped gets the other prefix: otherwise the commits in a TestFlight build would
+disappear from the next real release's notes. `git show ios-v1.0.260808-1758`
+tells you the exact commit and why it was tagged.
 
 Escape hatches, all on the same dispatch form:
 - `submit: false` — upload only and leave the version sitting in ASC (the old

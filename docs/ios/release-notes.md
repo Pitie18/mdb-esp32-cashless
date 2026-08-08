@@ -23,6 +23,11 @@ the previous one. With no tag at all it falls back to the last 40 `ios/`
 commits — and App Store Connect rejects "What's New" on a first version anyway,
 so deliver skips the field entirely there.
 
+Uploads that never went to review — TestFlight (`beta`) and `release` with
+`submit: false` — are tagged `ios-build-*` instead, deliberately outside the
+`ios-v*` glob. They record which commit a build came from without moving the
+anchor, so their commits still show up in the next real release's notes.
+
 **Buckets** — conventional-commit types decide where a line goes:
 
 | type | section |

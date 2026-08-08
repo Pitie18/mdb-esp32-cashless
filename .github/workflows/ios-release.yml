@@ -101,36 +101,62 @@ jobs:
 
       # Two things, in this order:
       #
-      # 1. Tag the commit that was built. This anchors the next run's release
-      #    notes (the generator diffs against the most recent ios-v* tag
-      #    reachable from HEAD) and records what actually went into review. The
-      #    build number is part of the tag because the marketing version is
-      #    date-based (1.0.YYMMDD), so two releases on one day would collide.
+      # 1. Tag the commit that was built, so you can always tell which source a
+      #    given build came from. Two prefixes, and the distinction matters:
       #
-      # 2. Commit the regenerated release_notes.txt back. The `metadata` lane
-      #    uploads whatever is committed, so without this a later metadata-only
-      #    run would overwrite the live notes with the stale committed ones.
-      #    Best-effort: a protected branch or a concurrent push must not fail a
-      #    release that already went through. The `chore(ios):` subject keeps
-      #    this commit out of the next release's notes.
-      - name: Tag the submitted version and persist its release notes
-        if: success() && inputs.lane == 'release' && inputs.submit
+      #      ios-v<version>-<build>      went into App Store review
+      #      ios-build-<version>-<build> uploaded but not submitted (TestFlight,
+      #                                  or a release dispatched with submit:false)
+      #
+      #    The release-notes generator diffs against `ios-v*`, so only a build
+      #    that actually shipped may move that anchor — otherwise the commits in
+      #    a TestFlight build would silently vanish from the next release's
+      #    notes. The build number is part of both tags because the marketing
+      #    version is date-based (1.0.YYMMDD) and two builds on one day would
+      #    collide. Same commit re-run = same build number = same tag, which is
+      #    why an existing tag is left alone rather than moved.
+      #
+      # 2. Commit the regenerated release_notes.txt back — only for a submitted
+      #    release, since that is the run whose notes went live. The `metadata`
+      #    lane uploads whatever is committed, so without this a later
+      #    metadata-only run would overwrite the live notes with the stale
+      #    committed ones. Best-effort: a protected branch or a concurrent push
+      #    must not fail a release that already went through. The `chore(ios):`
+      #    subject keeps this commit out of the next release's notes.
+      - name: Tag the built commit and persist its release notes
+        if: success() && (inputs.lane == 'release' || inputs.lane == 'beta')
+        env:
+          LANE: ${{ inputs.lane }}
+          SUBMIT: ${{ inputs.submit }}
         run: |
           VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" VMflow/Resources/Info.plist)
           BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" VMflow/Resources/Info.plist)
-          TAG="ios-v${VERSION}-${BUILD}"
+
+          SUBMITTED=false
+          if [ "$LANE" = "release" ] && [ "$SUBMIT" = "true" ]; then
+            SUBMITTED=true
+            TAG="ios-v${VERSION}-${BUILD}"
+            MSG="iOS $VERSION (build $BUILD) submitted for App Store review"
+          elif [ "$LANE" = "release" ]; then
+            TAG="ios-build-${VERSION}-${BUILD}"
+            MSG="iOS $VERSION (build $BUILD) uploaded to App Store Connect, not submitted"
+          else
+            TAG="ios-build-${VERSION}-${BUILD}"
+            MSG="iOS $VERSION (build $BUILD) uploaded to TestFlight"
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "::warning::Tag $TAG already exists — leaving it alone"
           else
-            git tag -a "$TAG" -m "iOS $VERSION (build $BUILD) submitted for App Store review"
+            git tag -a "$TAG" -m "$MSG"
             git push origin "$TAG"
-            echo "Tagged \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "Tagged \`$TAG\` at \`$(git rev-parse --short HEAD)\` — $MSG" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-          if [ -n "$(git status --porcelain -- fastlane/metadata)" ]; then
+          if [ "$SUBMITTED" = "true" ] && [ -n "$(git status --porcelain -- fastlane/metadata)" ]; then
             git add fastlane/metadata
             git commit -m "chore(ios): release notes for $VERSION (build $BUILD)"
             if git push origin "HEAD:${GITHUB_REF_NAME}"; then
