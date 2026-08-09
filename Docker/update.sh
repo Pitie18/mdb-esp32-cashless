@@ -53,6 +53,25 @@ step()    { echo; echo -e "${BOLD}═══ $1 ═══${NC}"; echo; }
 [ -f .env ] || error ".env not found. Run setup.sh first."
 docker compose ps --services >/dev/null 2>&1 || error "Docker stack is not running. Start it with: docker compose up -d"
 
+# ─────────────────────────────────────────────────────────────
+# Clear stray volumes/db/*.sql directories before `git pull`
+# ─────────────────────────────────────────────────────────────
+# Installs created between 2026-01-04 and 2026-08-09 have empty
+# DIRECTORIES where webhooks.sql / jwt.sql / realtime.sql should be —
+# Docker materialises a missing bind-mount source that way. They must go
+# before the pull: git refuses to check a file out over a directory
+# ("unable to create file ...: Is a directory") and would abort step 1.
+# The matching database repair runs after the Environment Check, once the
+# restored files are on disk.
+for stray in volumes/db/*.sql; do
+    [ -d "$stray" ] || continue
+    if rmdir "$stray" 2>/dev/null; then
+        success "Removed stray directory ${stray} (leftover from a broken first start)"
+    else
+        error "${stray} is a non-empty directory and would break git pull — remove it manually."
+    fi
+done
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Step 1: Pull latest code
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -263,6 +282,74 @@ SQL
 else
     warn "SERVICE_ROLE_KEY not found in .env — skipping app.settings configuration"
     warn "Low-stock daily push will not fire until SERVICE_ROLE_KEY is set"
+fi
+
+# ─────────────────────────────────────────────────────────────
+# Repair installs whose Postgres init run aborted
+# ─────────────────────────────────────────────────────────────
+# Between 2026-01-04 (df239b3 deleted volumes/db/{webhooks,jwt,realtime,
+# _supabase,logs,pooler}.sql) and 2026-08-09 the compose file still
+# mounted them. Docker materialises a missing bind-mount source as an
+# empty DIRECTORY; the image's migrate.sh runs
+# `psql -v ON_ERROR_STOP=1 -f init-scripts/*.sql` under `set -e`, so
+# 98-webhooks.sql died with "Is a directory" and 99-jwt.sql /
+# 99-roles.sql never ran. The container restarted, found PGDATA
+# initialised, skipped init for good and came up looking healthy — with
+# authenticator, supabase_auth_admin and supabase_storage_admin left
+# without a password. Init scripts never re-run, so restoring the files
+# alone does not heal such an install; replay them here. Every check is a
+# no-op on a healthy database. (The stray directories those installs also
+# carry are cleared in the pre-flight section, before `git pull`.)
+
+if docker compose exec -T db pg_isready -U postgres >/dev/null 2>&1; then
+    db_psql() { docker compose exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d postgres "$@"; }
+
+    if [ "$(db_psql -Atc "SELECT count(*) FROM pg_namespace WHERE nspname = 'supabase_functions'")" = "0" ]; then
+        info "Schema supabase_functions missing — replaying webhooks.sql..."
+        if db_psql -q < volumes/db/webhooks.sql >/dev/null; then
+            success "webhooks.sql applied (supabase_functions + supabase_functions_admin)"
+        else
+            warn "webhooks.sql failed — check: docker compose logs db"
+        fi
+    fi
+
+    # `|| true` keeps set -e from aborting the whole update if this one
+    # query hiccups — a failed probe must not stop the migration step.
+    ROLES_NO_PASSWORD=$(db_psql -Atc \
+        "SELECT coalesce(string_agg(rolname, ', ' ORDER BY rolname), '')
+           FROM pg_authid
+          WHERE rolname IN ('authenticator','pgbouncer','supabase_admin','supabase_auth_admin','supabase_functions_admin','supabase_storage_admin')
+            AND rolpassword IS NULL" || true)
+    if [ -n "$ROLES_NO_PASSWORD" ]; then
+        warn "Roles without a password: ${ROLES_NO_PASSWORD} — replaying roles.sql..."
+        # roles.sql reads $POSTGRES_PASSWORD via psql backticks, which run
+        # inside the db container where compose sets it.
+        if db_psql -q < volumes/db/roles.sql >/dev/null; then
+            success "roles.sql applied — rest/auth/storage can authenticate again"
+        else
+            error "roles.sql failed. Check: docker compose logs db"
+        fi
+    fi
+
+    if [ -z "$(db_psql -Atc "SELECT current_setting('app.settings.jwt_secret', true)")" ]; then
+        info "app.settings.jwt_secret unset — replaying jwt.sql..."
+        if db_psql -q < volumes/db/jwt.sql >/dev/null; then
+            success "jwt.sql applied"
+        else
+            warn "jwt.sql failed — check: docker compose logs db"
+        fi
+    fi
+
+    if [ "$(db_psql -Atc "SELECT count(*) FROM pg_namespace WHERE nspname = '_realtime'")" = "0" ]; then
+        info "Schema _realtime missing — replaying realtime.sql..."
+        db_psql -q < volumes/db/realtime.sql >/dev/null \
+            && success "realtime.sql applied" \
+            || warn "realtime.sql failed — check: docker compose logs db"
+    fi
+
+    unset -f db_psql
+else
+    warn "Database not reachable — skipping init-script repair check"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════

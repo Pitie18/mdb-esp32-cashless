@@ -458,15 +458,24 @@ services:
       - "[::1]:5432:5432"
       - "127.0.0.1:5432:5432"
     restart: unless-stopped
+    # EVERY file mounted here MUST exist in the repo. Docker materialises a
+    # missing bind-mount source as an empty DIRECTORY, and the image's
+    # migrate.sh runs `psql -v ON_ERROR_STOP=1 -f` over init-scripts/*.sql
+    # under `set -e`: the first directory aborts the whole init run, so every
+    # later script (99-roles.sql!) silently never executes. The container then
+    # restarts, finds PGDATA initialised, skips init for good and comes up
+    # looking healthy — with authenticator/supabase_auth_admin/
+    # supabase_storage_admin left without a password. That broke every fresh
+    # install between 2026-01-04 (df239b3 deleted the files) and 2026-08-09.
+    # Do not add a mount here without committing the file. Ordering matters
+    # too: 98-webhooks.sql creates supabase_functions_admin, which
+    # 99-roles.sql then ALTERs.
     volumes:
       - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
       - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
       - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
       - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
       - ./volumes/db/data:/var/lib/postgresql/data:Z
-      - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
-      - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
-      - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
       - db-config:/etc/postgresql-custom
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]

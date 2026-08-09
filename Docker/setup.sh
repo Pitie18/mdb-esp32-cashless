@@ -554,6 +554,33 @@ step "3/5 — Starting Docker Stack"
 info "Pulling pre-built frontend image..."
 docker compose pull frontend 2>/dev/null && success "Frontend image pulled" || warn "Could not pull frontend image — will build locally"
 
+# ─────────────────────────────────────────────────────────────
+# Pre-flight: every db init script mounted by docker-compose.yml
+# must exist as a real file.
+# ─────────────────────────────────────────────────────────────
+# Docker materialises a missing bind-mount source as an empty DIRECTORY.
+# The image's migrate.sh then hits `psql -f <dir>` -> "Is a directory",
+# and because it runs under `set -e` the whole init run aborts — every
+# later script (99-roles.sql!) never executes, so authenticator,
+# supabase_auth_admin and supabase_storage_admin end up without a
+# password. The container restarts, finds PGDATA initialised, skips init
+# for good and looks perfectly healthy. Catch it before it happens.
+info "Verifying database init scripts..."
+INIT_BAD=""
+for rel in $(grep -oE '\./volumes/db/[A-Za-z0-9_.-]+\.sql' docker-compose.yml | sort -u); do
+    if [ -d "$rel" ]; then
+        warn "  ${rel} is a DIRECTORY — leftover from an earlier broken start, delete it"
+        INIT_BAD="yes"
+    elif [ ! -f "$rel" ]; then
+        warn "  ${rel} is missing from the repo"
+        INIT_BAD="yes"
+    fi
+done
+if [ -n "$INIT_BAD" ]; then
+    error "Database init scripts are not intact — fix the paths above before starting, otherwise Postgres comes up with password-less roles and rest/auth/storage can never connect."
+fi
+success "All database init scripts present"
+
 info "Starting all services..."
 docker compose up -d
 
@@ -581,6 +608,30 @@ fi
 # (roles, JWT, webhooks, etc. run via /docker-entrypoint-initdb.d/)
 info "Waiting for Supabase initialization to complete..."
 sleep 5
+
+# ─────────────────────────────────────────────────────────────
+# Guard: did 99-roles.sql actually run?
+# ─────────────────────────────────────────────────────────────
+# pg_isready says nothing about the init scripts — a container whose
+# init run aborted restarts and reports "ready to accept connections"
+# all the same. Ask Postgres directly instead of reporting success and
+# leaving the operator to discover it from auth failures in the logs.
+ROLES_NO_PASSWORD=$(docker compose exec -T db psql -U postgres -d postgres -Atc \
+    "SELECT coalesce(string_agg(rolname, ', ' ORDER BY rolname), '')
+       FROM pg_authid
+      WHERE rolname IN ('authenticator','pgbouncer','supabase_admin','supabase_auth_admin','supabase_functions_admin','supabase_storage_admin')
+        AND rolpassword IS NULL" 2>/dev/null || echo "QUERY_FAILED")
+
+if [ "$ROLES_NO_PASSWORD" = "QUERY_FAILED" ]; then
+    error "Could not query role state. Check logs: docker compose logs db"
+elif [ -n "$ROLES_NO_PASSWORD" ]; then
+    warn "These roles have no password: ${ROLES_NO_PASSWORD}"
+    warn "The Postgres init run aborted — check: docker compose logs db | grep -i 'is a directory'"
+    warn "Init scripts do not re-run on restart. Since this is a fresh install with no data yet:"
+    warn "  docker compose down && rm -rf volumes/db/data && ./setup.sh"
+    error "Aborting — rest/auth/storage could not authenticate against this database."
+fi
+success "Database roles initialised"
 
 # ─────────────────────────────────────────────────────────────
 # Configure DB settings consumed by SECURITY DEFINER functions
