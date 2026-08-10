@@ -228,6 +228,8 @@ echo
 info "URLs:"
 echo -e "  Supabase API:  ${GREEN}${SUPABASE_PUBLIC_URL}${NC}"
 echo -e "  Frontend:      ${GREEN}${SITE_URL}${NC}"
+info "The frontend URL is encoded into the QR codes on printed machine signs,"
+info "so it must be the address customers can reach from outside."
 echo -e "  MQTT broker:   ${GREEN}${MQTT_HOST}${NC}"
 
 # ─── SMTP (optional) ──────────────────────────────────────────────────────────

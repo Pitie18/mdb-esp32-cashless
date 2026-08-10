@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 import {
   buildPrintSheetBase,
   isPublicOrigin,
+  posterFingerprint,
   qrErrorLevel,
 } from '@/lib/printSheet'
 import type {
@@ -137,29 +138,34 @@ export function useMachinePrint() {
   }
 
   /**
-   * One row per machine. Written when the print is *triggered*: whether the
-   * user then cancels the system dialog is not observable from the browser, so
-   * the entry claims no more than that.
+   * One row per printed sheet. Written when the print is *triggered*: whether
+   * the user then cancels the system dialog is not observable from the browser,
+   * so the entry claims no more than that.
+   *
+   * The contact fingerprint travels with the row. That is what later lets the
+   * machine list tell "this sign is still correct" from "this sign shows a
+   * number nobody answers any more".
    */
   async function logPrinted(
-    machineIds: string[],
+    sheets: PrintSheet[],
     meta: { motif: string; format: PrintFormat; blocks: PrintBlock[]; sheetLanguage: string },
   ) {
     const companyId = organization.value?.id
-    if (!companyId || machineIds.length === 0) return
-    const rows = machineIds.map(id => ({
+    if (!companyId || sheets.length === 0) return
+    const rows = sheets.map(sheet => ({
       company_id: companyId,
       entity_type: 'machine',
-      entity_id: id,
+      entity_id: sheet.machineId,
       action: 'poster_printed',
       metadata: {
         // Repeated from entity_id so the activity descriptor can resolve the
         // machine name the same way it does for every other action.
-        machine_id: id,
+        machine_id: sheet.machineId,
         motif: meta.motif,
         format: meta.format,
         blocks: meta.blocks,
         sheet_language: meta.sheetLanguage,
+        contact_fingerprint: posterFingerprint(sheet),
       },
     }))
     const { error: insertError } = await supabase.from('activity_log').insert(rows as never)

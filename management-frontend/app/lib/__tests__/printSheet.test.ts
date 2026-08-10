@@ -5,6 +5,7 @@ import {
   inherit,
   isPublicOrigin,
   normalizePhone,
+  posterFingerprint,
   qrErrorLevel,
   toWaNumber,
 } from '../printSheet'
@@ -252,6 +253,74 @@ describe('buildPrintSheetBase', () => {
       },
     })
     expect(sheet.machineNote).toBe('Bahnhofstr. 1 · 34117 Kassel')
+  })
+})
+
+describe('posterFingerprint', () => {
+  it('is stable for unchanged data', () => {
+    expect(posterFingerprint(build())).toBe(posterFingerprint(build()))
+  })
+
+  it('changes when the support number changes', () => {
+    expect(posterFingerprint(build({ company: { contact_phone: '+49 561 999999' } })))
+      .not.toBe(posterFingerprint(build()))
+  })
+
+  it('changes when a machine override starts shadowing the company number', () => {
+    expect(posterFingerprint(build({ machine: { contact_phone: '+49 561 999999' } })))
+      .not.toBe(posterFingerprint(build()))
+  })
+
+  it('changes when the availability text changes', () => {
+    expect(posterFingerprint(build({ company: { support_hours: 'Mo–Sa 7–20 Uhr' } })))
+      .not.toBe(posterFingerprint(build()))
+  })
+
+  it('changes when the WhatsApp number changes', () => {
+    expect(posterFingerprint(build({ company: { whatsapp_phone: '+49 151 99887766' } })))
+      .not.toBe(posterFingerprint(build()))
+  })
+
+  it('changes when the machine is renamed', () => {
+    expect(posterFingerprint(build({ machine: { name: 'Automat 13' } })))
+      .not.toBe(posterFingerprint(build()))
+  })
+
+  it('changes when a block is switched on', () => {
+    expect(posterFingerprint(build({ blocks: ['phone'] })))
+      .not.toBe(posterFingerprint(build({ blocks: ['phone', 'whatsapp'] })))
+  })
+
+  // The whole point of the like-against-like comparison: reprinting the same
+  // sign in another language must not read as "the contact data changed".
+  it('ignores the language of the prefilled WhatsApp message', () => {
+    const de = buildPrintSheetBase({
+      machine, company, publicOrigin: 'https://app.muster-vending.de', blocks: ALL_BLOCKS,
+      whatsappTemplate: 'Hallo, ich habe ein Problem am %machine%.',
+      fallbackMachineName: 'Automat',
+    })
+    const fr = buildPrintSheetBase({
+      machine, company, publicOrigin: 'https://app.muster-vending.de', blocks: ALL_BLOCKS,
+      whatsappTemplate: "Bonjour, j'ai un problème avec %machine%.",
+      fallbackMachineName: 'Automat',
+    })
+    expect(posterFingerprint(de)).toBe(posterFingerprint(fr))
+  })
+
+  // Free text is per-print and never persisted, so it cannot be part of the
+  // "is the sign still correct" question.
+  it('ignores the one-off free text', () => {
+    const withText = buildPrintSheetBase({
+      machine, company, publicOrigin: 'https://app.muster-vending.de', blocks: ALL_BLOCKS,
+      customText: 'Standort: 2. OG', fallbackMachineName: 'Automat',
+    })
+    expect(posterFingerprint(withText)).toBe(posterFingerprint(build()))
+  })
+
+  it('ignores a field belonging to a block that was switched off', () => {
+    const a = build({ blocks: ['problem'] })
+    const b = build({ blocks: ['problem'], company: { contact_phone: '+49 561 999999' } })
+    expect(posterFingerprint(a)).toBe(posterFingerprint(b))
   })
 })
 

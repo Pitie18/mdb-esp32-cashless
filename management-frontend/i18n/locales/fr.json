@@ -257,7 +257,8 @@
     "insufficientStock": "Stock de l'entrepôt insuffisant",
     "deductionFailed": "Échec de la déduction",
     "startRefillTour": "Démarrer la tournée de réapprovisionnement",
-    "stockHealth": "État du stock"
+    "stockHealth": "État du stock",
+    "posterOutdated": "Affiche obsolète"
   },
   "refill": {
     "title": "Tournée de réapprovisionnement",
@@ -482,7 +483,9 @@
     "reasonNoClock": "L'appareil n'avait pas d'horloge",
     "reasonGapEarlier": "vente identique {n}s plus tôt",
     "reasonNearDup": "quasi-doublon d'une vente récente",
-    "printPoster": "Imprimer une affiche"
+    "printPoster": "Imprimer une affiche",
+    "posterOutdatedTitle": "L'affiche ne montre plus les coordonnées actuelles",
+    "posterOutdatedBody": "Les coordonnées ont changé depuis la dernière impression. Réimprimez et remplacez la feuille."
   },
   "machineSettings": {
     "title": "Paramètres de la machine",

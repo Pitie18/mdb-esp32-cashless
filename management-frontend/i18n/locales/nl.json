@@ -257,7 +257,8 @@
     "insufficientStock": "Onvoldoende magazijnvoorraad",
     "deductionFailed": "Aftrekken mislukt",
     "startRefillTour": "Bijvulronde starten",
-    "stockHealth": "Voorraadstatus"
+    "stockHealth": "Voorraadstatus",
+    "posterOutdated": "Biljet verouderd"
   },
   "refill": {
     "title": "Bijvulronde",
@@ -482,7 +483,9 @@
     "reasonNoClock": "Toestel had geen klok",
     "reasonGapEarlier": "identieke verkoop {n}s eerder",
     "reasonNearDup": "bijna-duplicaat van een recente verkoop",
-    "printPoster": "Aanplakbiljet afdrukken"
+    "printPoster": "Aanplakbiljet afdrukken",
+    "posterOutdatedTitle": "Het biljet toont niet meer de actuele contactgegevens",
+    "posterOutdatedBody": "De contactgegevens zijn na de laatste afdruk gewijzigd. Druk opnieuw af en vervang het blad."
   },
   "machineSettings": {
     "title": "Machine-instellingen",

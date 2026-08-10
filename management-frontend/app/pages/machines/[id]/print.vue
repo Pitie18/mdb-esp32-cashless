@@ -152,7 +152,7 @@ const missingFields = computed(() => {
 })
 
 async function doPrint() {
-  await print.logPrinted(selectedIds.value, {
+  await print.logPrinted(sheets.value, {
     motif: motifId.value,
     format: format.value,
     blocks: blocks.value,

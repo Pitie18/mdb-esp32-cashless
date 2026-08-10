@@ -4,7 +4,7 @@ definePageMeta({ middleware: 'auth' })
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { VisAxis, VisStackedBar, VisXYContainer } from '@unovis/vue'
-import { IconCreditCard, IconCoins, IconDeviceMobile, IconSend, IconSparkles, IconLoader2, IconRefresh, IconTrash, IconPlus, IconHistory, IconArrowUp, IconArrowDown, IconExternalLink } from '@tabler/icons-vue'
+import { IconCreditCard, IconCoins, IconDeviceMobile, IconSend, IconSparkles, IconLoader2, IconRefresh, IconTrash, IconPlus, IconHistory, IconArrowUp, IconArrowDown, IconExternalLink, IconAlertTriangle } from '@tabler/icons-vue'
 import { NuxtLink } from '#components'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,7 @@ import { suppressedReasonParts, buildSalesFeedDays } from '~/composables/useSupp
 import { useDeviceRestarts, reasonLabel, reasonVariant, formatUptime } from '@/composables/useDeviceRestarts'
 import { timeAgo, formatCurrency, formatDate, formatTime, formatDateTime } from '@/lib/utils'
 import MachineSettingsModal from '~/components/MachineSettingsModal.vue'
+import { usePosterFreshness } from '@/composables/usePosterFreshness'
 import MachineAnalysisPanel from '~/components/analysis/MachineAnalysisPanel.vue'
 import {
   DropdownMenu,
@@ -459,6 +460,13 @@ async function saveNameEdit() {
 // ── Device info modal ────────────────────────────────────────────────────────
 const showDeviceInfoModal = ref(false)
 const showMachineSettingsModal = ref(false)
+
+// Whether the printed sign on this machine still shows the current contact
+// data. Reloaded after the settings modal saves, since that is exactly where
+// the contact data changes.
+const posters = usePosterFreshness()
+const posterOutdated = computed(() => posters.isOutdated(route.params.id as string))
+onMounted(() => posters.load())
 
 // ── Device swap ─────────────────────────────────────────────────────────────
 const showDeviceModal = ref(false)
@@ -1333,6 +1341,19 @@ async function handleAddSale() {
               </template>
             </div>
           </div>
+
+          <!-- The sign on this machine shows contact data that has since changed -->
+          <NuxtLink
+            v-if="posterOutdated"
+            :to="`/machines/${route.params.id}/print`"
+            class="mb-4 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 transition-colors hover:bg-amber-500/20 dark:text-amber-400"
+          >
+            <IconAlertTriangle class="mt-0.5 size-4 shrink-0" />
+            <span>
+              <strong class="block">{{ t('machineDetail.posterOutdatedTitle') }}</strong>
+              {{ t('machineDetail.posterOutdatedBody') }}
+            </span>
+          </NuxtLink>
 
           <!-- Tabs: Sales | Trays & Stock | MDB -->
           <Tabs :default-value="defaultTab">
@@ -3075,7 +3096,7 @@ async function handleAddSale() {
           country_code: machine.country_code,
           nayax_machine_id: (machine as any).nayax_machine_id ?? null,
         }"
-        @saved="fetchMachine"
+        @saved="() => { fetchMachine(); posters.load() }"
       />
 
       <SoftApCredentialsModal

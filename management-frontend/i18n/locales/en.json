@@ -447,7 +447,8 @@
     "insufficientStock": "Insufficient warehouse stock",
     "deductionFailed": "Deduction failed",
     "startRefillTour": "Start Refill Tour",
-    "stockHealth": "Stock Health"
+    "stockHealth": "Stock Health",
+    "posterOutdated": "Sign out of date"
   },
   "refill": {
     "title": "Refill Tour",
@@ -672,7 +673,9 @@
     "reasonNoClock": "Device had no clock",
     "reasonGapEarlier": "identical sale {n}s earlier",
     "reasonNearDup": "near-duplicate of a recent sale",
-    "printPoster": "Print a sign"
+    "printPoster": "Print a sign",
+    "posterOutdatedTitle": "The printed sign no longer shows the current contact details",
+    "posterOutdatedBody": "The contact details changed after the last print. Reprint it and swap the sheet."
   },
   "machineSettings": {
     "title": "Machine settings",

@@ -447,7 +447,8 @@
     "insufficientStock": "Unzureichender Lagerbestand",
     "deductionFailed": "Abzug fehlgeschlagen",
     "startRefillTour": "Befüllungstour starten",
-    "stockHealth": "Füllstand"
+    "stockHealth": "Füllstand",
+    "posterOutdated": "Aushang veraltet"
   },
   "refill": {
     "title": "Befüllungstour",
@@ -672,7 +673,9 @@
     "reasonNoClock": "Gerät hatte keine Uhr",
     "reasonGapEarlier": "identischer Verkauf {n}s früher",
     "reasonNearDup": "Beinahe-Duplikat eines kürzlichen Verkaufs",
-    "printPoster": "Aushang drucken"
+    "printPoster": "Aushang drucken",
+    "posterOutdatedTitle": "Der Aushang zeigt nicht mehr die aktuellen Kontaktdaten",
+    "posterOutdatedBody": "Seit dem letzten Druck haben sich die Kontaktdaten geändert. Neu drucken und austauschen."
   },
   "machineSettings": {
     "title": "Automat-Einstellungen",

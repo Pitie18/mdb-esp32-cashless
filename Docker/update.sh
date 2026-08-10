@@ -237,6 +237,63 @@ else
     success "GITHUB_FIRMWARE_REPO: ${GITHUB_FIRMWARE_REPO}"
 fi
 
+# ─── SITE_URL (auth mails + printed poster QR codes) ─────────────────────────
+# SITE_URL has always fed GoTrue's auth mails; since the printable machine
+# posters it is also handed to the frontend as NUXT_PUBLIC_SITE_URL and encoded
+# into every QR code that gets printed on paper. A wrong value here is not a
+# broken page you fix by editing — it is a stack of signs nobody can scan.
+#
+# We never guess a value non-interactively: the same variable builds password
+# reset links, so a wrong guess would silently break account recovery.
+if [ -z "${SITE_URL:-}" ]; then
+    warn "SITE_URL is not set in .env"
+    warn "It builds password-reset links AND the QR codes on printed machine signs."
+    # Derive a suggestion from the Supabase host, matching setup.sh's
+    # supabase.<domain> / app.<domain> convention.
+    SITE_URL_SUGGESTION=""
+    if [ -n "${SUPABASE_PUBLIC_URL:-}" ]; then
+        _derived=$(echo "$SUPABASE_PUBLIC_URL" | sed 's|^\(https\{0,1\}://\)supabase\.|\1app.|')
+        # Only suggest when the substitution actually fired. Otherwise the
+        # "suggestion" would just be the Supabase URL itself, which is exactly
+        # the wrong answer offered as the default.
+        [ "$_derived" != "$SUPABASE_PUBLIC_URL" ] && SITE_URL_SUGGESTION="$_derived"
+    fi
+    if [ -t 0 ]; then
+        printf "  Public frontend URL%s: " "${SITE_URL_SUGGESTION:+ [$SITE_URL_SUGGESTION]}"
+        read -r SITE_URL_INPUT
+        SITE_URL="${SITE_URL_INPUT:-$SITE_URL_SUGGESTION}"
+        if [ -n "$SITE_URL" ]; then
+            cat >> .env << SITEURLEOF
+
+##########
+# Public frontend URL
+# Added by update.sh on $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+# Used for GoTrue auth mails and for the QR codes on printed machine signs.
+#########
+
+SITE_URL=${SITE_URL}
+SITEURLEOF
+            export SITE_URL
+            success "SITE_URL set to ${SITE_URL} and appended to .env"
+        else
+            warn "No value entered — printed QR codes will fall back to the browser URL"
+        fi
+    else
+        warn "Running non-interactively; not guessing a value."
+        [ -n "$SITE_URL_SUGGESTION" ] && warn "Add it manually, e.g.: SITE_URL=${SITE_URL_SUGGESTION}"
+    fi
+else
+    case "$SITE_URL" in
+        *localhost*|*127.0.0.1*|http://10.*|http://192.168.*|http://172.1[6-9].*|http://172.2[0-9].*|http://172.3[01].*|*.local*)
+            warn "SITE_URL is ${SITE_URL} — that address is not reachable from outside."
+            warn "QR codes printed on machine signs would not work on a customer's phone."
+            ;;
+        *)
+            success "SITE_URL: ${SITE_URL}"
+            ;;
+    esac
+fi
+
 # ─── ENV_NAME / ENV_COLOR (informational only) ───────────────────────────────
 if ! grep -q "^ENV_NAME=" .env; then
     info "ENV_NAME not set — adding commented section to .env"

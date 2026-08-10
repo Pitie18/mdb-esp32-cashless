@@ -345,6 +345,61 @@ export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase
 }
 
 /**
+ * Fingerprint of the contact data a poster actually carries.
+ *
+ * Stored alongside each `poster_printed` entry so a later comparison can tell
+ * whether the paper on the machine still matches reality — the failure mode
+ * being a changed support number that nobody reprints, leaving customers to
+ * call a dead line for months.
+ *
+ * Deliberately excluded:
+ * - `customText`, which is per-print and not persisted, so including it would
+ *   flag every poster whose one-off note happened to differ.
+ * - the logo, which is cosmetic: a new logo does not make a sign *wrong*.
+ *   (A logo replaced at the same storage path is invisible here either way.)
+ * - `machineNote`, because a re-geocoded address can shift by a word without
+ *   anything on the sign becoming incorrect.
+ *
+ * Blocks that were switched off contribute `null`, so turning a block on later
+ * counts as a change while leaving it off never raises a false alarm.
+ *
+ * The WhatsApp target contributes only a marker, not the full `wa.me` URL: the
+ * URL carries a prefilled message in the sheet's language, and reprinting the
+ * same sign in French must not read as the contact data having changed.
+ */
+export function posterFingerprint(base: PrintSheetBase): string {
+  const parts = [
+    base.machineName,
+    base.companyName,
+    base.addressLine,
+    base.email,
+    base.website,
+    base.phone,
+    base.whatsapp,
+    base.hours,
+    base.targets.page,
+    base.targets.tel,
+    base.targets.whatsapp ? 'wa' : null,
+    base.targets.problem,
+  ]
+  return fnv1a(parts.map(p => p ?? ' ').join(''))
+}
+
+/**
+ * FNV-1a, 32 bit, hex. Not a security primitive — this only ever compares two
+ * fingerprints for equality, so collision resistance is irrelevant and a
+ * dependency-free hash beats pulling in crypto for a nine-line job.
+ */
+function fnv1a(input: string): string {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, '0')
+}
+
+/**
  * Packs stickers continuously across A4 sheets rather than one sheet per
  * machine — printing three machines should waste zero labels, not 21.
  */

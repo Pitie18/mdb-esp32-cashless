@@ -2,13 +2,14 @@
 definePageMeta({ middleware: 'auth' })
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { IconTruck, IconPlayerPlay, IconArrowsExchange, IconRefresh } from '@tabler/icons-vue'
+import { IconTruck, IconPlayerPlay, IconArrowsExchange, IconRefresh, IconPrinter } from '@tabler/icons-vue'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { reasonLabel } from '@/composables/useDeviceRestarts'
 import { formatCurrency } from '@/lib/utils'
 import { getProductImageUrl } from '@/composables/useProducts'
 import { hasSavedTour, clearSavedTourState } from '@/composables/useRefillWizard'
 import LocationPicker, { type LocationModel } from '~/components/LocationPicker.vue'
+import { usePosterFreshness } from '@/composables/usePosterFreshness'
 
 const { t, locale } = useI18n()
 const { organization } = useOrganization()
@@ -30,8 +31,14 @@ function startNewTour() {
 onResume(() => fetchMachines())
 usePullToRefresh(() => fetchMachines())
 
+// Signs whose contact data has drifted since they were printed. Loaded
+// separately from the machine list: it is a cheap, independent lookup and must
+// not delay the numbers people actually came for.
+const posters = usePosterFreshness()
+
 onMounted(async () => {
   await fetchMachines()
+  posters.load()
   const unsubscribe = subscribeToStatusUpdates()
   onUnmounted(unsubscribe)
 })
@@ -231,6 +238,18 @@ async function submitCreateMachine() {
                     <span class="font-medium tabular-nums">{{ formatCurrency(machine.last_month_revenue ?? 0) }} <span class="text-muted-foreground font-normal">({{ machine.last_month_sales_count ?? 0 }})</span></span>
                   </div>
                 </div>
+
+                <!-- Printed sign no longer matches the current contact data.
+                     A span, not a link: the whole card is already a NuxtLink,
+                     and a nested anchor is invalid HTML. The reprint action
+                     lives on the detail page this card leads to. -->
+                <span
+                  v-if="posters.isOutdated(machine.id)"
+                  class="inline-flex w-fit items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-500"
+                >
+                  <IconPrinter class="h-3.5 w-3.5" />
+                  {{ t('machines.posterOutdated') }}
+                </span>
 
                 <!-- Healthy machine with no stock issues at all -->
                 <template v-if="(machine.stock_health ?? 'ok') === 'ok' && (machine.no_stock_trays ?? 0) === 0">
