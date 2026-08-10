@@ -28,6 +28,8 @@ interface ImprintForm {
   legal_name: string
   contact_email: string
   contact_phone: string
+  whatsapp_phone: string
+  support_hours: string
   website: string
   address_street: string
   address_house_number: string
@@ -39,6 +41,8 @@ const imprintForm = reactive<ImprintForm>({
   legal_name: '',
   contact_email: '',
   contact_phone: '',
+  whatsapp_phone: '',
+  support_hours: '',
   website: '',
   address_street: '',
   address_house_number: '',
@@ -49,19 +53,82 @@ const imprintLoading = ref(false)
 const imprintError = ref('')
 const imprintSuccess = ref('')
 
+// ── Company logo (printed machine posters) ────────────────────────────────
+// Lives in the public `company-logos` bucket as {company_id}.{ext}.
+const logoPath = ref<string | null>(null)
+const logoUploading = ref(false)
+const logoInput = ref<HTMLInputElement | null>(null)
+
+const logoUrl = computed(() => {
+  if (!logoPath.value) return null
+  const { data } = supabase.storage.from('company-logos').getPublicUrl(logoPath.value)
+  // Cache-buster: the object path is stable across replacements, so without it
+  // a re-upload keeps showing the previous logo.
+  return data?.publicUrl ? `${data.publicUrl}?v=${logoVersion.value}` : null
+})
+const logoVersion = ref(0)
+
+async function onLogoChange(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file || !organization.value?.id) return
+  imprintError.value = ''
+  logoUploading.value = true
+  try {
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+    const path = `${organization.value.id}.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('company-logos')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (uploadError) throw uploadError
+    const { error: updateError } = await supabase
+      .from('companies')
+      .update({ logo_path: path } as never)
+      .eq('id', organization.value.id)
+    if (updateError) throw updateError
+    logoPath.value = path
+    logoVersion.value++
+  } catch (err: unknown) {
+    imprintError.value = err instanceof Error ? err.message : 'Logo upload failed'
+  } finally {
+    logoUploading.value = false
+    if (logoInput.value) logoInput.value.value = ''
+  }
+}
+
+async function removeLogo() {
+  if (!organization.value?.id || !logoPath.value) return
+  logoUploading.value = true
+  try {
+    await supabase.storage.from('company-logos').remove([logoPath.value])
+    const { error } = await supabase
+      .from('companies')
+      .update({ logo_path: null } as never)
+      .eq('id', organization.value.id)
+    if (error) throw error
+    logoPath.value = null
+  } catch (err: unknown) {
+    imprintError.value = err instanceof Error ? err.message : 'Failed to remove logo'
+  } finally {
+    logoUploading.value = false
+  }
+}
+
 async function loadImprint() {
   if (!organization.value?.id) return
   const { data } = await supabase
     .from('companies')
-    .select('legal_name, contact_email, contact_phone, website, address_street, address_house_number, address_postal_code, address_city, timezone')
+    .select('legal_name, contact_email, contact_phone, whatsapp_phone, support_hours, logo_path, website, address_street, address_house_number, address_postal_code, address_city, timezone')
     .eq('id', organization.value.id)
     .single()
-  const d = data as (Partial<ImprintForm> & { timezone?: string }) | null
+  const d = data as (Partial<ImprintForm> & { timezone?: string; logo_path?: string | null }) | null
   if (!d) return
   imprintForm.legal_name           = d.legal_name           ?? ''
   imprintForm.contact_email        = d.contact_email        ?? ''
   imprintForm.contact_phone        = d.contact_phone        ?? ''
+  imprintForm.whatsapp_phone       = d.whatsapp_phone       ?? ''
+  imprintForm.support_hours        = d.support_hours        ?? ''
   imprintForm.website              = d.website              ?? ''
+  logoPath.value                   = d.logo_path            ?? null
   imprintForm.address_street       = d.address_street       ?? ''
   imprintForm.address_house_number = d.address_house_number ?? ''
   imprintForm.address_postal_code  = d.address_postal_code  ?? ''
@@ -89,6 +156,8 @@ async function saveImprint() {
         legal_name:           norm(imprintForm.legal_name),
         contact_email:        norm(imprintForm.contact_email),
         contact_phone:        norm(imprintForm.contact_phone),
+        whatsapp_phone:       norm(imprintForm.whatsapp_phone),
+        support_hours:        norm(imprintForm.support_hours),
         website:              norm(imprintForm.website),
         address_street:       norm(imprintForm.address_street),
         address_house_number: norm(imprintForm.address_house_number),
@@ -156,6 +225,59 @@ watch(() => organization.value?.id, (id) => {
           placeholder="+49 ..."
           class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
+      </div>
+
+      <div class="space-y-1">
+        <label class="text-sm font-medium" for="imprint-whatsapp">{{ t('settings.imprintWhatsapp') }}</label>
+        <input
+          id="imprint-whatsapp"
+          v-model="imprintForm.whatsapp_phone"
+          type="tel"
+          placeholder="+49 151 ..."
+          class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+        <p class="text-xs text-muted-foreground">{{ t('settings.imprintWhatsappHint') }}</p>
+      </div>
+
+      <div class="space-y-1">
+        <label class="text-sm font-medium" for="imprint-hours">{{ t('settings.imprintSupportHours') }}</label>
+        <input
+          id="imprint-hours"
+          v-model="imprintForm.support_hours"
+          type="text"
+          :placeholder="t('settings.imprintSupportHoursPlaceholder')"
+          class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+      </div>
+
+      <div class="space-y-1 sm:col-span-2">
+        <label class="text-sm font-medium">{{ t('settings.imprintLogo') }}</label>
+        <div class="flex items-center gap-3">
+          <div class="flex size-16 items-center justify-center rounded-md border bg-muted/40">
+            <img v-if="logoUrl" :src="logoUrl" alt="" class="max-h-14 max-w-14 object-contain">
+            <span v-else class="text-xs text-muted-foreground">—</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <input
+              ref="logoInput"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              class="text-sm"
+              :disabled="logoUploading"
+              @change="onLogoChange"
+            >
+            <button
+              v-if="logoPath"
+              type="button"
+              class="self-start text-xs text-destructive underline"
+              :disabled="logoUploading"
+              @click="removeLogo"
+            >
+              {{ t('settings.imprintLogoRemove') }}
+            </button>
+          </div>
+        </div>
+        <p class="text-xs text-muted-foreground">{{ t('settings.imprintLogoHint') }}</p>
       </div>
 
       <div class="space-y-1 sm:col-span-2">

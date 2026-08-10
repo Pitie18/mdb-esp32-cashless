@@ -61,6 +61,12 @@ export default defineNuxtConfig({
       buildDate: process.env.BUILD_DATE ?? '',
       envName: process.env.ENV_NAME ?? '',
       envColor: process.env.ENV_COLOR ?? 'amber',
+      // Publicly reachable frontend origin. Already maintained as SITE_URL in
+      // Docker/.env (setup.sh sets it to https://${APP_HOST}, GoTrue uses it
+      // for auth mails), so it is correct wherever password reset works.
+      // Printed QR codes must not fall back to a LAN origin — see
+      // isPublicOrigin() in app/lib/printSheet.ts.
+      siteUrl: process.env.SITE_URL ?? '',
     },
   },
   i18n: {

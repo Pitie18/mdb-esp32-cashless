@@ -95,6 +95,7 @@ const KNOWN_ACTIONS = new Set([
   'machine_assigned_to_cash_book',
   'machine_unassigned_from_cash_book',
   'cash_book_settings_updated',
+  'poster_printed',
 ])
 
 export function activityActionLabel(action: string, t: TFn): string {
@@ -123,6 +124,7 @@ export function activityIcon(action: string): ActivityIconSpec {
     case 'machine_assigned_to_cash_book': return { icon: 'Link', tint: 'cashbook' }
     case 'machine_unassigned_from_cash_book': return { icon: 'Unlink', tint: 'cashbook' }
     case 'cash_book_settings_updated': return { icon: 'Settings', tint: 'cashbook' }
+    case 'poster_printed': return { icon: 'Printer', tint: 'neutral' }
     default: return { icon: 'Activity', tint: 'neutral' }
   }
 }
@@ -389,6 +391,13 @@ export function activityChips(entry: ActivityEntryLike, ctx: DescriptorCtx): Act
           push(k, typeof v === 'boolean' ? (v ? t('activity.yes') : t('activity.no')) : v, { icon: 'Settings' })
         }
       }
+      break
+    }
+
+    case 'poster_printed': {
+      pushMachine()
+      if (m.motif) push(F('motif'), t(`print.motifShort.${String(m.motif)}`), { icon: 'LayoutTemplate' })
+      if (m.format) push(F('format'), t(`print.formats.${String(m.format)}`), { icon: 'FileText' })
       break
     }
 

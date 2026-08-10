@@ -20,7 +20,11 @@
       "activity": "Activité",
       "noCompanies": "Aucune entreprise pour l'instant"
     },
-    "activity": { "active": "Actif", "idle": "Inactif", "dead": "Éteint" },
+    "activity": {
+      "active": "Actif",
+      "idle": "Inactif",
+      "dead": "Éteint"
+    },
     "detail": {
       "back": "Retour à la vue d'ensemble",
       "members": "Membres",
@@ -477,7 +481,8 @@
     "reasonClockUnsynced": "Horloge non synchronisée",
     "reasonNoClock": "L'appareil n'avait pas d'horloge",
     "reasonGapEarlier": "vente identique {n}s plus tôt",
-    "reasonNearDup": "quasi-doublon d'une vente récente"
+    "reasonNearDup": "quasi-doublon d'une vente récente",
+    "printPoster": "Imprimer une affiche"
   },
   "machineSettings": {
     "title": "Paramètres de la machine",
@@ -502,7 +507,14 @@
     "nayaxMachineIdPlaceholder": "ex. 92700604",
     "nayaxMachineIdHint": "Requis pour le rapprochement des ventes Nayax. Vous trouverez cet ID dans votre back-office Nayax.",
     "save": "Enregistrer",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "contactOverrides": "Coordonnées différentes",
+    "contactOverridesHint": "Uniquement pour les affiches imprimées. Les champs vides reprennent les coordonnées de l'entreprise.",
+    "contactOverrideActive": "actif",
+    "contactPhone": "Téléphone d'assistance",
+    "contactWhatsapp": "WhatsApp",
+    "contactHours": "Disponibilité",
+    "contactEmail": "E-mail de contact"
   },
   "insights": {
     "productSwap": "Remplacement de produit",
@@ -1191,7 +1203,14 @@
     "timezoneContextHint": "L'heure d'envoi est en {tz}. Changez-la dans les informations de l'opérateur.",
     "dealsProvidersTitle": "Sources d'offres",
     "dealsProvidersHint": "Les offres nécessitent au moins une source active. Marktguru est activé automatiquement lorsque vous activez les offres.",
-    "dealsProvidersLink": "Gérer les sources d'offres"
+    "dealsProvidersLink": "Gérer les sources d'offres",
+    "imprintWhatsapp": "Numéro WhatsApp",
+    "imprintWhatsappHint": "Pour le QR WhatsApp des affiches imprimées. Souvent un numéro mobile distinct.",
+    "imprintSupportHours": "Disponibilité",
+    "imprintSupportHoursPlaceholder": "Lun–ven 8h–18h",
+    "imprintLogo": "Logo de l'entreprise",
+    "imprintLogoHint": "PNG, JPEG ou WebP, 2 Mo max. Apparaît sur les affiches imprimées.",
+    "imprintLogoRemove": "Supprimer le logo"
   },
   "softap": {
     "title": "Accès WiFi (SoftAP)",
@@ -1248,7 +1267,8 @@
       "cash_book_entry_created": "Écriture de caisse",
       "machine_assigned_to_cash_book": "Machine assignée à la caisse",
       "machine_unassigned_from_cash_book": "Machine retirée de la caisse",
-      "cash_book_settings_updated": "Paramètres de caisse mis à jour"
+      "cash_book_settings_updated": "Paramètres de caisse mis à jour",
+      "poster_printed": "Affiche imprimée"
     },
     "field": {
       "machine": "Machine",
@@ -1276,7 +1296,9 @@
       "config": "Configuration",
       "cashBook": "Caisse",
       "minStock": "Stock min",
-      "capacity": "Capacité"
+      "capacity": "Capacité",
+      "motif": "Modèle",
+      "format": "Format"
     }
   },
   "deals": {
@@ -1812,6 +1834,107 @@
       "httpsRequired": "L'URL doit commencer par https://",
       "tokenRequired": "Le jeton d'authentification est requis",
       "configJsonInvalid": "La configuration supplémentaire doit être un objet JSON"
+    }
+  },
+  "print": {
+    "pageTitle": "Imprimer une affiche",
+    "pageLead": "Coordonnées et QR codes pour ce distributeur.",
+    "backToMachine": "Retour au distributeur",
+    "motif": "Modèle",
+    "format": "Format",
+    "blocks": "Éléments",
+    "sheetLanguage": "Langue de l'affiche",
+    "customText": "Texte supplémentaire",
+    "customTextPlaceholder": "ex. : 2e étage, près de l'ascenseur",
+    "moreMachines": "Autres distributeurs",
+    "moreMachinesHint": "Tous les distributeurs sélectionnés partent dans une seule impression.",
+    "print": "Imprimer la page | Imprimer {count} pages",
+    "browserHint": "Dans la boîte de dialogue d'impression, désactivez les en-têtes et pieds de page et activez les graphiques d'arrière-plan.",
+    "originWarnTitle": "Les QR codes pointent vers une adresse interne",
+    "originWarnBody": "{origin} n'est pas accessible depuis l'extérieur — les codes imprimés ne fonctionneront pas sur le téléphone d'un client. Définissez SITE_URL dans la configuration du serveur.",
+    "missingTitle": "Des données manquent pour cette affiche",
+    "missingLink": "Compléter dans les paramètres",
+    "fallbackMachineName": "Distributeur",
+    "whatsappTemplate": "Bonjour, j'ai un problème avec %machine%.",
+    "formats": {
+      "a4": "A4 (210 × 297 mm)",
+      "a5": "A5 (148 × 210 mm)",
+      "a6": "A6 (105 × 148 mm)",
+      "sticker-sheet": "Étiquettes 90 × 50 mm"
+    },
+    "blockNames": {
+      "phone": "Numéro de téléphone",
+      "whatsapp": "QR WhatsApp",
+      "problem": "QR signalement",
+      "imprint": "Mentions légales"
+    },
+    "missingFields": {
+      "companyName": "Nom de l'entreprise",
+      "phone": "Numéro d'assistance",
+      "whatsapp": "Numéro WhatsApp",
+      "whatsappCountry": "Pays du numéro WhatsApp",
+      "email": "E-mail de contact",
+      "address": "Adresse postale"
+    },
+    "motifShort": {
+      "klar": "Sobre",
+      "kachel": "Tuiles",
+      "qr-first": "QR d'abord",
+      "dunkel": "Sombre",
+      "sticker-problem": "Étiquette panne",
+      "sticker-menu": "Étiquette assortiment"
+    },
+    "motifs": {
+      "klar": {
+        "label": "Sobre",
+        "description": "Numéro en grand, un QR en bas. S'imprime bien en noir et blanc."
+      },
+      "kachel": {
+        "label": "Tuiles",
+        "description": "Bandeau coloré, tuiles QR étiquetées pour tous les canaux."
+      },
+      "qrFirst": {
+        "label": "QR d'abord",
+        "description": "Un grand QR vers la page du distributeur, le numéro en secours."
+      },
+      "dunkel": {
+        "label": "Sombre",
+        "description": "Fond sombre, rendu haut de gamme — consomme du toner et exige du bon papier."
+      },
+      "stickerProblem": {
+        "label": "Étiquette : panne",
+        "description": "90 × 50 mm pour la trappe de distribution. 8 par feuille A4."
+      },
+      "stickerMenu": {
+        "label": "Étiquette : assortiment",
+        "description": "90 × 50 mm avec un QR vers la page du distributeur."
+      }
+    },
+    "poster": {
+      "problemTitle": "Un problème avec ce distributeur ?",
+      "problemLead": "Nous nous en occupons. Contactez-nous.",
+      "supportPhone": "Téléphone d'assistance",
+      "pageTitle": "Produits · prix · paiement",
+      "pageHint": "Scannez le code pour tout savoir sur ce distributeur",
+      "helpTitle": "Aide pour ce distributeur",
+      "whatsappTitle": "WhatsApp",
+      "whatsappHint": "Écrivez-nous directement",
+      "problemQrTitle": "Signaler une panne",
+      "problemQrHint": "Ouvrir le formulaire",
+      "callDirect": "Appeler directement",
+      "everythingTitle": "Tout sur ce distributeur",
+      "everythingLead": "Produits, prix, disponibilité et signalement de panne",
+      "scanHint": "Ouvrez l'appareil photo et scannez le code",
+      "ratherCall": "Vous préférez appeler ?",
+      "helpYouTitle": "Nous sommes là pour vous aider",
+      "helpYouLead": "Distributeur bloqué ? Argent perdu ? Dites-le-nous.",
+      "pageShort": "Assortiment"
+    },
+    "sticker": {
+      "problemTitle": "Signaler une panne",
+      "problemHint": "Scannez ou appelez",
+      "menuTitle": "Voir l'assortiment",
+      "menuHint": "Prix, disponibilité et paiement"
     }
   }
 }

@@ -154,6 +154,16 @@ function closeFeedback() {
   feedbackType.value = null
 }
 
+// Deep link from the printed "report a fault" sticker: /m/{id}?feedback=problem
+// opens the form straight away instead of dropping the customer on the product
+// list with a problem they still have to hunt a button for.
+onMounted(() => {
+  const requested = route.query.feedback
+  if (requested === 'problem' || requested === 'feedback') {
+    openFeedback(requested)
+  }
+})
+
 async function submitFeedback() {
   if (!feedbackType.value || !feedbackMessage.value.trim()) return
   feedbackLoading.value = true

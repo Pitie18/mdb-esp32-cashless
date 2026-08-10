@@ -210,7 +210,11 @@
       "activity": "Activity",
       "noCompanies": "No companies yet"
     },
-    "activity": { "active": "Active", "idle": "Idle", "dead": "Inactive" },
+    "activity": {
+      "active": "Active",
+      "idle": "Idle",
+      "dead": "Inactive"
+    },
     "detail": {
       "back": "Back to overview",
       "members": "Members",
@@ -667,7 +671,8 @@
     "reasonClockUnsynced": "Clock not synced",
     "reasonNoClock": "Device had no clock",
     "reasonGapEarlier": "identical sale {n}s earlier",
-    "reasonNearDup": "near-duplicate of a recent sale"
+    "reasonNearDup": "near-duplicate of a recent sale",
+    "printPoster": "Print a sign"
   },
   "machineSettings": {
     "title": "Machine settings",
@@ -692,7 +697,14 @@
     "nayaxMachineIdPlaceholder": "e.g. 92700604",
     "nayaxMachineIdHint": "Required for Nayax sales reconciliation. You can find this ID in your Nayax back-office.",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "contactOverrides": "Different contact details",
+    "contactOverridesHint": "For printed signs only. Empty fields use the company details.",
+    "contactOverrideActive": "active",
+    "contactPhone": "Support phone",
+    "contactWhatsapp": "WhatsApp",
+    "contactHours": "Availability",
+    "contactEmail": "Contact email"
   },
   "insights": {
     "productSwap": "Product Swap",
@@ -1381,7 +1393,14 @@
     "timezoneContextHint": "Send time is in {tz}. Change it under operator information.",
     "dealsProvidersTitle": "Deal sources",
     "dealsProvidersHint": "Deals need at least one active source. Marktguru is enabled automatically when you turn deals on.",
-    "dealsProvidersLink": "Manage deal sources"
+    "dealsProvidersLink": "Manage deal sources",
+    "imprintWhatsapp": "WhatsApp number",
+    "imprintWhatsappHint": "For the WhatsApp QR on printed signs. Often a different, mobile number.",
+    "imprintSupportHours": "Availability",
+    "imprintSupportHoursPlaceholder": "Mon–Fri 8am–6pm",
+    "imprintLogo": "Company logo",
+    "imprintLogoHint": "PNG, JPEG or WebP, max 2 MB. Appears on printed signs.",
+    "imprintLogoRemove": "Remove logo"
   },
   "softap": {
     "title": "WiFi access (SoftAP)",
@@ -1443,7 +1462,8 @@
       "cash_book_entry_created": "Cash book entry",
       "machine_assigned_to_cash_book": "Machine assigned to cash book",
       "machine_unassigned_from_cash_book": "Machine removed from cash book",
-      "cash_book_settings_updated": "Cash book settings updated"
+      "cash_book_settings_updated": "Cash book settings updated",
+      "poster_printed": "Sign printed"
     },
     "field": {
       "machine": "Machine",
@@ -1473,7 +1493,9 @@
       "minStock": "Min stock",
       "capacity": "Capacity",
       "saleSeq": "Sequence number",
-      "timeUncertain": "Timestamp status"
+      "timeUncertain": "Timestamp status",
+      "motif": "Design",
+      "format": "Format"
     }
   },
   "deals": {
@@ -2009,6 +2031,107 @@
       "httpsRequired": "URL must start with https://",
       "tokenRequired": "Auth token is required",
       "configJsonInvalid": "Extra config must be a JSON object"
+    }
+  },
+  "print": {
+    "pageTitle": "Print a sign",
+    "pageLead": "Contact details and QR codes for this machine.",
+    "backToMachine": "Back to the machine",
+    "motif": "Design",
+    "format": "Format",
+    "blocks": "Content",
+    "sheetLanguage": "Language on the sign",
+    "customText": "Extra line",
+    "customTextPlaceholder": "e.g. Location: 2nd floor next to the lift",
+    "moreMachines": "More machines",
+    "moreMachinesHint": "All selected machines go into one print job.",
+    "print": "Print sheet | Print {count} sheets",
+    "browserHint": "In the print dialog, turn off headers and footers and enable background graphics.",
+    "originWarnTitle": "QR codes point at an internal address",
+    "originWarnBody": "{origin} is not reachable from outside — printed codes will not work on a customer's phone. Set SITE_URL in the server configuration.",
+    "missingTitle": "This sign is missing data",
+    "missingLink": "Fill it in under settings",
+    "fallbackMachineName": "Machine",
+    "whatsappTemplate": "Hi, I have a problem with %machine%.",
+    "formats": {
+      "a4": "A4 (210 × 297 mm)",
+      "a5": "A5 (148 × 210 mm)",
+      "a6": "A6 (105 × 148 mm)",
+      "sticker-sheet": "Labels 90 × 50 mm"
+    },
+    "blockNames": {
+      "phone": "Phone number",
+      "whatsapp": "WhatsApp QR",
+      "problem": "Fault-report QR",
+      "imprint": "Imprint footer"
+    },
+    "missingFields": {
+      "companyName": "Company name",
+      "phone": "Support phone number",
+      "whatsapp": "WhatsApp number",
+      "whatsappCountry": "Country for the WhatsApp number",
+      "email": "Contact email",
+      "address": "Postal address"
+    },
+    "motifShort": {
+      "klar": "Plain",
+      "kachel": "Tiles",
+      "qr-first": "QR first",
+      "dunkel": "Dark",
+      "sticker-problem": "Fault label",
+      "sticker-menu": "Range label"
+    },
+    "motifs": {
+      "klar": {
+        "label": "Plain",
+        "description": "Large phone number, one QR at the bottom. Prints fine in black and white."
+      },
+      "kachel": {
+        "label": "Tiles",
+        "description": "Coloured header, labelled QR tiles for every channel."
+      },
+      "qrFirst": {
+        "label": "QR first",
+        "description": "One large QR to the machine page, phone number as a fallback."
+      },
+      "dunkel": {
+        "label": "Dark",
+        "description": "Dark background, premium look — needs toner and decent paper."
+      },
+      "stickerProblem": {
+        "label": "Label: fault",
+        "description": "90 × 50 mm for the dispensing flap. 8 per A4 sheet."
+      },
+      "stickerMenu": {
+        "label": "Label: range",
+        "description": "90 × 50 mm with a QR to the machine page."
+      }
+    },
+    "poster": {
+      "problemTitle": "Trouble with this machine?",
+      "problemLead": "We'll sort it out. Just get in touch.",
+      "supportPhone": "Support phone",
+      "pageTitle": "Products · prices · payment",
+      "pageHint": "Scan the code to see everything about this machine",
+      "helpTitle": "Help with this machine",
+      "whatsappTitle": "WhatsApp",
+      "whatsappHint": "Message us directly",
+      "problemQrTitle": "Report a fault",
+      "problemQrHint": "Open the form",
+      "callDirect": "Call us",
+      "everythingTitle": "Everything about this machine",
+      "everythingLead": "Products, prices, availability and fault reports",
+      "scanHint": "Open your camera and scan the code",
+      "ratherCall": "Rather call?",
+      "helpYouTitle": "We're here to help",
+      "helpYouLead": "Machine stuck? Money gone? Just let us know.",
+      "pageShort": "What's inside"
+    },
+    "sticker": {
+      "problemTitle": "Report a fault",
+      "problemHint": "Scan or call",
+      "menuTitle": "See what's inside",
+      "menuHint": "Prices, availability and payment"
     }
   }
 }

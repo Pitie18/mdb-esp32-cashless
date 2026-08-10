@@ -29,6 +29,9 @@ services:
       NUXT_PUBLIC_GITHUB_FIRMWARE_REPO: ${GITHUB_FIRMWARE_REPO:-}
       NUXT_PUBLIC_ENV_NAME: ${ENV_NAME:-}
       NUXT_PUBLIC_ENV_COLOR: ${ENV_COLOR:-amber}
+      # Publicly reachable frontend origin, used for the QR codes on printed
+      # machine posters. Same value GoTrue gets as GOTRUE_SITE_URL.
+      NUXT_PUBLIC_SITE_URL: ${SITE_URL}
 
   # ==========================================================================
   # MQTT Broker & Forwarder

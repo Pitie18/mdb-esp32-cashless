@@ -1288,6 +1288,11 @@ async function handleAddSale() {
                     <DropdownMenuItem v-if="isAdmin" @click="showMachineSettingsModal = true">
                       {{ t('machineSettings.title') }}
                     </DropdownMenuItem>
+                    <DropdownMenuItem as-child>
+                      <NuxtLink :to="`/machines/${route.params.id}/print`">
+                        {{ t('machineDetail.printPoster') }}
+                      </NuxtLink>
+                    </DropdownMenuItem>
                     <DropdownMenuItem @click="showDeviceInfoModal = true">
                       {{ t('machineDetail.deviceDetails') }}
                     </DropdownMenuItem>
@@ -1317,6 +1322,11 @@ async function handleAddSale() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem @click="showMachineSettingsModal = true">
                       {{ t('machineSettings.title') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem as-child>
+                      <NuxtLink :to="`/machines/${route.params.id}/print`">
+                        {{ t('machineDetail.printPoster') }}
+                      </NuxtLink>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

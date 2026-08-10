@@ -20,7 +20,11 @@
       "activity": "Activiteit",
       "noCompanies": "Nog geen ondernemingen"
     },
-    "activity": { "active": "Actief", "idle": "Inactief", "dead": "Uitgeschakeld" },
+    "activity": {
+      "active": "Actief",
+      "idle": "Inactief",
+      "dead": "Uitgeschakeld"
+    },
     "detail": {
       "back": "Terug naar overzicht",
       "members": "Leden",
@@ -477,7 +481,8 @@
     "reasonClockUnsynced": "Klok niet gesynchroniseerd",
     "reasonNoClock": "Toestel had geen klok",
     "reasonGapEarlier": "identieke verkoop {n}s eerder",
-    "reasonNearDup": "bijna-duplicaat van een recente verkoop"
+    "reasonNearDup": "bijna-duplicaat van een recente verkoop",
+    "printPoster": "Aanplakbiljet afdrukken"
   },
   "machineSettings": {
     "title": "Machine-instellingen",
@@ -502,7 +507,14 @@
     "nayaxMachineIdPlaceholder": "bv. 92700604",
     "nayaxMachineIdHint": "Vereist voor de afstemming van Nayax-verkopen. U vindt dit ID in uw Nayax-backoffice.",
     "save": "Opslaan",
-    "cancel": "Annuleren"
+    "cancel": "Annuleren",
+    "contactOverrides": "Afwijkende contactgegevens",
+    "contactOverridesHint": "Alleen voor afgedrukte biljetten. Lege velden gebruiken de bedrijfsgegevens.",
+    "contactOverrideActive": "actief",
+    "contactPhone": "Supporttelefoon",
+    "contactWhatsapp": "WhatsApp",
+    "contactHours": "Bereikbaarheid",
+    "contactEmail": "Contact-e-mail"
   },
   "insights": {
     "productSwap": "Productvervanging",
@@ -1191,7 +1203,14 @@
     "timezoneContextHint": "Verzendtijd is in {tz}. Wijzig dit onder operatorgegevens.",
     "dealsProvidersTitle": "Bronnen voor aanbiedingen",
     "dealsProvidersHint": "Aanbiedingen vereisen ten minste één actieve bron. Marktguru wordt automatisch ingeschakeld wanneer u aanbiedingen activeert.",
-    "dealsProvidersLink": "Bronnen voor aanbiedingen beheren"
+    "dealsProvidersLink": "Bronnen voor aanbiedingen beheren",
+    "imprintWhatsapp": "WhatsApp-nummer",
+    "imprintWhatsappHint": "Voor de WhatsApp-QR op afgedrukte biljetten. Vaak een ander, mobiel nummer.",
+    "imprintSupportHours": "Bereikbaarheid",
+    "imprintSupportHoursPlaceholder": "Ma–vr 8–18 uur",
+    "imprintLogo": "Bedrijfslogo",
+    "imprintLogoHint": "PNG, JPEG of WebP, max. 2 MB. Verschijnt op afgedrukte biljetten.",
+    "imprintLogoRemove": "Logo verwijderen"
   },
   "softap": {
     "title": "WiFi-toegang (SoftAP)",
@@ -1248,7 +1267,8 @@
       "cash_book_entry_created": "Kasboekboeking",
       "machine_assigned_to_cash_book": "Machine toegewezen aan kasboek",
       "machine_unassigned_from_cash_book": "Machine verwijderd uit kasboek",
-      "cash_book_settings_updated": "Kasboekinstellingen bijgewerkt"
+      "cash_book_settings_updated": "Kasboekinstellingen bijgewerkt",
+      "poster_printed": "Biljet afgedrukt"
     },
     "field": {
       "machine": "Machine",
@@ -1276,7 +1296,9 @@
       "config": "Configuratie",
       "cashBook": "Kasboek",
       "minStock": "Min. voorraad",
-      "capacity": "Capaciteit"
+      "capacity": "Capaciteit",
+      "motif": "Ontwerp",
+      "format": "Formaat"
     }
   },
   "deals": {
@@ -1812,6 +1834,107 @@
       "httpsRequired": "URL moet beginnen met https://",
       "tokenRequired": "Auth-token is verplicht",
       "configJsonInvalid": "Extra configuratie moet een JSON-object zijn"
+    }
+  },
+  "print": {
+    "pageTitle": "Aanplakbiljet afdrukken",
+    "pageLead": "Contactgegevens en QR-codes voor deze automaat.",
+    "backToMachine": "Terug naar de automaat",
+    "motif": "Ontwerp",
+    "format": "Formaat",
+    "blocks": "Onderdelen",
+    "sheetLanguage": "Taal op het biljet",
+    "customText": "Extra tekst",
+    "customTextPlaceholder": "bijv. 2e verdieping bij de lift",
+    "moreMachines": "Meer automaten",
+    "moreMachinesHint": "Alle geselecteerde automaten gaan in één afdruktaak.",
+    "print": "Pagina afdrukken | {count} pagina's afdrukken",
+    "browserHint": "Zet in het afdrukvenster kop- en voetteksten uit en schakel achtergrondafbeeldingen in.",
+    "originWarnTitle": "QR-codes wijzen naar een intern adres",
+    "originWarnBody": "{origin} is van buitenaf niet bereikbaar — afgedrukte codes werken niet op de telefoon van een klant. Stel SITE_URL in de serverconfiguratie in.",
+    "missingTitle": "Er ontbreken gegevens voor dit biljet",
+    "missingLink": "Aanvullen in de instellingen",
+    "fallbackMachineName": "Automaat",
+    "whatsappTemplate": "Hallo, ik heb een probleem met %machine%.",
+    "formats": {
+      "a4": "A4 (210 × 297 mm)",
+      "a5": "A5 (148 × 210 mm)",
+      "a6": "A6 (105 × 148 mm)",
+      "sticker-sheet": "Stickers 90 × 50 mm"
+    },
+    "blockNames": {
+      "phone": "Telefoonnummer",
+      "whatsapp": "WhatsApp-QR",
+      "problem": "Storings-QR",
+      "imprint": "Colofon-voettekst"
+    },
+    "missingFields": {
+      "companyName": "Bedrijfsnaam",
+      "phone": "Supporttelefoonnummer",
+      "whatsapp": "WhatsApp-nummer",
+      "whatsappCountry": "Land voor het WhatsApp-nummer",
+      "email": "Contact-e-mail",
+      "address": "Postadres"
+    },
+    "motifShort": {
+      "klar": "Helder",
+      "kachel": "Tegels",
+      "qr-first": "QR eerst",
+      "dunkel": "Donker",
+      "sticker-problem": "Sticker storing",
+      "sticker-menu": "Sticker assortiment"
+    },
+    "motifs": {
+      "klar": {
+        "label": "Helder",
+        "description": "Groot telefoonnummer, één QR onderaan. Drukt ook zwart-wit goed af."
+      },
+      "kachel": {
+        "label": "Tegels",
+        "description": "Gekleurde kop, gelabelde QR-tegels voor alle kanalen."
+      },
+      "qrFirst": {
+        "label": "QR eerst",
+        "description": "Eén grote QR naar de automaatpagina, nummer als terugval."
+      },
+      "dunkel": {
+        "label": "Donker",
+        "description": "Donkere achtergrond, hoogwaardige uitstraling — kost toner en goed papier."
+      },
+      "stickerProblem": {
+        "label": "Sticker: storing",
+        "description": "90 × 50 mm voor de uitgifteklep. 8 per A4-vel."
+      },
+      "stickerMenu": {
+        "label": "Sticker: assortiment",
+        "description": "90 × 50 mm met een QR naar de automaatpagina."
+      }
+    },
+    "poster": {
+      "problemTitle": "Probleem met de automaat?",
+      "problemLead": "Wij lossen het op. Neem gerust contact op.",
+      "supportPhone": "Supporttelefoon",
+      "pageTitle": "Producten · prijzen · betalen",
+      "pageHint": "Scan de code en zie alles over deze automaat",
+      "helpTitle": "Hulp bij deze automaat",
+      "whatsappTitle": "WhatsApp",
+      "whatsappHint": "Stuur direct een bericht",
+      "problemQrTitle": "Storing melden",
+      "problemQrHint": "Formulier openen",
+      "callDirect": "Direct bellen",
+      "everythingTitle": "Alles over deze automaat",
+      "everythingLead": "Producten, prijzen, beschikbaarheid en storingen melden",
+      "scanHint": "Open je camera en scan de code",
+      "ratherCall": "Liever bellen?",
+      "helpYouTitle": "Wij helpen je verder",
+      "helpYouLead": "Automaat hapert? Geld weg? Laat het ons weten.",
+      "pageShort": "Assortiment"
+    },
+    "sticker": {
+      "problemTitle": "Storing melden",
+      "problemHint": "Scan of bel",
+      "menuTitle": "Bekijk het assortiment",
+      "menuHint": "Prijzen, beschikbaarheid en betaling"
     }
   }
 }

@@ -210,7 +210,11 @@
       "activity": "Aktivität",
       "noCompanies": "Noch keine Firmen"
     },
-    "activity": { "active": "Aktiv", "idle": "Inaktiv", "dead": "Tot" },
+    "activity": {
+      "active": "Aktiv",
+      "idle": "Inaktiv",
+      "dead": "Tot"
+    },
     "detail": {
       "back": "Zurück zur Übersicht",
       "members": "Mitglieder",
@@ -667,7 +671,8 @@
     "reasonClockUnsynced": "Uhr nicht synchronisiert",
     "reasonNoClock": "Gerät hatte keine Uhr",
     "reasonGapEarlier": "identischer Verkauf {n}s früher",
-    "reasonNearDup": "Beinahe-Duplikat eines kürzlichen Verkaufs"
+    "reasonNearDup": "Beinahe-Duplikat eines kürzlichen Verkaufs",
+    "printPoster": "Aushang drucken"
   },
   "machineSettings": {
     "title": "Automat-Einstellungen",
@@ -692,7 +697,14 @@
     "nayaxMachineIdPlaceholder": "z. B. 92700604",
     "nayaxMachineIdHint": "Erforderlich für den Nayax-Verkaufsabgleich. Diese ID findest du in deinem Nayax-Backoffice.",
     "save": "Speichern",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "contactOverrides": "Abweichende Kontaktdaten",
+    "contactOverridesHint": "Nur für gedruckte Aushänge. Leere Felder verwenden die Firmendaten.",
+    "contactOverrideActive": "aktiv",
+    "contactPhone": "Support-Telefon",
+    "contactWhatsapp": "WhatsApp",
+    "contactHours": "Erreichbarkeit",
+    "contactEmail": "Kontakt-E-Mail"
   },
   "insights": {
     "productSwap": "Produktwechsel",
@@ -1381,7 +1393,14 @@
     "timezoneContextHint": "Sendezeit in {tz}. Änderbar unter Betreiberinformationen.",
     "dealsProvidersTitle": "Angebotsquellen",
     "dealsProvidersHint": "Angebote brauchen mindestens eine aktive Quelle. Marktguru wird automatisch aktiviert, sobald du Angebote einschaltest.",
-    "dealsProvidersLink": "Angebotsquellen verwalten"
+    "dealsProvidersLink": "Angebotsquellen verwalten",
+    "imprintWhatsapp": "WhatsApp-Nummer",
+    "imprintWhatsappHint": "Für den WhatsApp-QR auf gedruckten Aushängen. Oft eine andere, mobile Nummer.",
+    "imprintSupportHours": "Erreichbarkeit",
+    "imprintSupportHoursPlaceholder": "Mo–Fr 8–18 Uhr",
+    "imprintLogo": "Firmenlogo",
+    "imprintLogoHint": "PNG, JPEG oder WebP, max. 2 MB. Erscheint auf gedruckten Aushängen.",
+    "imprintLogoRemove": "Logo entfernen"
   },
   "softap": {
     "title": "WLAN-Zugang (SoftAP)",
@@ -1443,7 +1462,8 @@
       "cash_book_entry_created": "Kassenbuch-Eintrag",
       "machine_assigned_to_cash_book": "Automat dem Kassenbuch zugewiesen",
       "machine_unassigned_from_cash_book": "Automat aus Kassenbuch entfernt",
-      "cash_book_settings_updated": "Kassenbuch-Einstellungen geändert"
+      "cash_book_settings_updated": "Kassenbuch-Einstellungen geändert",
+      "poster_printed": "Aushang gedruckt"
     },
     "field": {
       "machine": "Automat",
@@ -1473,7 +1493,9 @@
       "minStock": "Mindestbestand",
       "capacity": "Kapazität",
       "saleSeq": "Sequenznummer",
-      "timeUncertain": "Zeitstempel-Status"
+      "timeUncertain": "Zeitstempel-Status",
+      "motif": "Motiv",
+      "format": "Format"
     }
   },
   "deals": {
@@ -2009,6 +2031,107 @@
       "httpsRequired": "URL muss mit https:// beginnen",
       "tokenRequired": "Auth-Token ist erforderlich",
       "configJsonInvalid": "Zusätzliche Config muss ein JSON-Objekt sein"
+    }
+  },
+  "print": {
+    "pageTitle": "Aushang drucken",
+    "pageLead": "Kontaktdaten und QR-Codes für diesen Automaten.",
+    "backToMachine": "Zurück zum Automaten",
+    "motif": "Motiv",
+    "format": "Format",
+    "blocks": "Bausteine",
+    "sheetLanguage": "Sprache des Aushangs",
+    "customText": "Zusatztext",
+    "customTextPlaceholder": "z. B. Standort: 2. OG neben dem Aufzug",
+    "moreMachines": "Weitere Automaten",
+    "moreMachinesHint": "Alle ausgewählten Automaten laufen in einem Druckauftrag.",
+    "print": "Seite drucken | {count} Seiten drucken",
+    "browserHint": "Im Druckdialog Kopf- und Fußzeilen abschalten und Hintergrundgrafiken aktivieren.",
+    "originWarnTitle": "QR-Codes zeigen auf eine interne Adresse",
+    "originWarnBody": "{origin} ist von außen nicht erreichbar — gedruckte Codes funktionieren auf Kundenhandys nicht. SITE_URL in der Server-Konfiguration setzen.",
+    "missingTitle": "Für diesen Aushang fehlen Daten",
+    "missingLink": "In den Einstellungen ergänzen",
+    "fallbackMachineName": "Automat",
+    "whatsappTemplate": "Hallo, ich habe ein Problem am %machine%.",
+    "formats": {
+      "a4": "A4 (210 × 297 mm)",
+      "a5": "A5 (148 × 210 mm)",
+      "a6": "A6 (105 × 148 mm)",
+      "sticker-sheet": "Aufkleber 90 × 50 mm"
+    },
+    "blockNames": {
+      "phone": "Telefonnummer",
+      "whatsapp": "WhatsApp-QR",
+      "problem": "Störungs-QR",
+      "imprint": "Impressum-Fußzeile"
+    },
+    "missingFields": {
+      "companyName": "Firmenname",
+      "phone": "Support-Telefonnummer",
+      "whatsapp": "WhatsApp-Nummer",
+      "whatsappCountry": "Land für die WhatsApp-Nummer",
+      "email": "Kontakt-E-Mail",
+      "address": "Anschrift"
+    },
+    "motifShort": {
+      "klar": "Klar",
+      "kachel": "Kachel",
+      "qr-first": "QR zuerst",
+      "dunkel": "Dunkel",
+      "sticker-problem": "Aufkleber Störung",
+      "sticker-menu": "Aufkleber Sortiment"
+    },
+    "motifs": {
+      "klar": {
+        "label": "Klar",
+        "description": "Telefonnummer groß, ein QR unten. Druckt auch in Schwarz-Weiß gut."
+      },
+      "kachel": {
+        "label": "Kachel",
+        "description": "Farbiger Kopf, beschriftete QR-Kacheln für alle Kanäle."
+      },
+      "qrFirst": {
+        "label": "QR zuerst",
+        "description": "Ein großer QR auf die Automatenseite, Nummer als Rückfallweg."
+      },
+      "dunkel": {
+        "label": "Dunkel",
+        "description": "Dunkler Grund, hochwertige Optik — braucht Toner und gutes Papier."
+      },
+      "stickerProblem": {
+        "label": "Aufkleber: Störung",
+        "description": "90 × 50 mm fürs Auswurffach. 8 pro A4-Bogen."
+      },
+      "stickerMenu": {
+        "label": "Aufkleber: Sortiment",
+        "description": "90 × 50 mm mit QR auf die Automatenseite."
+      }
+    },
+    "poster": {
+      "problemTitle": "Problem mit dem Automaten?",
+      "problemLead": "Wir kümmern uns darum. Melde dich einfach bei uns.",
+      "supportPhone": "Support-Telefon",
+      "pageTitle": "Produkte · Preise · Zahlen",
+      "pageHint": "Code scannen und alles zu diesem Automaten sehen",
+      "helpTitle": "Hilfe zu diesem Automaten",
+      "whatsappTitle": "WhatsApp",
+      "whatsappHint": "Direkt schreiben",
+      "problemQrTitle": "Störung melden",
+      "problemQrHint": "Formular öffnen",
+      "callDirect": "Direkt anrufen",
+      "everythingTitle": "Alles zu diesem Automaten",
+      "everythingLead": "Produkte, Preise, Verfügbarkeit und Störung melden",
+      "scanHint": "Kamera öffnen und Code scannen",
+      "ratherCall": "Lieber anrufen?",
+      "helpYouTitle": "Wir helfen dir weiter",
+      "helpYouLead": "Automat läuft nicht? Geld weg? Melde dich kurz.",
+      "pageShort": "Sortiment"
+    },
+    "sticker": {
+      "problemTitle": "Störung melden",
+      "problemHint": "Scannen oder anrufen",
+      "menuTitle": "Sortiment ansehen",
+      "menuHint": "Preise, Verfügbarkeit und Zahlung"
     }
   }
 }
