@@ -1864,7 +1864,8 @@
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
       "sticker-sheet": "Étiquettes 90 × 50 mm",
-      "sticker-sheet-small": "Étiquettes 50 × 30 mm"
+      "sticker-sheet-small": "Étiquettes 50 × 30 mm",
+      "sticker-sheet-strip": "Bandeau 148 × 40 mm"
     },
     "blockNames": {
       "phone": "Numéro de téléphone",
@@ -1892,7 +1893,10 @@
       "klassisch": "Classique",
       "sticker-duo": "Étiquette duo",
       "sticker-contact": "Étiquette contact",
-      "sticker-mini": "Petite étiquette"
+      "sticker-mini": "Petite étiquette",
+      "sticker-service": "Étiquette service",
+      "sticker-imprint": "Étiquette mentions",
+      "sticker-strip": "Bandeau"
     },
     "motifs": {
       "klar": {
@@ -1942,6 +1946,18 @@
       "stickerMini": {
         "label": "Étiquette : petite",
         "description": "50 × 30 mm, un code et une ligne. 24 par feuille A4 — pour le rendu de monnaie."
+      },
+      "stickerService": {
+        "label": "Étiquette : service",
+        "description": "Le classique : le nom du distributeur en grand, pour que l'appelant sache de quoi il parle. 90 × 50 mm."
+      },
+      "stickerImprint": {
+        "label": "Étiquette : mentions légales",
+        "description": "La petite plaque de l'exploitant. Sobre et textuelle — elle doit être complète, pas visible."
+      },
+      "stickerStrip": {
+        "label": "Bandeau (paysage)",
+        "description": "148 × 40 mm à poser en travers de la façade. 6 par feuille A4, foncé pour contraster sur tôle claire."
       }
     },
     "poster": {
@@ -1976,7 +1992,10 @@
     "sticker": {
       "problemTitle": "Signaler une panne",
       "menuTitle": "Voir l'assortiment",
-      "contactTitle": "Une question sur ce distributeur ?"
+      "contactTitle": "Une question sur ce distributeur ?",
+      "serviceTitle": "En cas de panne, merci d’indiquer",
+      "imprintTitle": "Informations sur l'exploitant",
+      "stripTitle": "Une question sur ce distributeur ?"
     },
     "qrCodes": "QR codes",
     "headlines": "Titres",

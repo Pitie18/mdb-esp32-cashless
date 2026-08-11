@@ -2061,7 +2061,8 @@
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
       "sticker-sheet": "Labels 90 × 50 mm",
-      "sticker-sheet-small": "Labels 50 × 30 mm"
+      "sticker-sheet-small": "Labels 50 × 30 mm",
+      "sticker-sheet-strip": "Strip 148 × 40 mm"
     },
     "blockNames": {
       "phone": "Phone number",
@@ -2089,7 +2090,10 @@
       "klassisch": "Classic",
       "sticker-duo": "Duo label",
       "sticker-contact": "Contact label",
-      "sticker-mini": "Small label"
+      "sticker-mini": "Small label",
+      "sticker-service": "Service label",
+      "sticker-imprint": "Imprint label",
+      "sticker-strip": "Strip"
     },
     "motifs": {
       "klar": {
@@ -2139,6 +2143,18 @@
       "stickerMini": {
         "label": "Label: small",
         "description": "50 × 30 mm, one code and one line. 24 per A4 sheet — for the coin return."
+      },
+      "stickerService": {
+        "label": "Label: service",
+        "description": "The classic machine label: the machine name large, so the caller knows what they are calling about. 90 × 50 mm."
+      },
+      "stickerImprint": {
+        "label": "Label: imprint",
+        "description": "The small operator plate. Quiet and text-first — it exists to be complete, not to be noticed."
+      },
+      "stickerStrip": {
+        "label": "Strip (landscape)",
+        "description": "148 × 40 mm to run across a machine front. 6 per A4 sheet, dark for contrast on light metal."
       }
     },
     "poster": {
@@ -2173,7 +2189,10 @@
     "sticker": {
       "problemTitle": "Report a fault",
       "menuTitle": "See what's inside",
-      "contactTitle": "Questions about this machine?"
+      "contactTitle": "Questions about this machine?",
+      "serviceTitle": "When reporting a fault, please quote",
+      "imprintTitle": "Operator details",
+      "stripTitle": "Questions about this machine?"
     },
     "qrCodes": "QR codes",
     "headlines": "Headlines",

@@ -2061,7 +2061,8 @@
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
       "sticker-sheet": "Aufkleber 90 × 50 mm",
-      "sticker-sheet-small": "Aufkleber 50 × 30 mm"
+      "sticker-sheet-small": "Aufkleber 50 × 30 mm",
+      "sticker-sheet-strip": "Streifen 148 × 40 mm"
     },
     "blockNames": {
       "phone": "Telefonnummer",
@@ -2089,7 +2090,10 @@
       "klassisch": "Klassisch",
       "sticker-duo": "Aufkleber Duo",
       "sticker-contact": "Aufkleber Kontakt",
-      "sticker-mini": "Aufkleber klein"
+      "sticker-mini": "Aufkleber klein",
+      "sticker-service": "Aufkleber Service",
+      "sticker-imprint": "Aufkleber Impressum",
+      "sticker-strip": "Streifen"
     },
     "motifs": {
       "klar": {
@@ -2139,6 +2143,18 @@
       "stickerMini": {
         "label": "Aufkleber: klein",
         "description": "50 × 30 mm, ein Code und eine Zeile. 24 pro A4-Bogen — fürs Münzrückgabefeld."
+      },
+      "stickerService": {
+        "label": "Aufkleber: Service",
+        "description": "Der Klassiker am Automaten: Gerätename groß, damit der Anrufer weiß, worüber er spricht. 90 × 50 mm."
+      },
+      "stickerImprint": {
+        "label": "Aufkleber: Impressum",
+        "description": "Kleine Betreiberplakette nach §5 TMG. Leise und textlastig — sie soll vollständig sein, nicht auffallen."
+      },
+      "stickerStrip": {
+        "label": "Streifen (quer)",
+        "description": "148 × 40 mm für quer über die Automatenfront. 6 pro A4-Bogen, dunkel für Kontrast auf hellem Blech."
       }
     },
     "poster": {
@@ -2173,7 +2189,10 @@
     "sticker": {
       "problemTitle": "Störung melden",
       "menuTitle": "Sortiment ansehen",
-      "contactTitle": "Fragen zum Automaten?"
+      "contactTitle": "Fragen zum Automaten?",
+      "serviceTitle": "Bei Störung bitte angeben",
+      "imprintTitle": "Betreiberinformationen",
+      "stripTitle": "Fragen zum Automaten?"
     },
     "qrCodes": "QR-Codes",
     "headlines": "Überschriften",

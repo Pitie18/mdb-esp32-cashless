@@ -537,6 +537,7 @@ describe('qrErrorLevel', () => {
   it('raises redundancy for stickers', () => {
     expect(qrErrorLevel('sticker-sheet')).toBe('Q')
     expect(qrErrorLevel('sticker-sheet-small')).toBe('Q')
+    expect(qrErrorLevel('sticker-sheet-strip')).toBe('Q')
     expect(qrErrorLevel('a4')).toBe('M')
   })
 })
@@ -545,10 +546,12 @@ describe('sticker sheet geometry', () => {
   it('knows how many labels a sheet holds per format', () => {
     expect(stickersPerSheet('sticker-sheet')).toBe(8)
     expect(stickersPerSheet('sticker-sheet-small')).toBe(24)
+    // Two 148 mm strips do not fit side by side on a 210 mm page.
+    expect(stickersPerSheet('sticker-sheet-strip')).toBe(6)
   })
 
   it('keeps both grids inside an A4 page', () => {
-    for (const format of ['sticker-sheet', 'sticker-sheet-small'] as const) {
+    for (const format of ['sticker-sheet', 'sticker-sheet-small', 'sticker-sheet-strip'] as const) {
       const { w, h, gap, cols, rows } = stickerLayout(format)
       expect(cols * w + (cols - 1) * gap).toBeLessThanOrEqual(210)
       expect(rows * h + (rows - 1) * gap).toBeLessThanOrEqual(297)
@@ -566,6 +569,7 @@ describe('sticker sheet geometry', () => {
   it('only reports sticker formats as stickers', () => {
     expect(isStickerFormat('sticker-sheet')).toBe(true)
     expect(isStickerFormat('sticker-sheet-small')).toBe(true)
+    expect(isStickerFormat('sticker-sheet-strip')).toBe(true)
     expect(isStickerFormat('a4')).toBe(false)
   })
 })

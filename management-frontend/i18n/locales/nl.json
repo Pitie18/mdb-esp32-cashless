@@ -1864,7 +1864,8 @@
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
       "sticker-sheet": "Stickers 90 × 50 mm",
-      "sticker-sheet-small": "Stickers 50 × 30 mm"
+      "sticker-sheet-small": "Stickers 50 × 30 mm",
+      "sticker-sheet-strip": "Strook 148 × 40 mm"
     },
     "blockNames": {
       "phone": "Telefoonnummer",
@@ -1892,7 +1893,10 @@
       "klassisch": "Klassiek",
       "sticker-duo": "Sticker duo",
       "sticker-contact": "Sticker contact",
-      "sticker-mini": "Sticker klein"
+      "sticker-mini": "Sticker klein",
+      "sticker-service": "Sticker service",
+      "sticker-imprint": "Sticker colofon",
+      "sticker-strip": "Strook"
     },
     "motifs": {
       "klar": {
@@ -1942,6 +1946,18 @@
       "stickerMini": {
         "label": "Sticker: klein",
         "description": "50 × 30 mm, één code en één regel. 24 per A4-vel — voor de muntteruggave."
+      },
+      "stickerService": {
+        "label": "Sticker: service",
+        "description": "De klassieker op de automaat: de naam groot, zodat de beller weet waarover hij belt. 90 × 50 mm."
+      },
+      "stickerImprint": {
+        "label": "Sticker: colofon",
+        "description": "Het kleine exploitantplaatje. Rustig en tekstgericht — het moet volledig zijn, niet opvallen."
+      },
+      "stickerStrip": {
+        "label": "Strook (liggend)",
+        "description": "148 × 40 mm dwars over de automaatfront. 6 per A4-vel, donker voor contrast op licht plaatwerk."
       }
     },
     "poster": {
@@ -1976,7 +1992,10 @@
     "sticker": {
       "problemTitle": "Storing melden",
       "menuTitle": "Bekijk het assortiment",
-      "contactTitle": "Vragen over deze automaat?"
+      "contactTitle": "Vragen over deze automaat?",
+      "serviceTitle": "Vermeld bij een storing",
+      "imprintTitle": "Exploitantgegevens",
+      "stripTitle": "Vragen over deze automaat?"
     },
     "qrCodes": "QR-codes",
     "headlines": "Koppen",

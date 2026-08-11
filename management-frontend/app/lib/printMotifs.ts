@@ -11,6 +11,9 @@ import StickerMenu from '@/components/print/StickerMenu.vue'
 import StickerDuo from '@/components/print/StickerDuo.vue'
 import StickerContact from '@/components/print/StickerContact.vue'
 import StickerMini from '@/components/print/StickerMini.vue'
+import StickerService from '@/components/print/StickerService.vue'
+import StickerStrip from '@/components/print/StickerStrip.vue'
+import StickerImprint from '@/components/print/StickerImprint.vue'
 import type { PosterLayout, PrintBlock, PrintFormat, SlotDeclaration } from '@/lib/printSheet'
 
 export type { PosterT } from '@/lib/printSheet'
@@ -27,6 +30,9 @@ export type MotifId =
   | 'sticker-menu'
   | 'sticker-duo'
   | 'sticker-contact'
+  | 'sticker-service'
+  | 'sticker-imprint'
+  | 'sticker-strip'
   | 'sticker-mini'
 
 /** An editable headline field. Per-slot labels are declared by the slots. */
@@ -218,6 +224,48 @@ export const PRINT_MOTIFS: PrintMotif[] = [
       { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.sticker.contactTitle' },
     ],
     blocks: ['phone', 'imprint'],
+  },
+  {
+    id: 'sticker-service',
+    labelKey: 'print.motifs.stickerService.label',
+    descriptionKey: 'print.motifs.stickerService.description',
+    component: StickerService,
+    formats: ['sticker-sheet'],
+    slots: [
+      { id: 'main', labelKey: 'print.slots.main', compact: true, defaultSource: 'problem', optional: true },
+    ],
+    texts: [
+      { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.sticker.serviceTitle' },
+    ],
+    blocks: ['phone'],
+  },
+  {
+    id: 'sticker-imprint',
+    labelKey: 'print.motifs.stickerImprint.label',
+    descriptionKey: 'print.motifs.stickerImprint.description',
+    component: StickerImprint,
+    formats: ['sticker-sheet'],
+    slots: [
+      { id: 'main', labelKey: 'print.slots.main', compact: true, defaultSource: 'page', optional: true },
+    ],
+    texts: [
+      { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.sticker.imprintTitle' },
+    ],
+    blocks: ['phone', 'imprint'],
+  },
+  {
+    id: 'sticker-strip',
+    labelKey: 'print.motifs.stickerStrip.label',
+    descriptionKey: 'print.motifs.stickerStrip.description',
+    component: StickerStrip,
+    formats: ['sticker-sheet-strip'],
+    slots: [
+      { id: 'main', labelKey: 'print.slots.main', compact: true, defaultSource: 'page', optional: true },
+    ],
+    texts: [
+      { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.sticker.stripTitle' },
+    ],
+    blocks: ['phone'],
   },
   {
     id: 'sticker-mini',

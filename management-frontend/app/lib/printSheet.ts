@@ -11,7 +11,7 @@
  * locale state while still producing finished strings.
  */
 
-export type PrintFormat = 'a4' | 'a5' | 'a6' | 'sticker-sheet' | 'sticker-sheet-small'
+export type PrintFormat = 'a4' | 'a5' | 'a6' | 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'
 
 /**
  * Non-QR content a motif may render. QR content is not a block — it is a slot
@@ -152,6 +152,7 @@ export const FORMAT_MM: Record<PrintFormat, { w: number; h: number }> = {
   a6: { w: 105, h: 148 },
   'sticker-sheet': { w: 210, h: 297 },
   'sticker-sheet-small': { w: 210, h: 297 },
+  'sticker-sheet-strip': { w: 210, h: 297 },
 }
 
 /**
@@ -167,9 +168,10 @@ export const MIN_QR_MM: Record<PrintFormat, number> = {
   // 50 x 30 mm leaves no room for more, and below this a phone camera has to
   // be held closer than the machine allows.
   'sticker-sheet-small': 16,
+  'sticker-sheet-strip': 22,
 }
 
-export type StickerFormat = Extract<PrintFormat, 'sticker-sheet' | 'sticker-sheet-small'>
+export type StickerFormat = Extract<PrintFormat, 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'>
 
 export interface StickerLayout {
   w: number
@@ -184,10 +186,16 @@ export const STICKER_LAYOUT: Record<StickerFormat, StickerLayout> = {
   'sticker-sheet': { w: 90, h: 50, gap: 3, cols: 2, rows: 4 },
   // For the coin return and the flap edge, where 90 x 50 simply does not fit.
   'sticker-sheet-small': { w: 50, h: 30, gap: 3, cols: 3, rows: 8 },
+  // The long band that runs across a machine front, above or below the
+  // product window. Two of these do not fit side by side on A4, so it is one
+  // per row and six to a sheet.
+  'sticker-sheet-strip': { w: 148, h: 40, gap: 3, cols: 1, rows: 6 },
 }
 
 export function isStickerFormat(format: PrintFormat): format is StickerFormat {
-  return format === 'sticker-sheet' || format === 'sticker-sheet-small'
+  return format === 'sticker-sheet'
+    || format === 'sticker-sheet-small'
+    || format === 'sticker-sheet-strip'
 }
 
 export function stickerLayout(format: PrintFormat): StickerLayout {
