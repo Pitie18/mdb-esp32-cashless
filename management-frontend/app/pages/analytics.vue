@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import AnalyticsBreakdown from '@/components/analytics/AnalyticsBreakdown.vue'
 import AnalyticsFilterBar from '@/components/analytics/AnalyticsFilterBar.vue'
 import AnalyticsKpiRow from '@/components/analytics/AnalyticsKpiRow.vue'
 import AnalyticsTrendChart from '@/components/analytics/AnalyticsTrendChart.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { BreakdownRow } from '~/lib/analytics'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -10,6 +12,9 @@ const { t } = useI18n()
 const {
   metric, summary, error, backendUnsupported, loadAll, loadFilterOptions,
 } = useAnalytics()
+
+const selectedRow = ref<BreakdownRow | null>(null)
+const dialogOpen = ref(false)
 
 onMounted(async () => {
   await loadFilterOptions()
@@ -46,6 +51,8 @@ usePullToRefresh(() => loadAll())
       </Tabs>
 
       <AnalyticsTrendChart />
+
+      <AnalyticsBreakdown @select="row => { selectedRow = row; dialogOpen = true }" />
 
       <div
         v-if="error"
