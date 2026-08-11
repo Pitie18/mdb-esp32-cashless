@@ -10,7 +10,7 @@ import type { PosterLayout, PosterT, PrintBlock, PrintFormat, PrintSheet, SlotSo
 
 definePageMeta({ middleware: 'auth', layout: false })
 
-const { t, locale, locales } = useI18n()
+const { t, locale, locales, loadLocaleMessages } = useI18n()
 const route = useRoute()
 const machineId = route.params.id as string
 
@@ -38,6 +38,23 @@ const posterT: PosterT = (key, named) =>
     named ?? {},
     { locale: sheetLocale.value },
   )
+
+/**
+ * Locale files are lazy-loaded, so only the *active* language is in memory.
+ * Asking vue-i18n for a string in any other one returns the key path — which
+ * is what a poster printed in a non-UI language showed. Load it first.
+ */
+const loadedLocales = new Set<string>([locale.value])
+async function ensureSheetLocale() {
+  const code = sheetLocale.value
+  if (loadedLocales.has(code)) return
+  try {
+    await loadLocaleMessages(code)
+    loadedLocales.add(code)
+  } catch {
+    // Fall through: vue-i18n's fallbackLocale still yields readable text.
+  }
+}
 
 const localeOptions = computed(() =>
   (locales.value as { code: string; name?: string }[]).map(l => ({
@@ -118,6 +135,7 @@ async function rebuild() {
   if (!print.company.value) return
   building.value = true
   try {
+    await ensureSheetLocale()
     sheets.value = await print.buildSheets({
       machineIds: selectedIds.value,
       slotDeclarations: motif.value.slots,
@@ -137,7 +155,7 @@ watch([selectedIds, layout, format, sheetLocale, () => print.company.value], reb
 watchDebounced(customText, rebuild, { debounce: 300 })
 
 onMounted(async () => {
-  await print.load()
+  await Promise.all([print.load(), ensureSheetLocale()])
   seedLayout()
   if (!selectedIds.value.includes(machineId)) selectedIds.value.unshift(machineId)
   await rebuild()

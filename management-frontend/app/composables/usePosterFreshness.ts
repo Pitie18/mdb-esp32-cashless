@@ -47,7 +47,7 @@ interface PrintedRow {
 export function usePosterFreshness() {
   const supabase = useSupabaseClient()
   const config = useRuntimeConfig()
-  const { t } = useI18n()
+  const { t, loadLocaleMessages } = useI18n()
   const { organization } = useOrganization()
 
   const statuses = ref<Record<string, PosterStatus>>({})
@@ -93,6 +93,16 @@ export function usePosterFreshness() {
         if (!row.entity_id || latest.has(row.entity_id)) continue
         latest.set(row.entity_id, row)
       }
+
+      // Sheets printed in another language need that language's messages
+      // loaded, or every string resolves to its key and the recomputed
+      // fingerprint never matches — flagging correct signs as outdated.
+      const languages = new Set(
+        rows.map(r => r.metadata?.sheet_language).filter((l): l is string => Boolean(l)),
+      )
+      await Promise.all(
+        [...languages].map(l => Promise.resolve(loadLocaleMessages(l)).catch(() => {})),
+      )
 
       const next: Record<string, PosterStatus> = {}
       const publicOrigin =
