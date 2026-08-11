@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    VMflowApp()
+                    VMflowAppRoot()
                 }
             }
         }
@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun VMflowApp() {
+fun VMflowAppRoot() {
     val navController = rememberNavController()
     var startDestination by remember { mutableStateOf<String?>(null) }
 
