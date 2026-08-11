@@ -2060,7 +2060,8 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
-      "sticker-sheet": "Labels 90 × 50 mm"
+      "sticker-sheet": "Labels 90 × 50 mm",
+      "sticker-sheet-small": "Labels 50 × 30 mm"
     },
     "blockNames": {
       "phone": "Phone number",
@@ -2085,7 +2086,10 @@
       "sticker-menu": "Range label",
       "duo": "Split",
       "signal": "Signal",
-      "klassisch": "Classic"
+      "klassisch": "Classic",
+      "sticker-duo": "Duo label",
+      "sticker-contact": "Contact label",
+      "sticker-mini": "Small label"
     },
     "motifs": {
       "klar": {
@@ -2123,6 +2127,18 @@
       "klassisch": {
         "label": "Classic",
         "description": "Serif type, double border, restrained. For practices, hotels and offices that will not hang a colourful poster."
+      },
+      "stickerDuo": {
+        "label": "Label: duo",
+        "description": "90 × 50 mm with two codes — the range large, faults small beside it."
+      },
+      "stickerContact": {
+        "label": "Label: contact",
+        "description": "90 × 50 mm with no QR at all, just the number in large type. For places where nobody scans."
+      },
+      "stickerMini": {
+        "label": "Label: small",
+        "description": "50 × 30 mm, one code and one line. 24 per A4 sheet — for the coin return."
       }
     },
     "poster": {
@@ -2156,7 +2172,8 @@
     },
     "sticker": {
       "problemTitle": "Report a fault",
-      "menuTitle": "See what's inside"
+      "menuTitle": "See what's inside",
+      "contactTitle": "Questions about this machine?"
     },
     "qrCodes": "QR codes",
     "headlines": "Headlines",
@@ -2185,7 +2202,9 @@
       "tile3": "Tile 3",
       "call": "Call panel",
       "top": "Large QR at the top",
-      "bottom": "Fault strip at the bottom"
+      "bottom": "Fault strip at the bottom",
+      "left": "Large QR on the left",
+      "right": "Small QR on the right"
     },
     "texts": {
       "title": "Headline",

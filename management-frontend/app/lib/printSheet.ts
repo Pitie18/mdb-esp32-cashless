@@ -11,7 +11,7 @@
  * locale state while still producing finished strings.
  */
 
-export type PrintFormat = 'a4' | 'a5' | 'a6' | 'sticker-sheet'
+export type PrintFormat = 'a4' | 'a5' | 'a6' | 'sticker-sheet' | 'sticker-sheet-small'
 
 /**
  * Non-QR content a motif may render. QR content is not a block — it is a slot
@@ -151,6 +151,7 @@ export const FORMAT_MM: Record<PrintFormat, { w: number; h: number }> = {
   a5: { w: 148, h: 210 },
   a6: { w: 105, h: 148 },
   'sticker-sheet': { w: 210, h: 297 },
+  'sticker-sheet-small': { w: 210, h: 297 },
 }
 
 /**
@@ -163,18 +164,47 @@ export const MIN_QR_MM: Record<PrintFormat, number> = {
   a5: 30,
   a6: 25,
   'sticker-sheet': 20,
+  // 50 x 30 mm leaves no room for more, and below this a phone camera has to
+  // be held closer than the machine allows.
+  'sticker-sheet-small': 16,
 }
 
-/** 90 x 50 mm labels, 2 columns x 4 rows on A4. */
-export const STICKER_MM = { w: 90, h: 50, gap: 3 }
-export const STICKERS_PER_SHEET = 8
+export type StickerFormat = Extract<PrintFormat, 'sticker-sheet' | 'sticker-sheet-small'>
+
+export interface StickerLayout {
+  w: number
+  h: number
+  gap: number
+  cols: number
+  rows: number
+}
+
+/** Label geometry per sticker format, laid out on A4 portrait. */
+export const STICKER_LAYOUT: Record<StickerFormat, StickerLayout> = {
+  'sticker-sheet': { w: 90, h: 50, gap: 3, cols: 2, rows: 4 },
+  // For the coin return and the flap edge, where 90 x 50 simply does not fit.
+  'sticker-sheet-small': { w: 50, h: 30, gap: 3, cols: 3, rows: 8 },
+}
+
+export function isStickerFormat(format: PrintFormat): format is StickerFormat {
+  return format === 'sticker-sheet' || format === 'sticker-sheet-small'
+}
+
+export function stickerLayout(format: PrintFormat): StickerLayout {
+  return STICKER_LAYOUT[isStickerFormat(format) ? format : 'sticker-sheet']
+}
+
+export function stickersPerSheet(format: PrintFormat): number {
+  const l = stickerLayout(format)
+  return l.cols * l.rows
+}
 
 /**
  * QR error correction. Stickers sit next to the coin return and get scratched
  * and dirty, so they carry more redundancy than a poster behind glass.
  */
 export function qrErrorLevel(format: PrintFormat): 'M' | 'Q' {
-  return format === 'sticker-sheet' ? 'Q' : 'M'
+  return isStickerFormat(format) ? 'Q' : 'M'
 }
 
 const PRIVATE_IPV4 =
@@ -565,7 +595,7 @@ export function readableUrl(target: string | null | undefined): string | null {
  * Packs stickers continuously across A4 sheets rather than one sheet per
  * machine — printing three machines should waste zero labels, not 21.
  */
-export function distributeStickers<T>(items: T[], perSheet = STICKERS_PER_SHEET): T[][] {
+export function distributeStickers<T>(items: T[], perSheet = 8): T[][] {
   if (perSheet <= 0) return items.length ? [items] : []
   const sheets: T[][] = []
   for (let i = 0; i < items.length; i += perSheet) {

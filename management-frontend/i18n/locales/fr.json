@@ -1863,7 +1863,8 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
-      "sticker-sheet": "Étiquettes 90 × 50 mm"
+      "sticker-sheet": "Étiquettes 90 × 50 mm",
+      "sticker-sheet-small": "Étiquettes 50 × 30 mm"
     },
     "blockNames": {
       "phone": "Numéro de téléphone",
@@ -1888,7 +1889,10 @@
       "sticker-menu": "Étiquette assortiment",
       "duo": "Deux parties",
       "signal": "Signal",
-      "klassisch": "Classique"
+      "klassisch": "Classique",
+      "sticker-duo": "Étiquette duo",
+      "sticker-contact": "Étiquette contact",
+      "sticker-mini": "Petite étiquette"
     },
     "motifs": {
       "klar": {
@@ -1926,6 +1930,18 @@
       "klassisch": {
         "label": "Classique",
         "description": "Serif, double filet, sobre. Pour cabinets, hôtels et bureaux qui refusent une affiche colorée."
+      },
+      "stickerDuo": {
+        "label": "Étiquette : duo",
+        "description": "90 × 50 mm avec deux codes — l'assortiment en grand, la panne en petit à côté."
+      },
+      "stickerContact": {
+        "label": "Étiquette : contact",
+        "description": "90 × 50 mm sans aucun QR, juste le numéro en grand. Pour les lieux où personne ne scanne."
+      },
+      "stickerMini": {
+        "label": "Étiquette : petite",
+        "description": "50 × 30 mm, un code et une ligne. 24 par feuille A4 — pour le rendu de monnaie."
       }
     },
     "poster": {
@@ -1959,7 +1975,8 @@
     },
     "sticker": {
       "problemTitle": "Signaler une panne",
-      "menuTitle": "Voir l'assortiment"
+      "menuTitle": "Voir l'assortiment",
+      "contactTitle": "Une question sur ce distributeur ?"
     },
     "qrCodes": "QR codes",
     "headlines": "Titres",
@@ -1988,7 +2005,9 @@
       "tile3": "Tuile 3",
       "call": "Zone d'appel",
       "top": "Grand QR en haut",
-      "bottom": "Bandeau panne en bas"
+      "bottom": "Bandeau panne en bas",
+      "left": "Grand QR à gauche",
+      "right": "Petit QR à droite"
     },
     "texts": {
       "title": "Titre",

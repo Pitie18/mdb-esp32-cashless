@@ -2060,7 +2060,8 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
-      "sticker-sheet": "Aufkleber 90 × 50 mm"
+      "sticker-sheet": "Aufkleber 90 × 50 mm",
+      "sticker-sheet-small": "Aufkleber 50 × 30 mm"
     },
     "blockNames": {
       "phone": "Telefonnummer",
@@ -2085,7 +2086,10 @@
       "sticker-menu": "Aufkleber Sortiment",
       "duo": "Zweigeteilt",
       "signal": "Signal",
-      "klassisch": "Klassisch"
+      "klassisch": "Klassisch",
+      "sticker-duo": "Aufkleber Duo",
+      "sticker-contact": "Aufkleber Kontakt",
+      "sticker-mini": "Aufkleber klein"
     },
     "motifs": {
       "klar": {
@@ -2123,6 +2127,18 @@
       "klassisch": {
         "label": "Klassisch",
         "description": "Serifen, doppelter Rahmen, zurückhaltend. Für Praxen, Hotels und Büros, die kein buntes Plakat dulden."
+      },
+      "stickerDuo": {
+        "label": "Aufkleber: Duo",
+        "description": "90 × 50 mm mit zwei Codes — Sortiment groß, Störung klein daneben."
+      },
+      "stickerContact": {
+        "label": "Aufkleber: Kontakt",
+        "description": "90 × 50 mm ganz ohne QR, nur die Nummer groß. Für Standorte, an denen niemand scannt."
+      },
+      "stickerMini": {
+        "label": "Aufkleber: klein",
+        "description": "50 × 30 mm, ein Code und eine Zeile. 24 pro A4-Bogen — fürs Münzrückgabefeld."
       }
     },
     "poster": {
@@ -2156,7 +2172,8 @@
     },
     "sticker": {
       "problemTitle": "Störung melden",
-      "menuTitle": "Sortiment ansehen"
+      "menuTitle": "Sortiment ansehen",
+      "contactTitle": "Fragen zum Automaten?"
     },
     "qrCodes": "QR-Codes",
     "headlines": "Überschriften",
@@ -2185,7 +2202,9 @@
       "tile3": "Kachel 3",
       "call": "Anruf-Feld",
       "top": "Großer QR oben",
-      "bottom": "Störungs-Streifen unten"
+      "bottom": "Störungs-Streifen unten",
+      "left": "Großer QR links",
+      "right": "Kleiner QR rechts"
     },
     "texts": {
       "title": "Überschrift",

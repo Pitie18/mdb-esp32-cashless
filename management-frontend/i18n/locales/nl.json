@@ -1863,7 +1863,8 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
-      "sticker-sheet": "Stickers 90 × 50 mm"
+      "sticker-sheet": "Stickers 90 × 50 mm",
+      "sticker-sheet-small": "Stickers 50 × 30 mm"
     },
     "blockNames": {
       "phone": "Telefoonnummer",
@@ -1888,7 +1889,10 @@
       "sticker-menu": "Sticker assortiment",
       "duo": "Tweedelig",
       "signal": "Signaal",
-      "klassisch": "Klassiek"
+      "klassisch": "Klassiek",
+      "sticker-duo": "Sticker duo",
+      "sticker-contact": "Sticker contact",
+      "sticker-mini": "Sticker klein"
     },
     "motifs": {
       "klar": {
@@ -1926,6 +1930,18 @@
       "klassisch": {
         "label": "Klassiek",
         "description": "Schreefletter, dubbele rand, ingetogen. Voor praktijken, hotels en kantoren die geen kleurig affiche ophangen."
+      },
+      "stickerDuo": {
+        "label": "Sticker: duo",
+        "description": "90 × 50 mm met twee codes — assortiment groot, storing klein ernaast."
+      },
+      "stickerContact": {
+        "label": "Sticker: contact",
+        "description": "90 × 50 mm zonder QR, alleen het nummer groot. Voor locaties waar niemand scant."
+      },
+      "stickerMini": {
+        "label": "Sticker: klein",
+        "description": "50 × 30 mm, één code en één regel. 24 per A4-vel — voor de muntteruggave."
       }
     },
     "poster": {
@@ -1959,7 +1975,8 @@
     },
     "sticker": {
       "problemTitle": "Storing melden",
-      "menuTitle": "Bekijk het assortiment"
+      "menuTitle": "Bekijk het assortiment",
+      "contactTitle": "Vragen over deze automaat?"
     },
     "qrCodes": "QR-codes",
     "headlines": "Koppen",
@@ -1988,7 +2005,9 @@
       "tile3": "Tegel 3",
       "call": "Belvak",
       "top": "Grote QR bovenaan",
-      "bottom": "Storingsstrook onderaan"
+      "bottom": "Storingsstrook onderaan",
+      "left": "Grote QR links",
+      "right": "Kleine QR rechts"
     },
     "texts": {
       "title": "Kop",

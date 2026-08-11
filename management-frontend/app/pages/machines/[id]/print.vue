@@ -6,7 +6,7 @@ import MotifThumb from '@/components/print/MotifThumb.vue'
 import { useMachinePrint } from '@/composables/useMachinePrint'
 import { PRINT_MOTIFS, defaultLayout, isStickerFormat, motifById } from '@/lib/printMotifs'
 import type { MotifId } from '@/lib/printMotifs'
-import { FORMAT_MM, SLOT_SOURCES, distributeStickers } from '@/lib/printSheet'
+import { FORMAT_MM, SLOT_SOURCES, distributeStickers, stickersPerSheet } from '@/lib/printSheet'
 import type { PosterLayout, PosterT, PrintBlock, PrintFormat, PrintSheet, SlotSource } from '@/lib/printSheet'
 
 definePageMeta({ middleware: 'auth', layout: false })
@@ -228,7 +228,9 @@ async function resetToDefaults() {
 
 // ── Rendering ───────────────────────────────────────────────────────────────
 const pages = computed<PrintSheet[][]>(() =>
-  isSticker.value ? distributeStickers(sheets.value) : sheets.value.map(s => [s]),
+  isSticker.value
+    ? distributeStickers(sheets.value, stickersPerSheet(format.value))
+    : sheets.value.map(s => [s]),
 )
 
 const sheetMm = computed(() => FORMAT_MM[format.value])
@@ -348,7 +350,7 @@ async function doPrint() {
       </section>
 
       <!-- One picker per QR slot the motif declares, with its label and hint. -->
-      <section>
+      <section v-if="motif.slots.length">
         <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {{ t('print.qrCodes') }}
         </h2>
@@ -594,6 +596,7 @@ async function doPrint() {
             :sheets="page"
             :motif="motif.component"
             :t="posterT"
+            :format="format"
           />
           <component
             :is="motif.component"

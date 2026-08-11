@@ -8,6 +8,9 @@ import PosterDuo from '@/components/print/PosterDuo.vue'
 import PosterKlassisch from '@/components/print/PosterKlassisch.vue'
 import StickerProblem from '@/components/print/StickerProblem.vue'
 import StickerMenu from '@/components/print/StickerMenu.vue'
+import StickerDuo from '@/components/print/StickerDuo.vue'
+import StickerContact from '@/components/print/StickerContact.vue'
+import StickerMini from '@/components/print/StickerMini.vue'
 import type { PosterLayout, PrintBlock, PrintFormat, SlotDeclaration } from '@/lib/printSheet'
 
 export type { PosterT } from '@/lib/printSheet'
@@ -22,6 +25,9 @@ export type MotifId =
   | 'dunkel'
   | 'sticker-problem'
   | 'sticker-menu'
+  | 'sticker-duo'
+  | 'sticker-contact'
+  | 'sticker-mini'
 
 /** An editable headline field. Per-slot labels are declared by the slots. */
 export interface MotifTextField {
@@ -188,15 +194,50 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     ],
     blocks: [],
   },
+  {
+    id: 'sticker-duo',
+    labelKey: 'print.motifs.stickerDuo.label',
+    descriptionKey: 'print.motifs.stickerDuo.description',
+    component: StickerDuo,
+    formats: ['sticker-sheet'],
+    slots: [
+      { id: 'main', labelKey: 'print.slots.left', compact: true, defaultSource: 'page', optional: false },
+      { id: 'issue', labelKey: 'print.slots.right', compact: true, defaultSource: 'problem', optional: true },
+    ],
+    texts: [],
+    blocks: ['phone'],
+  },
+  {
+    id: 'sticker-contact',
+    labelKey: 'print.motifs.stickerContact.label',
+    descriptionKey: 'print.motifs.stickerContact.description',
+    component: StickerContact,
+    formats: ['sticker-sheet'],
+    slots: [],
+    texts: [
+      { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.sticker.contactTitle' },
+    ],
+    blocks: ['phone', 'imprint'],
+  },
+  {
+    id: 'sticker-mini',
+    labelKey: 'print.motifs.stickerMini.label',
+    descriptionKey: 'print.motifs.stickerMini.description',
+    component: StickerMini,
+    formats: ['sticker-sheet-small'],
+    slots: [
+      { id: 'main', labelKey: 'print.slots.main', compact: true, defaultSource: 'page', optional: false },
+    ],
+    texts: [],
+    blocks: ['phone'],
+  },
 ]
 
 export function motifById(id: string): PrintMotif | undefined {
   return PRINT_MOTIFS.find(m => m.id === id)
 }
 
-export function isStickerFormat(format: PrintFormat): boolean {
-  return format === 'sticker-sheet'
-}
+export { isStickerFormat } from '@/lib/printSheet'
 
 /** The configuration a motif starts from before anything is saved or edited. */
 export function defaultLayout(motif: PrintMotif): PosterLayout {
