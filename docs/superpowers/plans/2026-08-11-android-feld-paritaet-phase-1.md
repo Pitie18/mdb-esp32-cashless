@@ -351,10 +351,10 @@ Erwartet: `BUILD SUCCESSFUL`, und in `app/build/reports/tests/testDebugUnitTest/
 Prüfen, dass die Tests wirklich gelaufen sind und nicht nur nichts gefunden wurde:
 
 ```bash
-cd android && grep -o 'tests"[^"]*"[0-9]*' app/build/test-results/testDebugUnitTest/TEST-xyz.vmflow.RoutesTest.xml | head -1
+cd android && grep -o 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' app/build/test-results/testDebugUnitTest/TEST-xyz.vmflow.RoutesTest.xml
 ```
 
-Erwartet: eine Zahl größer 0. Meldet Gradle `no tests found`, ist die Verzeichnisstruktur falsch — der Pfad muss exakt `app/src/test/java/xyz/vmflow/` lauten.
+Erwartet: `tests="2" skipped="0" failures="0" errors="0"`. Meldet Gradle `no tests found` oder fehlt die XML-Datei, ist die Verzeichnisstruktur falsch — der Pfad muss exakt `app/src/test/java/xyz/vmflow/` lauten.
 
 - [ ] **Step 3: Belegen, dass ein Fehlschlag auch rot wird**
 
