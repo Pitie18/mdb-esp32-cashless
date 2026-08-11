@@ -26,6 +26,8 @@ struct AnalyticsView: View {
                         AnalyticsBreakdownList(viewModel: viewModel) { row in
                             selectedProduct = row
                         }
+                        HeatmapCard(cells: viewModel.summary?.heatmap ?? [])
+                        ChannelSplitCard(channels: viewModel.summary?.channels ?? [])
                     }
                     .padding()
                 }
