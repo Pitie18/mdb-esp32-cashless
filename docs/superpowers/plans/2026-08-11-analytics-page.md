@@ -3124,6 +3124,7 @@ git commit -m "feat(ios): add German strings for the analytics page"
   - `chartBucket(days: number): 'day' | 'week'`
   - `heatIntensity(units: number, max: number): number`
   - `metricValue(row: BreakdownRow | AnalyticsTotals | AnalyticsDailyPoint, metric: AnalyticsMetric): number`
+  - `prevMetricValue(row: BreakdownRow, metric: AnalyticsMetric): number`
   - `sortRows(rows: BreakdownRow[], metric: AnalyticsMetric): BreakdownRow[]`
   - `resolveRange(preset: RangePreset, customFrom: string, customTo: string, now?: Date): { from: string; to: string }`
   - `bucketDaily(points: AnalyticsDailyPoint[], bucket: 'day' | 'week'): AnalyticsDailyPoint[]`
@@ -3140,6 +3141,7 @@ import {
   deltaPct,
   heatIntensity,
   metricValue,
+  prevMetricValue,
   resolveRange,
   sortRows,
 } from '../analytics'
@@ -3203,6 +3205,15 @@ describe('metricValue', () => {
     expect(metricValue(r, 'units')).toBe(3)
     expect(metricValue(r, 'revenue')).toBe(7)
     expect(metricValue(r, 'grossProfit')).toBe(2)
+  })
+})
+
+describe('prevMetricValue', () => {
+  it('reads the previous-period value of the selected metric', () => {
+    const r = row({ prev_units: 3, prev_revenue_gross: 7, prev_gross_profit: 2 })
+    expect(prevMetricValue(r, 'units')).toBe(3)
+    expect(prevMetricValue(r, 'revenue')).toBe(7)
+    expect(prevMetricValue(r, 'grossProfit')).toBe(2)
   })
 })
 
@@ -3381,6 +3392,13 @@ export function metricValue(source: MetricSource, metric: AnalyticsMetric): numb
   if (metric === 'units') return source.units
   if (metric === 'revenue') return source.revenue_gross
   return source.gross_profit
+}
+
+/** The same metric one period earlier — the basis for every delta shown. */
+export function prevMetricValue(row: BreakdownRow, metric: AnalyticsMetric): number {
+  if (metric === 'units') return row.prev_units
+  if (metric === 'revenue') return row.prev_revenue_gross
+  return row.prev_gross_profit
 }
 
 /**
@@ -4193,7 +4211,7 @@ git commit -m "feat(frontend): add analytics page with filters, KPIs and trend c
 
 ```vue
 <script setup lang="ts">
-import { deltaPct, metricValue, type BreakdownRow } from '~/lib/analytics'
+import { deltaPct, metricValue, prevMetricValue, type BreakdownRow } from '~/lib/analytics'
 
 const emit = defineEmits<{ select: [row: BreakdownRow] }>()
 
@@ -4239,6 +4257,13 @@ function onRowClick(row: BreakdownRow) {
   if (dimension.value !== 'product' || !row.key) return
   emit('select', row)
 }
+
+/** Per-row delta against the previous period, precomputed so the template
+ *  does not repeat the metric branch three times. */
+const rowDeltas = computed(() => new Map(sortedRows.value.map(row => [
+  row.key ?? row.label,
+  deltaPct(metricValue(row, metric.value), prevMetricValue(row, metric.value)),
+])))
 </script>
 
 <template>
@@ -4287,11 +4312,11 @@ function onRowClick(row: BreakdownRow) {
               {{ display(metricValue(row, metric)) }}
             </span>
             <span
-              v-if="deltaPct(metricValue(row, metric), metric === 'units' ? row.prev_units : metric === 'revenue' ? row.prev_revenue_gross : row.prev_gross_profit) !== null"
+              v-if="rowDeltas.get(row.key ?? row.label) !== null"
               class="block text-xs font-semibold"
-              :class="metricValue(row, metric) >= (metric === 'units' ? row.prev_units : metric === 'revenue' ? row.prev_revenue_gross : row.prev_gross_profit) ? 'text-green-600' : 'text-red-600'"
+              :class="(rowDeltas.get(row.key ?? row.label) ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'"
             >
-              {{ (deltaPct(metricValue(row, metric), metric === 'units' ? row.prev_units : metric === 'revenue' ? row.prev_revenue_gross : row.prev_gross_profit) ?? 0).toFixed(0) }} %
+              {{ (rowDeltas.get(row.key ?? row.label) ?? 0).toFixed(0) }} %
             </span>
           </span>
         </button>
@@ -4532,6 +4557,7 @@ const maxUnits = computed(() => Math.max(0, ...machineRows.value.map(r => r.unit
 
 const revenueDelta = computed(() =>
   props.row ? deltaPct(props.row.revenue_gross, props.row.prev_revenue_gross) : null)
+
 
 function machineSubtitle(machine: BreakdownRow) {
   const parts = [t('analytics.perDay', { value: machine.avg_daily_units.toFixed(1) })]
