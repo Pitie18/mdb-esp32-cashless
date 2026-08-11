@@ -2,15 +2,30 @@
  * Pure logic behind the printable machine posters (`/machines/[id]/print`).
  *
  * Everything here is side-effect free and unit-tested: contact inheritance,
- * phone normalisation, the public-origin guard and the QR *targets*. Actually
- * turning a target into an SVG happens in `useMachinePrint()`, because that
- * part is async and browser-bound.
+ * phone normalisation, the public-origin guard, and resolving a saved layout
+ * into the concrete QR targets and labels a motif renders. Turning a target
+ * into an SVG happens in `useMachinePrint()`, because that part is async and
+ * browser-bound.
+ *
+ * i18n arrives as an injected `t`, so this file stays free of Vue and of the
+ * locale state while still producing finished strings.
  */
 
 export type PrintFormat = 'a4' | 'a5' | 'a6' | 'sticker-sheet'
 
-/** Optional content blocks a motif may render, toggled by the operator. */
-export type PrintBlock = 'phone' | 'whatsapp' | 'problem' | 'imprint' | 'url'
+/**
+ * Non-QR content a motif may render. QR content is not a block — it is a slot
+ * with a source, so the same motif can point its code at whatever the operator
+ * wants.
+ */
+export type PrintBlock = 'phone' | 'imprint' | 'url'
+
+export const PRINT_BLOCKS: PrintBlock[] = ['phone', 'imprint', 'url']
+
+/** What a QR slot points at. */
+export type SlotSource = 'page' | 'tel' | 'whatsapp' | 'problem' | 'custom' | 'none'
+
+export const SLOT_SOURCES: SlotSource[] = ['page', 'tel', 'whatsapp', 'problem', 'custom', 'none']
 
 /** Fields a poster wants but could not fill — surfaced as a warning, never printed blank. */
 export type MissingField =
@@ -20,6 +35,7 @@ export type MissingField =
   | 'whatsappCountry'
   | 'email'
   | 'address'
+  | 'customUrl'
 
 export interface PosterCompany {
   id?: string
@@ -52,20 +68,42 @@ export interface PosterMachine {
   contact_email?: string | null
 }
 
-/** Encoded QR payloads. `null` means "this block is off or has no data". */
-export interface PrintSheetTargets {
-  page: string
-  tel: string | null
-  whatsapp: string | null
-  problem: string | null
+/** A motif's QR slot, declared in `printMotifs.ts`. */
+export interface SlotDeclaration {
+  id: string
+  labelKey: string
+  defaultSource: SlotSource
+  /** Whether the operator may empty this slot. */
+  optional: boolean
 }
 
-/** Rendered QR markup (SVG strings), same nullability as the targets. */
-export interface PrintSheetQr {
-  page: string
-  tel: string | null
-  whatsapp: string | null
-  problem: string | null
+export interface CustomLink {
+  url: string
+  title: string
+  hint: string
+}
+
+/** The saved, per-motif configuration. Every field is optional. */
+export interface PosterLayout {
+  slots?: Record<string, { source?: SlotSource }>
+  custom?: Partial<CustomLink>
+  /**
+   * Text overrides keyed by `title`, `lead`, or `slot.<id>.title` /
+   * `slot.<id>.hint`. Absent means "use the translated default".
+   */
+  texts?: Record<string, string>
+  blocks?: PrintBlock[]
+}
+
+export interface ResolvedSlot {
+  id: string
+  source: SlotSource
+  /** Encoded QR payload; null when the slot is empty or its data is missing. */
+  target: string | null
+  title: string
+  hint: string
+  /** Rendered SVG, filled in by `useMachinePrint()`. */
+  qr: string | null
 }
 
 /**
@@ -76,7 +114,7 @@ export interface PrintSheetQr {
 export interface PrintSheetBase {
   machineId: string
   machineName: string
-  /** Location hint under the machine name, e.g. the formatted address. */
+  /** Location hint under the machine name. */
   machineNote: string | null
   companyName: string
   addressLine: string | null
@@ -90,18 +128,15 @@ export interface PrintSheetBase {
   customText: string | null
   /** Absolute public URL of the machine page. */
   pageUrl: string
-  /**
-   * Whether to print `pageUrl` as readable text under the QR code. Some
-   * operators want the code alone; a long URL is the noisiest line on a sign.
-   */
+  /** Whether to print a readable URL under the QR code. */
   showUrl: boolean
-  targets: PrintSheetTargets
+  slots: Record<string, ResolvedSlot>
+  /** Overridden headline / subline; empty means "motif default". */
+  texts: { title?: string; lead?: string }
   missing: MissingField[]
 }
 
-export interface PrintSheet extends PrintSheetBase {
-  qr: PrintSheetQr
-}
+export type PrintSheet = PrintSheetBase
 
 /** Physical sheet size in millimetres, portrait. */
 export const FORMAT_MM: Record<PrintFormat, { w: number; h: number }> = {
@@ -211,7 +246,7 @@ const DIALLING_CODES: Record<string, string> = {
  * International digits without `+`, the format `wa.me/<number>` expects.
  *
  * A national number (leading `0`) needs the company's country to be resolvable;
- * without it we return `null` and the caller drops the WhatsApp block.
+ * without it we return `null` and the caller drops the WhatsApp slot.
  */
 export function toWaNumber(
   raw: string | null | undefined,
@@ -233,6 +268,23 @@ export function toWaNumber(
   }
   // Already international without a prefix (e.g. "4915112345678").
   return digits
+}
+
+/**
+ * Accepts an operator-typed link. A bare domain gets https:// so "vmflow.de"
+ * does not silently become a relative path in the QR.
+ */
+export function normalizeCustomUrl(raw: string | null | undefined): string | null {
+  const trimmed = raw?.trim()
+  if (!trimmed) return null
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`
+  try {
+    const url = new URL(withScheme)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+    return url.toString()
+  } catch {
+    return null
+  }
 }
 
 function joinAddress(parts: {
@@ -261,12 +313,27 @@ function compactDisplayName(raw: string | null | undefined): string | null {
   return segments.slice(0, 3).join(', ')
 }
 
+/** Translation function bound to the *sheet's* language. */
+export type PosterT = (key: string, named?: Record<string, unknown>) => string
+
+/** Default label and hint per source, used until the operator overrides them. */
+const SOURCE_TEXT: Record<Exclude<SlotSource, 'none' | 'custom'>, { title: string; hint: string }> = {
+  page: { title: 'print.poster.pageTitle', hint: 'print.poster.pageHint' },
+  tel: { title: 'print.poster.callDirect', hint: 'print.poster.callHint' },
+  whatsapp: { title: 'print.poster.whatsappTitle', hint: 'print.poster.whatsappHint' },
+  problem: { title: 'print.poster.problemQrTitle', hint: 'print.poster.problemQrHint' },
+}
+
 export interface BuildPrintSheetInput {
   machine: PosterMachine
   company: PosterCompany
   /** Absolute origin the printed QR codes point at, no trailing slash. */
   publicOrigin: string
-  blocks: PrintBlock[]
+  /** The motif's slots, in render order. */
+  slotDeclarations: SlotDeclaration[]
+  /** Saved (or in-progress) configuration for this motif. */
+  layout: PosterLayout
+  t: PosterT
   /**
    * Prefilled WhatsApp message. `%machine%` is replaced with the machine name —
    * deliberately not `{machine}`, which vue-i18n would consume as its own
@@ -279,16 +346,16 @@ export interface BuildPrintSheetInput {
 }
 
 /**
- * Resolves company + machine into everything a motif needs, and records which
- * requested fields could not be filled.
+ * Resolves company + machine + saved layout into everything a motif needs, and
+ * records which requested fields could not be filled.
  */
 export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase {
-  const { machine, company, blocks, publicOrigin } = input
+  const { machine, company, publicOrigin, layout, t } = input
   const origin = publicOrigin.replace(/\/+$/, '')
   const missing: MissingField[] = []
+  const blocks = layout.blocks ?? []
 
-  const companyName =
-    company.legal_name?.trim() || company.name?.trim() || ''
+  const companyName = company.legal_name?.trim() || company.name?.trim() || ''
   if (!companyName) missing.push('companyName')
 
   const phone = inherit(machine.contact_phone, company.contact_phone)
@@ -315,26 +382,19 @@ export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase
       city: machine.address_city,
     }) || compactDisplayName(machine.formatted_address)
 
+  const machineName = machine.name?.trim() || input.fallbackMachineName
+  const pageUrl = `${origin}/m/${machine.id}`
+
   const wantsPhone = blocks.includes('phone')
-  const wantsWhatsapp = blocks.includes('whatsapp')
-  const wantsProblem = blocks.includes('problem')
   const wantsImprint = blocks.includes('imprint')
 
   if (wantsPhone && !phone) missing.push('phone')
   if (wantsImprint && !email) missing.push('email')
   if (wantsImprint && !companyAddress) missing.push('address')
 
-  // The imprint switch has to actually gate the imprint. Motifs branch on
-  // these being null, so nulling them here is what makes the toggle real.
-  const addressLine = wantsImprint ? companyAddress : null
-
-  const telNumber = wantsPhone ? normalizePhone(phone) : null
-  const waNumber = wantsWhatsapp ? toWaNumber(whatsappRaw, company.country_code) : null
-  if (wantsWhatsapp && !whatsappRaw) missing.push('whatsapp')
-  if (wantsWhatsapp && whatsappRaw && !waNumber) missing.push('whatsappCountry')
-
-  const machineName = machine.name?.trim() || input.fallbackMachineName
-  const pageUrl = `${origin}/m/${machine.id}`
+  const telTarget = normalizePhone(phone)
+  const waNumber = toWaNumber(whatsappRaw, company.country_code)
+  const customUrl = normalizeCustomUrl(layout.custom?.url)
 
   let whatsappTarget: string | null = null
   if (waNumber) {
@@ -344,6 +404,48 @@ export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase
       ? `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`
       : `https://wa.me/${waNumber}`
   }
+
+  const slots: Record<string, ResolvedSlot> = {}
+  for (const declaration of input.slotDeclarations) {
+    const source = layout.slots?.[declaration.id]?.source ?? declaration.defaultSource
+
+    let target: string | null = null
+    switch (source) {
+      case 'page': target = pageUrl; break
+      case 'tel': target = telTarget ? `tel:${telTarget}` : null; break
+      case 'whatsapp': target = whatsappTarget; break
+      case 'problem': target = `${pageUrl}?feedback=problem`; break
+      case 'custom': target = customUrl; break
+      case 'none': target = null; break
+    }
+
+    // A slot pointing at data that is not configured is a hole in the sign,
+    // so it is reported rather than printed as an empty frame.
+    if (source === 'tel' && !telTarget) missing.push('phone')
+    if (source === 'whatsapp' && !whatsappRaw) missing.push('whatsapp')
+    if (source === 'whatsapp' && whatsappRaw && !waNumber) missing.push('whatsappCountry')
+    if (source === 'custom' && !customUrl) missing.push('customUrl')
+
+    const override = layout.texts ?? {}
+    const defaults =
+      source === 'custom' || source === 'none'
+        ? { title: layout.custom?.title?.trim() || t('print.poster.customTitle'),
+            hint: layout.custom?.hint?.trim() || t('print.poster.customHint') }
+        : { title: t(SOURCE_TEXT[source].title), hint: t(SOURCE_TEXT[source].hint) }
+
+    slots[declaration.id] = {
+      id: declaration.id,
+      source,
+      target,
+      title: override[`slot.${declaration.id}.title`]?.trim() || defaults.title,
+      hint: override[`slot.${declaration.id}.hint`]?.trim() || defaults.hint,
+      qr: null,
+    }
+  }
+
+  // The imprint switch has to actually gate the imprint. Motifs branch on
+  // these being null, so nulling them here is what makes the toggle real.
+  const addressLine = wantsImprint ? companyAddress : null
 
   return {
     machineId: machine.id,
@@ -360,13 +462,12 @@ export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase
     customText: input.customText?.trim() || null,
     pageUrl,
     showUrl: blocks.includes('url'),
-    targets: {
-      page: pageUrl,
-      tel: telNumber ? `tel:${telNumber}` : null,
-      whatsapp: whatsappTarget,
-      problem: wantsProblem ? `${pageUrl}?feedback=problem` : null,
+    slots,
+    texts: {
+      title: layout.texts?.title?.trim() || undefined,
+      lead: layout.texts?.lead?.trim() || undefined,
     },
-    missing,
+    missing: [...new Set(missing)],
   }
 }
 
@@ -381,20 +482,18 @@ export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase
  * Deliberately excluded:
  * - `customText`, which is per-print and not persisted, so including it would
  *   flag every poster whose one-off note happened to differ.
- * - the logo, which is cosmetic: a new logo does not make a sign *wrong*.
- *   (A logo replaced at the same storage path is invisible here either way.)
+ * - the logo and every headline/label, which are cosmetic: a reworded headline
+ *   does not make a sign *wrong*.
  * - `machineNote`, because a re-geocoded address can shift by a word without
  *   anything on the sign becoming incorrect.
  *
- * Blocks that were switched off contribute `null`, so turning a block on later
- * counts as a change while leaving it off never raises a false alarm.
- *
- * The WhatsApp target contributes only a marker, not the full `wa.me` URL: the
- * URL carries a prefilled message in the sheet's language, and reprinting the
- * same sign in French must not read as the contact data having changed.
+ * Slots contribute their source and target, so repointing a QR counts as a
+ * change. The WhatsApp target is reduced to its number: the full `wa.me` URL
+ * carries a prefilled message in the sheet's language, and reprinting the same
+ * sign in French must not read as the contact data having changed.
  */
 export function posterFingerprint(base: PrintSheetBase): string {
-  const parts = [
+  const parts: (string | null)[] = [
     base.machineName,
     base.companyName,
     base.addressLine,
@@ -403,12 +502,12 @@ export function posterFingerprint(base: PrintSheetBase): string {
     base.phone,
     base.whatsapp,
     base.hours,
-    base.targets.page,
-    base.targets.tel,
-    base.targets.whatsapp ? 'wa' : null,
-    base.targets.problem,
   ]
-  return fnv1a(parts.map(p => p ?? ' ').join(''))
+  for (const slot of Object.values(base.slots).sort((a, b) => a.id.localeCompare(b.id))) {
+    parts.push(slot.id, slot.source)
+    parts.push(slot.source === 'whatsapp' ? (base.whatsapp ?? null) : slot.target)
+  }
+  return fnv1a(parts.map(p => p ?? ' ').join(' '))
 }
 
 /**
@@ -423,6 +522,16 @@ function fnv1a(input: string): string {
     hash = Math.imul(hash, 0x01000193) >>> 0
   }
   return hash.toString(16).padStart(8, '0')
+}
+
+/**
+ * The target as something worth printing as readable text. `tel:` and other
+ * schemes are noise on a sign — nobody types a tel: URI — so only web links
+ * come back.
+ */
+export function readableUrl(target: string | null | undefined): string | null {
+  if (!target) return null
+  return /^https?:\/\//i.test(target) ? target : null
 }
 
 /**

@@ -1,6 +1,6 @@
 import { computed, ref, useI18n, useRuntimeConfig, useSupabaseClient } from '#imports'
 import { buildPrintSheetBase, posterFingerprint } from '@/lib/printSheet'
-import type { PosterCompany, PosterMachine, PrintBlock } from '@/lib/printSheet'
+import type { PosterCompany, PosterLayout, PosterMachine, SlotDeclaration } from '@/lib/printSheet'
 import { useOrganization } from '@/composables/useOrganization'
 
 const COMPANY_COLUMNS =
@@ -28,7 +28,8 @@ interface PrintedRow {
   entity_id: string | null
   created_at: string
   metadata: {
-    blocks?: PrintBlock[]
+    layout?: PosterLayout
+    slot_declarations?: SlotDeclaration[]
     sheet_language?: string
     contact_fingerprint?: string
   } | null
@@ -101,21 +102,29 @@ export function usePosterFreshness() {
       for (const machine of machines) {
         const row = latest.get(machine.id)
         const stored = row?.metadata?.contact_fingerprint
-        if (!row || !stored) {
+        const layout = row?.metadata?.layout
+        const declarations = row?.metadata?.slot_declarations
+        // Without a stored layout there is nothing to compare like against
+        // like, so we claim nothing rather than guessing "outdated".
+        if (!row || !stored || !layout || !declarations) {
           next[machine.id] = { state: 'never', printedAt: row?.created_at ?? null }
           continue
         }
         const language = row.metadata?.sheet_language
+        const sheetT = (key: string) =>
+          language
+            ? (t as unknown as (k: string, n: Record<string, unknown>, o: { locale: string }) => string)(
+                key, {}, { locale: language },
+              )
+            : t(key)
         const base = buildPrintSheetBase({
           machine,
           company,
           publicOrigin,
-          blocks: row.metadata?.blocks ?? [],
-          fallbackMachineName: language
-            ? (t as unknown as (k: string, n: Record<string, unknown>, o: { locale: string }) => string)(
-                'print.fallbackMachineName', {}, { locale: language },
-              )
-            : t('print.fallbackMachineName'),
+          slotDeclarations: declarations,
+          layout,
+          t: sheetT,
+          fallbackMachineName: sheetT('print.fallbackMachineName'),
         })
         next[machine.id] = {
           state: posterFingerprint(base) === stored ? 'current' : 'outdated',

@@ -1,24 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import QrBlock from './QrBlock.vue'
-import type { PrintSheet } from '@/lib/printSheet'
-import type { PosterT } from '@/lib/printMotifs'
+import type { PosterT, PrintSheet } from '@/lib/printSheet'
 
 const props = defineProps<{ sheet: PrintSheet; t: PosterT }>()
 
-/**
- * The problem QR is the point of this label. If the operator switched that
- * block off we still print a usable sticker by falling back to the machine
- * page, which carries the same feedback form one tap further in.
- */
-const svg = computed(() => props.sheet.qr.problem ?? props.sheet.qr.page)
+const main = computed(() => props.sheet.slots.main)
 </script>
 
 <template>
   <div class="sticker">
-    <QrBlock class="qr" :svg="svg" />
+    <QrBlock v-if="main?.qr" class="qr" :svg="main.qr" />
     <div class="text">
-      <div class="title">{{ t('print.sticker.problemTitle') }}</div>
+      <div class="title">{{ sheet.texts.title || t('print.sticker.problemTitle') }}</div>
       <div class="sub">{{ t('print.sticker.problemHint') }}</div>
       <div v-if="sheet.phone" class="phone">{{ sheet.phone }}</div>
       <div class="machine">{{ sheet.machineName }}</div>

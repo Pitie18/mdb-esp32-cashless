@@ -1,20 +1,26 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import QrBlock from './QrBlock.vue'
-import type { PrintSheet } from '@/lib/printSheet'
-import type { PosterT } from '@/lib/printMotifs'
+import { readableUrl } from '@/lib/printSheet'
+import type { PosterT, PrintSheet } from '@/lib/printSheet'
 
-defineProps<{ sheet: PrintSheet; t: PosterT }>()
+const props = defineProps<{ sheet: PrintSheet; t: PosterT }>()
+
+const main = computed(() => props.sheet.slots.main)
+const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target) : null))
 </script>
 
 <template>
   <div class="motif">
     <img v-if="sheet.logoUrl" :src="sheet.logoUrl" class="logo" alt="">
-    <div class="title">{{ t('print.poster.everythingTitle') }}</div>
-    <div class="lead">{{ t('print.poster.everythingLead') }}</div>
+    <div class="title">{{ sheet.texts.title || t('print.poster.everythingTitle') }}</div>
+    <div class="lead">{{ sheet.texts.lead || t('print.poster.everythingLead') }}</div>
 
-    <QrBlock class="qr" :svg="sheet.qr.page" />
-    <div class="scan">{{ t('print.poster.scanHint') }}</div>
-    <div v-if="sheet.showUrl" class="url">{{ sheet.pageUrl }}</div>
+    <template v-if="main?.qr">
+      <QrBlock class="qr" :svg="main.qr" />
+      <div class="scan">{{ main.hint }}</div>
+      <div v-if="url" class="url">{{ url }}</div>
+    </template>
 
     <div v-if="sheet.customText" class="custom">{{ sheet.customText }}</div>
 

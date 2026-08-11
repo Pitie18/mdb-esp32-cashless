@@ -1867,8 +1867,6 @@
     },
     "blockNames": {
       "phone": "Numéro de téléphone",
-      "whatsapp": "QR WhatsApp",
-      "problem": "QR signalement",
       "imprint": "Mentions légales",
       "url": "Lien sous le QR code"
     },
@@ -1878,7 +1876,8 @@
       "whatsapp": "Numéro WhatsApp",
       "whatsappCountry": "Pays du numéro WhatsApp",
       "email": "E-mail de contact",
-      "address": "Adresse postale"
+      "address": "Adresse postale",
+      "customUrl": "Lien personnalisé"
     },
     "motifShort": {
       "klar": "Sobre",
@@ -1934,13 +1933,58 @@
       "helpYouLead": "Distributeur bloqué ? Argent perdu ? Dites-le-nous.",
       "pageShort": "Assortiment",
       "locationLabel": "Emplacement :",
-      "operatorLabel": "Exploitant :"
+      "operatorLabel": "Exploitant :",
+      "callHint": "Scannez le code pour appeler",
+      "customTitle": "En savoir plus",
+      "customHint": "Scannez le code"
     },
     "sticker": {
       "problemTitle": "Signaler une panne",
       "problemHint": "Scannez ou appelez",
       "menuTitle": "Voir l'assortiment",
       "menuHint": "Prix, disponibilité et paiement"
+    },
+    "qrCodes": "QR codes",
+    "headlines": "Titres",
+    "customLink": "Lien personnalisé",
+    "customLinkPlaceholder": "https://…",
+    "customLinkHint": "Cible des emplacements réglés sur « Lien personnalisé ». https:// est ajouté si vous l'omettez.",
+    "resetText": "Rétablir la valeur par défaut",
+    "resetAll": "Tout réinitialiser",
+    "save": "Enregistrer",
+    "saved": "Enregistré",
+    "saveSection": "Enregistrer la configuration",
+    "sourceUnavailable": "non renseigné",
+    "customTextHint": "Ne vaut que pour cette impression et n'est pas enregistré.",
+    "sources": {
+      "page": "Page du distributeur",
+      "tel": "Appel",
+      "whatsapp": "WhatsApp",
+      "problem": "Signaler une panne",
+      "custom": "Lien personnalisé",
+      "none": "Laisser vide"
+    },
+    "slots": {
+      "main": "QR code",
+      "tile1": "Tuile 1",
+      "tile2": "Tuile 2",
+      "tile3": "Tuile 3",
+      "call": "Zone d'appel"
+    },
+    "texts": {
+      "title": "Titre",
+      "lead": "Sous-titre",
+      "slotTitle": "Intitulé",
+      "slotHint": "Indication"
+    },
+    "saveScope": {
+      "company": "Pour tous les distributeurs",
+      "machine": "Ce distributeur uniquement"
+    },
+    "saveState": {
+      "none": "Rien enregistré — les valeurs par défaut s'appliquent.",
+      "company": "Une configuration d'entreprise enregistrée est active.",
+      "machine": "Ce distributeur a sa propre configuration enregistrée."
     }
   }
 }

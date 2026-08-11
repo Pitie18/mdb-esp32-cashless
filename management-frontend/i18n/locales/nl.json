@@ -1867,8 +1867,6 @@
     },
     "blockNames": {
       "phone": "Telefoonnummer",
-      "whatsapp": "WhatsApp-QR",
-      "problem": "Storings-QR",
       "imprint": "Colofon-voettekst",
       "url": "Link onder de QR-code"
     },
@@ -1878,7 +1876,8 @@
       "whatsapp": "WhatsApp-nummer",
       "whatsappCountry": "Land voor het WhatsApp-nummer",
       "email": "Contact-e-mail",
-      "address": "Postadres"
+      "address": "Postadres",
+      "customUrl": "Eigen link"
     },
     "motifShort": {
       "klar": "Helder",
@@ -1934,13 +1933,58 @@
       "helpYouLead": "Automaat hapert? Geld weg? Laat het ons weten.",
       "pageShort": "Assortiment",
       "locationLabel": "Locatie:",
-      "operatorLabel": "Exploitant:"
+      "operatorLabel": "Exploitant:",
+      "callHint": "Scan de code om te bellen",
+      "customTitle": "Meer weten",
+      "customHint": "Scan de code"
     },
     "sticker": {
       "problemTitle": "Storing melden",
       "problemHint": "Scan of bel",
       "menuTitle": "Bekijk het assortiment",
       "menuHint": "Prijzen, beschikbaarheid en betaling"
+    },
+    "qrCodes": "QR-codes",
+    "headlines": "Koppen",
+    "customLink": "Eigen link",
+    "customLinkPlaceholder": "https://…",
+    "customLinkHint": "Doel voor slots die op “Eigen link” staan. https:// wordt aangevuld als je het weglaat.",
+    "resetText": "Terug naar standaard",
+    "resetAll": "Alles resetten",
+    "save": "Opslaan",
+    "saved": "Opgeslagen",
+    "saveSection": "Configuratie opslaan",
+    "sourceUnavailable": "niet ingesteld",
+    "customTextHint": "Geldt alleen voor deze afdruk en wordt niet opgeslagen.",
+    "sources": {
+      "page": "Automaatpagina",
+      "tel": "Bellen",
+      "whatsapp": "WhatsApp",
+      "problem": "Storing melden",
+      "custom": "Eigen link",
+      "none": "Leeg laten"
+    },
+    "slots": {
+      "main": "QR-code",
+      "tile1": "Tegel 1",
+      "tile2": "Tegel 2",
+      "tile3": "Tegel 3",
+      "call": "Belvak"
+    },
+    "texts": {
+      "title": "Kop",
+      "lead": "Subkop",
+      "slotTitle": "Titel",
+      "slotHint": "Toelichting"
+    },
+    "saveScope": {
+      "company": "Voor alle automaten",
+      "machine": "Alleen deze automaat"
+    },
+    "saveState": {
+      "none": "Nog niets opgeslagen — standaardwaarden gelden.",
+      "company": "Een opgeslagen bedrijfsconfiguratie is actief.",
+      "machine": "Deze automaat heeft een eigen opgeslagen configuratie."
     }
   }
 }

@@ -2064,8 +2064,6 @@
     },
     "blockNames": {
       "phone": "Phone number",
-      "whatsapp": "WhatsApp QR",
-      "problem": "Fault-report QR",
       "imprint": "Imprint footer",
       "url": "Link under the QR code"
     },
@@ -2075,7 +2073,8 @@
       "whatsapp": "WhatsApp number",
       "whatsappCountry": "Country for the WhatsApp number",
       "email": "Contact email",
-      "address": "Postal address"
+      "address": "Postal address",
+      "customUrl": "Own link"
     },
     "motifShort": {
       "klar": "Plain",
@@ -2131,13 +2130,58 @@
       "helpYouLead": "Machine stuck? Money gone? Just let us know.",
       "pageShort": "What's inside",
       "locationLabel": "Location:",
-      "operatorLabel": "Operator:"
+      "operatorLabel": "Operator:",
+      "callHint": "Scan the code to call",
+      "customTitle": "Find out more",
+      "customHint": "Scan the code"
     },
     "sticker": {
       "problemTitle": "Report a fault",
       "problemHint": "Scan or call",
       "menuTitle": "See what's inside",
       "menuHint": "Prices, availability and payment"
+    },
+    "qrCodes": "QR codes",
+    "headlines": "Headlines",
+    "customLink": "Own link",
+    "customLinkPlaceholder": "https://…",
+    "customLinkHint": "Target for slots set to \"Own link\". https:// is added if you leave it out.",
+    "resetText": "Reset to default",
+    "resetAll": "Reset everything",
+    "save": "Save",
+    "saved": "Saved",
+    "saveSection": "Save configuration",
+    "sourceUnavailable": "not configured",
+    "customTextHint": "Applies to this print only and is not saved.",
+    "sources": {
+      "page": "Machine page",
+      "tel": "Phone call",
+      "whatsapp": "WhatsApp",
+      "problem": "Report a fault",
+      "custom": "Own link",
+      "none": "Leave empty"
+    },
+    "slots": {
+      "main": "QR code",
+      "tile1": "Tile 1",
+      "tile2": "Tile 2",
+      "tile3": "Tile 3",
+      "call": "Call panel"
+    },
+    "texts": {
+      "title": "Headline",
+      "lead": "Subline",
+      "slotTitle": "Title",
+      "slotHint": "Hint"
+    },
+    "saveScope": {
+      "company": "For all machines",
+      "machine": "This machine only"
+    },
+    "saveState": {
+      "none": "Nothing saved yet — defaults apply.",
+      "company": "A saved company configuration is in use.",
+      "machine": "This machine has its own saved configuration."
     }
   }
 }

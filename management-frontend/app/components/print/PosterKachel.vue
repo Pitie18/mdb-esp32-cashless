@@ -1,43 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import QrBlock from './QrBlock.vue'
-import type { PrintSheet } from '@/lib/printSheet'
-import type { PosterT } from '@/lib/printMotifs'
+import type { PosterT, PrintSheet } from '@/lib/printSheet'
 
 const props = defineProps<{ sheet: PrintSheet; t: PosterT }>()
 
 /**
- * Only tiles with an actual target are rendered — an unlabelled or empty tile
- * on a poster is worse than one tile fewer.
+ * Only slots that resolved to an actual code are rendered — an empty tile on a
+ * poster is worse than one tile fewer.
  */
-const tiles = computed(() => {
-  const out: { key: string; svg: string; title: string; sub: string }[] = []
-  out.push({
-    key: 'page',
-    svg: props.sheet.qr.page,
-    // Short title: at three tiles the full "products · prices · payment"
-    // wraps to four lines and pushes the imprint off the sheet.
-    title: props.t('print.poster.pageShort'),
-    sub: props.t('print.poster.pageHint'),
-  })
-  if (props.sheet.qr.whatsapp) {
-    out.push({
-      key: 'whatsapp',
-      svg: props.sheet.qr.whatsapp,
-      title: props.t('print.poster.whatsappTitle'),
-      sub: props.t('print.poster.whatsappHint'),
-    })
-  }
-  if (props.sheet.qr.problem) {
-    out.push({
-      key: 'problem',
-      svg: props.sheet.qr.problem,
-      title: props.t('print.poster.problemQrTitle'),
-      sub: props.t('print.poster.problemQrHint'),
-    })
-  }
-  return out
-})
+const tiles = computed(() =>
+  ['tile1', 'tile2', 'tile3']
+    .map(id => props.sheet.slots[id])
+    .filter((slot): slot is NonNullable<typeof slot> => Boolean(slot?.qr)),
+)
+
+const call = computed(() => props.sheet.slots.call)
+const showCall = computed(() => Boolean(props.sheet.phone || call.value?.qr))
 </script>
 
 <template>
@@ -45,7 +24,7 @@ const tiles = computed(() => {
     <div class="head">
       <img v-if="sheet.logoUrl" :src="sheet.logoUrl" class="logo" alt="">
       <div>
-        <div class="head-title">{{ t('print.poster.helpTitle') }}</div>
+        <div class="head-title">{{ sheet.texts.title || t('print.poster.helpTitle') }}</div>
         <div class="head-sub">
           {{ sheet.machineName }}<template v-if="sheet.machineNote"> · {{ sheet.machineNote }}</template>
         </div>
@@ -54,18 +33,21 @@ const tiles = computed(() => {
 
     <div class="body">
       <div class="tiles" :class="`tiles-${tiles.length}`">
-        <div v-for="tile in tiles" :key="tile.key" class="tile">
-          <QrBlock class="qr" :svg="tile.svg" />
+        <div v-for="tile in tiles" :key="tile.id" class="tile">
+          <QrBlock class="qr" :svg="tile.qr!" />
           <div class="tile-title">{{ tile.title }}</div>
-          <div v-if="tiles.length < 3" class="tile-sub">{{ tile.sub }}</div>
+          <!-- At three tiles the hint wraps to four lines and pushes the
+               imprint off the sheet, so it only appears when there is room. -->
+          <div v-if="tiles.length < 3" class="tile-sub">{{ tile.hint }}</div>
         </div>
       </div>
 
-      <div v-if="sheet.phone" class="call">
-        <QrBlock v-if="sheet.qr.tel" class="qr-call" :svg="sheet.qr.tel" />
+      <div v-if="showCall" class="call">
+        <QrBlock v-if="call?.qr" class="qr-call" :svg="call.qr" />
         <div>
-          <div class="call-label">{{ t('print.poster.callDirect') }}</div>
-          <div class="call-phone">{{ sheet.phone }}</div>
+          <div class="call-label">{{ call?.title || t('print.poster.callDirect') }}</div>
+          <div v-if="sheet.phone" class="call-phone">{{ sheet.phone }}</div>
+          <div v-else class="call-hint">{{ call?.hint }}</div>
           <div v-if="sheet.hours" class="call-hours">{{ sheet.hours }}</div>
         </div>
       </div>
@@ -119,6 +101,7 @@ const tiles = computed(() => {
   min-height: 0;
 }
 .tiles { display: grid; gap: 1em; }
+.tiles-0 { display: none; }
 .tiles-1 { grid-template-columns: 1fr; justify-items: center; }
 .tiles-2 { grid-template-columns: 1fr 1fr; }
 .tiles-3 { grid-template-columns: 1fr 1fr 1fr; }
@@ -143,6 +126,7 @@ const tiles = computed(() => {
 .qr-call { width: max(30mm, 9em); height: max(30mm, 9em); flex: none; }
 .call-label { font-size: 1.86em; color: #78716c; }
 .call-phone { font-size: 2.88em; font-weight: 600; margin-top: 0.1em; }
+.call-hint { font-size: 1.86em; margin-top: 0.1em; }
 .call-hours { font-size: 1.6em; color: #57534e; margin-top: 0.3em; }
 .custom {
   font-size: 1.86em;

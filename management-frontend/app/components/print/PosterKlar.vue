@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import QrBlock from './QrBlock.vue'
-import type { PrintSheet } from '@/lib/printSheet'
-import type { PosterT } from '@/lib/printMotifs'
+import { readableUrl } from '@/lib/printSheet'
+import type { PosterT, PrintSheet } from '@/lib/printSheet'
 
-defineProps<{ sheet: PrintSheet; t: PosterT }>()
+const props = defineProps<{ sheet: PrintSheet; t: PosterT }>()
+
+const main = computed(() => props.sheet.slots.main)
+const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target) : null))
 </script>
 
 <template>
@@ -14,8 +18,8 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
     </div>
     <div class="rule" />
 
-    <div class="title">{{ t('print.poster.problemTitle') }}</div>
-    <div class="lead">{{ t('print.poster.problemLead') }}</div>
+    <div class="title">{{ sheet.texts.title || t('print.poster.problemTitle') }}</div>
+    <div class="lead">{{ sheet.texts.lead || t('print.poster.problemLead') }}</div>
 
     <template v-if="sheet.phone">
       <div class="label">{{ t('print.poster.supportPhone') }}</div>
@@ -27,12 +31,12 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
 
     <div class="spacer" />
 
-    <div class="foot">
-      <QrBlock class="qr" :svg="sheet.qr.page" />
+    <div v-if="main?.qr" class="foot">
+      <QrBlock class="qr" :svg="main.qr" />
       <div class="foot-text">
-        <div class="foot-title">{{ t('print.poster.pageTitle') }}</div>
-        <div class="foot-sub">{{ t('print.poster.pageHint') }}</div>
-        <div v-if="sheet.showUrl" class="url">{{ sheet.pageUrl }}</div>
+        <div class="foot-title">{{ main.title }}</div>
+        <div class="foot-sub">{{ main.hint }}</div>
+        <div v-if="url" class="url">{{ url }}</div>
       </div>
     </div>
 

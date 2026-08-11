@@ -2064,8 +2064,6 @@
     },
     "blockNames": {
       "phone": "Telefonnummer",
-      "whatsapp": "WhatsApp-QR",
-      "problem": "Störungs-QR",
       "imprint": "Impressum-Fußzeile",
       "url": "Link unter dem QR-Code"
     },
@@ -2075,7 +2073,8 @@
       "whatsapp": "WhatsApp-Nummer",
       "whatsappCountry": "Land für die WhatsApp-Nummer",
       "email": "Kontakt-E-Mail",
-      "address": "Anschrift"
+      "address": "Anschrift",
+      "customUrl": "Eigener Link"
     },
     "motifShort": {
       "klar": "Klar",
@@ -2131,13 +2130,58 @@
       "helpYouLead": "Automat läuft nicht? Geld weg? Melde dich kurz.",
       "pageShort": "Sortiment",
       "locationLabel": "Standort:",
-      "operatorLabel": "Betreiber:"
+      "operatorLabel": "Betreiber:",
+      "callHint": "Code scannen und anrufen",
+      "customTitle": "Mehr erfahren",
+      "customHint": "Code scannen"
     },
     "sticker": {
       "problemTitle": "Störung melden",
       "problemHint": "Scannen oder anrufen",
       "menuTitle": "Sortiment ansehen",
       "menuHint": "Preise, Verfügbarkeit und Zahlung"
+    },
+    "qrCodes": "QR-Codes",
+    "headlines": "Überschriften",
+    "customLink": "Eigener Link",
+    "customLinkPlaceholder": "https://…",
+    "customLinkHint": "Ziel für Slots, die auf „Eigener Link“ stehen. Ohne https:// wird es ergänzt.",
+    "resetText": "Auf Standard zurücksetzen",
+    "resetAll": "Alles zurücksetzen",
+    "save": "Speichern",
+    "saved": "Gespeichert",
+    "saveSection": "Konfiguration speichern",
+    "sourceUnavailable": "nicht hinterlegt",
+    "customTextHint": "Gilt nur für diesen Druck und wird nicht gespeichert.",
+    "sources": {
+      "page": "Automatenseite",
+      "tel": "Anruf",
+      "whatsapp": "WhatsApp",
+      "problem": "Störung melden",
+      "custom": "Eigener Link",
+      "none": "Leer lassen"
+    },
+    "slots": {
+      "main": "QR-Code",
+      "tile1": "Kachel 1",
+      "tile2": "Kachel 2",
+      "tile3": "Kachel 3",
+      "call": "Anruf-Feld"
+    },
+    "texts": {
+      "title": "Überschrift",
+      "lead": "Unterzeile",
+      "slotTitle": "Titel",
+      "slotHint": "Hinweis"
+    },
+    "saveScope": {
+      "company": "Für alle Automaten",
+      "machine": "Nur dieser Automat"
+    },
+    "saveState": {
+      "none": "Noch nichts gespeichert — es gelten die Standardwerte.",
+      "company": "Gespeicherte Firmen-Konfiguration ist aktiv.",
+      "machine": "Dieser Automat hat eine eigene gespeicherte Konfiguration."
     }
   }
 }
