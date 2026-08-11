@@ -2082,7 +2082,10 @@
       "qr-first": "QR zuerst",
       "dunkel": "Dunkel",
       "sticker-problem": "Aufkleber Störung",
-      "sticker-menu": "Aufkleber Sortiment"
+      "sticker-menu": "Aufkleber Sortiment",
+      "duo": "Zweigeteilt",
+      "signal": "Signal",
+      "klassisch": "Klassisch"
     },
     "motifs": {
       "klar": {
@@ -2108,6 +2111,18 @@
       "stickerMenu": {
         "label": "Aufkleber: Sortiment",
         "description": "90 × 50 mm mit QR auf die Automatenseite."
+      },
+      "duo": {
+        "label": "Zweigeteilt",
+        "description": "Oben groß das Sortiment, unten ein schmaler Störungs-Streifen. Hilfe ist da, drängt sich aber nicht auf."
+      },
+      "signal": {
+        "label": "Signal",
+        "description": "Vollflächig farbig, Telefonnummer riesig. Fällt im Gang auf — kostet aber ordentlich Tinte."
+      },
+      "klassisch": {
+        "label": "Klassisch",
+        "description": "Serifen, doppelter Rahmen, zurückhaltend. Für Praxen, Hotels und Büros, die kein buntes Plakat dulden."
       }
     },
     "poster": {
@@ -2135,7 +2150,9 @@
       "customHint": "Code scannen",
       "pageHintShort": "Preise und Verfügbarkeit",
       "callShort": "Anruf",
-      "callHintShort": "Scannen oder anrufen"
+      "callHintShort": "Scannen oder anrufen",
+      "discoverTitle": "Mehr über diesen Automaten und nichts mehr verpassen",
+      "discoverLead": "Sortiment und Preise ansehen, online zahlen und bei neuen Produkten benachrichtigt werden."
     },
     "sticker": {
       "problemTitle": "Störung melden",
@@ -2166,7 +2183,9 @@
       "tile1": "Kachel 1",
       "tile2": "Kachel 2",
       "tile3": "Kachel 3",
-      "call": "Anruf-Feld"
+      "call": "Anruf-Feld",
+      "top": "Großer QR oben",
+      "bottom": "Störungs-Streifen unten"
     },
     "texts": {
       "title": "Überschrift",

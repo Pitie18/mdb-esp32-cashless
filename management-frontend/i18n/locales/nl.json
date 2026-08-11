@@ -1885,7 +1885,10 @@
       "qr-first": "QR eerst",
       "dunkel": "Donker",
       "sticker-problem": "Sticker storing",
-      "sticker-menu": "Sticker assortiment"
+      "sticker-menu": "Sticker assortiment",
+      "duo": "Tweedelig",
+      "signal": "Signaal",
+      "klassisch": "Klassiek"
     },
     "motifs": {
       "klar": {
@@ -1911,6 +1914,18 @@
       "stickerMenu": {
         "label": "Sticker: assortiment",
         "description": "90 × 50 mm met een QR naar de automaatpagina."
+      },
+      "duo": {
+        "label": "Tweedelig",
+        "description": "Bovenaan groot het assortiment, onderaan een smalle storingsstrook. Hulp is er, zonder te suggereren dat de automaat vaak hapert."
+      },
+      "signal": {
+        "label": "Signaal",
+        "description": "Paginavullende kleur, telefoonnummer enorm. Valt van ver op — en kost veel inkt."
+      },
+      "klassisch": {
+        "label": "Klassiek",
+        "description": "Schreefletter, dubbele rand, ingetogen. Voor praktijken, hotels en kantoren die geen kleurig affiche ophangen."
       }
     },
     "poster": {
@@ -1938,7 +1953,9 @@
       "customHint": "Scan de code",
       "pageHintShort": "Prijzen en beschikbaarheid",
       "callShort": "Bellen",
-      "callHintShort": "Scan of bel"
+      "callHintShort": "Scan of bel",
+      "discoverTitle": "Meer over deze automaat — en niets meer missen",
+      "discoverLead": "Bekijk assortiment en prijzen, betaal online en krijg bericht bij nieuwe producten."
     },
     "sticker": {
       "problemTitle": "Storing melden",
@@ -1969,7 +1986,9 @@
       "tile1": "Tegel 1",
       "tile2": "Tegel 2",
       "tile3": "Tegel 3",
-      "call": "Belvak"
+      "call": "Belvak",
+      "top": "Grote QR bovenaan",
+      "bottom": "Storingsstrook onderaan"
     },
     "texts": {
       "title": "Kop",

@@ -166,16 +166,29 @@ export function useMachinePrint() {
     await load()
   }
 
+  /**
+   * Same target, same SVG — and the motif gallery asks for a handful of
+   * targets across nine motifs, so without this the identical machine-page
+   * code gets encoded a dozen times on every render.
+   */
+  const qrCache = new Map<string, string>()
+
   async function renderQr(target: string | null, format: PrintFormat): Promise<string | null> {
     if (!target) return null
+    const level = qrErrorLevel(format)
+    const key = `${level}|${target}`
+    const cached = qrCache.get(key)
+    if (cached) return cached
     // Vector, not a data URL: at 5 cm on paper the difference is visible.
     // margin 4 is the quiet zone — without it the code does not scan from 50 cm.
-    return QRCode.toString(target, {
+    const svg = await QRCode.toString(target, {
       type: 'svg',
       margin: 4,
-      errorCorrectionLevel: qrErrorLevel(format),
+      errorCorrectionLevel: level,
       color: { dark: '#000000', light: '#ffffff' },
     })
+    qrCache.set(key, svg)
+    return svg
   }
 
   async function buildSheets(opts: BuildSheetsOptions): Promise<PrintSheet[]> {

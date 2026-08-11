@@ -1885,7 +1885,10 @@
       "qr-first": "QR d'abord",
       "dunkel": "Sombre",
       "sticker-problem": "Étiquette panne",
-      "sticker-menu": "Étiquette assortiment"
+      "sticker-menu": "Étiquette assortiment",
+      "duo": "Deux parties",
+      "signal": "Signal",
+      "klassisch": "Classique"
     },
     "motifs": {
       "klar": {
@@ -1911,6 +1914,18 @@
       "stickerMenu": {
         "label": "Étiquette : assortiment",
         "description": "90 × 50 mm avec un QR vers la page du distributeur."
+      },
+      "duo": {
+        "label": "Deux parties",
+        "description": "L'assortiment en grand en haut, un bandeau panne étroit en bas. L'aide est là sans laisser croire aux pannes fréquentes."
+      },
+      "signal": {
+        "label": "Signal",
+        "description": "Couleur pleine page, numéro très grand. Se repère de loin — et consomme beaucoup d'encre."
+      },
+      "klassisch": {
+        "label": "Classique",
+        "description": "Serif, double filet, sobre. Pour cabinets, hôtels et bureaux qui refusent une affiche colorée."
       }
     },
     "poster": {
@@ -1938,7 +1953,9 @@
       "customHint": "Scannez le code",
       "pageHintShort": "Prix et disponibilité",
       "callShort": "Appeler",
-      "callHintShort": "Scannez ou appelez"
+      "callHintShort": "Scannez ou appelez",
+      "discoverTitle": "Tout sur ce distributeur — et ne rien manquer",
+      "discoverLead": "Voir l'assortiment et les prix, payer en ligne et être prévenu des nouveaux produits."
     },
     "sticker": {
       "problemTitle": "Signaler une panne",
@@ -1969,7 +1986,9 @@
       "tile1": "Tuile 1",
       "tile2": "Tuile 2",
       "tile3": "Tuile 3",
-      "call": "Zone d'appel"
+      "call": "Zone d'appel",
+      "top": "Grand QR en haut",
+      "bottom": "Bandeau panne en bas"
     },
     "texts": {
       "title": "Titre",

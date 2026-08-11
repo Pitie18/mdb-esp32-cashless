@@ -61,7 +61,7 @@ const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target
 .logo { height: 5em; width: auto; object-fit: contain; margin-bottom: 1.2em; }
 .title { font-size: 3.22em; font-weight: 600; line-height: 1.25; }
 .lead { font-size: 2.03em; color: #57534e; margin-top: 0.6em; line-height: 1.45; }
-.qr { width: max(30mm, 21.5em); height: max(30mm, 21.5em); margin-top: 1.3em; }
+.qr { width: max(30mm, 19.5em); height: max(30mm, 19.5em); margin-top: 1.1em; }
 .scan { font-size: 1.86em; color: #78716c; margin-top: 0.7em; }
 .url { font-size: 1.86em; color: #14110f; margin-top: 0.4em; word-break: break-all; }
 .custom {

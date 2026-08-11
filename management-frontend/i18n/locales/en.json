@@ -2082,7 +2082,10 @@
       "qr-first": "QR first",
       "dunkel": "Dark",
       "sticker-problem": "Fault label",
-      "sticker-menu": "Range label"
+      "sticker-menu": "Range label",
+      "duo": "Split",
+      "signal": "Signal",
+      "klassisch": "Classic"
     },
     "motifs": {
       "klar": {
@@ -2108,6 +2111,18 @@
       "stickerMenu": {
         "label": "Label: range",
         "description": "90 × 50 mm with a QR to the machine page."
+      },
+      "duo": {
+        "label": "Split",
+        "description": "The range large at the top, a narrow fault strip below. Help is there without claiming the machine breaks often."
+      },
+      "signal": {
+        "label": "Signal",
+        "description": "Full-bleed colour, phone number huge. Gets noticed across a corridor — and uses a lot of ink."
+      },
+      "klassisch": {
+        "label": "Classic",
+        "description": "Serif type, double border, restrained. For practices, hotels and offices that will not hang a colourful poster."
       }
     },
     "poster": {
@@ -2135,7 +2150,9 @@
       "customHint": "Scan the code",
       "pageHintShort": "Prices and availability",
       "callShort": "Call",
-      "callHintShort": "Scan or call"
+      "callHintShort": "Scan or call",
+      "discoverTitle": "More about this machine — and never miss a thing",
+      "discoverLead": "See the range and prices, pay online, and get told when new products arrive."
     },
     "sticker": {
       "problemTitle": "Report a fault",
@@ -2166,7 +2183,9 @@
       "tile1": "Tile 1",
       "tile2": "Tile 2",
       "tile3": "Tile 3",
-      "call": "Call panel"
+      "call": "Call panel",
+      "top": "Large QR at the top",
+      "bottom": "Fault strip at the bottom"
     },
     "texts": {
       "title": "Headline",

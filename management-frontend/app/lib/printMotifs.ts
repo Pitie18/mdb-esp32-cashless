@@ -3,6 +3,9 @@ import PosterKlar from '@/components/print/PosterKlar.vue'
 import PosterKachel from '@/components/print/PosterKachel.vue'
 import PosterQrFirst from '@/components/print/PosterQrFirst.vue'
 import PosterDunkel from '@/components/print/PosterDunkel.vue'
+import PosterSignal from '@/components/print/PosterSignal.vue'
+import PosterDuo from '@/components/print/PosterDuo.vue'
+import PosterKlassisch from '@/components/print/PosterKlassisch.vue'
 import StickerProblem from '@/components/print/StickerProblem.vue'
 import StickerMenu from '@/components/print/StickerMenu.vue'
 import type { PosterLayout, PrintBlock, PrintFormat, SlotDeclaration } from '@/lib/printSheet'
@@ -13,6 +16,9 @@ export type MotifId =
   | 'klar'
   | 'kachel'
   | 'qr-first'
+  | 'duo'
+  | 'signal'
+  | 'klassisch'
   | 'dunkel'
   | 'sticker-problem'
   | 'sticker-menu'
@@ -90,6 +96,52 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     texts: [
       { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.poster.everythingTitle' },
       { id: 'lead', labelKey: 'print.texts.lead', defaultKey: 'print.poster.everythingLead' },
+    ],
+    blocks: ['phone', 'imprint', 'url'],
+  },
+  {
+    id: 'duo',
+    labelKey: 'print.motifs.duo.label',
+    descriptionKey: 'print.motifs.duo.description',
+    component: PosterDuo,
+    formats: ['a4', 'a5'],
+    slots: [
+      { id: 'main', labelKey: 'print.slots.top', defaultSource: 'page', optional: false },
+      { id: 'issue', labelKey: 'print.slots.bottom', compact: true, defaultSource: 'problem', optional: true },
+    ],
+    texts: [
+      { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.poster.discoverTitle' },
+      { id: 'lead', labelKey: 'print.texts.lead', defaultKey: 'print.poster.discoverLead' },
+    ],
+    blocks: ['phone', 'imprint', 'url'],
+  },
+  {
+    id: 'signal',
+    labelKey: 'print.motifs.signal.label',
+    descriptionKey: 'print.motifs.signal.description',
+    component: PosterSignal,
+    formats: ['a4', 'a5'],
+    slots: [
+      { id: 'main', labelKey: 'print.slots.main', defaultSource: 'page', optional: false },
+    ],
+    texts: [
+      { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.poster.helpYouTitle' },
+      { id: 'lead', labelKey: 'print.texts.lead', defaultKey: 'print.poster.helpYouLead' },
+    ],
+    blocks: ['phone', 'imprint', 'url'],
+  },
+  {
+    id: 'klassisch',
+    labelKey: 'print.motifs.klassisch.label',
+    descriptionKey: 'print.motifs.klassisch.description',
+    component: PosterKlassisch,
+    formats: ['a4', 'a5'],
+    slots: [
+      { id: 'main', labelKey: 'print.slots.main', defaultSource: 'page', optional: false },
+    ],
+    texts: [
+      { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.poster.problemTitle' },
+      { id: 'lead', labelKey: 'print.texts.lead', defaultKey: 'print.poster.problemLead' },
     ],
     blocks: ['phone', 'imprint', 'url'],
   },

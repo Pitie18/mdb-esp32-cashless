@@ -2,6 +2,7 @@
 import { IconArrowLeft, IconPrinter, IconAlertTriangle, IconLoader2, IconRotate, IconDeviceFloppy } from '@tabler/icons-vue'
 import { watchDebounced } from '@vueuse/core'
 import StickerSheet from '@/components/print/StickerSheet.vue'
+import MotifThumb from '@/components/print/MotifThumb.vue'
 import { useMachinePrint } from '@/composables/useMachinePrint'
 import { PRINT_MOTIFS, defaultLayout, isStickerFormat, motifById } from '@/lib/printMotifs'
 import type { MotifId } from '@/lib/printMotifs'
@@ -128,6 +129,36 @@ const unavailableSources = computed(() => {
   return out
 })
 
+/**
+ * One sheet per motif for the gallery thumbnails, built from each motif's
+ * saved-or-default layout. The selected motif is served from the working copy
+ * instead, so its tile and the big preview never disagree.
+ */
+const previews = ref<Record<string, PrintSheet>>({})
+
+async function buildPreviews() {
+  if (!print.company.value) return
+  const out: Record<string, PrintSheet> = {}
+  for (const m of PRINT_MOTIFS) {
+    const [sheet] = await print.buildSheets({
+      machineIds: [machineId],
+      slotDeclarations: m.slots,
+      layout: print.storedLayout(m.id, machineId) ?? defaultLayout(m),
+      format: m.formats[0]!,
+      t: posterT,
+      whatsappTemplate: posterT('print.whatsappTemplate'),
+      fallbackMachineName: posterT('print.fallbackMachineName'),
+    })
+    if (sheet) out[m.id] = sheet
+  }
+  previews.value = out
+}
+
+function thumbSheet(id: string): PrintSheet | null {
+  if (id === motifId.value && sheets.value[0]) return sheets.value[0]!
+  return previews.value[id] ?? null
+}
+
 const sheets = ref<PrintSheet[]>([])
 const building = ref(false)
 
@@ -159,6 +190,13 @@ onMounted(async () => {
   seedLayout()
   if (!selectedIds.value.includes(machineId)) selectedIds.value.unshift(machineId)
   await rebuild()
+  await buildPreviews()
+})
+
+// Gallery labels are in the sheet language too, so it has to rebuild with it.
+watch(sheetLocale, async () => {
+  await ensureSheetLocale()
+  await buildPreviews()
 })
 
 // ── Saving ──────────────────────────────────────────────────────────────────
@@ -202,6 +240,7 @@ const sheetStyle = computed(() => ({
   fontSize: `${(4 * sheetMm.value.w) / 210}mm`,
 }))
 
+const THUMB_WIDTH = 150
 const PX_PER_MM = 96 / 25.4
 const PREVIEW_WIDTH_PX = 460
 
@@ -249,7 +288,7 @@ async function doPrint() {
 
 <template>
   <div class="print-page flex min-h-screen items-start gap-8 bg-background p-6 text-foreground">
-    <aside class="no-print sticky top-6 flex max-h-[calc(100vh-3rem)] w-[330px] flex-none flex-col gap-5 overflow-y-auto pr-1">
+    <aside class="no-print sticky top-6 flex max-h-[calc(100vh-3rem)] w-[380px] flex-none flex-col gap-5 overflow-y-auto pr-1">
       <NuxtLink
         :to="`/machines/${machineId}`"
         class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -267,17 +306,25 @@ async function doPrint() {
         <h2 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {{ t('print.motif') }}
         </h2>
-        <div class="flex flex-col gap-1.5">
+        <div class="grid grid-cols-2 gap-2">
           <button
             v-for="m in PRINT_MOTIFS"
             :key="m.id"
             type="button"
-            class="flex flex-col gap-0.5 rounded-lg border bg-card px-3 py-2 text-left transition-colors hover:bg-muted"
+            class="flex flex-col overflow-hidden rounded-lg border bg-card text-left transition-colors hover:bg-muted"
             :class="m.id === motifId ? 'border-primary ring-1 ring-primary' : 'border-input'"
+            :title="t(m.descriptionKey)"
             @click="motifId = m.id"
           >
-            <span class="text-sm font-medium">{{ t(m.labelKey) }}</span>
-            <span class="text-xs leading-snug text-muted-foreground">{{ t(m.descriptionKey) }}</span>
+            <div class="flex items-center justify-center border-b border-input bg-[#f5f5f4] p-1.5">
+              <MotifThumb :motif="m" :sheet="thumbSheet(m.id)" :t="posterT" :width="THUMB_WIDTH" />
+            </div>
+            <div class="px-2 py-1.5">
+              <div class="text-xs font-medium">{{ t(m.labelKey) }}</div>
+              <div class="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                {{ t(m.descriptionKey) }}
+              </div>
+            </div>
           </button>
         </div>
       </section>
