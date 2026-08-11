@@ -170,11 +170,14 @@ In `android/gradle/libs.versions.toml` den `[versions]`-Block ersetzen durch:
 [versions]
 agp = "8.13.2"
 kotlin = "2.4.10"
-coreKtx = "1.19.0"
+# NOT the newest: core 1.19.0 and lifecycle 2.11.0's compose artifacts
+# declare minCompileSdk=37, which would force compileSdk 37 and AGP 9.1+.
+# 1.18.0 and 2.10.0 are the last releases that build against compileSdk 36.
+coreKtx = "1.18.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-lifecycleRuntimeKtx = "2.11.0"
+lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
 composeBom = "2026.06.01"
 navigationCompose = "2.9.8"
@@ -203,6 +206,26 @@ androidx-material3-adaptive-navigation = { group = "androidx.compose.material3.a
 # Splashscreen
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 ```
+
+- [ ] **Step 3b: Nicht existierendes Supabase-Artefakt korrigieren**
+
+Der Katalog verweist auf `gotrue-kt`, das es in 3.x nicht gibt — die Bibliothek heißt seit 3.0 `auth-kt`. `gotrue-kt` wurde nie über 2.6.1 hinaus veröffentlicht. Da `supabase = "3.1.4"` zusammen mit diesem Verweis im allerersten Android-Commit landete, **hat dieses Modul noch nie gebaut**.
+
+In `android/gradle/libs.versions.toml` die Zeile
+
+```toml
+supabase-gotrue = { group = "io.github.jan-tennert.supabase", name = "gotrue-kt", version.ref = "supabase" }
+```
+
+ersetzen durch:
+
+```toml
+supabase-auth = { group = "io.github.jan-tennert.supabase", name = "auth-kt", version.ref = "supabase" }
+```
+
+und in `android/app/build.gradle` die Zeile `implementation libs.supabase.gotrue` durch `implementation libs.supabase.auth`.
+
+Der Alias wird mit umbenannt, nicht nur das Artefakt — ein Alias namens `gotrue`, der auf `auth-kt` zeigt, führt den nächsten Leser in die Irre. Die Kotlin-Quellen importieren bereits die `auth`-Paketnamen und brauchen keine Änderung.
 
 Hinweis: `material3-adaptive-navigation-suite` bekommt bewusst **keine** `version.ref` — die Version verwaltet die Compose BOM. Die drei `androidx.compose.material3.adaptive`-Artefakte liegen in einer anderen Gruppe, die die BOM nicht abdeckt, und werden deshalb gepinnt.
 
