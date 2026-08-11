@@ -63,6 +63,7 @@
 		7796889F9147FF3D55C754A6 /* Fixtures in Resources */ = {isa = PBXBuildFile; fileRef = 9A552F665C89F83D12EECC44 /* Fixtures */; };
 		77D2B846D83C3623DF76EF46 /* WithdrawalSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B0D3D4BFCEB1A362499B0C9 /* WithdrawalSheet.swift */; };
 		77D2B846D83C3623DF76EF47 /* ExpenseSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B0D3D4BFCEB1A362499B0CA /* ExpenseSheet.swift */; };
+		E555FB146AA43B9A343BBBB9 /* AnalyticsBreakdownList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156AAB7C08CD33EA067A0CB4 /* AnalyticsBreakdownList.swift */; };
 		0DDA9BAF670793C8FB82C785 /* AnalyticsFilterBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865653895DE2C3B561C483D5 /* AnalyticsFilterBar.swift */; };
 		87920B662AFA7BB589447D51 /* AnalyticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62248C1A9F86FE03D7248B4B /* AnalyticsViewModel.swift */; };
 		F14E24C4DF71602945E5E9A4 /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF1FB71E3165B5C0B9043786 /* AnalyticsView.swift */; };
@@ -182,6 +183,7 @@
 		3A1ABF4B45C7B0D2415238F6 /* ProductImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductImage.swift; sourceTree = "<group>"; };
 		3B0D3D4BFCEB1A362499B0C9 /* WithdrawalSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WithdrawalSheet.swift; sourceTree = "<group>"; };
 		3B0D3D4BFCEB1A362499B0CA /* ExpenseSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseSheet.swift; sourceTree = "<group>"; };
+		156AAB7C08CD33EA067A0CB4 /* AnalyticsBreakdownList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsBreakdownList.swift; sourceTree = "<group>"; };
 		865653895DE2C3B561C483D5 /* AnalyticsFilterBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsFilterBar.swift; sourceTree = "<group>"; };
 		62248C1A9F86FE03D7248B4B /* AnalyticsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsViewModel.swift; sourceTree = "<group>"; };
 		CF1FB71E3165B5C0B9043786 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
@@ -473,6 +475,7 @@
 		04DACC765392E58475353B1C /* Analytics */ = {
 			isa = PBXGroup;
 			children = (
+				156AAB7C08CD33EA067A0CB4 /* AnalyticsBreakdownList.swift */,
 				865653895DE2C3B561C483D5 /* AnalyticsFilterBar.swift */,
 				CF1FB71E3165B5C0B9043786 /* AnalyticsView.swift */,
 			);
@@ -909,6 +912,7 @@
 				227347A89BC32144B6544F1C /* WarehouseViewModel.swift in Sources */,
 				77D2B846D83C3623DF76EF46 /* WithdrawalSheet.swift in Sources */,
 				77D2B846D83C3623DF76EF47 /* ExpenseSheet.swift in Sources */,
+				E555FB146AA43B9A343BBBB9 /* AnalyticsBreakdownList.swift in Sources */,
 				0DDA9BAF670793C8FB82C785 /* AnalyticsFilterBar.swift in Sources */,
 				87920B662AFA7BB589447D51 /* AnalyticsViewModel.swift in Sources */,
 				F14E24C4DF71602945E5E9A4 /* AnalyticsView.swift in Sources */,
