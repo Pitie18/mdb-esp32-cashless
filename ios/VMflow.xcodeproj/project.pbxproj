@@ -63,6 +63,7 @@
 		7796889F9147FF3D55C754A6 /* Fixtures in Resources */ = {isa = PBXBuildFile; fileRef = 9A552F665C89F83D12EECC44 /* Fixtures */; };
 		77D2B846D83C3623DF76EF46 /* WithdrawalSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B0D3D4BFCEB1A362499B0C9 /* WithdrawalSheet.swift */; };
 		77D2B846D83C3623DF76EF47 /* ExpenseSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B0D3D4BFCEB1A362499B0CA /* ExpenseSheet.swift */; };
+		DB40F16C083B4E0AD4C84E43 /* ProductAnalyticsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0384B53540D529564F834E8F /* ProductAnalyticsSheet.swift */; };
 		4F1150786A332D37C5E1E561 /* HeatmapCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21DA7F697932B2FB5147407D /* HeatmapCard.swift */; };
 		5FDB0F31DAD2479EF77B0FA4 /* ChannelSplitCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A73D333D7C0026FA0D5E7DE /* ChannelSplitCard.swift */; };
 		E555FB146AA43B9A343BBBB9 /* AnalyticsBreakdownList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156AAB7C08CD33EA067A0CB4 /* AnalyticsBreakdownList.swift */; };
@@ -185,6 +186,7 @@
 		3A1ABF4B45C7B0D2415238F6 /* ProductImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductImage.swift; sourceTree = "<group>"; };
 		3B0D3D4BFCEB1A362499B0C9 /* WithdrawalSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WithdrawalSheet.swift; sourceTree = "<group>"; };
 		3B0D3D4BFCEB1A362499B0CA /* ExpenseSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseSheet.swift; sourceTree = "<group>"; };
+		0384B53540D529564F834E8F /* ProductAnalyticsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductAnalyticsSheet.swift; sourceTree = "<group>"; };
 		21DA7F697932B2FB5147407D /* HeatmapCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeatmapCard.swift; sourceTree = "<group>"; };
 		7A73D333D7C0026FA0D5E7DE /* ChannelSplitCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelSplitCard.swift; sourceTree = "<group>"; };
 		156AAB7C08CD33EA067A0CB4 /* AnalyticsBreakdownList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsBreakdownList.swift; sourceTree = "<group>"; };
@@ -479,6 +481,7 @@
 		04DACC765392E58475353B1C /* Analytics */ = {
 			isa = PBXGroup;
 			children = (
+				0384B53540D529564F834E8F /* ProductAnalyticsSheet.swift */,
 				21DA7F697932B2FB5147407D /* HeatmapCard.swift */,
 				7A73D333D7C0026FA0D5E7DE /* ChannelSplitCard.swift */,
 				156AAB7C08CD33EA067A0CB4 /* AnalyticsBreakdownList.swift */,
@@ -918,6 +921,7 @@
 				227347A89BC32144B6544F1C /* WarehouseViewModel.swift in Sources */,
 				77D2B846D83C3623DF76EF46 /* WithdrawalSheet.swift in Sources */,
 				77D2B846D83C3623DF76EF47 /* ExpenseSheet.swift in Sources */,
+				DB40F16C083B4E0AD4C84E43 /* ProductAnalyticsSheet.swift in Sources */,
 				4F1150786A332D37C5E1E561 /* HeatmapCard.swift in Sources */,
 				5FDB0F31DAD2479EF77B0FA4 /* ChannelSplitCard.swift in Sources */,
 				E555FB146AA43B9A343BBBB9 /* AnalyticsBreakdownList.swift in Sources */,

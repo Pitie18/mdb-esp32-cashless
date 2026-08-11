@@ -45,6 +45,9 @@ struct AnalyticsView: View {
         } message: {
             Text(viewModel.error ?? "")
         }
+        .sheet(item: $selectedProduct) { row in
+            ProductAnalyticsSheet(row: row, viewModel: viewModel)
+        }
         .dataRefreshable { await viewModel.load() }
         .task {
             // Tab roots re-run `.task` on every re-selection; load only once.
