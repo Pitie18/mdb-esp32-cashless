@@ -487,7 +487,7 @@ und `onCreate` ersetzen durch:
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    VMflowApp()
+                    VMflowAppRoot()
                 }
             }
         }
@@ -938,11 +938,11 @@ Die Importe `Button`, `FilledTonalButton`, `Icons.Default.LocalShipping` und `Ic
 
 - [ ] **Step 6: Scaffold in `MainActivity` einbauen**
 
-In `android/app/src/main/java/xyz/vmflow/MainActivity.kt` die Funktion `VMflowApp` ersetzen durch:
+In `android/app/src/main/java/xyz/vmflow/MainActivity.kt` die Funktion `VMflowAppRoot` ersetzen durch (sie hieß bis Task 2 `VMflowApp` und wurde dort umbenannt, weil der Name mit der Klasse `VMflowApp : Application` kollidierte):
 
 ```kotlin
 @Composable
-fun VMflowApp() {
+fun VMflowAppRoot() {
     val navController = rememberNavController()
     var startDestination by remember { mutableStateOf<String?>(null) }
 
