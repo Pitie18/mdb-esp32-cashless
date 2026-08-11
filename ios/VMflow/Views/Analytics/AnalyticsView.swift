@@ -16,6 +16,7 @@ struct AnalyticsView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        AnalyticsFilterBar(viewModel: viewModel)
                         kpiRow
                         costHint
                     }
