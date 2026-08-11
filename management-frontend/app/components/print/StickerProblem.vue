@@ -13,7 +13,7 @@ const main = computed(() => props.sheet.slots.main)
     <QrBlock v-if="main?.qr" class="qr" :svg="main.qr" />
     <div class="text">
       <div class="title">{{ sheet.texts.title || t('print.sticker.problemTitle') }}</div>
-      <div class="sub">{{ t('print.sticker.problemHint') }}</div>
+      <div class="sub">{{ main?.hint }}</div>
       <div v-if="sheet.phone" class="phone">{{ sheet.phone }}</div>
       <div class="machine">{{ sheet.machineName }}</div>
     </div>

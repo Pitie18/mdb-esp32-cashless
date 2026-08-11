@@ -75,6 +75,13 @@ export interface SlotDeclaration {
   defaultSource: SlotSource
   /** Whether the operator may empty this slot. */
   optional: boolean
+  /**
+   * The slot is a narrow tile rather than a full-width block, so its default
+   * label and hint use the short wording. One string cannot serve both: what
+   * fits under a 5 cm QR in a footer wraps to three lines in a third-width
+   * tile, and a wrapped tile pushes the imprint off the sheet.
+   */
+  compact?: boolean
 }
 
 export interface CustomLink {
@@ -316,12 +323,30 @@ function compactDisplayName(raw: string | null | undefined): string | null {
 /** Translation function bound to the *sheet's* language. */
 export type PosterT = (key: string, named?: Record<string, unknown>) => string
 
-/** Default label and hint per source, used until the operator overrides them. */
-const SOURCE_TEXT: Record<Exclude<SlotSource, 'none' | 'custom'>, { title: string; hint: string }> = {
-  page: { title: 'print.poster.pageTitle', hint: 'print.poster.pageHint' },
-  tel: { title: 'print.poster.callDirect', hint: 'print.poster.callHint' },
-  whatsapp: { title: 'print.poster.whatsappTitle', hint: 'print.poster.whatsappHint' },
-  problem: { title: 'print.poster.problemQrTitle', hint: 'print.poster.problemQrHint' },
+/**
+ * Default label and hint per source, in a full-width and a compact wording.
+ * Sources whose label is already short (WhatsApp) repeat the same key.
+ */
+const SOURCE_TEXT: Record<
+  Exclude<SlotSource, 'none' | 'custom'>,
+  { title: string; hint: string; shortTitle: string; shortHint: string }
+> = {
+  page: {
+    title: 'print.poster.pageTitle', hint: 'print.poster.pageHint',
+    shortTitle: 'print.poster.pageShort', shortHint: 'print.poster.pageHintShort',
+  },
+  tel: {
+    title: 'print.poster.callDirect', hint: 'print.poster.callHint',
+    shortTitle: 'print.poster.callShort', shortHint: 'print.poster.callHintShort',
+  },
+  whatsapp: {
+    title: 'print.poster.whatsappTitle', hint: 'print.poster.whatsappHint',
+    shortTitle: 'print.poster.whatsappTitle', shortHint: 'print.poster.whatsappHint',
+  },
+  problem: {
+    title: 'print.poster.problemQrTitle', hint: 'print.poster.problemQrHint',
+    shortTitle: 'print.poster.problemQrTitle', shortHint: 'print.poster.problemQrHint',
+  },
 }
 
 export interface BuildPrintSheetInput {
@@ -431,7 +456,9 @@ export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase
       source === 'custom' || source === 'none'
         ? { title: layout.custom?.title?.trim() || t('print.poster.customTitle'),
             hint: layout.custom?.hint?.trim() || t('print.poster.customHint') }
-        : { title: t(SOURCE_TEXT[source].title), hint: t(SOURCE_TEXT[source].hint) }
+        : declaration.compact
+          ? { title: t(SOURCE_TEXT[source].shortTitle), hint: t(SOURCE_TEXT[source].shortHint) }
+          : { title: t(SOURCE_TEXT[source].title), hint: t(SOURCE_TEXT[source].hint) }
 
     slots[declaration.id] = {
       id: declaration.id,

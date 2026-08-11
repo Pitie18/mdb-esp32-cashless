@@ -2042,7 +2042,7 @@
     "backToMachine": "Back to the machine",
     "motif": "Design",
     "format": "Format",
-    "blocks": "Content",
+    "blocks": "Additional content",
     "sheetLanguage": "Language on the sign",
     "customText": "Extra line",
     "customTextPlaceholder": "e.g. Location: 2nd floor next to the lift",
@@ -2124,7 +2124,6 @@
       "callDirect": "Call us",
       "everythingTitle": "Everything about this machine",
       "everythingLead": "Products, prices, availability and fault reports",
-      "scanHint": "Open your camera and scan the code",
       "ratherCall": "Rather call?",
       "helpYouTitle": "We're here to help",
       "helpYouLead": "Machine stuck? Money gone? Just let us know.",
@@ -2133,19 +2132,20 @@
       "operatorLabel": "Operator:",
       "callHint": "Scan the code to call",
       "customTitle": "Find out more",
-      "customHint": "Scan the code"
+      "customHint": "Scan the code",
+      "pageHintShort": "Prices and availability",
+      "callShort": "Call",
+      "callHintShort": "Scan or call"
     },
     "sticker": {
       "problemTitle": "Report a fault",
-      "problemHint": "Scan or call",
-      "menuTitle": "See what's inside",
-      "menuHint": "Prices, availability and payment"
+      "menuTitle": "See what's inside"
     },
     "qrCodes": "QR codes",
     "headlines": "Headlines",
     "customLink": "Own link",
     "customLinkPlaceholder": "https://…",
-    "customLinkHint": "Target for slots set to \"Own link\". https:// is added if you leave it out.",
+    "customLinkHint": "Target for QR codes set to \"Own link\". https:// is added if you leave it out.",
     "resetText": "Reset to default",
     "resetAll": "Reset everything",
     "save": "Save",
@@ -2180,8 +2180,8 @@
     },
     "saveState": {
       "none": "Nothing saved yet — defaults apply.",
-      "company": "A saved company configuration is in use.",
-      "machine": "This machine has its own saved configuration."
+      "company": "The saved company configuration is in use.",
+      "machine": "This machine has a configuration of its own saved."
     }
   }
 }

@@ -2042,7 +2042,7 @@
     "backToMachine": "Zurück zum Automaten",
     "motif": "Motiv",
     "format": "Format",
-    "blocks": "Bausteine",
+    "blocks": "Weitere Inhalte",
     "sheetLanguage": "Sprache des Aushangs",
     "customText": "Zusatztext",
     "customTextPlaceholder": "z. B. Standort: 2. OG neben dem Aufzug",
@@ -2124,7 +2124,6 @@
       "callDirect": "Direkt anrufen",
       "everythingTitle": "Alles zu diesem Automaten",
       "everythingLead": "Produkte, Preise, Verfügbarkeit und Störung melden",
-      "scanHint": "Kamera öffnen und Code scannen",
       "ratherCall": "Lieber anrufen?",
       "helpYouTitle": "Wir helfen dir weiter",
       "helpYouLead": "Automat läuft nicht? Geld weg? Melde dich kurz.",
@@ -2133,19 +2132,20 @@
       "operatorLabel": "Betreiber:",
       "callHint": "Code scannen und anrufen",
       "customTitle": "Mehr erfahren",
-      "customHint": "Code scannen"
+      "customHint": "Code scannen",
+      "pageHintShort": "Preise und Verfügbarkeit",
+      "callShort": "Anruf",
+      "callHintShort": "Scannen oder anrufen"
     },
     "sticker": {
       "problemTitle": "Störung melden",
-      "problemHint": "Scannen oder anrufen",
-      "menuTitle": "Sortiment ansehen",
-      "menuHint": "Preise, Verfügbarkeit und Zahlung"
+      "menuTitle": "Sortiment ansehen"
     },
     "qrCodes": "QR-Codes",
     "headlines": "Überschriften",
     "customLink": "Eigener Link",
     "customLinkPlaceholder": "https://…",
-    "customLinkHint": "Ziel für Slots, die auf „Eigener Link“ stehen. Ohne https:// wird es ergänzt.",
+    "customLinkHint": "Ziel für QR-Codes, die auf „Eigener Link“ gestellt sind. Ohne https:// wird es ergänzt.",
     "resetText": "Auf Standard zurücksetzen",
     "resetAll": "Alles zurücksetzen",
     "save": "Speichern",
@@ -2180,8 +2180,8 @@
     },
     "saveState": {
       "none": "Noch nichts gespeichert — es gelten die Standardwerte.",
-      "company": "Gespeicherte Firmen-Konfiguration ist aktiv.",
-      "machine": "Dieser Automat hat eine eigene gespeicherte Konfiguration."
+      "company": "Es gilt die gespeicherte Konfiguration der Firma.",
+      "machine": "Für diesen Automaten ist eine eigene Konfiguration gespeichert."
     }
   }
 }

@@ -1845,7 +1845,7 @@
     "backToMachine": "Retour au distributeur",
     "motif": "Modèle",
     "format": "Format",
-    "blocks": "Éléments",
+    "blocks": "Contenus supplémentaires",
     "sheetLanguage": "Langue de l'affiche",
     "customText": "Texte supplémentaire",
     "customTextPlaceholder": "ex. : 2e étage, près de l'ascenseur",
@@ -1927,7 +1927,6 @@
       "callDirect": "Appeler directement",
       "everythingTitle": "Tout sur ce distributeur",
       "everythingLead": "Produits, prix, disponibilité et signalement de panne",
-      "scanHint": "Ouvrez l'appareil photo et scannez le code",
       "ratherCall": "Vous préférez appeler ?",
       "helpYouTitle": "Nous sommes là pour vous aider",
       "helpYouLead": "Distributeur bloqué ? Argent perdu ? Dites-le-nous.",
@@ -1936,19 +1935,20 @@
       "operatorLabel": "Exploitant :",
       "callHint": "Scannez le code pour appeler",
       "customTitle": "En savoir plus",
-      "customHint": "Scannez le code"
+      "customHint": "Scannez le code",
+      "pageHintShort": "Prix et disponibilité",
+      "callShort": "Appeler",
+      "callHintShort": "Scannez ou appelez"
     },
     "sticker": {
       "problemTitle": "Signaler une panne",
-      "problemHint": "Scannez ou appelez",
-      "menuTitle": "Voir l'assortiment",
-      "menuHint": "Prix, disponibilité et paiement"
+      "menuTitle": "Voir l'assortiment"
     },
     "qrCodes": "QR codes",
     "headlines": "Titres",
     "customLink": "Lien personnalisé",
     "customLinkPlaceholder": "https://…",
-    "customLinkHint": "Cible des emplacements réglés sur « Lien personnalisé ». https:// est ajouté si vous l'omettez.",
+    "customLinkHint": "Cible des QR codes réglés sur « Lien personnalisé ». https:// est ajouté si vous l'omettez.",
     "resetText": "Rétablir la valeur par défaut",
     "resetAll": "Tout réinitialiser",
     "save": "Enregistrer",
@@ -1983,7 +1983,7 @@
     },
     "saveState": {
       "none": "Rien enregistré — les valeurs par défaut s'appliquent.",
-      "company": "Une configuration d'entreprise enregistrée est active.",
+      "company": "La configuration d'entreprise enregistrée s'applique.",
       "machine": "Ce distributeur a sa propre configuration enregistrée."
     }
   }

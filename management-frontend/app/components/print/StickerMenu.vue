@@ -15,7 +15,7 @@ const main = computed(() => props.sheet.slots.main)
     </div>
     <div class="text">
       <div class="title">{{ sheet.texts.title || t('print.sticker.menuTitle') }}</div>
-      <div class="sub">{{ t('print.sticker.menuHint') }}</div>
+      <div class="sub">{{ main?.hint }}</div>
       <div class="machine">{{ sheet.machineName }}</div>
     </div>
   </div>

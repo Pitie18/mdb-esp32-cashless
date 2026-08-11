@@ -1845,7 +1845,7 @@
     "backToMachine": "Terug naar de automaat",
     "motif": "Ontwerp",
     "format": "Formaat",
-    "blocks": "Onderdelen",
+    "blocks": "Extra inhoud",
     "sheetLanguage": "Taal op het biljet",
     "customText": "Extra tekst",
     "customTextPlaceholder": "bijv. 2e verdieping bij de lift",
@@ -1927,7 +1927,6 @@
       "callDirect": "Direct bellen",
       "everythingTitle": "Alles over deze automaat",
       "everythingLead": "Producten, prijzen, beschikbaarheid en storingen melden",
-      "scanHint": "Open je camera en scan de code",
       "ratherCall": "Liever bellen?",
       "helpYouTitle": "Wij helpen je verder",
       "helpYouLead": "Automaat hapert? Geld weg? Laat het ons weten.",
@@ -1936,19 +1935,20 @@
       "operatorLabel": "Exploitant:",
       "callHint": "Scan de code om te bellen",
       "customTitle": "Meer weten",
-      "customHint": "Scan de code"
+      "customHint": "Scan de code",
+      "pageHintShort": "Prijzen en beschikbaarheid",
+      "callShort": "Bellen",
+      "callHintShort": "Scan of bel"
     },
     "sticker": {
       "problemTitle": "Storing melden",
-      "problemHint": "Scan of bel",
-      "menuTitle": "Bekijk het assortiment",
-      "menuHint": "Prijzen, beschikbaarheid en betaling"
+      "menuTitle": "Bekijk het assortiment"
     },
     "qrCodes": "QR-codes",
     "headlines": "Koppen",
     "customLink": "Eigen link",
     "customLinkPlaceholder": "https://…",
-    "customLinkHint": "Doel voor slots die op “Eigen link” staan. https:// wordt aangevuld als je het weglaat.",
+    "customLinkHint": "Doel voor QR-codes die op “Eigen link” staan. https:// wordt aangevuld als je het weglaat.",
     "resetText": "Terug naar standaard",
     "resetAll": "Alles resetten",
     "save": "Opslaan",
@@ -1983,8 +1983,8 @@
     },
     "saveState": {
       "none": "Nog niets opgeslagen — standaardwaarden gelden.",
-      "company": "Een opgeslagen bedrijfsconfiguratie is actief.",
-      "machine": "Deze automaat heeft een eigen opgeslagen configuratie."
+      "company": "De opgeslagen bedrijfsconfiguratie is van kracht.",
+      "machine": "Voor deze automaat is een eigen configuratie opgeslagen."
     }
   }
 }

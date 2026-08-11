@@ -278,6 +278,44 @@ describe('slot sources', () => {
     expect(sheet.slots.main!.target).toBeNull()
   })
 
+  // A compact slot is a third-width tile. Handing it the full-width wording
+  // wraps the label to three lines and pushes the imprint off the sheet — the
+  // exact regression the slot refactor reintroduced once already.
+  it('uses the short wording in a compact slot', () => {
+    const wide = build({ slots: ONE_SLOT })
+    expect(wide.slots.main!.title).toBe('print.poster.pageTitle')
+    expect(wide.slots.main!.hint).toBe('print.poster.pageHint')
+
+    const tile = build({
+      slots: [{ ...ONE_SLOT[0]!, compact: true }],
+    })
+    expect(tile.slots.main!.title).toBe('print.poster.pageShort')
+    expect(tile.slots.main!.hint).toBe('print.poster.pageHintShort')
+  })
+
+  it('keeps compact wording per source', () => {
+    const tel = build({
+      slots: [{ ...ONE_SLOT[0]!, compact: true }],
+      layout: { slots: { main: { source: 'tel' } } },
+    })
+    expect(tel.slots.main!.title).toBe('print.poster.callShort')
+
+    // Already short: the compact variant is the same string, not a second one.
+    const wa = build({
+      slots: [{ ...ONE_SLOT[0]!, compact: true }],
+      layout: { slots: { main: { source: 'whatsapp' } } },
+    })
+    expect(wa.slots.main!.title).toBe('print.poster.whatsappTitle')
+  })
+
+  it('lets an override beat the compact default too', () => {
+    const sheet = build({
+      slots: [{ ...ONE_SLOT[0]!, compact: true }],
+      layout: { texts: { 'slot.main.title': 'Snacks' } },
+    })
+    expect(sheet.slots.main!.title).toBe('Snacks')
+  })
+
   it('labels a slot from its source and lets an override win', () => {
     const auto = build({ layout: { slots: { main: { source: 'whatsapp' } } } })
     expect(auto.slots.main!.title).toBe('print.poster.whatsappTitle')

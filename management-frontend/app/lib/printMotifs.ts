@@ -68,9 +68,9 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     component: PosterKachel,
     formats: ['a4', 'a5'],
     slots: [
-      { id: 'tile1', labelKey: 'print.slots.tile1', defaultSource: 'page', optional: false },
-      { id: 'tile2', labelKey: 'print.slots.tile2', defaultSource: 'whatsapp', optional: true },
-      { id: 'tile3', labelKey: 'print.slots.tile3', defaultSource: 'problem', optional: true },
+      { id: 'tile1', labelKey: 'print.slots.tile1', compact: true, defaultSource: 'page', optional: false },
+      { id: 'tile2', labelKey: 'print.slots.tile2', compact: true, defaultSource: 'whatsapp', optional: true },
+      { id: 'tile3', labelKey: 'print.slots.tile3', compact: true, defaultSource: 'problem', optional: true },
       { id: 'call', labelKey: 'print.slots.call', defaultSource: 'tel', optional: true },
     ],
     texts: [
@@ -115,7 +115,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     component: StickerProblem,
     formats: ['sticker-sheet'],
     slots: [
-      { id: 'main', labelKey: 'print.slots.main', defaultSource: 'problem', optional: false },
+      { id: 'main', labelKey: 'print.slots.main', compact: true, defaultSource: 'problem', optional: false },
     ],
     texts: [
       { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.sticker.problemTitle' },
@@ -129,7 +129,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     component: StickerMenu,
     formats: ['sticker-sheet'],
     slots: [
-      { id: 'main', labelKey: 'print.slots.main', defaultSource: 'page', optional: false },
+      { id: 'main', labelKey: 'print.slots.main', compact: true, defaultSource: 'page', optional: false },
     ],
     texts: [
       { id: 'title', labelKey: 'print.texts.title', defaultKey: 'print.sticker.menuTitle' },
