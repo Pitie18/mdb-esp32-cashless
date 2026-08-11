@@ -119,12 +119,23 @@ Erwartet: `0`
 
 ```bash
 git add android/.gitignore
+git rm --cached android/local.properties
 git commit -m "build(android): stop tracking local.properties
 
 The file carried sdk.dir from a foreign machine and overwrote every
 developer's local SDK path on checkout. It slipped past .gitignore
-because the pattern was written with a leading dot." -- android/.gitignore android/local.properties
+because the pattern was written with a leading dot."
 ```
+
+**Dieser Commit darf keine `-- <pfade>`-Angabe bekommen.** `git commit -- <pfade>` committet den *Arbeitsbaum*-Zustand der genannten Pfade und ignoriert den Index — es würde die gerade entfernte Datei aus dem Arbeitsbaum wieder eintragen und `git rm --cached` damit exakt aufheben. Hier wird stattdessen gezielt gestaged und der Index committet.
+
+Danach zur Sicherheit erneut prüfen:
+
+```bash
+cd android && git ls-files | grep -c local.properties
+```
+
+Erwartet: `0`. Steht dort `1`, hat der Commit die Datei wieder eingetragen.
 
 ---
 
