@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import AnalyticsBreakdown from '@/components/analytics/AnalyticsBreakdown.vue'
+import AnalyticsChannelSplit from '@/components/analytics/AnalyticsChannelSplit.vue'
 import AnalyticsFilterBar from '@/components/analytics/AnalyticsFilterBar.vue'
+import AnalyticsHeatmap from '@/components/analytics/AnalyticsHeatmap.vue'
 import AnalyticsKpiRow from '@/components/analytics/AnalyticsKpiRow.vue'
 import AnalyticsTrendChart from '@/components/analytics/AnalyticsTrendChart.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -53,6 +55,11 @@ usePullToRefresh(() => loadAll())
       <AnalyticsTrendChart />
 
       <AnalyticsBreakdown @select="row => { selectedRow = row; dialogOpen = true }" />
+
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <AnalyticsHeatmap />
+        <AnalyticsChannelSplit />
+      </div>
 
       <div
         v-if="error"
