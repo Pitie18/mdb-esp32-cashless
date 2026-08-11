@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconArrowLeft, IconPrinter, IconAlertTriangle, IconLoader2, IconRotate, IconDeviceFloppy } from '@tabler/icons-vue'
+import { IconArrowLeft, IconPrinter, IconAlertTriangle, IconLoader2, IconRotate, IconDeviceFloppy, IconPlus, IconMinus, IconArrowAutofitWidth } from '@tabler/icons-vue'
 import { watchDebounced } from '@vueuse/core'
 import StickerSheet from '@/components/print/StickerSheet.vue'
 import MotifThumb from '@/components/print/MotifThumb.vue'
@@ -244,14 +244,71 @@ const sheetStyle = computed(() => ({
 
 const THUMB_WIDTH = 150
 const PX_PER_MM = 96 / 25.4
-const PREVIEW_WIDTH_PX = 460
 
-const previewScale = computed(() => PREVIEW_WIDTH_PX / (sheetMm.value.w * PX_PER_MM))
+// ── Zoom ────────────────────────────────────────────────────────────────────
+// Percent of physical size, the way a PDF viewer counts: 100 % means an A4
+// sheet is 210 mm wide on screen. The ladder is the familiar one so the steps
+// land on values people recognise.
+const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.25, 1.5, 2]
+const MIN_ZOOM = ZOOM_STEPS[0]!
+const MAX_ZOOM = ZOOM_STEPS[ZOOM_STEPS.length - 1]!
+
+const stage = ref<HTMLElement | null>(null)
+const stageWidth = ref(0)
+const zoom = ref(0.5)
+
+// Two sources on purpose. The observer catches layout changes that leave the
+// window alone — the rail growing when a motif adds fields, for one. The
+// window listener is the belt: ResizeObserver notifications are not delivered
+// in every embedded browser, and a zoom control that silently stops tracking
+// the viewport is worse than one extra listener.
+let stageObserver: ResizeObserver | null = null
+
+function measureStage() {
+  stageWidth.value = stage.value?.clientWidth ?? 0
+}
+
+onMounted(() => {
+  measureStage()
+  if (stage.value && typeof ResizeObserver !== 'undefined') {
+    stageObserver = new ResizeObserver(measureStage)
+    stageObserver.observe(stage.value)
+  }
+  window.addEventListener('resize', measureStage)
+})
+
+onUnmounted(() => {
+  stageObserver?.disconnect()
+  window.removeEventListener('resize', measureStage)
+})
+
+/** Largest zoom at which the sheet still fits the stage, never past 100 %. */
+const fitZoom = computed(() => {
+  const available = stageWidth.value - 32
+  if (available <= 0) return 0.5
+  return Math.min(1, Math.max(MIN_ZOOM, available / (sheetMm.value.w * PX_PER_MM)))
+})
+
+function zoomToFit() {
+  zoom.value = fitZoom.value
+}
+
+function zoomIn() {
+  zoom.value = ZOOM_STEPS.find(z => z > zoom.value + 0.001) ?? MAX_ZOOM
+}
+
+function zoomOut() {
+  zoom.value = [...ZOOM_STEPS].reverse().find(z => z < zoom.value - 0.001) ?? MIN_ZOOM
+}
+
+// A different paper size needs a different fit, and the stage only has a
+// width once it is mounted — hence both triggers.
+watch([sheetMm, stageWidth], zoomToFit)
 
 const previewStyle = computed(() => ({
-  width: `${PREVIEW_WIDTH_PX}px`,
-  height: `${sheetMm.value.h * PX_PER_MM * previewScale.value}px`,
-  '--preview-scale': String(previewScale.value),
+  width: `${Math.round(sheetMm.value.w * PX_PER_MM * zoom.value)}px`,
+  height: `${Math.round(sheetMm.value.h * PX_PER_MM * zoom.value)}px`,
+  '--preview-scale': String(zoom.value),
 }))
 
 const pageSizeCss = computed(() => {
@@ -561,10 +618,10 @@ async function doPrint() {
       <p class="text-xs leading-snug text-muted-foreground">{{ t('print.browserHint') }}</p>
     </aside>
 
-    <main class="flex flex-1 flex-col items-center gap-5">
+    <main ref="stage" class="flex min-w-0 flex-1 flex-col gap-4">
       <div
         v-if="!print.originIsPublic.value"
-        class="no-print flex w-full max-w-[460px] gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm leading-normal text-destructive"
+        class="no-print mx-auto flex w-full max-w-[560px] gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm leading-normal text-destructive"
       >
         <IconAlertTriangle :size="18" class="mt-0.5 flex-none" />
         <div>
@@ -575,7 +632,7 @@ async function doPrint() {
 
       <div
         v-if="missingFields.length"
-        class="no-print flex w-full max-w-[460px] gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm leading-normal text-amber-700 dark:text-amber-400"
+        class="no-print mx-auto flex w-full max-w-[560px] gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm leading-normal text-amber-700 dark:text-amber-400"
       >
         <IconAlertTriangle :size="18" class="mt-0.5 flex-none" />
         <div>
@@ -585,25 +642,61 @@ async function doPrint() {
         </div>
       </div>
 
-      <div v-if="building && !sheets.length" class="no-print p-12 text-muted-foreground">
+      <!-- Sticky so the zoom stays reachable while scrolling a long sheet. -->
+      <div class="no-print sticky top-6 z-10 mx-auto flex items-center gap-1 rounded-full border border-input bg-card/95 px-2 py-1.5 shadow-sm backdrop-blur">
+        <button
+          type="button"
+          class="inline-flex size-7 items-center justify-center rounded-full transition-colors hover:bg-muted"
+          :title="t('print.zoomOut')"
+          :aria-label="t('print.zoomOut')"
+          @click="zoomOut"
+        >
+          <IconMinus :size="15" />
+        </button>
+        <span class="w-12 text-center text-xs tabular-nums text-muted-foreground">{{ Math.round(zoom * 100) }} %</span>
+        <button
+          type="button"
+          class="inline-flex size-7 items-center justify-center rounded-full transition-colors hover:bg-muted"
+          :title="t('print.zoomIn')"
+          :aria-label="t('print.zoomIn')"
+          @click="zoomIn"
+        >
+          <IconPlus :size="15" />
+        </button>
+        <span class="mx-1 h-4 w-px bg-border" />
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors hover:bg-muted"
+          @click="zoomToFit"
+        >
+          <IconArrowAutofitWidth :size="15" />
+          {{ t('print.zoomFit') }}
+        </button>
+      </div>
+
+      <div v-if="building && !sheets.length" class="no-print mx-auto p-12 text-muted-foreground">
         <IconLoader2 :size="20" class="spin" />
       </div>
 
-      <div v-for="(page, i) in pages" :key="i" class="preview" :style="previewStyle">
-        <div class="sheet" :style="sheetStyle">
-          <StickerSheet
-            v-if="isSticker"
-            :sheets="page"
-            :motif="motif.component"
-            :t="posterT"
-            :format="format"
-          />
-          <component
-            :is="motif.component"
-            v-else-if="page[0]"
-            :sheet="page[0]"
-            :t="posterT"
-          />
+      <!-- Horizontal scroll for zoom levels wider than the stage. `safe center`
+           keeps an oversized sheet from having its left edge cut off. -->
+      <div class="sheets">
+        <div v-for="(page, i) in pages" :key="i" class="preview" :style="previewStyle">
+          <div class="sheet" :style="sheetStyle">
+            <StickerSheet
+              v-if="isSticker"
+              :sheets="page"
+              :motif="motif.component"
+              :t="posterT"
+              :format="format"
+            />
+            <component
+              :is="motif.component"
+              v-else-if="page[0]"
+              :sheet="page[0]"
+              :t="posterT"
+            />
+          </div>
         </div>
       </div>
     </main>
@@ -614,7 +707,15 @@ async function doPrint() {
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.preview { position: relative; overflow: hidden; }
+.sheets {
+  display: flex;
+  flex-direction: column;
+  align-items: safe center;
+  gap: 1.25rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+.preview { position: relative; overflow: hidden; flex: none; }
 
 /* The sheet is paper: it stays white/dark by its motif, never by the app theme. */
 .sheet {
@@ -637,6 +738,7 @@ async function doPrint() {
 @media print {
   .no-print { display: none !important; }
   .print-page { display: block; padding: 0; background: #fff; min-height: 0; }
+  .sheets { display: block; overflow: visible; padding: 0; gap: 0; }
   .preview {
     width: auto !important;
     height: auto !important;

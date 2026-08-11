@@ -2042,6 +2042,9 @@
       "none": "Rien enregistré — les valeurs par défaut s'appliquent.",
       "company": "La configuration d'entreprise enregistrée s'applique.",
       "machine": "Ce distributeur a sa propre configuration enregistrée."
-    }
+    },
+    "zoomIn": "Agrandir",
+    "zoomOut": "Réduire",
+    "zoomFit": "Ajuster"
   }
 }

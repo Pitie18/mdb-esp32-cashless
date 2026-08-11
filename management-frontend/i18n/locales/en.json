@@ -2239,6 +2239,9 @@
       "none": "Nothing saved yet — defaults apply.",
       "company": "The saved company configuration is in use.",
       "machine": "This machine has a configuration of its own saved."
-    }
+    },
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomFit": "Fit width"
   }
 }

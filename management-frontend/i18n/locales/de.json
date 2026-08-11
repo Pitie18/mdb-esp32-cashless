@@ -2239,6 +2239,9 @@
       "none": "Noch nichts gespeichert — es gelten die Standardwerte.",
       "company": "Es gilt die gespeicherte Konfiguration der Firma.",
       "machine": "Für diesen Automaten ist eine eigene Konfiguration gespeichert."
-    }
+    },
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "zoomFit": "Einpassen"
   }
 }

@@ -2042,6 +2042,9 @@
       "none": "Nog niets opgeslagen — standaardwaarden gelden.",
       "company": "De opgeslagen bedrijfsconfiguratie is van kracht.",
       "machine": "Voor deze automaat is een eigen configuratie opgeslagen."
-    }
+    },
+    "zoomIn": "Inzoomen",
+    "zoomOut": "Uitzoomen",
+    "zoomFit": "Passend"
   }
 }
