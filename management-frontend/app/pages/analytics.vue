@@ -4,6 +4,7 @@ import AnalyticsChannelSplit from '@/components/analytics/AnalyticsChannelSplit.
 import AnalyticsFilterBar from '@/components/analytics/AnalyticsFilterBar.vue'
 import AnalyticsHeatmap from '@/components/analytics/AnalyticsHeatmap.vue'
 import AnalyticsKpiRow from '@/components/analytics/AnalyticsKpiRow.vue'
+import AnalyticsProductDialog from '@/components/analytics/AnalyticsProductDialog.vue'
 import AnalyticsTrendChart from '@/components/analytics/AnalyticsTrendChart.vue'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { BreakdownRow } from '~/lib/analytics'
@@ -67,6 +68,8 @@ usePullToRefresh(() => loadAll())
       >
         {{ error }}
       </div>
+
+      <AnalyticsProductDialog v-model:open="dialogOpen" :row="selectedRow" />
     </template>
   </div>
 </template>
