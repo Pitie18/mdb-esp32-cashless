@@ -141,7 +141,7 @@ Nichts anderes passiert in diesem Task. Wenn der Build bricht, ist die Ursache e
 
 **Interfaces:**
 - Consumes: nichts
-- Produces: Versionsaliase `libs.androidx.material3.adaptive.navigation.suite`, `libs.androidx.material3.adaptive.layout`, `libs.androidx.core.splashscreen`, `libs.robolectric`, `libs.turbine`, `libs.kotlinx.coroutines.test` für die Tasks 3–10
+- Produces: Versionsaliase `libs.androidx.material3.adaptive.navigation.suite`, `libs.androidx.material3.adaptive`, `libs.androidx.material3.adaptive.layout`, `libs.androidx.material3.adaptive.navigation`, `libs.androidx.core.splashscreen` für die Tasks 4–9
 
 - [ ] **Step 1: Gradle-Wrapper anheben**
 
@@ -176,8 +176,6 @@ kotlinxSerialization = "1.11.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxDatetime = "0.6.1"
 serialization = "2.4.10"
-robolectric = "4.16.1"
-turbine = "1.2.1"
 ```
 
 - [ ] **Step 3: Neue Bibliotheken eintragen**
@@ -193,11 +191,6 @@ androidx-material3-adaptive-navigation = { group = "androidx.compose.material3.a
 
 # Splashscreen
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
-
-# Test
-robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
-turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
-kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 ```
 
 Hinweis: `material3-adaptive-navigation-suite` bekommt bewusst **keine** `version.ref` — die Version verwaltet die Compose BOM. Die drei `androidx.compose.material3.adaptive`-Artefakte liegen in einer anderen Gruppe, die die BOM nicht abdeckt, und werden deshalb gepinnt.
@@ -216,7 +209,6 @@ In `android/app/build.gradle` den `compileOptions`- und `kotlinOptions`-Block er
     }
     testOptions {
         unitTests {
-            includeAndroidResources = true
             returnDefaultValues = true
         }
     }
@@ -232,23 +224,7 @@ Im `dependencies`-Block den Compose-Abschnitt um die Adaptive-Artefakte und den 
     implementation libs.androidx.core.splashscreen
 ```
 
-und den Test-Abschnitt ersetzen durch:
-
-```groovy
-    // Test
-    testImplementation libs.junit
-    testImplementation libs.robolectric
-    testImplementation libs.turbine
-    testImplementation libs.kotlinx.coroutines.test
-    testImplementation platform(libs.androidx.compose.bom)
-    testImplementation libs.androidx.ui.test.junit4
-    androidTestImplementation libs.androidx.junit
-    androidTestImplementation libs.androidx.espresso.core
-    androidTestImplementation platform(libs.androidx.compose.bom)
-    androidTestImplementation libs.androidx.ui.test.junit4
-    debugImplementation libs.androidx.ui.tooling
-    debugImplementation libs.androidx.ui.test.manifest
-```
+Der Test-Abschnitt bleibt unverändert. Die Tests dieser Phase sind reines JUnit; Robolectric, Turbine und `coroutines-test` kommen in Paket 2 dazu, wenn der erste Test sie wirklich braucht.
 
 - [ ] **Step 5: Gradle-Version verifizieren**
 
@@ -285,9 +261,8 @@ git commit -m "build(android): raise toolchain to AGP 8.13 / Kotlin 2.4 / Compos
 Kotlin had to move too: a 2.0 compiler cannot read metadata from
 libraries built with 2.2+, which the new Compose BOM contains.
 
-Adds the Material 3 adaptive artifacts, core-splashscreen and a JVM
-test stack (Robolectric, Turbine, coroutines-test) that the following
-tasks build on."
+Adds the Material 3 adaptive artifacts and core-splashscreen that the
+following tasks build on."
 ```
 
 ---
