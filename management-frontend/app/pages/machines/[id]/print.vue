@@ -18,7 +18,7 @@ const print = useMachinePrint()
 
 const motifId = ref<MotifId>('klar')
 const format = ref<PrintFormat>('a4')
-const blocks = ref<PrintBlock[]>(['phone', 'imprint'])
+const blocks = ref<PrintBlock[]>(['phone', 'imprint', 'url'])
 const customText = ref('')
 const sheetLocale = ref<string>(locale.value)
 const selectedIds = ref<string[]>([machineId])
@@ -119,7 +119,6 @@ const sheetStyle = computed(() => ({
   height: `${sheetMm.value.h}mm`,
   // One layout scales across A4/A5/A6: motifs size everything in em.
   fontSize: `${(4 * sheetMm.value.w) / 210}mm`,
-  padding: isSticker.value ? '0' : 'max(5mm, 2.5em)',
 }))
 
 const PX_PER_MM = 96 / 25.4

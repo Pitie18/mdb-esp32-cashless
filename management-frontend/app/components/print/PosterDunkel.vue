@@ -33,18 +33,20 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
       <div class="foot-text">
         <div class="foot-title">{{ t('print.poster.pageTitle') }}</div>
         <div class="foot-sub">{{ t('print.poster.pageHint') }}</div>
-        <div class="url">{{ sheet.pageUrl }}</div>
+        <div v-if="sheet.showUrl" class="url">{{ sheet.pageUrl }}</div>
       </div>
     </div>
 
     <div class="meta">
       <div>
+        <span class="meta-label">{{ t('print.poster.locationLabel') }}</span>
         {{ sheet.machineName }}<template v-if="sheet.machineNote"> · {{ sheet.machineNote }}</template>
       </div>
       <div v-if="sheet.addressLine || sheet.email" class="imprint">
-        <span v-if="sheet.addressLine">{{ sheet.addressLine }}</span>
-        <span v-if="sheet.addressLine && sheet.email"> · </span>
-        <span v-if="sheet.email">{{ sheet.email }}</span>
+        <span class="meta-label">{{ t('print.poster.operatorLabel') }}</span>
+        {{ sheet.companyName
+        }}<template v-if="sheet.addressLine"> · {{ sheet.addressLine }}</template
+        ><template v-if="sheet.email"> · {{ sheet.email }}</template>
       </div>
     </div>
   </div>
@@ -53,6 +55,8 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
 <style scoped>
 .motif {
   height: 100%;
+  box-sizing: border-box;
+  padding: max(5mm, 2.5em);
   display: flex;
   flex-direction: column;
   background: #14110f;
@@ -109,5 +113,6 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
   border-top: 0.3mm solid #292524;
   padding-top: 1em;
 }
-.imprint { margin-top: 0.25em; }
+.imprint { margin-top: 0.3em; }
+.meta-label { color: #a8a29e; font-weight: 600; }
 </style>

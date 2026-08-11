@@ -10,7 +10,7 @@
 export type PrintFormat = 'a4' | 'a5' | 'a6' | 'sticker-sheet'
 
 /** Optional content blocks a motif may render, toggled by the operator. */
-export type PrintBlock = 'phone' | 'whatsapp' | 'problem' | 'imprint'
+export type PrintBlock = 'phone' | 'whatsapp' | 'problem' | 'imprint' | 'url'
 
 /** Fields a poster wants but could not fill — surfaced as a warning, never printed blank. */
 export type MissingField =
@@ -88,8 +88,13 @@ export interface PrintSheetBase {
   logoUrl: string | null
   /** One-off note for this print run only; never persisted. */
   customText: string | null
-  /** Absolute public URL of the machine page, also printable as plain text. */
+  /** Absolute public URL of the machine page. */
   pageUrl: string
+  /**
+   * Whether to print `pageUrl` as readable text under the QR code. Some
+   * operators want the code alone; a long URL is the noisiest line on a sign.
+   */
+  showUrl: boolean
   targets: PrintSheetTargets
   missing: MissingField[]
 }
@@ -242,6 +247,20 @@ function joinAddress(parts: {
   return line || null
 }
 
+/**
+ * Best-effort trim of a Nominatim `display_name`. Only reached when a machine
+ * has no structured address at all, so it stays deliberately dumb: keep the
+ * leading segments, drop the district/state/country tail that makes the line
+ * unreadable on paper.
+ */
+function compactDisplayName(raw: string | null | undefined): string | null {
+  const trimmed = raw?.trim()
+  if (!trimmed) return null
+  const segments = trimmed.split(',').map(s => s.trim()).filter(Boolean)
+  if (segments.length <= 3) return segments.join(', ') || null
+  return segments.slice(0, 3).join(', ')
+}
+
 export interface BuildPrintSheetInput {
   machine: PosterMachine
   company: PosterCompany
@@ -277,22 +296,24 @@ export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase
   const email = inherit(machine.contact_email, company.contact_email)
   const hours = inherit(machine.support_hours, company.support_hours)
 
-  const addressLine =
-    joinAddress({
-      street: company.address_street,
-      houseNumber: company.address_house_number,
-      postalCode: company.address_postal_code,
-      city: company.address_city,
-    })
+  const companyAddress = joinAddress({
+    street: company.address_street,
+    houseNumber: company.address_house_number,
+    postalCode: company.address_postal_code,
+    city: company.address_city,
+  })
 
+  // Structured columns first. `formatted_address` is Nominatim's raw
+  // `display_name` — "15, An der Kelter, Criesbach, Ingelfingen, VVG der Stadt
+  // Künzelsau, Hohenlohekreis, Baden-Württemberg, 74653, Deutschland" — which
+  // is unreadable on a sign. It is only a fallback, and a trimmed one.
   const machineNote =
-    machine.formatted_address?.trim() ||
     joinAddress({
       street: machine.address_street,
       houseNumber: machine.address_house_number,
       postalCode: machine.address_postal_code,
       city: machine.address_city,
-    })
+    }) || compactDisplayName(machine.formatted_address)
 
   const wantsPhone = blocks.includes('phone')
   const wantsWhatsapp = blocks.includes('whatsapp')
@@ -301,7 +322,11 @@ export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase
 
   if (wantsPhone && !phone) missing.push('phone')
   if (wantsImprint && !email) missing.push('email')
-  if (wantsImprint && !addressLine) missing.push('address')
+  if (wantsImprint && !companyAddress) missing.push('address')
+
+  // The imprint switch has to actually gate the imprint. Motifs branch on
+  // these being null, so nulling them here is what makes the toggle real.
+  const addressLine = wantsImprint ? companyAddress : null
 
   const telNumber = wantsPhone ? normalizePhone(phone) : null
   const waNumber = wantsWhatsapp ? toWaNumber(whatsappRaw, company.country_code) : null
@@ -326,14 +351,15 @@ export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase
     machineNote,
     companyName,
     addressLine,
-    email,
-    website: company.website?.trim() || null,
+    email: wantsImprint ? email : null,
+    website: wantsImprint ? company.website?.trim() || null : null,
     phone: wantsPhone ? phone : null,
     whatsapp: waNumber ? whatsappRaw : null,
     hours,
     logoUrl: input.logoUrl?.trim() || null,
     customText: input.customText?.trim() || null,
     pageUrl,
+    showUrl: blocks.includes('url'),
     targets: {
       page: pageUrl,
       tel: telNumber ? `tel:${telNumber}` : null,

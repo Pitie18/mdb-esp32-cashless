@@ -87,6 +87,7 @@ const tiles = computed(() => {
 <style scoped>
 .motif {
   height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -95,7 +96,7 @@ const tiles = computed(() => {
 .head {
   background: #0f6e56;
   color: #e1f5ee;
-  padding: 1.4em 1.6em;
+  padding: max(5mm, 2.5em);
   display: flex;
   align-items: center;
   gap: 1em;
@@ -112,7 +113,7 @@ const tiles = computed(() => {
 .head-sub { font-size: 1.86em; margin-top: 0.3em; opacity: 0.85; }
 .body {
   flex: 1;
-  padding: 1.6em;
+  padding: max(5mm, 2.5em);
   display: flex;
   flex-direction: column;
   min-height: 0;

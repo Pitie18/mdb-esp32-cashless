@@ -254,6 +254,70 @@ describe('buildPrintSheetBase', () => {
     })
     expect(sheet.machineNote).toBe('Bahnhofstr. 1 · 34117 Kassel')
   })
+
+  // Nominatim's display_name carries district, county, state and country. It
+  // is unreadable on a sign, so the structured columns win whenever they exist.
+  it('prefers the structured address over the raw Nominatim display name', () => {
+    const sheet = build({
+      machine: {
+        formatted_address:
+          '15, An der Kelter, Criesbach, Ingelfingen, VVG der Stadt Künzelsau, Hohenlohekreis, Baden-Württemberg, 74653, Deutschland',
+        address_street: 'An der Kelter',
+        address_house_number: '15',
+        address_postal_code: '74653',
+        address_city: 'Ingelfingen',
+      },
+    })
+    expect(sheet.machineNote).toBe('An der Kelter 15 · 74653 Ingelfingen')
+  })
+
+  it('trims the display name when no structured address exists', () => {
+    const sheet = build({
+      machine: {
+        formatted_address:
+          '15, An der Kelter, Criesbach, Ingelfingen, VVG der Stadt Künzelsau, Hohenlohekreis, Baden-Württemberg, 74653, Deutschland',
+        address_street: null,
+        address_house_number: null,
+        address_postal_code: null,
+        address_city: null,
+      },
+    })
+    expect(sheet.machineNote).toBe('15, An der Kelter, Criesbach')
+  })
+
+  it('leaves a short display name alone', () => {
+    const sheet = build({
+      machine: {
+        formatted_address: '19 Abt-Knittel-Straße 74676 Niedernhall',
+        address_street: null, address_house_number: null,
+        address_postal_code: null, address_city: null,
+      },
+    })
+    expect(sheet.machineNote).toBe('19 Abt-Knittel-Straße 74676 Niedernhall')
+  })
+
+  it('hides imprint fields when the imprint block is off', () => {
+    const sheet = build({ blocks: ['phone'] })
+    expect(sheet.addressLine).toBeNull()
+    expect(sheet.email).toBeNull()
+    expect(sheet.website).toBeNull()
+    // Still shown: the operator's name is who the sign is from.
+    expect(sheet.companyName).toBe('Muster Vending GmbH')
+  })
+
+  it('exposes imprint fields when the block is on', () => {
+    const sheet = build({ blocks: ['imprint'] })
+    expect(sheet.addressLine).toBe('Musterstr. 4 · 34117 Kassel')
+    expect(sheet.email).toBe('service@muster-vending.de')
+    expect(sheet.website).toBe('https://muster-vending.de')
+  })
+
+  it('tracks whether the URL should be printed as text', () => {
+    expect(build({ blocks: ['url'] }).showUrl).toBe(true)
+    expect(build({ blocks: ['phone'] }).showUrl).toBe(false)
+    // The QR target is unaffected — only the readable line is optional.
+    expect(build({ blocks: ['phone'] }).targets.page).toBe('https://app.muster-vending.de/m/m-1')
+  })
 })
 
 describe('posterFingerprint', () => {

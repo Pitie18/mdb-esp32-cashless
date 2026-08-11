@@ -32,18 +32,21 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
       <div class="foot-text">
         <div class="foot-title">{{ t('print.poster.pageTitle') }}</div>
         <div class="foot-sub">{{ t('print.poster.pageHint') }}</div>
-        <div class="url">{{ sheet.pageUrl }}</div>
+        <div v-if="sheet.showUrl" class="url">{{ sheet.pageUrl }}</div>
       </div>
     </div>
 
+    <!-- Labelled so the machine's location cannot be mistaken for the
+         operator's registered address — they are often different places. -->
     <div class="meta">
-      <span>{{ sheet.machineName }}</span>
-      <span v-if="sheet.machineNote"> · {{ sheet.machineNote }}</span>
+      <span class="meta-label">{{ t('print.poster.locationLabel') }}</span>
+      {{ sheet.machineName }}<template v-if="sheet.machineNote"> · {{ sheet.machineNote }}</template>
     </div>
-    <div v-if="sheet.addressLine || sheet.email" class="imprint">
-      <span v-if="sheet.addressLine">{{ sheet.addressLine }}</span>
-      <span v-if="sheet.addressLine && sheet.email"> · </span>
-      <span v-if="sheet.email">{{ sheet.email }}</span>
+    <div v-if="sheet.addressLine || sheet.email" class="meta">
+      <span class="meta-label">{{ t('print.poster.operatorLabel') }}</span>
+      {{ sheet.companyName
+      }}<template v-if="sheet.addressLine"> · {{ sheet.addressLine }}</template
+      ><template v-if="sheet.email"> · {{ sheet.email }}</template>
     </div>
   </div>
 </template>
@@ -51,6 +54,8 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
 <style scoped>
 .motif {
   height: 100%;
+  box-sizing: border-box;
+  padding: max(5mm, 2.5em);
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -93,6 +98,7 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
 .foot-title { font-size: 2.2em; font-weight: 600; }
 .foot-sub { font-size: 1.86em; color: #57534e; margin-top: 0.25em; line-height: 1.4; }
 .url { font-size: 1.6em; color: #a8a29e; margin-top: 0.5em; word-break: break-all; }
-.meta { font-size: 1.6em; color: #a8a29e; margin-top: 1.2em; }
-.imprint { font-size: 1.6em; color: #a8a29e; margin-top: 0.3em; }
+.meta { font-size: 1.6em; color: #a8a29e; margin-top: 1.2em; line-height: 1.4; }
+.meta + .meta { margin-top: 0.3em; }
+.meta-label { color: #57534e; font-weight: 600; }
 </style>

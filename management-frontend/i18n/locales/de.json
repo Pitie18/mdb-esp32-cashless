@@ -2066,7 +2066,8 @@
       "phone": "Telefonnummer",
       "whatsapp": "WhatsApp-QR",
       "problem": "Störungs-QR",
-      "imprint": "Impressum-Fußzeile"
+      "imprint": "Impressum-Fußzeile",
+      "url": "Link unter dem QR-Code"
     },
     "missingFields": {
       "companyName": "Firmenname",
@@ -2128,7 +2129,9 @@
       "ratherCall": "Lieber anrufen?",
       "helpYouTitle": "Wir helfen dir weiter",
       "helpYouLead": "Automat läuft nicht? Geld weg? Melde dich kurz.",
-      "pageShort": "Sortiment"
+      "pageShort": "Sortiment",
+      "locationLabel": "Standort:",
+      "operatorLabel": "Betreiber:"
     },
     "sticker": {
       "problemTitle": "Störung melden",

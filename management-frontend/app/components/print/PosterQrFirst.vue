@@ -14,7 +14,7 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
 
     <QrBlock class="qr" :svg="sheet.qr.page" />
     <div class="scan">{{ t('print.poster.scanHint') }}</div>
-    <div class="url">{{ sheet.pageUrl }}</div>
+    <div v-if="sheet.showUrl" class="url">{{ sheet.pageUrl }}</div>
 
     <div v-if="sheet.customText" class="custom">{{ sheet.customText }}</div>
 
@@ -27,12 +27,14 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
         <div v-if="sheet.hours" class="hours">{{ sheet.hours }}</div>
       </template>
       <div class="meta">
-        {{ sheet.companyName }} · {{ sheet.machineName }}
+        <span class="meta-label">{{ t('print.poster.locationLabel') }}</span>
+        {{ sheet.machineName }}<template v-if="sheet.machineNote"> · {{ sheet.machineNote }}</template>
       </div>
       <div v-if="sheet.addressLine || sheet.email" class="imprint">
-        <span v-if="sheet.addressLine">{{ sheet.addressLine }}</span>
-        <span v-if="sheet.addressLine && sheet.email"> · </span>
-        <span v-if="sheet.email">{{ sheet.email }}</span>
+        <span class="meta-label">{{ t('print.poster.operatorLabel') }}</span>
+        {{ sheet.companyName
+        }}<template v-if="sheet.addressLine"> · {{ sheet.addressLine }}</template
+        ><template v-if="sheet.email"> · {{ sheet.email }}</template>
       </div>
     </div>
   </div>
@@ -41,6 +43,8 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
 <style scoped>
 .motif {
   height: 100%;
+  box-sizing: border-box;
+  padding: max(5mm, 2.5em);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -71,6 +75,7 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
 .foot-label { font-size: 1.86em; color: #78716c; }
 .phone { font-size: 3.39em; font-weight: 600; margin-top: 0.15em; }
 .hours { font-size: 1.6em; color: #57534e; margin-top: 0.3em; }
-.meta { font-size: 1.6em; color: #a8a29e; margin-top: 1em; }
-.imprint { font-size: 1.6em; color: #a8a29e; margin-top: 0.25em; }
+.meta { font-size: 1.6em; color: #a8a29e; margin-top: 1em; line-height: 1.4; }
+.imprint { font-size: 1.6em; color: #a8a29e; margin-top: 0.3em; line-height: 1.4; }
+.meta-label { color: #57534e; font-weight: 600; }
 </style>

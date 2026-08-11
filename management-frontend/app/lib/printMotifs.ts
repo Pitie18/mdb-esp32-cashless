@@ -44,7 +44,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     descriptionKey: 'print.motifs.klar.description',
     component: PosterKlar,
     formats: ['a4', 'a5', 'a6'],
-    blocks: ['phone', 'imprint'],
+    blocks: ['phone', 'imprint', 'url'],
   },
   {
     id: 'kachel',
@@ -60,7 +60,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     descriptionKey: 'print.motifs.qrFirst.description',
     component: PosterQrFirst,
     formats: ['a4', 'a5'],
-    blocks: ['phone', 'imprint'],
+    blocks: ['phone', 'imprint', 'url'],
   },
   {
     id: 'dunkel',
@@ -68,7 +68,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     descriptionKey: 'print.motifs.dunkel.description',
     component: PosterDunkel,
     formats: ['a4', 'a5'],
-    blocks: ['phone', 'imprint'],
+    blocks: ['phone', 'imprint', 'url'],
   },
   {
     id: 'sticker-problem',

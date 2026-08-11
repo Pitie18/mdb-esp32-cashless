@@ -2066,7 +2066,8 @@
       "phone": "Phone number",
       "whatsapp": "WhatsApp QR",
       "problem": "Fault-report QR",
-      "imprint": "Imprint footer"
+      "imprint": "Imprint footer",
+      "url": "Link under the QR code"
     },
     "missingFields": {
       "companyName": "Company name",
@@ -2128,7 +2129,9 @@
       "ratherCall": "Rather call?",
       "helpYouTitle": "We're here to help",
       "helpYouLead": "Machine stuck? Money gone? Just let us know.",
-      "pageShort": "What's inside"
+      "pageShort": "What's inside",
+      "locationLabel": "Location:",
+      "operatorLabel": "Operator:"
     },
     "sticker": {
       "problemTitle": "Report a fault",

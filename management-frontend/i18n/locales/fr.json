@@ -1869,7 +1869,8 @@
       "phone": "Numéro de téléphone",
       "whatsapp": "QR WhatsApp",
       "problem": "QR signalement",
-      "imprint": "Mentions légales"
+      "imprint": "Mentions légales",
+      "url": "Lien sous le QR code"
     },
     "missingFields": {
       "companyName": "Nom de l'entreprise",
@@ -1931,7 +1932,9 @@
       "ratherCall": "Vous préférez appeler ?",
       "helpYouTitle": "Nous sommes là pour vous aider",
       "helpYouLead": "Distributeur bloqué ? Argent perdu ? Dites-le-nous.",
-      "pageShort": "Assortiment"
+      "pageShort": "Assortiment",
+      "locationLabel": "Emplacement :",
+      "operatorLabel": "Exploitant :"
     },
     "sticker": {
       "problemTitle": "Signaler une panne",

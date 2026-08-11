@@ -1869,7 +1869,8 @@
       "phone": "Telefoonnummer",
       "whatsapp": "WhatsApp-QR",
       "problem": "Storings-QR",
-      "imprint": "Colofon-voettekst"
+      "imprint": "Colofon-voettekst",
+      "url": "Link onder de QR-code"
     },
     "missingFields": {
       "companyName": "Bedrijfsnaam",
@@ -1931,7 +1932,9 @@
       "ratherCall": "Liever bellen?",
       "helpYouTitle": "Wij helpen je verder",
       "helpYouLead": "Automaat hapert? Geld weg? Laat het ons weten.",
-      "pageShort": "Assortiment"
+      "pageShort": "Assortiment",
+      "locationLabel": "Locatie:",
+      "operatorLabel": "Exploitant:"
     },
     "sticker": {
       "problemTitle": "Storing melden",
