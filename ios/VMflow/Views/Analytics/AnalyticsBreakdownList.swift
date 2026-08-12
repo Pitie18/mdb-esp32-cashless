@@ -73,13 +73,19 @@ struct AnalyticsBreakdownList: View {
             } else {
                 LazyVStack(spacing: 2) {
                     ForEach(rows) { row in
-                        // Only products have a detail sheet. The other
-                        // dimensions render as plain rows rather than disabled
-                        // buttons — `.disabled()` greys the label out, which
-                        // reads as "unavailable" instead of "not tappable".
-                        if viewModel.dimension == .product, row.key != nil {
+                        // A product opens its detail sheet; a category or
+                        // machine narrows the filter to itself and switches to
+                        // products. The aggregate "Unknown" row has no key to
+                        // filter or look up, so it stays inert — rendered as a
+                        // plain row rather than a disabled button, which would
+                        // grey it out and read as "unavailable".
+                        if row.key != nil {
                             Button {
-                                onSelectProduct(row)
+                                if viewModel.dimension == .product {
+                                    onSelectProduct(row)
+                                } else {
+                                    viewModel.drillDown(into: row)
+                                }
                             } label: {
                                 rowView(row, maxValue: maxValue, share: shares[row.id])
                             }
@@ -129,6 +135,11 @@ struct AnalyticsBreakdownList: View {
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(delta >= 0 ? .green : .red)
                 }
+            }
+            if row.key != nil {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
             }
         }
         .padding(.horizontal, 7).padding(.vertical, 7)

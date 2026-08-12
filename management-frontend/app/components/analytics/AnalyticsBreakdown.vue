@@ -12,10 +12,16 @@ const emit = defineEmits<{ select: [row: BreakdownRow] }>()
 
 const { t } = useI18n()
 const {
-  dimension, metric, sortDirection, sortedRows, loadingRows, loadBreakdown,
+  dimension, metric, sortDirection, sortedRows, loadingRows, loadBreakdown, drillDown,
 } = useAnalytics()
 
-watch(dimension, () => { loadBreakdown() })
+// drillDown swaps the dimension itself and reloads once; this watcher would
+// otherwise fire a second breakdown request for the same state.
+let suppressDimensionWatch = false
+watch(dimension, () => {
+  if (suppressDimensionWatch) return
+  loadBreakdown()
+})
 
 const maxValue = computed(() =>
   Math.max(0, ...sortedRows.value.map(r => metricValue(r, metric.value))))
@@ -64,9 +70,19 @@ const abcColor = (cls: string) =>
       ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
       : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
 
-function onRowClick(row: BreakdownRow) {
-  if (dimension.value !== 'product' || !row.key) return
-  emit('select', row)
+async function onRowClick(row: BreakdownRow) {
+  // The aggregate "Unknown" row has no key to filter or look up.
+  if (!row.key) return
+  if (dimension.value === 'product') {
+    emit('select', row)
+    return
+  }
+  suppressDimensionWatch = true
+  try {
+    await drillDown(row)
+  } finally {
+    suppressDimensionWatch = false
+  }
 }
 </script>
 
@@ -107,7 +123,7 @@ function onRowClick(row: BreakdownRow) {
           v-for="row in sortedRows" :key="row.key ?? row.label"
           type="button"
           class="relative flex w-full items-center gap-3 overflow-hidden rounded-md px-2 py-2 text-left"
-          :class="dimension === 'product' && row.key ? 'hover:bg-accent cursor-pointer' : 'cursor-default'"
+          :class="row.key ? 'hover:bg-accent cursor-pointer' : 'cursor-default'"
           @click="onRowClick(row)"
         >
           <span
