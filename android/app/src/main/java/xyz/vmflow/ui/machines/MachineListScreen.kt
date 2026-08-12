@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,16 +33,13 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import xyz.vmflow.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MachineListScreen(
-    onNavigateBack: (() -> Unit)? = null,
     onNavigateToMachine: (String) -> Unit,
     viewModel: MachinesViewModel = viewModel()
 ) {
@@ -51,19 +47,7 @@ fun MachineListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Machines") },
-                navigationIcon = {
-                    if (onNavigateBack != null) {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.action_back)
-                            )
-                        }
-                    }
-                }
-            )
+            TopAppBar(title = { Text("Machines") })
         }
     ) { padding ->
         PullToRefreshBox(

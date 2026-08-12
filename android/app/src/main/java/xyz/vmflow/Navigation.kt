@@ -134,7 +134,13 @@ fun VMflowNavHost(
             RefillWizardScreen(
                 onDone = {
                     navController.navigate(Routes.DASHBOARD) {
-                        popUpTo(Routes.DASHBOARD) { inclusive = true }
+                        // inclusive = false keeps the dashboard entry that
+                        // every tab switch saves its scroll/search state
+                        // against; popping it (inclusive = true) silently
+                        // reset the Machines tab's state on every finished
+                        // refill.
+                        popUpTo(Routes.DASHBOARD) { inclusive = false }
+                        launchSingleTop = true
                     }
                 }
             )

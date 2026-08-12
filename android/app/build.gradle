@@ -20,7 +20,10 @@ android {
         applicationId "xyz.vmflow.app"
         minSdk 26
         targetSdk 36
-        versionCode 7
+        // Derived from the same build date as versionName so two builds on
+        // different days get different, increasing Play Store codes. Must
+        // stay monotonically increasing across builds — never hand-lower it.
+        versionCode versionDate.toInteger()
         versionName "${versionBase}.${versionDate}"
         buildConfigField "String", "DISPLAY_VERSION", "\"${displayVersion}\""
 

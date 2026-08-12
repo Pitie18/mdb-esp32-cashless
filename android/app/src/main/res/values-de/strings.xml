@@ -15,7 +15,7 @@
     <string name="server_add">Eigenen Server hinzufügen</string>
     <string name="server_edit">Server bearbeiten</string>
     <string name="server_delete">Server löschen</string>
-    <string name="server_delete_confirm">„%1$s" löschen?</string>
+    <string name="server_delete_confirm">„%1$s“ löschen?</string>
     <string name="server_name">Name</string>
     <string name="server_url">Supabase-URL</string>
     <string name="server_anon_key">Anon-Key</string>
