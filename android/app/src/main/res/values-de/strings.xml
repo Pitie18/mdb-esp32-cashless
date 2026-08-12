@@ -123,4 +123,38 @@
     <string name="cash_book_category_cleaning">Reinigung</string>
     <string name="cash_book_category_fees">Gebühren</string>
     <string name="cash_book_category_other">Sonstiges</string>
+
+    <!-- Analyse-Tab -->
+    <string name="analysis_tab_title">Analyse</string>
+    <string name="analysis_loading">Analysiere…</string>
+    <string name="analysis_empty_title">Keine Fächer konfiguriert</string>
+    <string name="analysis_window_label">Zeitraum</string>
+    <string name="analysis_window_7d">7T</string>
+    <string name="analysis_window_30d">30T</string>
+    <string name="analysis_window_90d">90T</string>
+    <string name="analysis_layout_title">Automatenbelegung</string>
+    <string name="analysis_legend_strong">Stark</string>
+    <string name="analysis_legend_ok">OK</string>
+    <string name="analysis_legend_testing">Testphase</string>
+    <string name="analysis_legend_weak">Schwach</string>
+    <string name="analysis_legend_dead">Tot</string>
+    <string name="analysis_legend_empty">Leer</string>
+    <string name="analysis_products_to_review">Zu prüfende Produkte</string>
+    <string name="analysis_sell_through_sold">%1$d %% Abverkauf · %2$d verkauft</string>
+    <string name="analysis_tenure_suffix"> · %1$d T im Automat</string>
+    <string name="analysis_try_instead">Stattdessen versuchen: %1$s</string>
+    <string name="analysis_slot_empty">Fach %1$d, leer</string>
+    <string name="analysis_replace_title">Produkt ersetzen</string>
+    <string name="analysis_replace_suggestions">Vorschläge</string>
+    <string name="analysis_replace_search">Katalog durchsuchen</string>
+    <string name="analysis_replace_search_hint">Produkte suchen</string>
+    <string name="analysis_replace_no_matches">Keine Treffer</string>
+    <string name="analysis_replace_bestseller">Flotten-Bestseller</string>
+    <string name="analysis_replace_newcomer">Noch nie verkauft — Testkandidat</string>
+    <string name="analysis_confirm_title">Produkt ersetzen?</string>
+    <string name="analysis_confirm_message">„%1$s“ in Fach %2$d durch „%3$s“ ersetzen? Der Bestand dieses Fachs wird auf 0 zurückgesetzt.</string>
+    <string name="analysis_confirm_message_empty">„%1$s“ dem leeren Fach %2$d zuweisen?</string>
+    <string name="analysis_error_title">Fehler</string>
+    <string name="action_replace">Ersetzen</string>
+    <string name="product_unnamed">Unbenannt</string>
 </resources>

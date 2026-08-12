@@ -33,11 +33,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.datetime.toLocalDateTime
+import xyz.vmflow.R
 import xyz.vmflow.ui.components.StatusChip
 import xyz.vmflow.ui.trays.TrayListContent
 import java.text.NumberFormat
@@ -104,7 +106,7 @@ fun MachineDetailScreen(
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Tabs
-                    val tabs = listOf("Overview", "Trays", "Sales")
+                    val tabs = listOf("Overview", "Trays", "Sales", stringResource(R.string.analysis_tab_title))
                     TabRow(selectedTabIndex = uiState.selectedTab) {
                         tabs.forEachIndexed { index, title ->
                             Tab(
@@ -130,6 +132,12 @@ fun MachineDetailScreen(
                             onTraysChanged = { viewModel.refresh() }
                         )
                         2 -> SalesTab(uiState, currencyFormat)
+                        3 -> MachineAnalysisTab(
+                            machineId = machineId,
+                            trays = uiState.machineStats?.trays ?: emptyList(),
+                            catalogue = uiState.products,
+                            onSwapApplied = { viewModel.refresh() },
+                        )
                     }
                 }
             }

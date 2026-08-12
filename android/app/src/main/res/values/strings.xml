@@ -127,4 +127,38 @@
     <string name="cash_book_category_cleaning">Cleaning</string>
     <string name="cash_book_category_fees">Fees</string>
     <string name="cash_book_category_other">Other</string>
+
+    <!-- Machine Analysis tab -->
+    <string name="analysis_tab_title">Analysis</string>
+    <string name="analysis_loading">Analyzing…</string>
+    <string name="analysis_empty_title">No trays configured</string>
+    <string name="analysis_window_label">Window</string>
+    <string name="analysis_window_7d">7d</string>
+    <string name="analysis_window_30d">30d</string>
+    <string name="analysis_window_90d">90d</string>
+    <string name="analysis_layout_title">Machine Layout</string>
+    <string name="analysis_legend_strong">Strong</string>
+    <string name="analysis_legend_ok">OK</string>
+    <string name="analysis_legend_testing">Testing</string>
+    <string name="analysis_legend_weak">Weak</string>
+    <string name="analysis_legend_dead">Dead</string>
+    <string name="analysis_legend_empty">Empty</string>
+    <string name="analysis_products_to_review">Products to Review</string>
+    <string name="analysis_sell_through_sold">%1$d%% sell-through · %2$d sold</string>
+    <string name="analysis_tenure_suffix"> · %1$dd in machine</string>
+    <string name="analysis_try_instead">Try instead: %1$s</string>
+    <string name="analysis_slot_empty">Slot %1$d, empty</string>
+    <string name="analysis_replace_title">Replace Product</string>
+    <string name="analysis_replace_suggestions">Suggestions</string>
+    <string name="analysis_replace_search">Search catalogue</string>
+    <string name="analysis_replace_search_hint">Search products</string>
+    <string name="analysis_replace_no_matches">No matches</string>
+    <string name="analysis_replace_bestseller">Fleet bestseller</string>
+    <string name="analysis_replace_newcomer">Never sold — test candidate</string>
+    <string name="analysis_confirm_title">Replace product?</string>
+    <string name="analysis_confirm_message">Replace \"%1$s\" in slot %2$d with \"%3$s\"? Stock for this slot resets to 0.</string>
+    <string name="analysis_confirm_message_empty">Assign \"%1$s\" to empty slot %2$d?</string>
+    <string name="analysis_error_title">Error</string>
+    <string name="action_replace">Replace</string>
+    <string name="product_unnamed">Unnamed</string>
 </resources>
