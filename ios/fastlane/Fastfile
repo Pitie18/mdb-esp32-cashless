@@ -1,15 +1,22 @@
 # VMflow iOS release lanes.
 #
-# Signing: App Store Connect API key + Xcode cloud signing. No cert repo.
-# The key MUST have the Admin role — cloud-managed distribution certificates
-# cannot be granted to lesser API keys (Apple forums thread 698117).
+# Signing: fastlane match (git storage, see fastlane/Matchfile), CODE_SIGN_STYLE
+# Manual in the Xcode project. Previously this used pure Xcode cloud signing
+# (`-allowProvisioningUpdates` + Automatic style) with no cert repo — on
+# GitHub's ephemeral macOS runners that meant no signing identity ever
+# persisted locally, so every single CI run minted a brand-new distribution
+# certificate. That silently ate into Apple's per-account certificate cap
+# until `beta`/`release` started failing with "reached the maximum number of
+# certificates" (first seen 2026-08-12, no revocation on our end — the
+# accumulation was the CI-generated certs, not the one the user tracks by
+# hand). match fixes this by reusing the SAME certificate/profile across
+# runs. CI always runs match `readonly: true` (see Matchfile) — it must never
+# create or revoke a certificate itself; that stays a human decision, done
+# locally with `bundle exec fastlane match appstore --readonly false`.
 #
-# Cloud-signing auth: gym's `xcargs` carries the API-key flags to the ARCHIVE
-# step. The EXPORT step's auth is injected automatically by gym (2.237) because
-# `app_store_connect_api_key` ran and is in the lane context — so we must NOT
-# also pass it via `export_xcargs`, or xcodebuild errors
-# "-authenticationKeyPath may only be provided once". (An earlier version set
-# export_xcargs on the assumption gym didn't auto-inject; CI proved it does.)
+# The App Store Connect API key still needs the Admin role: match's
+# certificate/profile calls and `upload_to_app_store`/`upload_to_testflight`
+# both go through it (Apple forums thread 698117 re: distribution certs).
 #
 # Build numbers: both prebuild scripts run `git rev-list --count HEAD`
 # independently (app + extension). In CI nothing commits mid-build, so they
@@ -74,8 +81,9 @@ platform :ios do
       key_filepath: key_path
     )
 
-    auth_args = "-allowProvisioningUpdates " \
-                "-authenticationKeyPath #{key_path.shellescape} " \
+    # No -allowProvisioningUpdates: signing is Manual (match-provided profiles),
+    # so xcodebuild must never fall back to minting its own certificate/profile.
+    auth_args = "-authenticationKeyPath #{key_path.shellescape} " \
                 "-authenticationKeyID #{ENV['APP_STORE_CONNECT_KEY_ID'].shellescape} " \
                 "-authenticationKeyIssuerID #{ENV['APP_STORE_CONNECT_ISSUER_ID'].shellescape}"
 
@@ -90,6 +98,9 @@ platform :ios do
   private_lane :build_signed do
     auth = asc_auth
     setup_ci if ENV["CI"]
+    # readonly: installs the existing cert/profile from the match git repo
+    # into the CI keychain; never creates or revokes anything itself.
+    match(type: "appstore", api_key: auth[:api_key], readonly: true)
     build_app(
       project: "VMflow.xcodeproj",
       scheme: "VMflow",

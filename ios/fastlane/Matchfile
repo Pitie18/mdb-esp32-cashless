@@ -1,0 +1,17 @@
+# Certificate + provisioning profile storage for VMflow, separate from this
+# (public) app repo. See docs/ios/app-store-connect-setup.md "Code signing".
+#
+# SSH so a read-only GitHub deploy key can clone it in CI without a
+# broader-scoped personal access token.
+git_url("git@github.com:lucienkerl/vmflow-ios-certs.git")
+storage_mode("git")
+type("appstore")
+app_identifier(["de.kerl-handel.app", "de.kerl-handel.app.NotificationService"])
+team_id("4JT3V7XVXM")
+
+# CI must never mint or revoke certificates — that's what caused "maximum
+# number of certificates" in the first place (a new cert/profile per run on
+# ephemeral runners with cloud-managed automatic signing, no persisted
+# identity to reuse). Default to read-only; the one-time/occasional refresh
+# that's allowed to create or renew is run locally with `--readonly false`.
+readonly(true)
