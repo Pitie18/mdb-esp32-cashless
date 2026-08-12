@@ -5,4 +5,7 @@
     <string name="nav_machines">Automaten</string>
     <string name="nav_refill">Befüllen</string>
     <string name="action_back">Zurück</string>
+
+    <!-- StockBar accessibility -->
+    <string name="stock_bar_description">Bestand %1$d von %2$d</string>
 </resources>
