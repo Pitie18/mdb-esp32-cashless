@@ -30,6 +30,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -169,10 +170,17 @@ fun MachinesPane() {
         detailPane = {
             AnimatedPane {
                 navigator.currentDestination?.contentKey?.let { machineId ->
-                    MachineDetailScreen(
-                        machineId = machineId,
-                        onNavigateBack = { scope.launch { navigator.navigateBack() } },
-                    )
+                    // Every selection needs its own composition scope. Without
+                    // key(), all machines share the one ViewModelStoreOwner of
+                    // the "machines" back stack entry, so switching machines
+                    // keeps the previous one's stats on screen until the new
+                    // fetch resolves.
+                    key(machineId) {
+                        MachineDetailScreen(
+                            machineId = machineId,
+                            onNavigateBack = { scope.launch { navigator.navigateBack() } },
+                        )
+                    }
                 }
             }
         },

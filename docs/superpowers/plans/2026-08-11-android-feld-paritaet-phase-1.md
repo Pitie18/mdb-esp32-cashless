@@ -1216,10 +1216,17 @@ fun MachinesPane() {
         detailPane = {
             AnimatedPane {
                 navigator.currentDestination?.contentKey?.let { machineId ->
-                    MachineDetailScreen(
-                        machineId = machineId,
-                        onNavigateBack = { navigator.navigateBack() },
-                    )
+                    // Every selection needs its own composition scope. Without
+                    // key(), all machines share the one ViewModelStoreOwner of
+                    // the "machines" back stack entry, so switching machines
+                    // keeps the previous one's stats on screen until the new
+                    // fetch resolves.
+                    key(machineId) {
+                        MachineDetailScreen(
+                            machineId = machineId,
+                            onNavigateBack = { navigator.navigateBack() },
+                        )
+                    }
                 }
             }
         },
