@@ -21,15 +21,22 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import xyz.vmflow.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -129,4 +136,45 @@ fun MachineListScreen(
             }
         }
     }
+}
+
+/**
+ * Machines as a list on phones, list plus detail side by side once the
+ * window is wide enough. The scaffold owns the breakpoint and the back
+ * behaviour of the detail pane, so this screen never branches on form
+ * factor itself.
+ */
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+fun MachinesPane() {
+    val navigator = rememberListDetailPaneScaffoldNavigator<String>()
+    val scope = rememberCoroutineScope()
+
+    NavigableListDetailPaneScaffold(
+        navigator = navigator,
+        listPane = {
+            AnimatedPane {
+                MachineListScreen(
+                    onNavigateToMachine = { machineId ->
+                        scope.launch {
+                            navigator.navigateTo(
+                                pane = ListDetailPaneScaffoldRole.Detail,
+                                contentKey = machineId,
+                            )
+                        }
+                    },
+                )
+            }
+        },
+        detailPane = {
+            AnimatedPane {
+                navigator.currentDestination?.contentKey?.let { machineId ->
+                    MachineDetailScreen(
+                        machineId = machineId,
+                        onNavigateBack = { scope.launch { navigator.navigateBack() } },
+                    )
+                }
+            }
+        },
+    )
 }

@@ -15,7 +15,7 @@ import xyz.vmflow.ui.auth.LoginScreen
 import xyz.vmflow.ui.auth.RegisterScreen
 import xyz.vmflow.ui.dashboard.DashboardScreen
 import xyz.vmflow.ui.machines.MachineDetailScreen
-import xyz.vmflow.ui.machines.MachineListScreen
+import xyz.vmflow.ui.machines.MachinesPane
 import xyz.vmflow.ui.navigation.TopLevelDestination
 import xyz.vmflow.ui.refill.RefillWizardScreen
 
@@ -114,11 +114,7 @@ fun VMflowNavHost(
         }
 
         composable(Routes.MACHINES) {
-            MachineListScreen(
-                onNavigateToMachine = { id ->
-                    navController.navigate(Routes.machineDetail(id))
-                }
-            )
+            MachinesPane()
         }
 
         composable(
