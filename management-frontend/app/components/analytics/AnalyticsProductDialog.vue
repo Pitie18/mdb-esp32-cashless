@@ -6,6 +6,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+// getProductImageUrl is a module-level export of useProducts, not part of the
+// object useProducts() returns — destructuring it from the call yields
+// undefined and only fails at render time, once a product with an image is
+// opened.
+import { getProductImageUrl } from '@/composables/useProducts'
 import { formatCurrency } from '@/lib/utils'
 import { deltaPct, type BreakdownRow } from '~/lib/analytics'
 
@@ -14,7 +19,6 @@ const open = defineModel<boolean>('open', { required: true })
 
 const { t } = useI18n()
 const { loadProductMachines } = useAnalytics()
-const { getProductImageUrl } = useProducts()
 
 const machineRows = ref<BreakdownRow[]>([])
 const loading = ref(false)
