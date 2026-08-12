@@ -19,7 +19,60 @@ the first `beta`/`release` dispatch. Ordered.
 Repo → Settings → Secrets and variables → Actions:
 - `APP_STORE_CONNECT_KEY_ID` — the Key ID
 - `APP_STORE_CONNECT_ISSUER_ID` — the Issuer ID
-- `APP_STORE_CONNECT_KEY_P8` — the key, base64: `base64 -i AuthKey_XXXXX.p8 | pbcopy`
+- `APP_STORE_CONNECT_KEY_P8` — the key, base64: `base64 < AuthKey_XXXXX.p8 | pbcopy`
+  (portable across the BSD `base64` on stock macOS and the GNU/Homebrew one —
+  `-i`/`-D`/other input flags differ between them, plain stdin doesn't)
+- `MATCH_SSH_PRIVATE_KEY` — read-only deploy key for the private
+  `lucienkerl/vmflow-ios-certs` repo (already generated and set)
+- `MATCH_PASSWORD` — passphrase match uses to encrypt/decrypt that repo's
+  contents (already generated and set)
+
+Both `MATCH_*` secrets were already created for you when this pipeline moved
+to match-based signing — see "Code signing" below for what they're for and
+how to run match locally.
+
+## Code signing (fastlane match)
+
+CI signs via [fastlane match](https://docs.fastlane.tools/actions/match/),
+not Xcode's automatic cloud signing. The certificate and provisioning
+profiles live encrypted in the private repo `lucienkerl/vmflow-ios-certs`
+(separate from this public app repo), and CI clones it read-only over SSH
+using the `MATCH_SSH_PRIVATE_KEY` deploy key.
+
+**Why not automatic signing**: GitHub's macOS runners are ephemeral — a fresh
+VM every run, nothing persisted. With `CODE_SIGN_STYLE = Automatic` and
+`-allowProvisioningUpdates`, Xcode has no locally-cached signing identity to
+reuse on a fresh runner, so it minted a **new** distribution certificate on
+every single CI run. That silently ran the account into Apple's per-account
+certificate cap ("Choose a certificate to revoke. Your account has reached
+the maximum number of certificates.", first hit 2026-08-12). match fixes this
+by reusing one certificate/profile pair across every run — CI only ever reads
+it (`readonly: true` in `fastlane/Matchfile` and `build_signed`), it never
+creates or revokes.
+
+**One-time: populate the cert repo.** Run this locally (needs the same `.p8`
+key from step 2 above, and your own Apple ID login for the first
+authorization prompt — after that App Store Connect API key auth carries it):
+
+```bash
+cd ios
+export APP_STORE_CONNECT_KEY_ID=...      # same values as the GitHub secrets
+export APP_STORE_CONNECT_ISSUER_ID=...
+export APP_STORE_CONNECT_KEY_P8=$(base64 < AuthKey_XXXXX.p8)
+bundle exec fastlane match appstore --readonly false
+```
+
+If the account is already at the certificate limit, match (or the Apple
+Developer portal) will ask you to choose one to revoke — **that choice is
+deliberately not automated**; picking the wrong one to revoke could break
+someone else's local signing setup, so it needs a human. Check
+https://developer.apple.com/account/resources/certificates/list first if
+you're not sure which ones are still in use.
+
+Re-run the same command (still `--readonly false`) whenever the certificate
+is close to expiring (Apple distribution certs last ~1 year) or a new device
+needs the profile refreshed — match reuses the existing certificate rather
+than creating a new one as long as it's still valid.
 
 ## 4. Create the app record
 My Apps → **+** → New App:
