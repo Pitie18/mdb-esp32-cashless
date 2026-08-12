@@ -17,17 +17,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,8 +50,6 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    onNavigateToMachines: () -> Unit,
-    onNavigateToRefill: () -> Unit,
     onNavigateToMachine: (String) -> Unit,
     onLogout: () -> Unit,
     viewModel: DashboardViewModel = viewModel()
@@ -153,37 +147,6 @@ fun DashboardScreen(
                                 label = "Alerts",
                                 iconTint = if (uiState.stockAlerts > 0) StockRed else MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Quick Actions
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Button(
-                            onClick = onNavigateToRefill,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp)
-                        ) {
-                            Icon(Icons.Default.LocalShipping, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Start Refill")
-                        }
-                        FilledTonalButton(
-                            onClick = onNavigateToMachines,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp)
-                        ) {
-                            Icon(Icons.Default.Computer, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Machines")
                         }
                     }
 

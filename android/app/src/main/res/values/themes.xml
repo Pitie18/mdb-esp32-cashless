@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.VMflow" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
+    <!-- Applied at launch, then swapped to Theme.VMflow by installSplashScreen(). -->
+    <style name="Theme.VMflow.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.VMflow</item>
     </style>
+
+    <!-- No windowLightStatusBar here: enableEdgeToEdge() derives the bar
+         icon appearance from the active light/dark scheme at runtime.
+         Hardcoding it made status bar icons unreadable in dark mode. -->
+    <style name="Theme.VMflow" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

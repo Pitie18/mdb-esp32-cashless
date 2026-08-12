@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -14,7 +15,8 @@ import xyz.vmflow.ui.auth.LoginScreen
 import xyz.vmflow.ui.auth.RegisterScreen
 import xyz.vmflow.ui.dashboard.DashboardScreen
 import xyz.vmflow.ui.machines.MachineDetailScreen
-import xyz.vmflow.ui.machines.MachineListScreen
+import xyz.vmflow.ui.machines.MachinesPane
+import xyz.vmflow.ui.navigation.TopLevelDestination
 import xyz.vmflow.ui.refill.RefillWizardScreen
 
 object Routes {
@@ -39,28 +41,44 @@ fun VMflowNavHost(
         navController = navController,
         startDestination = startDestination,
         enterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(animDuration)
-            ) + fadeIn(tween(animDuration))
+            if (isTopLevelSwitch()) {
+                fadeIn(tween(animDuration))
+            } else {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(animDuration)
+                ) + fadeIn(tween(animDuration))
+            }
         },
         exitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(animDuration)
-            ) + fadeOut(tween(animDuration))
+            if (isTopLevelSwitch()) {
+                fadeOut(tween(animDuration))
+            } else {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(animDuration)
+                ) + fadeOut(tween(animDuration))
+            }
         },
         popEnterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(animDuration)
-            ) + fadeIn(tween(animDuration))
+            if (isTopLevelSwitch()) {
+                fadeIn(tween(animDuration))
+            } else {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(animDuration)
+                ) + fadeIn(tween(animDuration))
+            }
         },
         popExitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(animDuration)
-            ) + fadeOut(tween(animDuration))
+            if (isTopLevelSwitch()) {
+                fadeOut(tween(animDuration))
+            } else {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(animDuration)
+                ) + fadeOut(tween(animDuration))
+            }
         }
     ) {
         composable(Routes.LOGIN) {
@@ -84,8 +102,6 @@ fun VMflowNavHost(
 
         composable(Routes.DASHBOARD) {
             DashboardScreen(
-                onNavigateToMachines = { navController.navigate(Routes.MACHINES) },
-                onNavigateToRefill = { navController.navigate(Routes.REFILL) },
                 onNavigateToMachine = { id ->
                     navController.navigate(Routes.machineDetail(id))
                 },
@@ -98,12 +114,7 @@ fun VMflowNavHost(
         }
 
         composable(Routes.MACHINES) {
-            MachineListScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToMachine = { id ->
-                    navController.navigate(Routes.machineDetail(id))
-                }
-            )
+            MachinesPane()
         }
 
         composable(
@@ -121,13 +132,28 @@ fun VMflowNavHost(
 
         composable(Routes.REFILL) {
             RefillWizardScreen(
-                onNavigateBack = { navController.popBackStack() },
                 onDone = {
                     navController.navigate(Routes.DASHBOARD) {
-                        popUpTo(Routes.DASHBOARD) { inclusive = true }
+                        // inclusive = false keeps the dashboard entry that
+                        // every tab switch saves its scroll/search state
+                        // against; popping it (inclusive = true) silently
+                        // reset the Machines tab's state on every finished
+                        // refill.
+                        popUpTo(Routes.DASHBOARD) { inclusive = false }
+                        launchSingleTop = true
                     }
                 }
             )
         }
     }
 }
+
+/**
+ * True when both sides of the transition are navigation-bar destinations.
+ *
+ * Sideways motion expresses hierarchy; switching between siblings should
+ * cross-fade instead.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTopLevelSwitch(): Boolean =
+    TopLevelDestination.fromRoute(initialState.destination.route) != null &&
+        TopLevelDestination.fromRoute(targetState.destination.route) != null

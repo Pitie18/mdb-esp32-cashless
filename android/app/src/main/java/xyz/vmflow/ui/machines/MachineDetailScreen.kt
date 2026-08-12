@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.datetime.toLocalDateTime
 import xyz.vmflow.ui.components.StatusChip
 import xyz.vmflow.ui.trays.TrayListContent
 import java.text.NumberFormat

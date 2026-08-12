@@ -7,7 +7,7 @@
 # Android Studio files
 .idea/
 .gradle/
-.local.properties
+local.properties
 .cxx/
 .externalNativeBuild/
 captures/

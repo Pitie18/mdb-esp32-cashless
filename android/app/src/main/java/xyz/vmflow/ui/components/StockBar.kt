@@ -17,8 +17,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import xyz.vmflow.R
 import xyz.vmflow.ui.theme.StockGreen
 import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
@@ -51,7 +55,16 @@ fun StockBar(
         label = "stock_color"
     )
 
-    Column(modifier = modifier) {
+    val description = stringResource(R.string.stock_bar_description, current, capacity)
+
+    Column(
+        // mergeDescendants collapses the bar and its optional label into a
+        // single node, and the explicit description replaces "4 slash 10"
+        // with something a screen reader can actually convey.
+        modifier = modifier.semantics(mergeDescendants = true) {
+            contentDescription = description
+        }
+    ) {
         if (showLabel) {
             Row(
                 modifier = Modifier

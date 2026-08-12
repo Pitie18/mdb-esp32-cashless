@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation bar -->
+    <string name="nav_dashboard">Übersicht</string>
+    <string name="nav_machines">Automaten</string>
+    <string name="nav_refill">Befüllen</string>
+    <string name="action_back">Zurück</string>
+
+    <!-- StockBar accessibility -->
+    <string name="stock_bar_description">Bestand %1$d von %2$d</string>
+
+    <!-- Serverauswahl -->
+    <string name="server_selected">Server: %1$s</string>
+    <string name="server_select_title">Server wählen</string>
+    <string name="server_add">Eigenen Server hinzufügen</string>
+    <string name="server_edit">Server bearbeiten</string>
+    <string name="server_delete">Server löschen</string>
+    <string name="server_delete_confirm">„%1$s“ löschen?</string>
+    <string name="server_name">Name</string>
+    <string name="server_url">Supabase-URL</string>
+    <string name="server_anon_key">Anon-Key</string>
+    <string name="server_name_hint">Mein Server</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_done">Fertig</string>
+
+    <!-- QR-Scan -->
+    <string name="qr_scan">QR-Code scannen</string>
+    <string name="qr_scan_hint">Scanne den Code aus deinem Web-Dashboard</string>
+    <string name="qr_invalid">Dieser QR-Code ist keine Serverkonfiguration</string>
+    <string name="qr_permission_needed">Für den Scan wird Kamerazugriff gebraucht</string>
+    <string name="qr_grant_permission">Kamera erlauben</string>
+</resources>

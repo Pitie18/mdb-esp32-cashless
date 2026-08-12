@@ -3,4 +3,36 @@
     <!-- Supabase configuration (override via gradle properties or BuildConfig) -->
     <string name="supabase_url">https://supabase.vmflow.xyz</string>
     <string name="supabase_anon_key">your-anon-key-here</string>
+
+    <!-- Navigation bar -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_machines">Machines</string>
+    <string name="nav_refill">Refill</string>
+    <string name="action_back">Back</string>
+
+    <!-- StockBar accessibility -->
+    <string name="stock_bar_description">Stock %1$d of %2$d</string>
+
+    <!-- Server selection -->
+    <string name="server_selected">Server: %1$s</string>
+    <string name="server_select_title">Select server</string>
+    <string name="server_add">Add self-hosted server</string>
+    <string name="server_edit">Edit server</string>
+    <string name="server_delete">Delete server</string>
+    <string name="server_delete_confirm">Delete “%1$s”?</string>
+    <string name="server_name">Name</string>
+    <string name="server_url">Supabase URL</string>
+    <string name="server_anon_key">Anon key</string>
+    <string name="server_name_hint">My Server</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_done">Done</string>
+
+    <!-- QR scanning -->
+    <string name="qr_scan">Scan QR code</string>
+    <string name="qr_scan_hint">Scan the code from your web dashboard</string>
+    <string name="qr_invalid">That QR code is not a server configuration</string>
+    <string name="qr_permission_needed">Camera access is needed to scan a code</string>
+    <string name="qr_grant_permission">Allow camera</string>
 </resources>

@@ -5,6 +5,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Base version, bumped by hand. The date is stamped at build time so a
+// version string from the field identifies the exact build.
+def versionBase = "2.0"
+def buildDate = new Date()
+def versionDate = buildDate.format("yyMMdd")
+def displayVersion = "${versionBase}.${buildDate.format("M.d")}"
+
 android {
     namespace 'xyz.vmflow'
     compileSdk 36
@@ -13,8 +20,12 @@ android {
         applicationId "xyz.vmflow.app"
         minSdk 26
         targetSdk 36
-        versionCode 7
-        versionName "v2.0.0"
+        // Derived from the same build date as versionName so two builds on
+        // different days get different, increasing Play Store codes. Must
+        // stay monotonically increasing across builds — never hand-lower it.
+        versionCode versionDate.toInteger()
+        versionName "${versionBase}.${versionDate}"
+        buildConfigField "String", "DISPLAY_VERSION", "\"${displayVersion}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -30,11 +41,16 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = '11'
+        jvmTarget = '17'
+    }
+    testOptions {
+        unitTests {
+            returnDefaultValues = true
+        }
     }
     buildFeatures {
         compose true
@@ -58,9 +74,21 @@ dependencies {
     implementation libs.androidx.material3
     implementation libs.androidx.material.icons.extended
     implementation libs.androidx.navigation.compose
+    implementation libs.androidx.material3.adaptive.navigation.suite
+    implementation libs.androidx.material3.adaptive
+    implementation libs.androidx.material3.adaptive.layout
+    implementation libs.androidx.material3.adaptive.navigation
+    implementation libs.androidx.core.splashscreen
+
+    // Camera + barcode
+    implementation libs.androidx.camera.core
+    implementation libs.androidx.camera.camera2
+    implementation libs.androidx.camera.lifecycle
+    implementation libs.androidx.camera.view
+    implementation libs.mlkit.barcode.scanning
 
     // Supabase
-    implementation libs.supabase.gotrue
+    implementation libs.supabase.auth
     implementation libs.supabase.postgrest
     implementation libs.supabase.realtime
     implementation libs.supabase.storage

@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -51,6 +52,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import xyz.vmflow.R
+import xyz.vmflow.data.ServerStoreHolder
 
 @Composable
 fun LoginScreen(
@@ -62,6 +65,7 @@ fun LoginScreen(
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var showServerSheet by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -192,8 +196,22 @@ fun LoginScreen(
                     Text("Don't have an account? Register")
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val selectedServer by ServerStoreHolder.instance.selectedServer.collectAsState()
+                TextButton(onClick = { showServerSheet = true }) {
+                    Text(
+                        text = stringResource(R.string.server_selected, selectedServer.name),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(48.dp))
             }
         }
+    }
+
+    if (showServerSheet) {
+        ServerSelectionSheet(onDismiss = { showServerSheet = false })
     }
 }
