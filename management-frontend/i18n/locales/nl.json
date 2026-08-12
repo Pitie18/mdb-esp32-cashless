@@ -1845,7 +1845,7 @@
     "backToMachine": "Terug naar de automaat",
     "motif": "Ontwerp",
     "format": "Formaat",
-    "blocks": "Onderdelen",
+    "blocks": "Extra inhoud",
     "sheetLanguage": "Taal op het biljet",
     "customText": "Extra tekst",
     "customTextPlaceholder": "bijv. 2e verdieping bij de lift",
@@ -1863,13 +1863,14 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
-      "sticker-sheet": "Stickers 90 × 50 mm"
+      "sticker-sheet": "Stickers 90 × 50 mm",
+      "sticker-sheet-small": "Stickers 50 × 30 mm",
+      "sticker-sheet-strip": "Strook 148 × 40 mm"
     },
     "blockNames": {
       "phone": "Telefoonnummer",
-      "whatsapp": "WhatsApp-QR",
-      "problem": "Storings-QR",
-      "imprint": "Colofon-voettekst"
+      "imprint": "Colofon-voettekst",
+      "url": "Link onder de QR-code"
     },
     "missingFields": {
       "companyName": "Bedrijfsnaam",
@@ -1877,7 +1878,8 @@
       "whatsapp": "WhatsApp-nummer",
       "whatsappCountry": "Land voor het WhatsApp-nummer",
       "email": "Contact-e-mail",
-      "address": "Postadres"
+      "address": "Postadres",
+      "customUrl": "Eigen link"
     },
     "motifShort": {
       "klar": "Helder",
@@ -1885,7 +1887,16 @@
       "qr-first": "QR eerst",
       "dunkel": "Donker",
       "sticker-problem": "Sticker storing",
-      "sticker-menu": "Sticker assortiment"
+      "sticker-menu": "Sticker assortiment",
+      "duo": "Tweedelig",
+      "signal": "Signaal",
+      "klassisch": "Klassiek",
+      "sticker-duo": "Sticker duo",
+      "sticker-contact": "Sticker contact",
+      "sticker-mini": "Sticker klein",
+      "sticker-service": "Sticker service",
+      "sticker-imprint": "Sticker colofon",
+      "sticker-strip": "Strook"
     },
     "motifs": {
       "klar": {
@@ -1911,6 +1922,42 @@
       "stickerMenu": {
         "label": "Sticker: assortiment",
         "description": "90 × 50 mm met een QR naar de automaatpagina."
+      },
+      "duo": {
+        "label": "Tweedelig",
+        "description": "Bovenaan groot het assortiment, onderaan een smalle storingsstrook. Hulp is er, zonder te suggereren dat de automaat vaak hapert."
+      },
+      "signal": {
+        "label": "Signaal",
+        "description": "Paginavullende kleur, telefoonnummer enorm. Valt van ver op — en kost veel inkt."
+      },
+      "klassisch": {
+        "label": "Klassiek",
+        "description": "Schreefletter, dubbele rand, ingetogen. Voor praktijken, hotels en kantoren die geen kleurig affiche ophangen."
+      },
+      "stickerDuo": {
+        "label": "Sticker: duo",
+        "description": "90 × 50 mm met twee codes — assortiment groot, storing klein ernaast."
+      },
+      "stickerContact": {
+        "label": "Sticker: contact",
+        "description": "90 × 50 mm zonder QR, alleen het nummer groot. Voor locaties waar niemand scant."
+      },
+      "stickerMini": {
+        "label": "Sticker: klein",
+        "description": "50 × 30 mm, één code en één regel. 24 per A4-vel — voor de muntteruggave."
+      },
+      "stickerService": {
+        "label": "Sticker: service",
+        "description": "De klassieker op de automaat: de naam groot, zodat de beller weet waarover hij belt. 90 × 50 mm."
+      },
+      "stickerImprint": {
+        "label": "Sticker: colofon",
+        "description": "Het kleine exploitantplaatje. Rustig en tekstgericht — het moet volledig zijn, niet opvallen."
+      },
+      "stickerStrip": {
+        "label": "Strook (liggend)",
+        "description": "148 × 40 mm dwars over de automaatfront. 6 per A4-vel, donker voor contrast op licht plaatwerk."
       }
     },
     "poster": {
@@ -1927,17 +1974,77 @@
       "callDirect": "Direct bellen",
       "everythingTitle": "Alles over deze automaat",
       "everythingLead": "Producten, prijzen, beschikbaarheid en storingen melden",
-      "scanHint": "Open je camera en scan de code",
       "ratherCall": "Liever bellen?",
       "helpYouTitle": "Wij helpen je verder",
       "helpYouLead": "Automaat hapert? Geld weg? Laat het ons weten.",
-      "pageShort": "Assortiment"
+      "pageShort": "Assortiment",
+      "locationLabel": "Locatie:",
+      "operatorLabel": "Exploitant:",
+      "callHint": "Scan de code om te bellen",
+      "customTitle": "Meer weten",
+      "customHint": "Scan de code",
+      "pageHintShort": "Prijzen en beschikbaarheid",
+      "callShort": "Bellen",
+      "callHintShort": "Scan of bel",
+      "discoverTitle": "Meer over deze automaat — en niets meer missen",
+      "discoverLead": "Bekijk assortiment en prijzen, betaal online en krijg bericht bij nieuwe producten."
     },
     "sticker": {
       "problemTitle": "Storing melden",
-      "problemHint": "Scan of bel",
       "menuTitle": "Bekijk het assortiment",
-      "menuHint": "Prijzen, beschikbaarheid en betaling"
-    }
+      "contactTitle": "Vragen over deze automaat?",
+      "serviceTitle": "Vermeld bij een storing",
+      "imprintTitle": "Exploitantgegevens",
+      "stripTitle": "Vragen over deze automaat?"
+    },
+    "qrCodes": "QR-codes",
+    "headlines": "Koppen",
+    "customLink": "Eigen link",
+    "customLinkPlaceholder": "https://…",
+    "customLinkHint": "Doel voor QR-codes die op “Eigen link” staan. https:// wordt aangevuld als je het weglaat.",
+    "resetText": "Terug naar standaard",
+    "resetAll": "Alles resetten",
+    "save": "Opslaan",
+    "saved": "Opgeslagen",
+    "saveSection": "Configuratie opslaan",
+    "sourceUnavailable": "niet ingesteld",
+    "customTextHint": "Geldt alleen voor deze afdruk en wordt niet opgeslagen.",
+    "sources": {
+      "page": "Automaatpagina",
+      "tel": "Bellen",
+      "whatsapp": "WhatsApp",
+      "problem": "Storing melden",
+      "custom": "Eigen link",
+      "none": "Leeg laten"
+    },
+    "slots": {
+      "main": "QR-code",
+      "tile1": "Tegel 1",
+      "tile2": "Tegel 2",
+      "tile3": "Tegel 3",
+      "call": "Belvak",
+      "top": "Grote QR bovenaan",
+      "bottom": "Storingsstrook onderaan",
+      "left": "Grote QR links",
+      "right": "Kleine QR rechts"
+    },
+    "texts": {
+      "title": "Kop",
+      "lead": "Subkop",
+      "slotTitle": "Titel",
+      "slotHint": "Toelichting"
+    },
+    "saveScope": {
+      "company": "Voor alle automaten",
+      "machine": "Alleen deze automaat"
+    },
+    "saveState": {
+      "none": "Nog niets opgeslagen — standaardwaarden gelden.",
+      "company": "De opgeslagen bedrijfsconfiguratie is van kracht.",
+      "machine": "Voor deze automaat is een eigen configuratie opgeslagen."
+    },
+    "zoomIn": "Inzoomen",
+    "zoomOut": "Uitzoomen",
+    "zoomFit": "Passend"
   }
 }

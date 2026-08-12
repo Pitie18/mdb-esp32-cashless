@@ -8,10 +8,12 @@ import {
 } from '@/lib/printSheet'
 import type {
   PosterCompany,
+  PosterLayout,
   PosterMachine,
-  PrintBlock,
+  PosterT,
   PrintFormat,
   PrintSheet,
+  SlotDeclaration,
 } from '@/lib/printSheet'
 import { useOrganization } from '@/composables/useOrganization'
 
@@ -23,8 +25,10 @@ const MACHINE_COLUMNS =
 
 export interface BuildSheetsOptions {
   machineIds: string[]
-  blocks: PrintBlock[]
+  slotDeclarations: SlotDeclaration[]
+  layout: PosterLayout
   format: PrintFormat
+  t: PosterT
   /** Prefilled WhatsApp text; `%machine%` is substituted with the machine name. */
   whatsappTemplate?: string
   customText?: string | null
@@ -32,22 +36,32 @@ export interface BuildSheetsOptions {
   fallbackMachineName: string
 }
 
+interface LayoutRow {
+  id: string
+  machine_id: string | null
+  motif: string
+  config: PosterLayout | null
+}
+
 /**
- * Data + QR rendering behind `/machines/[id]/print`.
+ * Data, QR rendering and layout persistence behind `/machines/[id]/print`.
  *
- * The pure parts (contact inheritance, targets, origin guard) live in
+ * The pure parts (contact inheritance, slot resolution, origin guard) live in
  * `@/lib/printSheet` and are unit-tested; this composable only talks to
  * Supabase and turns targets into SVG.
  */
 export function useMachinePrint() {
   const supabase = useSupabaseClient()
   const config = useRuntimeConfig()
-  const { organization } = useOrganization()
+  const { organization, role } = useOrganization()
 
   const company = ref<PosterCompany | null>(null)
   const machines = ref<PosterMachine[]>([])
+  const layoutRows = ref<LayoutRow[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+
+  const canSave = computed(() => role.value === 'admin')
 
   /**
    * Origin the printed QR codes point at. `SITE_URL` is authoritative — it is
@@ -79,14 +93,17 @@ export function useMachinePrint() {
     loading.value = true
     error.value = null
     try {
-      const [companyRes, machineRes] = await Promise.all([
+      const [companyRes, machineRes, layoutRes] = await Promise.all([
         supabase.from('companies').select(COMPANY_COLUMNS).eq('id', companyId).single(),
         supabase.from('vendingMachine').select(MACHINE_COLUMNS).eq('company', companyId).order('name'),
+        supabase.from('poster_layouts').select('id, machine_id, motif, config').eq('company_id', companyId),
       ])
       if (companyRes.error) throw companyRes.error
       if (machineRes.error) throw machineRes.error
+      if (layoutRes.error) throw layoutRes.error
       company.value = companyRes.data as unknown as PosterCompany
       machines.value = (machineRes.data ?? []) as unknown as PosterMachine[]
+      layoutRows.value = (layoutRes.data ?? []) as unknown as LayoutRow[]
     } catch (e) {
       error.value = (e as Error)?.message ?? 'load-failed'
     } finally {
@@ -94,16 +111,84 @@ export function useMachinePrint() {
     }
   }
 
+  /** Machine override wins over the company default, same as the contact data. */
+  function storedLayout(motif: string, machineId: string): PosterLayout | null {
+    const override = layoutRows.value.find(r => r.motif === motif && r.machine_id === machineId)
+    if (override?.config) return override.config
+    const fallback = layoutRows.value.find(r => r.motif === motif && r.machine_id === null)
+    return fallback?.config ?? null
+  }
+
+  function layoutScope(motif: string, machineId: string): 'machine' | 'company' | 'none' {
+    if (layoutRows.value.some(r => r.motif === motif && r.machine_id === machineId)) return 'machine'
+    if (layoutRows.value.some(r => r.motif === motif && r.machine_id === null)) return 'company'
+    return 'none'
+  }
+
+  async function saveLayout(
+    motif: string,
+    layout: PosterLayout,
+    scope: 'company' | 'machine',
+    machineId: string,
+  ) {
+    const companyId = organization.value?.id
+    if (!companyId) return
+    const row = {
+      company_id: companyId,
+      machine_id: scope === 'machine' ? machineId : null,
+      motif,
+      config: layout,
+      updated_at: new Date().toISOString(),
+    }
+    // The partial unique indexes make (company, motif) and (machine, motif)
+    // one row each, so an explicit lookup-then-write keeps the intent clear
+    // without depending on a named constraint for onConflict.
+    const existing = layoutRows.value.find(
+      r => r.motif === motif && r.machine_id === (scope === 'machine' ? machineId : null),
+    )
+    const { error: writeError } = existing
+      ? await supabase.from('poster_layouts').update(row as never).eq('id', existing.id)
+      : await supabase.from('poster_layouts').insert(row as never)
+    if (writeError) throw writeError
+    await load()
+  }
+
+  async function deleteLayout(motif: string, scope: 'company' | 'machine', machineId: string) {
+    const existing = layoutRows.value.find(
+      r => r.motif === motif && r.machine_id === (scope === 'machine' ? machineId : null),
+    )
+    if (!existing) return
+    const { error: deleteError } = await supabase
+      .from('poster_layouts')
+      .delete()
+      .eq('id', existing.id)
+    if (deleteError) throw deleteError
+    await load()
+  }
+
+  /**
+   * Same target, same SVG — and the motif gallery asks for a handful of
+   * targets across nine motifs, so without this the identical machine-page
+   * code gets encoded a dozen times on every render.
+   */
+  const qrCache = new Map<string, string>()
+
   async function renderQr(target: string | null, format: PrintFormat): Promise<string | null> {
     if (!target) return null
+    const level = qrErrorLevel(format)
+    const key = `${level}|${target}`
+    const cached = qrCache.get(key)
+    if (cached) return cached
     // Vector, not a data URL: at 5 cm on paper the difference is visible.
     // margin 4 is the quiet zone — without it the code does not scan from 50 cm.
-    return QRCode.toString(target, {
+    const svg = await QRCode.toString(target, {
       type: 'svg',
       margin: 4,
-      errorCorrectionLevel: qrErrorLevel(format),
+      errorCorrectionLevel: level,
       color: { dark: '#000000', light: '#ffffff' },
     })
+    qrCache.set(key, svg)
+    return svg
   }
 
   async function buildSheets(opts: BuildSheetsOptions): Promise<PrintSheet[]> {
@@ -116,23 +201,24 @@ export function useMachinePrint() {
 
     return Promise.all(
       selected.map(async (machine) => {
-        const base = buildPrintSheetBase({
+        const sheet = buildPrintSheetBase({
           machine,
           company: co,
           publicOrigin: publicOrigin.value,
-          blocks: opts.blocks,
+          slotDeclarations: opts.slotDeclarations,
+          layout: opts.layout,
+          t: opts.t,
           whatsappTemplate: opts.whatsappTemplate,
           customText: opts.customText,
           logoUrl: logoUrl.value,
           fallbackMachineName: opts.fallbackMachineName,
         })
-        const [page, tel, whatsapp, problem] = await Promise.all([
-          renderQr(base.targets.page, opts.format),
-          renderQr(base.targets.tel, opts.format),
-          renderQr(base.targets.whatsapp, opts.format),
-          renderQr(base.targets.problem, opts.format),
-        ])
-        return { ...base, qr: { page: page ?? '', tel, whatsapp, problem } }
+        await Promise.all(
+          Object.values(sheet.slots).map(async (slot) => {
+            slot.qr = await renderQr(slot.target, opts.format)
+          }),
+        )
+        return sheet
       }),
     )
   }
@@ -142,13 +228,19 @@ export function useMachinePrint() {
    * the user then cancels the system dialog is not observable from the browser,
    * so the entry claims no more than that.
    *
-   * The contact fingerprint travels with the row. That is what later lets the
-   * machine list tell "this sign is still correct" from "this sign shows a
-   * number nobody answers any more".
+   * The layout and the contact fingerprint travel with the row. That is what
+   * later lets the machine list tell "this sign is still correct" from "this
+   * sign shows a number nobody answers any more".
    */
   async function logPrinted(
     sheets: PrintSheet[],
-    meta: { motif: string; format: PrintFormat; blocks: PrintBlock[]; sheetLanguage: string },
+    meta: {
+      motif: string
+      format: PrintFormat
+      layout: PosterLayout
+      slotDeclarations: SlotDeclaration[]
+      sheetLanguage: string
+    },
   ) {
     const companyId = organization.value?.id
     if (!companyId || sheets.length === 0) return
@@ -163,7 +255,9 @@ export function useMachinePrint() {
         machine_id: sheet.machineId,
         motif: meta.motif,
         format: meta.format,
-        blocks: meta.blocks,
+        blocks: meta.layout.blocks ?? [],
+        layout: meta.layout,
+        slot_declarations: meta.slotDeclarations,
         sheet_language: meta.sheetLanguage,
         contact_fingerprint: posterFingerprint(sheet),
       },
@@ -178,10 +272,15 @@ export function useMachinePrint() {
     machines,
     loading,
     error,
+    canSave,
     publicOrigin,
     originIsPublic,
     logoUrl,
     load,
+    storedLayout,
+    layoutScope,
+    saveLayout,
+    deleteLayout,
     buildSheets,
     logPrinted,
   }

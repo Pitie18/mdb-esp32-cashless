@@ -1,19 +1,21 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import QrBlock from './QrBlock.vue'
-import type { PrintSheet } from '@/lib/printSheet'
-import type { PosterT } from '@/lib/printMotifs'
+import type { PosterT, PrintSheet } from '@/lib/printSheet'
 
-defineProps<{ sheet: PrintSheet; t: PosterT }>()
+const props = defineProps<{ sheet: PrintSheet; t: PosterT }>()
+
+const main = computed(() => props.sheet.slots.main)
 </script>
 
 <template>
   <div class="sticker">
-    <div class="qr-card">
-      <QrBlock class="qr" :svg="sheet.qr.page" />
+    <div v-if="main?.qr" class="qr-card">
+      <QrBlock class="qr" :svg="main.qr" />
     </div>
     <div class="text">
-      <div class="title">{{ t('print.sticker.menuTitle') }}</div>
-      <div class="sub">{{ t('print.sticker.menuHint') }}</div>
+      <div class="title">{{ sheet.texts.title || t('print.sticker.menuTitle') }}</div>
+      <div class="sub">{{ main?.hint }}</div>
       <div class="machine">{{ sheet.machineName }}</div>
     </div>
   </div>

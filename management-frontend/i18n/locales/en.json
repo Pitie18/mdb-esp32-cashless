@@ -2043,7 +2043,7 @@
     "backToMachine": "Back to the machine",
     "motif": "Design",
     "format": "Format",
-    "blocks": "Content",
+    "blocks": "Additional content",
     "sheetLanguage": "Language on the sign",
     "customText": "Extra line",
     "customTextPlaceholder": "e.g. Location: 2nd floor next to the lift",
@@ -2061,13 +2061,14 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
-      "sticker-sheet": "Labels 90 × 50 mm"
+      "sticker-sheet": "Labels 90 × 50 mm",
+      "sticker-sheet-small": "Labels 50 × 30 mm",
+      "sticker-sheet-strip": "Strip 148 × 40 mm"
     },
     "blockNames": {
       "phone": "Phone number",
-      "whatsapp": "WhatsApp QR",
-      "problem": "Fault-report QR",
-      "imprint": "Imprint footer"
+      "imprint": "Imprint footer",
+      "url": "Link under the QR code"
     },
     "missingFields": {
       "companyName": "Company name",
@@ -2075,7 +2076,8 @@
       "whatsapp": "WhatsApp number",
       "whatsappCountry": "Country for the WhatsApp number",
       "email": "Contact email",
-      "address": "Postal address"
+      "address": "Postal address",
+      "customUrl": "Own link"
     },
     "motifShort": {
       "klar": "Plain",
@@ -2083,7 +2085,16 @@
       "qr-first": "QR first",
       "dunkel": "Dark",
       "sticker-problem": "Fault label",
-      "sticker-menu": "Range label"
+      "sticker-menu": "Range label",
+      "duo": "Split",
+      "signal": "Signal",
+      "klassisch": "Classic",
+      "sticker-duo": "Duo label",
+      "sticker-contact": "Contact label",
+      "sticker-mini": "Small label",
+      "sticker-service": "Service label",
+      "sticker-imprint": "Imprint label",
+      "sticker-strip": "Strip"
     },
     "motifs": {
       "klar": {
@@ -2109,6 +2120,42 @@
       "stickerMenu": {
         "label": "Label: range",
         "description": "90 × 50 mm with a QR to the machine page."
+      },
+      "duo": {
+        "label": "Split",
+        "description": "The range large at the top, a narrow fault strip below. Help is there without claiming the machine breaks often."
+      },
+      "signal": {
+        "label": "Signal",
+        "description": "Full-bleed colour, phone number huge. Gets noticed across a corridor — and uses a lot of ink."
+      },
+      "klassisch": {
+        "label": "Classic",
+        "description": "Serif type, double border, restrained. For practices, hotels and offices that will not hang a colourful poster."
+      },
+      "stickerDuo": {
+        "label": "Label: duo",
+        "description": "90 × 50 mm with two codes — the range large, faults small beside it."
+      },
+      "stickerContact": {
+        "label": "Label: contact",
+        "description": "90 × 50 mm with no QR at all, just the number in large type. For places where nobody scans."
+      },
+      "stickerMini": {
+        "label": "Label: small",
+        "description": "50 × 30 mm, one code and one line. 24 per A4 sheet — for the coin return."
+      },
+      "stickerService": {
+        "label": "Label: service",
+        "description": "The classic machine label: the machine name large, so the caller knows what they are calling about. 90 × 50 mm."
+      },
+      "stickerImprint": {
+        "label": "Label: imprint",
+        "description": "The small operator plate. Quiet and text-first — it exists to be complete, not to be noticed."
+      },
+      "stickerStrip": {
+        "label": "Strip (landscape)",
+        "description": "148 × 40 mm to run across a machine front. 6 per A4 sheet, dark for contrast on light metal."
       }
     },
     "poster": {
@@ -2125,18 +2172,78 @@
       "callDirect": "Call us",
       "everythingTitle": "Everything about this machine",
       "everythingLead": "Products, prices, availability and fault reports",
-      "scanHint": "Open your camera and scan the code",
       "ratherCall": "Rather call?",
       "helpYouTitle": "We're here to help",
       "helpYouLead": "Machine stuck? Money gone? Just let us know.",
-      "pageShort": "What's inside"
+      "pageShort": "What's inside",
+      "locationLabel": "Location:",
+      "operatorLabel": "Operator:",
+      "callHint": "Scan the code to call",
+      "customTitle": "Find out more",
+      "customHint": "Scan the code",
+      "pageHintShort": "Prices and availability",
+      "callShort": "Call",
+      "callHintShort": "Scan or call",
+      "discoverTitle": "More about this machine — and never miss a thing",
+      "discoverLead": "See the range and prices, pay online, and get told when new products arrive."
     },
     "sticker": {
       "problemTitle": "Report a fault",
-      "problemHint": "Scan or call",
       "menuTitle": "See what's inside",
-      "menuHint": "Prices, availability and payment"
-    }
+      "contactTitle": "Questions about this machine?",
+      "serviceTitle": "When reporting a fault, please quote",
+      "imprintTitle": "Operator details",
+      "stripTitle": "Questions about this machine?"
+    },
+    "qrCodes": "QR codes",
+    "headlines": "Headlines",
+    "customLink": "Own link",
+    "customLinkPlaceholder": "https://…",
+    "customLinkHint": "Target for QR codes set to \"Own link\". https:// is added if you leave it out.",
+    "resetText": "Reset to default",
+    "resetAll": "Reset everything",
+    "save": "Save",
+    "saved": "Saved",
+    "saveSection": "Save configuration",
+    "sourceUnavailable": "not configured",
+    "customTextHint": "Applies to this print only and is not saved.",
+    "sources": {
+      "page": "Machine page",
+      "tel": "Phone call",
+      "whatsapp": "WhatsApp",
+      "problem": "Report a fault",
+      "custom": "Own link",
+      "none": "Leave empty"
+    },
+    "slots": {
+      "main": "QR code",
+      "tile1": "Tile 1",
+      "tile2": "Tile 2",
+      "tile3": "Tile 3",
+      "call": "Call panel",
+      "top": "Large QR at the top",
+      "bottom": "Fault strip at the bottom",
+      "left": "Large QR on the left",
+      "right": "Small QR on the right"
+    },
+    "texts": {
+      "title": "Headline",
+      "lead": "Subline",
+      "slotTitle": "Title",
+      "slotHint": "Hint"
+    },
+    "saveScope": {
+      "company": "For all machines",
+      "machine": "This machine only"
+    },
+    "saveState": {
+      "none": "Nothing saved yet — defaults apply.",
+      "company": "The saved company configuration is in use.",
+      "machine": "This machine has a configuration of its own saved."
+    },
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomFit": "Fit width"
   },
   "analytics": {
     "title": "Analytics",

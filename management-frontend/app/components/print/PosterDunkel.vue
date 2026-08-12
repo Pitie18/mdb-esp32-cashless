@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import QrBlock from './QrBlock.vue'
-import type { PrintSheet } from '@/lib/printSheet'
-import type { PosterT } from '@/lib/printMotifs'
+import { readableUrl } from '@/lib/printSheet'
+import type { PosterT, PrintSheet } from '@/lib/printSheet'
 
-defineProps<{ sheet: PrintSheet; t: PosterT }>()
+const props = defineProps<{ sheet: PrintSheet; t: PosterT }>()
+
+const main = computed(() => props.sheet.slots.main)
+const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target) : null))
 </script>
 
 <template>
@@ -13,8 +17,8 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
       <span>{{ sheet.companyName }}</span>
     </div>
 
-    <div class="title">{{ t('print.poster.helpYouTitle') }}</div>
-    <div class="lead">{{ t('print.poster.helpYouLead') }}</div>
+    <div class="title">{{ sheet.texts.title || t('print.poster.helpYouTitle') }}</div>
+    <div class="lead">{{ sheet.texts.lead || t('print.poster.helpYouLead') }}</div>
 
     <div v-if="sheet.phone" class="call">
       <div class="call-label">{{ t('print.poster.supportPhone') }}</div>
@@ -26,25 +30,27 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
 
     <div class="spacer" />
 
-    <div class="foot">
+    <div v-if="main?.qr" class="foot">
       <div class="qr-card">
-        <QrBlock class="qr" :svg="sheet.qr.page" />
+        <QrBlock class="qr" :svg="main.qr" />
       </div>
       <div class="foot-text">
-        <div class="foot-title">{{ t('print.poster.pageTitle') }}</div>
-        <div class="foot-sub">{{ t('print.poster.pageHint') }}</div>
-        <div class="url">{{ sheet.pageUrl }}</div>
+        <div class="foot-title">{{ main.title }}</div>
+        <div class="foot-sub">{{ main.hint }}</div>
+        <div v-if="url" class="url">{{ url }}</div>
       </div>
     </div>
 
     <div class="meta">
       <div>
+        <span class="meta-label">{{ t('print.poster.locationLabel') }}</span>
         {{ sheet.machineName }}<template v-if="sheet.machineNote"> · {{ sheet.machineNote }}</template>
       </div>
       <div v-if="sheet.addressLine || sheet.email" class="imprint">
-        <span v-if="sheet.addressLine">{{ sheet.addressLine }}</span>
-        <span v-if="sheet.addressLine && sheet.email"> · </span>
-        <span v-if="sheet.email">{{ sheet.email }}</span>
+        <span class="meta-label">{{ t('print.poster.operatorLabel') }}</span>
+        {{ sheet.companyName
+        }}<template v-if="sheet.addressLine"> · {{ sheet.addressLine }}</template
+        ><template v-if="sheet.email"> · {{ sheet.email }}</template>
       </div>
     </div>
   </div>
@@ -53,6 +59,8 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
 <style scoped>
 .motif {
   height: 100%;
+  box-sizing: border-box;
+  padding: max(5mm, 2.5em);
   display: flex;
   flex-direction: column;
   background: #14110f;
@@ -109,5 +117,6 @@ defineProps<{ sheet: PrintSheet; t: PosterT }>()
   border-top: 0.3mm solid #292524;
   padding-top: 1em;
 }
-.imprint { margin-top: 0.25em; }
+.imprint { margin-top: 0.3em; }
+.meta-label { color: #a8a29e; font-weight: 600; }
 </style>

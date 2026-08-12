@@ -16,10 +16,9 @@ const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target
       <img v-if="sheet.logoUrl" :src="sheet.logoUrl" class="logo" alt="">
       <span>{{ sheet.companyName }}</span>
     </div>
-    <div class="rule" />
 
-    <div class="title">{{ sheet.texts.title || t('print.poster.problemTitle') }}</div>
-    <div class="lead">{{ sheet.texts.lead || t('print.poster.problemLead') }}</div>
+    <div class="title">{{ sheet.texts.title || t('print.poster.helpYouTitle') }}</div>
+    <div class="lead">{{ sheet.texts.lead || t('print.poster.helpYouLead') }}</div>
 
     <template v-if="sheet.phone">
       <div class="label">{{ t('print.poster.supportPhone') }}</div>
@@ -32,7 +31,9 @@ const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target
     <div class="spacer" />
 
     <div v-if="main?.qr" class="foot">
-      <QrBlock class="qr" :svg="main.qr" />
+      <div class="qr-card">
+        <QrBlock class="qr" :svg="main.qr" />
+      </div>
       <div class="foot-text">
         <div class="foot-title">{{ main.title }}</div>
         <div class="foot-sub">{{ main.hint }}</div>
@@ -40,8 +41,6 @@ const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target
       </div>
     </div>
 
-    <!-- Labelled so the machine's location cannot be mistaken for the
-         operator's registered address — they are often different places. -->
     <div class="meta">
       <span class="meta-label">{{ t('print.poster.locationLabel') }}</span>
       {{ sheet.machineName }}<template v-if="sheet.machineNote"> · {{ sheet.machineNote }}</template>
@@ -56,53 +55,67 @@ const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target
 </template>
 
 <style scoped>
+/* Full-bleed colour: this motif exists to be spotted from across a corridor,
+   which is also why the phone number is the largest thing on the sheet. */
 .motif {
   height: 100%;
   box-sizing: border-box;
   padding: max(5mm, 2.5em);
   display: flex;
   flex-direction: column;
-  background: #fff;
-  color: #14110f;
+  background: #ef9f27;
+  color: #412402;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: 0.7em;
   font-size: 1.86em;
+  font-weight: 600;
   letter-spacing: 0.04em;
-  color: #78716c;
+  color: #633806;
 }
-.logo { height: 3em; width: auto; object-fit: contain; }
-.rule { height: 0.5mm; background: #14110f; margin: 0.8em 0 1.4em; }
-.title { font-size: 3.39em; font-weight: 600; line-height: 1.2; }
-.lead { font-size: 2.03em; color: #57534e; margin-top: 0.5em; line-height: 1.45; }
-.label { font-size: 1.86em; color: #78716c; margin-top: 2em; }
-.phone { font-size: 3.9em; font-weight: 600; margin-top: 0.15em; letter-spacing: -0.01em; }
-.hours { font-size: 1.86em; color: #57534e; margin-top: 0.4em; }
+.logo {
+  height: 3em;
+  width: auto;
+  object-fit: contain;
+  background: #fff;
+  padding: 0.25em;
+  border-radius: 0.3em;
+}
+.title { font-size: 3.73em; font-weight: 600; line-height: 1.15; margin-top: 1em; }
+.lead { font-size: 2.03em; margin-top: 0.6em; line-height: 1.4; color: #633806; }
+.label { font-size: 1.86em; color: #633806; margin-top: 1.6em; }
+.phone {
+  font-size: 4.4em;
+  font-weight: 600;
+  margin-top: 0.1em;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.hours { font-size: 1.86em; color: #633806; margin-top: 0.35em; }
 .custom {
-  font-size: 2.03em;
-  color: #14110f;
-  margin-top: 1.6em;
-  padding: 0.8em 1em;
-  border-left: 0.6mm solid #14110f;
-  background: #f5f5f4;
+  font-size: 1.86em;
+  margin-top: 1.2em;
+  padding: 0.7em 0.9em;
+  background: #faeeda;
+  border-radius: 0.6em;
   line-height: 1.4;
 }
-.spacer { flex: 1; min-height: 1.5em; }
-.foot {
-  display: flex;
-  gap: 1.4em;
-  align-items: center;
-  border-top: 0.3mm solid #d6d3d1;
-  padding-top: 1.4em;
-}
-.qr { width: max(30mm, 12.5em); height: max(30mm, 12.5em); flex: none; }
+.spacer { flex: 1; min-height: 1em; }
+.foot { display: flex; gap: 1.4em; align-items: center; }
+.qr-card { background: #fff; border-radius: 0.6em; padding: 0.7em; flex: none; }
+.qr { width: max(30mm, 12em); height: max(30mm, 12em); }
 .foot-text { min-width: 0; }
 .foot-title { font-size: 2.2em; font-weight: 600; }
-.foot-sub { font-size: 1.86em; color: #57534e; margin-top: 0.25em; line-height: 1.4; }
-.url { font-size: 1.6em; color: #a8a29e; margin-top: 0.5em; word-break: break-all; }
-.meta { font-size: 1.6em; color: #a8a29e; margin-top: 1.2em; line-height: 1.4; }
+.foot-sub { font-size: 1.86em; color: #633806; margin-top: 0.25em; line-height: 1.4; }
+.url { font-size: 1.6em; color: #854f0b; margin-top: 0.4em; word-break: break-all; }
+.meta {
+  font-size: 1.6em;
+  color: #854f0b;
+  margin-top: 1.2em;
+  line-height: 1.4;
+}
 .meta + .meta { margin-top: 0.3em; }
-.meta-label { color: #57534e; font-weight: 600; }
+.meta-label { color: #412402; font-weight: 600; }
 </style>

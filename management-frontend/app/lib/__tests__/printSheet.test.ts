@@ -4,14 +4,38 @@ import {
   distributeStickers,
   inherit,
   isPublicOrigin,
+  normalizeCustomUrl,
   normalizePhone,
   posterFingerprint,
+  isStickerFormat,
   qrErrorLevel,
+  readableUrl,
+  stickerLayout,
+  stickersPerSheet,
   toWaNumber,
 } from '../printSheet'
-import type { PosterCompany, PosterMachine, PrintBlock } from '../printSheet'
+import type {
+  PosterCompany,
+  PosterLayout,
+  PosterMachine,
+  PrintBlock,
+  SlotDeclaration,
+} from '../printSheet'
 
-const ALL_BLOCKS: PrintBlock[] = ['phone', 'whatsapp', 'problem', 'imprint']
+// Identity `t`: returns the key so assertions can name which default was used.
+const t = (key: string) => key
+
+const ALL_BLOCKS: PrintBlock[] = ['phone', 'imprint', 'url']
+
+const ONE_SLOT: SlotDeclaration[] = [
+  { id: 'main', labelKey: 'print.slots.main', defaultSource: 'page', optional: false },
+]
+
+const THREE_SLOTS: SlotDeclaration[] = [
+  { id: 'tile1', labelKey: 'print.slots.tile1', defaultSource: 'page', optional: false },
+  { id: 'tile2', labelKey: 'print.slots.tile2', defaultSource: 'whatsapp', optional: true },
+  { id: 'tile3', labelKey: 'print.slots.tile3', defaultSource: 'problem', optional: true },
+]
 
 const company: PosterCompany = {
   id: 'c-1',
@@ -32,17 +56,27 @@ const company: PosterCompany = {
 const machine: PosterMachine = {
   id: 'm-1',
   name: 'Automat 12',
-  formatted_address: 'Foyer Nord, Musterstr. 4, 34117 Kassel',
+  address_street: 'An der Kelter',
+  address_house_number: '15',
+  address_postal_code: '74653',
+  address_city: 'Ingelfingen',
 }
 
 function build(
-  over: { machine?: Partial<PosterMachine>; company?: Partial<PosterCompany>; blocks?: PrintBlock[] } = {},
+  over: {
+    machine?: Partial<PosterMachine>
+    company?: Partial<PosterCompany>
+    layout?: PosterLayout
+    slots?: SlotDeclaration[]
+  } = {},
 ) {
   return buildPrintSheetBase({
     machine: { ...machine, ...over.machine },
     company: { ...company, ...over.company },
     publicOrigin: 'https://app.muster-vending.de',
-    blocks: over.blocks ?? ALL_BLOCKS,
+    slotDeclarations: over.slots ?? ONE_SLOT,
+    layout: over.layout ?? { blocks: ALL_BLOCKS },
+    t,
     whatsappTemplate: 'Hallo, ich habe ein Problem am %machine%.',
     fallbackMachineName: 'Automat',
   })
@@ -151,19 +185,47 @@ describe('toWaNumber', () => {
   })
 })
 
+describe('normalizeCustomUrl', () => {
+  it('adds https to a bare domain', () => {
+    expect(normalizeCustomUrl('vmflow.de')).toBe('https://vmflow.de/')
+    expect(normalizeCustomUrl('  shop.example.com/angebote ')).toBe('https://shop.example.com/angebote')
+  })
+
+  it('leaves an explicit scheme alone', () => {
+    expect(normalizeCustomUrl('http://example.com/x')).toBe('http://example.com/x')
+  })
+
+  it('rejects non-web schemes and junk', () => {
+    expect(normalizeCustomUrl('javascript:alert(1)')).toBeNull()
+    expect(normalizeCustomUrl('mailto:a@b.de')).toBeNull()
+    expect(normalizeCustomUrl('')).toBeNull()
+    expect(normalizeCustomUrl(null)).toBeNull()
+  })
+})
+
+describe('readableUrl', () => {
+  it('returns web links and nothing else', () => {
+    expect(readableUrl('https://example.com/x')).toBe('https://example.com/x')
+    // Nobody types a tel: URI off a poster.
+    expect(readableUrl('tel:+49561123456')).toBeNull()
+    expect(readableUrl(null)).toBeNull()
+  })
+})
+
 describe('buildPrintSheetBase', () => {
   it('builds the machine page URL from the public origin', () => {
     const sheet = build()
     expect(sheet.pageUrl).toBe('https://app.muster-vending.de/m/m-1')
-    expect(sheet.targets.page).toBe('https://app.muster-vending.de/m/m-1')
+    expect(sheet.slots.main!.target).toBe('https://app.muster-vending.de/m/m-1')
   })
 
   it('strips a trailing slash from the origin', () => {
     const sheet = buildPrintSheetBase({
-      machine,
-      company,
+      machine, company,
       publicOrigin: 'https://app.muster-vending.de/',
-      blocks: ALL_BLOCKS,
+      slotDeclarations: ONE_SLOT,
+      layout: {},
+      t,
       fallbackMachineName: 'Automat',
     })
     expect(sheet.pageUrl).toBe('https://app.muster-vending.de/m/m-1')
@@ -172,7 +234,6 @@ describe('buildPrintSheetBase', () => {
   it('prefers machine contact data over company contact data', () => {
     const sheet = build({ machine: { contact_phone: '+49 561 999999' } })
     expect(sheet.phone).toBe('+49 561 999999')
-    expect(sheet.targets.tel).toBe('tel:+49561999999')
   })
 
   it('inherits company contact data when the machine has none', () => {
@@ -180,79 +241,196 @@ describe('buildPrintSheetBase', () => {
     expect(sheet.phone).toBe('+49 561 123456')
     expect(sheet.hours).toBe('Mo–Fr 8–18 Uhr')
   })
+})
+
+describe('slot sources', () => {
+  it('uses the declared default when nothing is configured', () => {
+    const sheet = build({ slots: THREE_SLOTS })
+    expect(sheet.slots.tile1!.source).toBe('page')
+    expect(sheet.slots.tile2!.source).toBe('whatsapp')
+    expect(sheet.slots.tile3!.source).toBe('problem')
+  })
+
+  it('points a slot at whatever the operator picked', () => {
+    const sheet = build({ layout: { slots: { main: { source: 'problem' } } } })
+    expect(sheet.slots.main!.target).toBe('https://app.muster-vending.de/m/m-1?feedback=problem')
+  })
+
+  it('resolves a phone slot to a tel: target', () => {
+    const sheet = build({ layout: { slots: { main: { source: 'tel' } } } })
+    expect(sheet.slots.main!.target).toBe('tel:+49561123456')
+  })
 
   it('prefills the WhatsApp message with the machine name', () => {
-    const sheet = build()
-    expect(sheet.targets.whatsapp).toBe(
+    const sheet = build({ layout: { slots: { main: { source: 'whatsapp' } } } })
+    expect(sheet.slots.main!.target).toBe(
       'https://wa.me/4915122334455?text=' +
         encodeURIComponent('Hallo, ich habe ein Problem am Automat 12.'),
     )
   })
 
-  it('points the problem QR at the feedback form', () => {
-    expect(build().targets.problem).toBe(
-      'https://app.muster-vending.de/m/m-1?feedback=problem',
-    )
-  })
-
-  it('nulls the targets of disabled blocks', () => {
-    const sheet = build({ blocks: ['imprint'] })
-    expect(sheet.targets.tel).toBeNull()
-    expect(sheet.targets.whatsapp).toBeNull()
-    expect(sheet.targets.problem).toBeNull()
-    expect(sheet.phone).toBeNull()
-    // The page QR is the one constant — it is the reason the poster exists.
-    expect(sheet.targets.page).toBeTruthy()
-  })
-
-  it('does not report a missing field for a block that is switched off', () => {
-    const sheet = build({ blocks: ['problem'], company: { contact_phone: null, whatsapp_phone: null } })
-    expect(sheet.missing).toEqual([])
-  })
-
-  it('reports a requested phone that is not configured', () => {
-    const sheet = build({ blocks: ['phone'], company: { contact_phone: null } })
-    expect(sheet.missing).toContain('phone')
-    expect(sheet.targets.tel).toBeNull()
-  })
-
-  it('reports a WhatsApp number that cannot be made international', () => {
-    const sheet = build({ blocks: ['whatsapp'], company: { country_code: null } })
-    expect(sheet.missing).toContain('whatsappCountry')
-    expect(sheet.targets.whatsapp).toBeNull()
-    expect(sheet.whatsapp).toBeNull()
-  })
-
-  it('reports missing imprint data', () => {
+  it('resolves a custom slot to the operator link', () => {
     const sheet = build({
-      blocks: ['imprint'],
-      company: { contact_email: null, address_street: null, address_house_number: null, address_postal_code: null, address_city: null },
+      layout: { slots: { main: { source: 'custom' } }, custom: { url: 'shop.example.com' } },
     })
-    expect(sheet.missing).toContain('email')
-    expect(sheet.missing).toContain('address')
+    expect(sheet.slots.main!.target).toBe('https://shop.example.com/')
+  })
+
+  it('empties a slot set to none', () => {
+    const sheet = build({ layout: { slots: { main: { source: 'none' } } } })
+    expect(sheet.slots.main!.target).toBeNull()
+  })
+
+  // A compact slot is a third-width tile. Handing it the full-width wording
+  // wraps the label to three lines and pushes the imprint off the sheet — the
+  // exact regression the slot refactor reintroduced once already.
+  it('uses the short wording in a compact slot', () => {
+    const wide = build({ slots: ONE_SLOT })
+    expect(wide.slots.main!.title).toBe('print.poster.pageTitle')
+    expect(wide.slots.main!.hint).toBe('print.poster.pageHint')
+
+    const tile = build({
+      slots: [{ ...ONE_SLOT[0]!, compact: true }],
+    })
+    expect(tile.slots.main!.title).toBe('print.poster.pageShort')
+    expect(tile.slots.main!.hint).toBe('print.poster.pageHintShort')
+  })
+
+  it('keeps compact wording per source', () => {
+    const tel = build({
+      slots: [{ ...ONE_SLOT[0]!, compact: true }],
+      layout: { slots: { main: { source: 'tel' } } },
+    })
+    expect(tel.slots.main!.title).toBe('print.poster.callShort')
+
+    // Already short: the compact variant is the same string, not a second one.
+    const wa = build({
+      slots: [{ ...ONE_SLOT[0]!, compact: true }],
+      layout: { slots: { main: { source: 'whatsapp' } } },
+    })
+    expect(wa.slots.main!.title).toBe('print.poster.whatsappTitle')
+  })
+
+  it('lets an override beat the compact default too', () => {
+    const sheet = build({
+      slots: [{ ...ONE_SLOT[0]!, compact: true }],
+      layout: { texts: { 'slot.main.title': 'Snacks' } },
+    })
+    expect(sheet.slots.main!.title).toBe('Snacks')
+  })
+
+  it('labels a slot from its source and lets an override win', () => {
+    const auto = build({ layout: { slots: { main: { source: 'whatsapp' } } } })
+    expect(auto.slots.main!.title).toBe('print.poster.whatsappTitle')
+
+    const named = build({
+      layout: {
+        slots: { main: { source: 'whatsapp' } },
+        texts: { 'slot.main.title': 'Schreib uns' },
+      },
+    })
+    expect(named.slots.main!.title).toBe('Schreib uns')
+  })
+
+  it('names a custom slot from the custom link fields', () => {
+    const sheet = build({
+      layout: {
+        slots: { main: { source: 'custom' } },
+        custom: { url: 'shop.example.com', title: 'Zum Shop', hint: 'Angebote ansehen' },
+      },
+    })
+    expect(sheet.slots.main!.title).toBe('Zum Shop')
+    expect(sheet.slots.main!.hint).toBe('Angebote ansehen')
+  })
+
+  it('reports a slot whose data is not configured', () => {
+    const noPhone = build({
+      company: { contact_phone: null },
+      layout: { slots: { main: { source: 'tel' } } },
+    })
+    expect(noPhone.missing).toContain('phone')
+    expect(noPhone.slots.main!.target).toBeNull()
+
+    const noLink = build({ layout: { slots: { main: { source: 'custom' } } } })
+    expect(noLink.missing).toContain('customUrl')
+  })
+
+  it('does not report a source the layout does not use', () => {
+    const sheet = build({ company: { whatsapp_phone: null }, layout: {} })
+    expect(sheet.missing).not.toContain('whatsapp')
+  })
+})
+
+describe('blocks and headlines', () => {
+  it('hides imprint fields when the imprint block is off', () => {
+    const sheet = build({ layout: { blocks: ['phone'] } })
+    expect(sheet.addressLine).toBeNull()
+    expect(sheet.email).toBeNull()
+    expect(sheet.website).toBeNull()
+    // Still shown: the operator's name is who the sign is from.
+    expect(sheet.companyName).toBe('Muster Vending GmbH')
+  })
+
+  it('exposes imprint fields when the block is on', () => {
+    const sheet = build({ layout: { blocks: ['imprint'] } })
+    expect(sheet.addressLine).toBe('Musterstr. 4 · 34117 Kassel')
+    expect(sheet.email).toBe('service@muster-vending.de')
+  })
+
+  it('tracks whether the URL should be printed as text', () => {
+    expect(build({ layout: { blocks: ['url'] } }).showUrl).toBe(true)
+    expect(build({ layout: { blocks: ['phone'] } }).showUrl).toBe(false)
+  })
+
+  it('passes headline overrides through, ignoring blank ones', () => {
+    expect(build({ layout: { texts: { title: 'Kaputt?' } } }).texts.title).toBe('Kaputt?')
+    expect(build({ layout: { texts: { title: '   ' } } }).texts.title).toBeUndefined()
+    expect(build().texts.title).toBeUndefined()
+  })
+})
+
+describe('machine location', () => {
+  it('builds the note from the structured address', () => {
+    expect(build().machineNote).toBe('An der Kelter 15 · 74653 Ingelfingen')
+  })
+
+  // Nominatim's display_name carries district, county, state and country. It
+  // is unreadable on a sign, so the structured columns win whenever they exist.
+  it('prefers the structured address over the raw Nominatim display name', () => {
+    const sheet = build({
+      machine: {
+        formatted_address:
+          '15, An der Kelter, Criesbach, Ingelfingen, VVG der Stadt Künzelsau, Hohenlohekreis, Baden-Württemberg, 74653, Deutschland',
+      },
+    })
+    expect(sheet.machineNote).toBe('An der Kelter 15 · 74653 Ingelfingen')
+  })
+
+  it('trims the display name when no structured address exists', () => {
+    const sheet = build({
+      machine: {
+        formatted_address:
+          '15, An der Kelter, Criesbach, Ingelfingen, VVG der Stadt Künzelsau, Hohenlohekreis, Baden-Württemberg, 74653, Deutschland',
+        address_street: null, address_house_number: null,
+        address_postal_code: null, address_city: null,
+      },
+    })
+    expect(sheet.machineNote).toBe('15, An der Kelter, Criesbach')
+  })
+
+  it('leaves a short display name alone', () => {
+    const sheet = build({
+      machine: {
+        formatted_address: '19 Abt-Knittel-Straße 74676 Niedernhall',
+        address_street: null, address_house_number: null,
+        address_postal_code: null, address_city: null,
+      },
+    })
+    expect(sheet.machineNote).toBe('19 Abt-Knittel-Straße 74676 Niedernhall')
   })
 
   it('falls back to the generic machine name', () => {
     expect(build({ machine: { name: '   ' } }).machineName).toBe('Automat')
-  })
-
-  it('uses the legal name and formats the company address', () => {
-    const sheet = build()
-    expect(sheet.companyName).toBe('Muster Vending GmbH')
-    expect(sheet.addressLine).toBe('Musterstr. 4 · 34117 Kassel')
-  })
-
-  it('builds a machine note from address parts when there is no cached address', () => {
-    const sheet = build({
-      machine: {
-        formatted_address: null,
-        address_street: 'Bahnhofstr.',
-        address_house_number: '1',
-        address_postal_code: '34117',
-        address_city: 'Kassel',
-      },
-    })
-    expect(sheet.machineNote).toBe('Bahnhofstr. 1 · 34117 Kassel')
   })
 })
 
@@ -276,50 +454,63 @@ describe('posterFingerprint', () => {
       .not.toBe(posterFingerprint(build()))
   })
 
-  it('changes when the WhatsApp number changes', () => {
-    expect(posterFingerprint(build({ company: { whatsapp_phone: '+49 151 99887766' } })))
-      .not.toBe(posterFingerprint(build()))
-  })
-
   it('changes when the machine is renamed', () => {
     expect(posterFingerprint(build({ machine: { name: 'Automat 13' } })))
       .not.toBe(posterFingerprint(build()))
   })
 
-  it('changes when a block is switched on', () => {
-    expect(posterFingerprint(build({ blocks: ['phone'] })))
-      .not.toBe(posterFingerprint(build({ blocks: ['phone', 'whatsapp'] })))
+  it('changes when a QR is repointed', () => {
+    expect(posterFingerprint(build({ layout: { slots: { main: { source: 'problem' } } } })))
+      .not.toBe(posterFingerprint(build()))
+  })
+
+  it('changes when the custom link changes', () => {
+    const a = build({ layout: { slots: { main: { source: 'custom' } }, custom: { url: 'a.example.com' } } })
+    const b = build({ layout: { slots: { main: { source: 'custom' } }, custom: { url: 'b.example.com' } } })
+    expect(posterFingerprint(a)).not.toBe(posterFingerprint(b))
   })
 
   // The whole point of the like-against-like comparison: reprinting the same
   // sign in another language must not read as "the contact data changed".
   it('ignores the language of the prefilled WhatsApp message', () => {
+    const layout: PosterLayout = { slots: { main: { source: 'whatsapp' } }, blocks: ALL_BLOCKS }
     const de = buildPrintSheetBase({
-      machine, company, publicOrigin: 'https://app.muster-vending.de', blocks: ALL_BLOCKS,
+      machine, company, publicOrigin: 'https://app.muster-vending.de',
+      slotDeclarations: ONE_SLOT, layout, t,
       whatsappTemplate: 'Hallo, ich habe ein Problem am %machine%.',
       fallbackMachineName: 'Automat',
     })
     const fr = buildPrintSheetBase({
-      machine, company, publicOrigin: 'https://app.muster-vending.de', blocks: ALL_BLOCKS,
+      machine, company, publicOrigin: 'https://app.muster-vending.de',
+      slotDeclarations: ONE_SLOT, layout, t,
       whatsappTemplate: "Bonjour, j'ai un problème avec %machine%.",
       fallbackMachineName: 'Automat',
     })
     expect(posterFingerprint(de)).toBe(posterFingerprint(fr))
   })
 
+  it('ignores reworded headlines and labels', () => {
+    const reworded = build({
+      layout: { blocks: ALL_BLOCKS, texts: { title: 'Kaputt?', 'slot.main.title': 'Hier lang' } },
+    })
+    expect(posterFingerprint(reworded)).toBe(posterFingerprint(build()))
+  })
+
   // Free text is per-print and never persisted, so it cannot be part of the
   // "is the sign still correct" question.
   it('ignores the one-off free text', () => {
     const withText = buildPrintSheetBase({
-      machine, company, publicOrigin: 'https://app.muster-vending.de', blocks: ALL_BLOCKS,
+      machine, company, publicOrigin: 'https://app.muster-vending.de',
+      slotDeclarations: ONE_SLOT, layout: { blocks: ALL_BLOCKS }, t,
+      whatsappTemplate: 'Hallo, ich habe ein Problem am %machine%.',
       customText: 'Standort: 2. OG', fallbackMachineName: 'Automat',
     })
     expect(posterFingerprint(withText)).toBe(posterFingerprint(build()))
   })
 
   it('ignores a field belonging to a block that was switched off', () => {
-    const a = build({ blocks: ['problem'] })
-    const b = build({ blocks: ['problem'], company: { contact_phone: '+49 561 999999' } })
+    const a = build({ layout: { blocks: [] } })
+    const b = build({ layout: { blocks: [] }, company: { contact_phone: '+49 561 999999' } })
     expect(posterFingerprint(a)).toBe(posterFingerprint(b))
   })
 })
@@ -345,6 +536,40 @@ describe('distributeStickers', () => {
 describe('qrErrorLevel', () => {
   it('raises redundancy for stickers', () => {
     expect(qrErrorLevel('sticker-sheet')).toBe('Q')
+    expect(qrErrorLevel('sticker-sheet-small')).toBe('Q')
+    expect(qrErrorLevel('sticker-sheet-strip')).toBe('Q')
     expect(qrErrorLevel('a4')).toBe('M')
+  })
+})
+
+describe('sticker sheet geometry', () => {
+  it('knows how many labels a sheet holds per format', () => {
+    expect(stickersPerSheet('sticker-sheet')).toBe(8)
+    expect(stickersPerSheet('sticker-sheet-small')).toBe(24)
+    // Two 148 mm strips do not fit side by side on a 210 mm page.
+    expect(stickersPerSheet('sticker-sheet-strip')).toBe(6)
+  })
+
+  it('keeps both grids inside an A4 page', () => {
+    for (const format of ['sticker-sheet', 'sticker-sheet-small', 'sticker-sheet-strip'] as const) {
+      const { w, h, gap, cols, rows } = stickerLayout(format)
+      expect(cols * w + (cols - 1) * gap).toBeLessThanOrEqual(210)
+      expect(rows * h + (rows - 1) * gap).toBeLessThanOrEqual(297)
+    }
+  })
+
+  it('packs the small format 24 to a sheet', () => {
+    const items = Array.from({ length: 25 }, (_, i) => i)
+    const sheets = distributeStickers(items, stickersPerSheet('sticker-sheet-small'))
+    expect(sheets).toHaveLength(2)
+    expect(sheets[0]).toHaveLength(24)
+    expect(sheets[1]).toEqual([24])
+  })
+
+  it('only reports sticker formats as stickers', () => {
+    expect(isStickerFormat('sticker-sheet')).toBe(true)
+    expect(isStickerFormat('sticker-sheet-small')).toBe(true)
+    expect(isStickerFormat('sticker-sheet-strip')).toBe(true)
+    expect(isStickerFormat('a4')).toBe(false)
   })
 })

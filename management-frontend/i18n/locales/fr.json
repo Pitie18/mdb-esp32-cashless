@@ -1845,7 +1845,7 @@
     "backToMachine": "Retour au distributeur",
     "motif": "Modèle",
     "format": "Format",
-    "blocks": "Éléments",
+    "blocks": "Contenus supplémentaires",
     "sheetLanguage": "Langue de l'affiche",
     "customText": "Texte supplémentaire",
     "customTextPlaceholder": "ex. : 2e étage, près de l'ascenseur",
@@ -1863,13 +1863,14 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
-      "sticker-sheet": "Étiquettes 90 × 50 mm"
+      "sticker-sheet": "Étiquettes 90 × 50 mm",
+      "sticker-sheet-small": "Étiquettes 50 × 30 mm",
+      "sticker-sheet-strip": "Bandeau 148 × 40 mm"
     },
     "blockNames": {
       "phone": "Numéro de téléphone",
-      "whatsapp": "QR WhatsApp",
-      "problem": "QR signalement",
-      "imprint": "Mentions légales"
+      "imprint": "Mentions légales",
+      "url": "Lien sous le QR code"
     },
     "missingFields": {
       "companyName": "Nom de l'entreprise",
@@ -1877,7 +1878,8 @@
       "whatsapp": "Numéro WhatsApp",
       "whatsappCountry": "Pays du numéro WhatsApp",
       "email": "E-mail de contact",
-      "address": "Adresse postale"
+      "address": "Adresse postale",
+      "customUrl": "Lien personnalisé"
     },
     "motifShort": {
       "klar": "Sobre",
@@ -1885,7 +1887,16 @@
       "qr-first": "QR d'abord",
       "dunkel": "Sombre",
       "sticker-problem": "Étiquette panne",
-      "sticker-menu": "Étiquette assortiment"
+      "sticker-menu": "Étiquette assortiment",
+      "duo": "Deux parties",
+      "signal": "Signal",
+      "klassisch": "Classique",
+      "sticker-duo": "Étiquette duo",
+      "sticker-contact": "Étiquette contact",
+      "sticker-mini": "Petite étiquette",
+      "sticker-service": "Étiquette service",
+      "sticker-imprint": "Étiquette mentions",
+      "sticker-strip": "Bandeau"
     },
     "motifs": {
       "klar": {
@@ -1911,6 +1922,42 @@
       "stickerMenu": {
         "label": "Étiquette : assortiment",
         "description": "90 × 50 mm avec un QR vers la page du distributeur."
+      },
+      "duo": {
+        "label": "Deux parties",
+        "description": "L'assortiment en grand en haut, un bandeau panne étroit en bas. L'aide est là sans laisser croire aux pannes fréquentes."
+      },
+      "signal": {
+        "label": "Signal",
+        "description": "Couleur pleine page, numéro très grand. Se repère de loin — et consomme beaucoup d'encre."
+      },
+      "klassisch": {
+        "label": "Classique",
+        "description": "Serif, double filet, sobre. Pour cabinets, hôtels et bureaux qui refusent une affiche colorée."
+      },
+      "stickerDuo": {
+        "label": "Étiquette : duo",
+        "description": "90 × 50 mm avec deux codes — l'assortiment en grand, la panne en petit à côté."
+      },
+      "stickerContact": {
+        "label": "Étiquette : contact",
+        "description": "90 × 50 mm sans aucun QR, juste le numéro en grand. Pour les lieux où personne ne scanne."
+      },
+      "stickerMini": {
+        "label": "Étiquette : petite",
+        "description": "50 × 30 mm, un code et une ligne. 24 par feuille A4 — pour le rendu de monnaie."
+      },
+      "stickerService": {
+        "label": "Étiquette : service",
+        "description": "Le classique : le nom du distributeur en grand, pour que l'appelant sache de quoi il parle. 90 × 50 mm."
+      },
+      "stickerImprint": {
+        "label": "Étiquette : mentions légales",
+        "description": "La petite plaque de l'exploitant. Sobre et textuelle — elle doit être complète, pas visible."
+      },
+      "stickerStrip": {
+        "label": "Bandeau (paysage)",
+        "description": "148 × 40 mm à poser en travers de la façade. 6 par feuille A4, foncé pour contraster sur tôle claire."
       }
     },
     "poster": {
@@ -1927,17 +1974,77 @@
       "callDirect": "Appeler directement",
       "everythingTitle": "Tout sur ce distributeur",
       "everythingLead": "Produits, prix, disponibilité et signalement de panne",
-      "scanHint": "Ouvrez l'appareil photo et scannez le code",
       "ratherCall": "Vous préférez appeler ?",
       "helpYouTitle": "Nous sommes là pour vous aider",
       "helpYouLead": "Distributeur bloqué ? Argent perdu ? Dites-le-nous.",
-      "pageShort": "Assortiment"
+      "pageShort": "Assortiment",
+      "locationLabel": "Emplacement :",
+      "operatorLabel": "Exploitant :",
+      "callHint": "Scannez le code pour appeler",
+      "customTitle": "En savoir plus",
+      "customHint": "Scannez le code",
+      "pageHintShort": "Prix et disponibilité",
+      "callShort": "Appeler",
+      "callHintShort": "Scannez ou appelez",
+      "discoverTitle": "Tout sur ce distributeur — et ne rien manquer",
+      "discoverLead": "Voir l'assortiment et les prix, payer en ligne et être prévenu des nouveaux produits."
     },
     "sticker": {
       "problemTitle": "Signaler une panne",
-      "problemHint": "Scannez ou appelez",
       "menuTitle": "Voir l'assortiment",
-      "menuHint": "Prix, disponibilité et paiement"
-    }
+      "contactTitle": "Une question sur ce distributeur ?",
+      "serviceTitle": "En cas de panne, merci d’indiquer",
+      "imprintTitle": "Informations sur l'exploitant",
+      "stripTitle": "Une question sur ce distributeur ?"
+    },
+    "qrCodes": "QR codes",
+    "headlines": "Titres",
+    "customLink": "Lien personnalisé",
+    "customLinkPlaceholder": "https://…",
+    "customLinkHint": "Cible des QR codes réglés sur « Lien personnalisé ». https:// est ajouté si vous l'omettez.",
+    "resetText": "Rétablir la valeur par défaut",
+    "resetAll": "Tout réinitialiser",
+    "save": "Enregistrer",
+    "saved": "Enregistré",
+    "saveSection": "Enregistrer la configuration",
+    "sourceUnavailable": "non renseigné",
+    "customTextHint": "Ne vaut que pour cette impression et n'est pas enregistré.",
+    "sources": {
+      "page": "Page du distributeur",
+      "tel": "Appel",
+      "whatsapp": "WhatsApp",
+      "problem": "Signaler une panne",
+      "custom": "Lien personnalisé",
+      "none": "Laisser vide"
+    },
+    "slots": {
+      "main": "QR code",
+      "tile1": "Tuile 1",
+      "tile2": "Tuile 2",
+      "tile3": "Tuile 3",
+      "call": "Zone d'appel",
+      "top": "Grand QR en haut",
+      "bottom": "Bandeau panne en bas",
+      "left": "Grand QR à gauche",
+      "right": "Petit QR à droite"
+    },
+    "texts": {
+      "title": "Titre",
+      "lead": "Sous-titre",
+      "slotTitle": "Intitulé",
+      "slotHint": "Indication"
+    },
+    "saveScope": {
+      "company": "Pour tous les distributeurs",
+      "machine": "Ce distributeur uniquement"
+    },
+    "saveState": {
+      "none": "Rien enregistré — les valeurs par défaut s'appliquent.",
+      "company": "La configuration d'entreprise enregistrée s'applique.",
+      "machine": "Ce distributeur a sa propre configuration enregistrée."
+    },
+    "zoomIn": "Agrandir",
+    "zoomOut": "Réduire",
+    "zoomFit": "Ajuster"
   }
 }

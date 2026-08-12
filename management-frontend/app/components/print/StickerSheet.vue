@@ -1,53 +1,55 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Component } from 'vue'
-import type { PrintSheet } from '@/lib/printSheet'
-import { STICKER_MM } from '@/lib/printSheet'
+import type { PrintFormat, PrintSheet } from '@/lib/printSheet'
+import { stickerLayout } from '@/lib/printSheet'
 import type { PosterT } from '@/lib/printMotifs'
 
 const props = defineProps<{
   sheets: PrintSheet[]
   motif: Component
   t: PosterT
+  format: PrintFormat
 }>()
 
-const COLS = 2
-const ROWS = 4
 const PAGE = { w: 210, h: 297 }
 
 const grid = computed(() => {
-  const { w, h, gap } = STICKER_MM
-  const totalW = COLS * w + (COLS - 1) * gap
-  const totalH = ROWS * h + (ROWS - 1) * gap
-  const offX = (PAGE.w - totalW) / 2
-  const offY = (PAGE.h - totalH) / 2
-  return { w, h, gap, totalW, totalH, offX, offY }
+  const { w, h, gap, cols, rows } = stickerLayout(props.format)
+  const totalW = cols * w + (cols - 1) * gap
+  const totalH = rows * h + (rows - 1) * gap
+  return {
+    w, h, gap, cols, rows, totalW, totalH,
+    offX: (PAGE.w - totalW) / 2,
+    offY: (PAGE.h - totalH) / 2,
+  }
 })
 
-const slots = computed(() =>
-  props.sheets.slice(0, COLS * ROWS).map((sheet, i) => {
-    const { w, h, gap, offX, offY } = grid.value
-    const col = i % COLS
-    const row = Math.floor(i / COLS)
-    return {
-      sheet,
-      key: `${sheet.machineId}-${i}`,
-      left: offX + col * (w + gap),
-      top: offY + row * (h + gap),
-    }
-  }),
-)
+const slots = computed(() => {
+  const { w, h, gap, cols, rows, offX, offY } = grid.value
+  return props.sheets.slice(0, cols * rows).map((sheet, i) => ({
+    sheet,
+    key: `${sheet.machineId}-${i}`,
+    left: offX + (i % cols) * (w + gap),
+    top: offY + Math.floor(i / cols) * (h + gap),
+  }))
+})
 
 /** Cut guides sit in the margins, never on the label itself. */
 const xEdges = computed(() => {
-  const { w, gap, offX } = grid.value
-  return [offX, offX + w, offX + w + gap, offX + 2 * w + gap]
+  const { w, gap, cols, offX } = grid.value
+  const out: number[] = []
+  for (let c = 0; c < cols; c++) {
+    out.push(offX + c * (w + gap))
+    out.push(offX + c * (w + gap) + w)
+  }
+  return out
 })
 
 const yEdges = computed(() => {
-  const { h, gap, offY } = grid.value
+  const { h, gap, rows, offY } = grid.value
   const out: number[] = []
-  for (let r = 0; r < ROWS; r++) {
+  for (let r = 0; r < rows; r++) {
     out.push(offY + r * (h + gap))
     out.push(offY + r * (h + gap) + h)
   }

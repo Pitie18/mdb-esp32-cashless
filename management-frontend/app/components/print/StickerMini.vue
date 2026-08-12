@@ -9,13 +9,14 @@ const main = computed(() => props.sheet.slots.main)
 </script>
 
 <template>
+  <!-- 50 x 30 mm: one code and one line. Anything else is unreadable at this
+       size, and this label exists for places where 90 x 50 does not fit. -->
   <div class="sticker">
     <QrBlock v-if="main?.qr" class="qr" :svg="main.qr" />
     <div class="text">
-      <div class="title">{{ sheet.texts.title || t('print.sticker.problemTitle') }}</div>
-      <div class="sub">{{ main?.hint }}</div>
+      <div class="title">{{ main?.title }}</div>
       <div v-if="sheet.phone" class="phone">{{ sheet.phone }}</div>
-      <div class="machine">{{ sheet.machineName }}</div>
+      <div v-else class="hint">{{ main?.hint }}</div>
     </div>
   </div>
 </template>
@@ -28,15 +29,14 @@ const main = computed(() => props.sheet.slots.main)
   color: #14110f;
   display: flex;
   align-items: center;
-  gap: 3mm;
-  padding: 4mm;
+  gap: 2mm;
+  padding: 2mm;
   box-sizing: border-box;
-  font-size: 2.6mm;
+  font-size: 2mm;
 }
-.qr { width: 22mm; height: 22mm; flex: none; }
+.qr { width: 16mm; height: 16mm; flex: none; }
 .text { min-width: 0; }
-.title { font-size: 1.35em; font-weight: 600; line-height: 1.2; }
-.sub { font-size: 1em; color: #57534e; margin-top: 0.35em; line-height: 1.3; }
-.phone { font-size: 1.35em; font-weight: 600; margin-top: 0.35em; }
-.machine { font-size: 0.85em; color: #a8a29e; margin-top: 0.35em; }
+.title { font-size: 1.15em; font-weight: 600; line-height: 1.15; }
+.phone { font-size: 1.05em; font-weight: 600; margin-top: 0.6mm; }
+.hint { font-size: 0.95em; color: #57534e; margin-top: 0.6mm; line-height: 1.2; }
 </style>
