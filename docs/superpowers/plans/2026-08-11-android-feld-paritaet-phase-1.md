@@ -2440,3 +2440,450 @@ Mirrors ServerSelectionSheet.swift. Edit and delete are visible icon
 buttons rather than iOS-style swipe actions, which are undiscoverable
 on Android. The build-supplied default stays read-only."
 ```
+
+---
+
+### Task 15: QR-Scan für die Serverkonfiguration
+
+Letztes Stück iOS-Parität. `management-frontend/app/pages/mobile-app/index.vue` erzeugt `JSON.stringify({ v: 1, url, anonKey })`; `AddServerView.swift` liest daraus `v` (muss `1` sein), `url` und `anonKey` und lehnt alles andere ab. Android liest exakt dasselbe.
+
+Diese Aufgabe bringt CameraX und ML Kit ins Projekt — dieselbe Kamerabasis, die Paket 2 für den Lager-Barcode braucht. Deshalb wird der Scanner als eigenständige, wiederverwendbare Komponente gebaut und nicht in das Server-Sheet hineingeschrieben.
+
+**Die Trennung, auf die es ankommt:** Das Parsen der Nutzlast ist reine Logik und wird vollständig unit-getestet. Die Kamera ist Verkabelung und kann ohne Gerät nicht geprüft werden.
+
+**Files:**
+- Create: `android/app/src/main/java/xyz/vmflow/models/ServerQrPayload.kt`
+- Create: `android/app/src/test/java/xyz/vmflow/models/ServerQrPayloadTest.kt`
+- Create: `android/app/src/main/java/xyz/vmflow/ui/components/QrScannerSheet.kt`
+- Modify: `android/app/src/main/java/xyz/vmflow/ui/auth/AddEditServerSheet.kt`
+- Modify: `android/app/src/main/AndroidManifest.xml`
+- Modify: `android/gradle/libs.versions.toml`
+- Modify: `android/app/build.gradle`
+- Modify: `android/app/src/main/res/values/strings.xml`, `values-de/strings.xml`
+
+**Interfaces:**
+- Produces:
+  - `data class ServerQrPayload(val url: String, val anonKey: String)` mit `companion object { fun parse(raw: String): ServerQrPayload? }`
+  - `QrScannerSheet(onResult: (String) -> Unit, onDismiss: () -> Unit)` — liefert den Rohtext des ersten erkannten QR-Codes
+
+- [ ] **Step 1: Fehlschlagenden Test für das Parsen schreiben**
+
+Neue Datei `android/app/src/test/java/xyz/vmflow/models/ServerQrPayloadTest.kt`:
+
+```kotlin
+package xyz.vmflow.models
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class ServerQrPayloadTest {
+
+    /** Exactly what management-frontend's /mobile-app page emits. */
+    private val valid = """{"v":1,"url":"https://supabase.example.com","anonKey":"eyJhbGciOi"}"""
+
+    @Test
+    fun `parses the payload the web dashboard produces`() {
+        val parsed = ServerQrPayload.parse(valid)
+        assertEquals("https://supabase.example.com", parsed?.url)
+        assertEquals("eyJhbGciOi", parsed?.anonKey)
+    }
+
+    @Test
+    fun `tolerates extra keys so the web side can add fields`() {
+        val withExtra = """{"v":1,"url":"https://a.example.com","anonKey":"k","name":"Prod"}"""
+        assertEquals("https://a.example.com", ServerQrPayload.parse(withExtra)?.url)
+    }
+
+    @Test
+    fun `rejects an unknown version`() {
+        assertNull(ServerQrPayload.parse("""{"v":2,"url":"https://a.example.com","anonKey":"k"}"""))
+    }
+
+    @Test
+    fun `rejects a missing version`() {
+        assertNull(ServerQrPayload.parse("""{"url":"https://a.example.com","anonKey":"k"}"""))
+    }
+
+    @Test
+    fun `rejects a missing url`() {
+        assertNull(ServerQrPayload.parse("""{"v":1,"anonKey":"k"}"""))
+    }
+
+    @Test
+    fun `rejects a missing anon key`() {
+        assertNull(ServerQrPayload.parse("""{"v":1,"url":"https://a.example.com"}"""))
+    }
+
+    @Test
+    fun `rejects blank values`() {
+        assertNull(ServerQrPayload.parse("""{"v":1,"url":"","anonKey":"k"}"""))
+        assertNull(ServerQrPayload.parse("""{"v":1,"url":"https://a.example.com","anonKey":""}"""))
+    }
+
+    @Test
+    fun `rejects text that is not json`() {
+        assertNull(ServerQrPayload.parse("https://a.example.com"))
+        assertNull(ServerQrPayload.parse(""))
+        assertNull(ServerQrPayload.parse("{not json"))
+    }
+
+    @Test
+    fun `rejects a json array`() {
+        assertNull(ServerQrPayload.parse("""[{"v":1,"url":"https://a.example.com","anonKey":"k"}]"""))
+    }
+}
+```
+
+- [ ] **Step 2: Test laufen lassen, Fehlschlag bestätigen**
+
+```bash
+cd android && ./gradlew testDebugUnitTest --tests "xyz.vmflow.models.ServerQrPayloadTest"
+```
+
+Erwartet: `BUILD FAILED` mit `Unresolved reference` auf `ServerQrPayload`.
+
+- [ ] **Step 3: Parser implementieren**
+
+Neue Datei `android/app/src/main/java/xyz/vmflow/models/ServerQrPayload.kt`:
+
+```kotlin
+package xyz.vmflow.models
+
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
+/**
+ * The server configuration encoded in the QR code shown by the web
+ * dashboard's /mobile-app page.
+ *
+ * The wire format is a cross-client contract already honoured by iOS
+ * (`AddServerView.handleQRCode`): `{"v":1,"url":...,"anonKey":...}`.
+ * Unknown keys are tolerated so the web side can extend it; an unknown
+ * `v` is rejected outright rather than guessed at.
+ */
+data class ServerQrPayload(val url: String, val anonKey: String) {
+    companion object {
+        private const val SUPPORTED_VERSION = 1
+
+        fun parse(raw: String): ServerQrPayload? {
+            val obj = runCatching {
+                Json.parseToJsonElement(raw).jsonObject
+            }.getOrNull() ?: return null
+
+            val version = runCatching { obj["v"]?.jsonPrimitive?.content?.toIntOrNull() }.getOrNull()
+            if (version != SUPPORTED_VERSION) return null
+
+            val url = runCatching { obj["url"]?.jsonPrimitive?.content }.getOrNull().orEmpty()
+            val anonKey = runCatching { obj["anonKey"]?.jsonPrimitive?.content }.getOrNull().orEmpty()
+            if (url.isBlank() || anonKey.isBlank()) return null
+
+            return ServerQrPayload(url = url, anonKey = anonKey)
+        }
+    }
+}
+```
+
+- [ ] **Step 4: Test laufen lassen**
+
+```bash
+cd android && ./gradlew testDebugUnitTest --tests "xyz.vmflow.models.ServerQrPayloadTest"
+```
+
+Erwartet: `BUILD SUCCESSFUL`, 9 Tests grün.
+
+- [ ] **Step 5: Kamera-Abhängigkeiten ergänzen**
+
+In `android/gradle/libs.versions.toml` im `[versions]`-Block ergänzen:
+
+```toml
+camerax = "1.6.1"
+mlkitBarcode = "17.3.0"
+```
+
+im `[libraries]`-Block:
+
+```toml
+# Camera + barcode (also the base the warehouse scanner will reuse)
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+```
+
+und in `android/app/build.gradle` im `dependencies`-Block:
+
+```groovy
+    // Camera + barcode
+    implementation libs.androidx.camera.core
+    implementation libs.androidx.camera.camera2
+    implementation libs.androidx.camera.lifecycle
+    implementation libs.androidx.camera.view
+    implementation libs.mlkit.barcode.scanning
+```
+
+- [ ] **Step 6: Kameraberechtigung im Manifest deklarieren**
+
+In `android/app/src/main/AndroidManifest.xml` neben den bestehenden `uses-permission`-Zeilen ergänzen:
+
+```xml
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+```
+
+`required="false"`, damit die App auch auf Geräten ohne Kamera installierbar bleibt.
+
+- [ ] **Step 7: Textressourcen**
+
+In `android/app/src/main/res/values/strings.xml`:
+
+```xml
+    <string name="qr_scan">Scan QR code</string>
+    <string name="qr_scan_hint">Scan the code from your web dashboard</string>
+    <string name="qr_invalid">That QR code is not a server configuration</string>
+    <string name="qr_permission_needed">Camera access is needed to scan a code</string>
+    <string name="qr_grant_permission">Allow camera</string>
+```
+
+In `android/app/src/main/res/values-de/strings.xml`:
+
+```xml
+    <string name="qr_scan">QR-Code scannen</string>
+    <string name="qr_scan_hint">Scanne den Code aus deinem Web-Dashboard</string>
+    <string name="qr_invalid">Dieser QR-Code ist keine Serverkonfiguration</string>
+    <string name="qr_permission_needed">Für den Scan wird Kamerazugriff gebraucht</string>
+    <string name="qr_grant_permission">Kamera erlauben</string>
+```
+
+- [ ] **Step 8: Scanner-Komponente schreiben**
+
+Neue Datei `android/app/src/main/java/xyz/vmflow/ui/components/QrScannerSheet.kt`:
+
+```kotlin
+package xyz.vmflow.ui.components
+
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
+import xyz.vmflow.R
+import java.util.concurrent.Executors
+
+/**
+ * Scans a single QR code and hands its raw text to [onResult].
+ *
+ * Deliberately generic — it returns the raw string rather than a parsed
+ * server config, so the warehouse barcode work can reuse it unchanged.
+ * The camera permission is requested here, at the moment of scanning,
+ * rather than at app start.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalGetImage::class)
+@Composable
+fun QrScannerSheet(
+    onResult: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> hasPermission = granted }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = stringResource(R.string.qr_scan),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = stringResource(R.string.qr_scan_hint),
+                style = MaterialTheme.typography.bodySmall,
+            )
+
+            if (!hasPermission) {
+                Text(stringResource(R.string.qr_permission_needed))
+                Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                    Text(stringResource(R.string.qr_grant_permission))
+                }
+            } else {
+                val executor = remember { Executors.newSingleThreadExecutor() }
+                DisposableEffect(Unit) { onDispose { executor.shutdown() } }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(320.dp)
+                ) {
+                    AndroidView(
+                        modifier = Modifier.fillMaxWidth(),
+                        factory = { ctx ->
+                            val previewView = PreviewView(ctx)
+                            val providerFuture = ProcessCameraProvider.getInstance(ctx)
+                            providerFuture.addListener({
+                                val provider = providerFuture.get()
+                                val preview = Preview.Builder().build().also {
+                                    it.surfaceProvider = previewView.surfaceProvider
+                                }
+                                val scanner = BarcodeScanning.getClient()
+                                val analysis = ImageAnalysis.Builder()
+                                    .setBackpressureStrategy(
+                                        ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
+                                    )
+                                    .build()
+                                    .also { it.setAnalyzer(executor) { proxy ->
+                                        val media = proxy.image
+                                        if (media == null) {
+                                            proxy.close()
+                                        } else {
+                                            val image = InputImage.fromMediaImage(
+                                                media,
+                                                proxy.imageInfo.rotationDegrees
+                                            )
+                                            scanner.process(image)
+                                                .addOnSuccessListener { codes ->
+                                                    codes.firstOrNull { code ->
+                                                        code.format == Barcode.FORMAT_QR_CODE
+                                                    }?.rawValue?.let(onResult)
+                                                }
+                                                .addOnCompleteListener { proxy.close() }
+                                        }
+                                    } }
+
+                                provider.unbindAll()
+                                provider.bindToLifecycle(
+                                    lifecycleOwner,
+                                    CameraSelector.DEFAULT_BACK_CAMERA,
+                                    preview,
+                                    analysis,
+                                )
+                            }, ContextCompat.getMainExecutor(ctx))
+                            previewView
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+```
+
+- [ ] **Step 9: In das Server-Sheet einhängen**
+
+In `android/app/src/main/java/xyz/vmflow/ui/auth/AddEditServerSheet.kt` einen Zustand ergänzen:
+
+```kotlin
+    var showScanner by remember { mutableStateOf(false) }
+    var scanError by remember { mutableStateOf<String?>(null) }
+```
+
+Oberhalb des Namensfelds eine Schaltfläche einsetzen:
+
+```kotlin
+            OutlinedButton(
+                onClick = { showScanner = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.qr_scan))
+            }
+
+            scanError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+```
+
+und am Ende des Composable-Rumpfs, außerhalb der `Column`:
+
+```kotlin
+    if (showScanner) {
+        val invalidMessage = stringResource(R.string.qr_invalid)
+        QrScannerSheet(
+            onResult = { raw ->
+                val payload = ServerQrPayload.parse(raw)
+                if (payload == null) {
+                    scanError = invalidMessage
+                } else {
+                    url = payload.url
+                    anonKey = payload.anonKey
+                    scanError = null
+                }
+                showScanner = false
+            },
+            onDismiss = { showScanner = false },
+        )
+    }
+```
+
+Die Importe ergänzen: `androidx.compose.material3.OutlinedButton`, `androidx.compose.material3.MaterialTheme`, `xyz.vmflow.models.ServerQrPayload`, `xyz.vmflow.ui.components.QrScannerSheet`.
+
+Der Scan füllt nur die Felder — gespeichert wird weiterhin bewusst über „Speichern", damit man den Namen noch vergeben kann.
+
+- [ ] **Step 10: Build und alle Tests**
+
+```bash
+cd android && ./gradlew assembleDebug testDebugUnitTest
+```
+
+Erwartet: `BUILD SUCCESSFUL`, 37 Tests (28 bestehende + 9 neue), keine Fehlschläge.
+
+- [ ] **Step 11: Commit**
+
+```bash
+git add android/gradle/libs.versions.toml android/app/build.gradle android/app/src/main/AndroidManifest.xml android/app/src/main/java/xyz/vmflow/models/ServerQrPayload.kt android/app/src/test/java/xyz/vmflow/models/ServerQrPayloadTest.kt android/app/src/main/java/xyz/vmflow/ui/components/QrScannerSheet.kt android/app/src/main/java/xyz/vmflow/ui/auth/AddEditServerSheet.kt android/app/src/main/res/values/strings.xml android/app/src/main/res/values-de/strings.xml
+git commit -m "feat(android): configure a server by scanning the dashboard QR code
+
+Reads the same {v:1,url,anonKey} payload the web dashboard emits and
+iOS already accepts. The parser is pure and fully unit-tested; the
+camera is CameraX + ML Kit, kept as a generic raw-string scanner so the
+warehouse barcode work can reuse it unchanged."
+```
