@@ -32,12 +32,12 @@ function subtitle(row: BreakdownRow) {
   const parts = [t('analytics.perDay', {
     value: metric.value === 'units' ? avg.toFixed(1) : formatCurrency(avg),
   })]
-  if (metric.value !== 'units') parts.push(t('analytics.nPieces', { count: row.units }))
+  if (metric.value !== 'units') parts.push(t('analytics.nPieces', row.units))
   if (!row.has_cost && metric.value === 'grossProfit') parts.push(t('analytics.noPurchasePrice'))
   if (dimension.value === 'product' && row.machine_count) {
-    parts.push(t('analytics.nMachines', { count: row.machine_count }))
+    parts.push(t('analytics.nMachines', row.machine_count))
   } else if (dimension.value !== 'product' && row.product_count) {
-    parts.push(t('analytics.nProducts', { count: row.product_count }))
+    parts.push(t('analytics.nProducts', row.product_count))
   }
   return parts.join(' · ')
 }

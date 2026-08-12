@@ -186,7 +186,7 @@ struct ProductAnalyticsSheet: View {
         if let low = purchase.minGross, let high = purchase.maxGross, low != high {
             parts.append(String(format: String(localized: "range %.2f – %.2f € gross"), low, high))
         }
-        parts.append(String(format: String(localized: "%d quotes"), purchase.ekCount))
+        parts.append(String(localized: "\(purchase.ekCount) quote"))
         return parts.joined(separator: " · ")
     }
 }

@@ -37,8 +37,7 @@ struct ChannelSplitCard: View {
                                        ? geo.size.width * channel.revenueGross / total : 0)
                         }
                         .frame(height: 6)
-                        Text(String(format: String(localized: "%d pcs · ⌀ %.2f €"),
-                                    channel.units, channel.avgTicket))
+                        Text(String(localized: "\(channel.units) pc · ⌀ \(String(format: "%.2f €", channel.avgTicket))"))
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                 }

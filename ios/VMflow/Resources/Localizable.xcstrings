@@ -15817,72 +15817,12 @@
         }
       }
     },
-    "%d categories": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%d Kategorien"
-          }
-        }
-      }
-    },
-    "%d machines": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%d Automaten"
-          }
-        }
-      }
-    },
     "%d of %d slots filled": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "%d von %d Plätzen gefüllt"
-          }
-        }
-      }
-    },
-    "%d pcs": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%d Stk"
-          }
-        }
-      }
-    },
-    "%d pcs · ⌀ %.2f €": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%d Stk · ⌀ %.2f €"
-          }
-        }
-      }
-    },
-    "%d products": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%d Artikel"
-          }
-        }
-      }
-    },
-    "%d quotes": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%d Notierungen"
           }
         }
       }
@@ -16003,16 +15943,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rohertrag"
-          }
-        }
-      }
-    },
-    "Gross profit is net of tax. %lld products have no purchase price and are excluded.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rohertrag netto. %lld Artikel ohne EK-Preis sind nicht enthalten."
           }
         }
       }
@@ -16243,6 +16173,252 @@
           "stringUnit": {
             "state": "translated",
             "value": "⌀ %.1f/Tag"
+          }
+        }
+      }
+    },
+    "%lld category": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld category"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld categories"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Kategorie"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Kategorien"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld pc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pc"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pcs"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Stk"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Stk"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld product": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld product"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld products"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Artikel"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Artikel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld quote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld quote"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld quotes"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Notierung"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Notierungen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld pc · ⌀ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pc · ⌀ %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pcs · ⌀ %@"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Stk · ⌀ %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Stk · ⌀ %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Gross profit is net of tax. %lld products have no purchase price and are excluded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Gross profit is net of tax. %lld product has no purchase price and is excluded."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Gross profit is net of tax. %lld products have no purchase price and are excluded."
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Rohertrag netto. %lld Artikel ohne EK-Preis ist nicht enthalten."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Rohertrag netto. %lld Artikel ohne EK-Preis sind nicht enthalten."
+                }
+              }
+            }
           }
         }
       }

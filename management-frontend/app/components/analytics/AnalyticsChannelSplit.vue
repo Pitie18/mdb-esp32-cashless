@@ -47,7 +47,7 @@ const barClass = (raw: string) => {
           />
         </div>
         <p class="text-muted-foreground text-xs">
-          {{ t('analytics.nPieces', { count: channel.units }) }} · ⌀ {{ formatCurrency(channel.avg_ticket) }}
+          {{ t('analytics.nPieces', channel.units) }} · ⌀ {{ formatCurrency(channel.avg_ticket) }}
         </p>
       </div>
     </CardContent>

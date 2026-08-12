@@ -23,7 +23,7 @@ const machineLabel = computed(() => {
   if (machineIds.value.length === 1) {
     return machines.value.find(x => x.id === machineIds.value[0])?.name || t('analytics.allMachines')
   }
-  return t('analytics.nMachines', { count: machineIds.value.length })
+  return t('analytics.nMachines', machineIds.value.length)
 })
 
 const categoryLabel = computed(() => {
@@ -32,7 +32,7 @@ const categoryLabel = computed(() => {
     return categories.value.find(x => x.id === categoryIds.value[0])?.name
       || t('analytics.allCategories')
   }
-  return t('analytics.nCategories', { count: categoryIds.value.length })
+  return t('analytics.nCategories', categoryIds.value.length)
 })
 
 function toggle(list: string[], id: string) {

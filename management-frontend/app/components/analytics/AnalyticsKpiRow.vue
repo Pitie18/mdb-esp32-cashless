@@ -54,7 +54,7 @@ const cards = computed(() => {
       {{ t('analytics.vsPrevious', { range: previousRangeLabel }) }}
     </p>
     <p v-if="summary?.missing_cost_products" class="text-muted-foreground text-xs">
-      {{ t('analytics.costHint', { count: summary.missing_cost_products }) }}
+      {{ t('analytics.costHint', summary.missing_cost_products) }}
     </p>
   </div>
 </template>
