@@ -24,4 +24,11 @@
     <string name="action_cancel">Abbrechen</string>
     <string name="action_delete">Löschen</string>
     <string name="action_done">Fertig</string>
+
+    <!-- QR-Scan -->
+    <string name="qr_scan">QR-Code scannen</string>
+    <string name="qr_scan_hint">Scanne den Code aus deinem Web-Dashboard</string>
+    <string name="qr_invalid">Dieser QR-Code ist keine Serverkonfiguration</string>
+    <string name="qr_permission_needed">Für den Scan wird Kamerazugriff gebraucht</string>
+    <string name="qr_grant_permission">Kamera erlauben</string>
 </resources>

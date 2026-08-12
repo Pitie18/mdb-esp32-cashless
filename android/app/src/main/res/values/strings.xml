@@ -28,4 +28,11 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
     <string name="action_done">Done</string>
+
+    <!-- QR scanning -->
+    <string name="qr_scan">Scan QR code</string>
+    <string name="qr_scan_hint">Scan the code from your web dashboard</string>
+    <string name="qr_invalid">That QR code is not a server configuration</string>
+    <string name="qr_permission_needed">Camera access is needed to scan a code</string>
+    <string name="qr_grant_permission">Allow camera</string>
 </resources>

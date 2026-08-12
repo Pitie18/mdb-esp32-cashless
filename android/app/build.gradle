@@ -77,6 +77,13 @@ dependencies {
     implementation libs.androidx.material3.adaptive.navigation
     implementation libs.androidx.core.splashscreen
 
+    // Camera + barcode
+    implementation libs.androidx.camera.core
+    implementation libs.androidx.camera.camera2
+    implementation libs.androidx.camera.lifecycle
+    implementation libs.androidx.camera.view
+    implementation libs.mlkit.barcode.scanning
+
     // Supabase
     implementation libs.supabase.auth
     implementation libs.supabase.postgrest

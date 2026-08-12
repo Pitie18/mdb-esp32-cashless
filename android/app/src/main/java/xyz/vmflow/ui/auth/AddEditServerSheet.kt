@@ -8,7 +8,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,6 +30,8 @@ import xyz.vmflow.R
 import xyz.vmflow.data.ServerStoreHolder
 import xyz.vmflow.data.SupabaseService
 import xyz.vmflow.models.ServerEntry
+import xyz.vmflow.models.ServerQrPayload
+import xyz.vmflow.ui.components.QrScannerSheet
 import java.util.UUID
 
 /**
@@ -46,6 +50,8 @@ fun AddEditServerSheet(
     var name by remember { mutableStateOf(editing?.name.orEmpty()) }
     var url by remember { mutableStateOf(editing?.url.orEmpty()) }
     var anonKey by remember { mutableStateOf(editing?.anonKey.orEmpty()) }
+    var showScanner by remember { mutableStateOf(false) }
+    var scanError by remember { mutableStateOf<String?>(null) }
 
     val draft = ServerEntry(
         id = editing?.id ?: "",
@@ -65,8 +71,17 @@ fun AddEditServerSheet(
         ) {
             Text(
                 text = stringResource(if (editing == null) R.string.server_add else R.string.server_edit),
-                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleLarge,
             )
+
+            OutlinedButton(
+                onClick = { showScanner = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.qr_scan))
+            }
+
+            scanError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
             OutlinedTextField(
                 value = name,
@@ -124,5 +139,23 @@ fun AddEditServerSheet(
                 Text(stringResource(R.string.action_cancel))
             }
         }
+    }
+
+    if (showScanner) {
+        val invalidMessage = stringResource(R.string.qr_invalid)
+        QrScannerSheet(
+            onResult = { raw ->
+                val payload = ServerQrPayload.parse(raw)
+                if (payload == null) {
+                    scanError = invalidMessage
+                } else {
+                    url = payload.url
+                    anonKey = payload.anonKey
+                    scanError = null
+                }
+                showScanner = false
+            },
+            onDismiss = { showScanner = false },
+        )
     }
 }
