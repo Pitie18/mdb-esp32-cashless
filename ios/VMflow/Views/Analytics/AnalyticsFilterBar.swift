@@ -10,28 +10,45 @@ struct AnalyticsFilterBar: View {
     @State private var showMachines = false
     @State private var showCategories = false
 
+    /// Selection as it was when the sheet opened. Dismissing without changing
+    /// anything must not cost a round trip.
+    @State private var machineSnapshot: Set<UUID> = []
+    @State private var categorySnapshot: Set<UUID> = []
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 chip(viewModel.rangeLabel, systemImage: "calendar", isActive: true) { showRange = true }
                 chip(machineLabel, systemImage: "storefront",
-                     isActive: !viewModel.selectedMachineIds.isEmpty) { showMachines = true }
+                     isActive: !viewModel.selectedMachineIds.isEmpty) {
+                    machineSnapshot = viewModel.selectedMachineIds
+                    showMachines = true
+                }
                 chip(categoryLabel, systemImage: "square.grid.2x2",
-                     isActive: !viewModel.selectedCategoryIds.isEmpty) { showCategories = true }
+                     isActive: !viewModel.selectedCategoryIds.isEmpty) {
+                    categorySnapshot = viewModel.selectedCategoryIds
+                    showCategories = true
+                }
             }
             .padding(.horizontal, 2)
         }
         .sheet(isPresented: $showRange) {
             AnalyticsRangeSheet(viewModel: viewModel)
         }
-        .sheet(isPresented: $showMachines, onDismiss: { viewModel.filtersCommitted() }) {
+        .sheet(isPresented: $showMachines, onDismiss: {
+            guard viewModel.selectedMachineIds != machineSnapshot else { return }
+            viewModel.filtersCommitted()
+        }) {
             AnalyticsMultiSelectSheet(
                 title: String(localized: "Machines"),
                 options: viewModel.machines.map { ($0.id, $0.name ?? String(localized: "Unnamed")) },
                 selection: $viewModel.selectedMachineIds,
                 allLabel: String(localized: "All machines"))
         }
-        .sheet(isPresented: $showCategories, onDismiss: { viewModel.filtersCommitted() }) {
+        .sheet(isPresented: $showCategories, onDismiss: {
+            guard viewModel.selectedCategoryIds != categorySnapshot else { return }
+            viewModel.filtersCommitted()
+        }) {
             AnalyticsMultiSelectSheet(
                 title: String(localized: "Categories"),
                 options: viewModel.categories.map { ($0.id, $0.name) },
@@ -47,7 +64,7 @@ struct AnalyticsFilterBar: View {
            let m = viewModel.machines.first(where: { $0.id == id }) {
             return m.name ?? String(localized: "Unnamed")
         }
-        return String(format: String(localized: "%d machines"), n)
+        return String(localized: "\(n) machine")
     }
 
     private var categoryLabel: String {
@@ -57,7 +74,7 @@ struct AnalyticsFilterBar: View {
            let c = viewModel.categories.first(where: { $0.id == id }) {
             return c.name
         }
-        return String(format: String(localized: "%d categories"), n)
+        return String(localized: "\(n) category")
     }
 
     private func chip(_ text: String, systemImage: String, isActive: Bool,

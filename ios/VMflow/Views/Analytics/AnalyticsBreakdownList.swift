@@ -26,12 +26,11 @@ struct AnalyticsBreakdownList: View {
 
     private var rows: [AnalyticsBreakdownRow] { viewModel.sortedRows }
 
-    private var maxValue: Double {
-        rows.map { $0.value(for: viewModel.metric) }.max() ?? 0
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        // Computed once per render pass rather than once per row — accessing it
+        // from inside the row builder made the list O(n²) in the row count.
+        let maxValue = rows.map { $0.value(for: viewModel.metric) }.max() ?? 0
+        return VStack(alignment: .leading, spacing: 10) {
             Text("Breakdown")
                 .font(.caption).textCase(.uppercase)
                 .foregroundStyle(.secondary)
@@ -59,7 +58,7 @@ struct AnalyticsBreakdownList: View {
                             guard viewModel.dimension == .product, row.key != nil else { return }
                             onSelectProduct(row)
                         } label: {
-                            rowView(row)
+                            rowView(row, maxValue: maxValue)
                         }
                         .buttonStyle(.plain)
                         .disabled(viewModel.dimension != .product || row.key == nil)
@@ -73,7 +72,7 @@ struct AnalyticsBreakdownList: View {
         }
     }
 
-    private func rowView(_ row: AnalyticsBreakdownRow) -> some View {
+    private func rowView(_ row: AnalyticsBreakdownRow, maxValue: Double) -> some View {
         let value = row.value(for: viewModel.metric)
         let delta = deltaPct(current: value, previous: row.previousValue(for: viewModel.metric))
         return HStack(spacing: 9) {
@@ -122,17 +121,17 @@ struct AnalyticsBreakdownList: View {
         var parts: [String] = []
         parts.append(String(format: String(localized: "%@ /day"), format(row.avgDaily(for: viewModel.metric))))
         if viewModel.metric != .units {
-            parts.append(String(format: String(localized: "%d pcs"), row.units))
+            parts.append(String(localized: "\(row.units) pc"))
         }
         if !row.hasCost && viewModel.metric == .grossProfit {
             parts.append(String(localized: "no purchase price"))
         }
         switch viewModel.dimension {
         case .product where row.machineCount > 0:
-            parts.append(String(format: String(localized: "%d machines"), row.machineCount))
+            parts.append(String(localized: "\(row.machineCount) machine"))
         case .category, .machine:
             if row.productCount > 0 {
-                parts.append(String(format: String(localized: "%d products"), row.productCount))
+                parts.append(String(localized: "\(row.productCount) product"))
             }
         default: break
         }

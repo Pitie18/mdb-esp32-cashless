@@ -40,6 +40,12 @@ final class AnalyticsViewModel: ObservableObject {
     private let client = SupabaseService.shared.client
     private var companyId: UUID?
 
+    /// Bumped on every user-initiated load. A response whose generation no
+    /// longer matches is discarded: switching the range twice in quick
+    /// succession must land on the range selected last, not on whichever
+    /// request happened to finish last.
+    private var loadGeneration = 0
+
     // MARK: - Derived
 
     var sortedRows: [AnalyticsBreakdownRow] { sortRows(rows, by: metric) }
@@ -74,38 +80,51 @@ final class AnalyticsViewModel: ObservableObject {
     // MARK: - Loading
 
     func load() async {
+        loadGeneration += 1
+        let generation = loadGeneration
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer { if generation == loadGeneration { isLoading = false } }
         do {
             let company = try await resolveCompanyId()
-            summary = try await client
+            let result: AnalyticsSummary = try await client
                 .rpc("get_sales_analytics_summary", params: rpcParams(companyId: company))
                 .execute()
                 .value
+            guard generation == loadGeneration else { return }
+            summary = result
             backendUnsupported = false
         } catch is CancellationError {
         } catch {
+            guard generation == loadGeneration else { return }
             handle(error)
         }
-        await loadBreakdown()
+        await loadBreakdown(generation: generation)
     }
 
     func loadBreakdown() async {
+        loadGeneration += 1
+        await loadBreakdown(generation: loadGeneration)
+    }
+
+    private func loadBreakdown(generation: Int) async {
         isLoadingRows = true
-        defer { isLoadingRows = false }
+        defer { if generation == loadGeneration { isLoadingRows = false } }
         do {
             let company = try await resolveCompanyId()
             var params = rpcParams(companyId: company)
             params["p_dimension"] = .string(dimension.rawValue)
             params["p_product_id"] = .null
-            rows = try await client
+            let result: [AnalyticsBreakdownRow] = try await client
                 .rpc("get_sales_analytics_breakdown", params: params)
                 .execute()
                 .value
+            guard generation == loadGeneration else { return }
+            rows = result
             backendUnsupported = false
         } catch is CancellationError {
         } catch {
+            guard generation == loadGeneration else { return }
             handle(error)
         }
     }
