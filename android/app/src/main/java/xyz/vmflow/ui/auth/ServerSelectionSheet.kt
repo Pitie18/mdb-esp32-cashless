@@ -66,14 +66,18 @@ fun ServerSelectionSheet(onDismiss: () -> Unit) {
                 ListItem(
                     modifier = Modifier.clickable {
                         store.selectServer(server)
-                        SupabaseService.reconfigure(server)
+                        if (server.id != selected.id) {
+                            SupabaseService.reconfigure(server)
+                        }
                     },
                     leadingContent = {
                         RadioButton(
                             selected = server.id == selected.id,
                             onClick = {
                                 store.selectServer(server)
-                                SupabaseService.reconfigure(server)
+                                if (server.id != selected.id) {
+                                    SupabaseService.reconfigure(server)
+                                }
                             },
                         )
                     },

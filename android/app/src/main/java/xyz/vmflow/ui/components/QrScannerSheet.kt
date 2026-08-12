@@ -96,7 +96,17 @@ fun QrScannerSheet(
                 }
             } else {
                 val executor = remember { Executors.newSingleThreadExecutor() }
-                DisposableEffect(Unit) { onDispose { executor.shutdown() } }
+                var provider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+                DisposableEffect(Unit) {
+                    onDispose {
+                        // Unbind before shutting the executor down so the camera
+                        // stops (and the Android 12+ indicator light turns off)
+                        // as soon as the sheet closes, instead of staying bound
+                        // to the Activity lifecycle until it stops.
+                        provider?.unbindAll()
+                        executor.shutdown()
+                    }
+                }
 
                 Box(
                     modifier = Modifier
@@ -109,7 +119,8 @@ fun QrScannerSheet(
                             val previewView = PreviewView(ctx)
                             val providerFuture = ProcessCameraProvider.getInstance(ctx)
                             providerFuture.addListener({
-                                val provider = providerFuture.get()
+                                val cameraProvider = providerFuture.get()
+                                provider = cameraProvider
                                 val preview = Preview.Builder().build().also {
                                     it.surfaceProvider = previewView.surfaceProvider
                                 }
@@ -138,8 +149,8 @@ fun QrScannerSheet(
                                         }
                                     } }
 
-                                provider.unbindAll()
-                                provider.bindToLifecycle(
+                                cameraProvider.unbindAll()
+                                cameraProvider.bindToLifecycle(
                                     lifecycleOwner,
                                     CameraSelector.DEFAULT_BACK_CAMERA,
                                     preview,
