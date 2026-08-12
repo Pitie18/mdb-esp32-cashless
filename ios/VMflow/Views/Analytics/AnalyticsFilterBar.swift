@@ -18,14 +18,26 @@ struct AnalyticsFilterBar: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                chip(viewModel.rangeLabel, systemImage: "calendar", isActive: true) { showRange = true }
+                // The range always narrows the data, so it carries a permanent
+                // tint rather than the "you have filtered" fill — otherwise
+                // every chip would look set and the signal would say nothing.
+                chip(viewModel.rangeLabel, systemImage: "calendar",
+                     style: .always) { showRange = true }
                 chip(machineLabel, systemImage: "storefront",
-                     isActive: !viewModel.selectedMachineIds.isEmpty) {
+                     style: viewModel.selectedMachineIds.isEmpty ? .off : .on,
+                     onClear: {
+                         viewModel.selectedMachineIds = []
+                         viewModel.filtersCommitted()
+                     }) {
                     machineSnapshot = viewModel.selectedMachineIds
                     showMachines = true
                 }
                 chip(categoryLabel, systemImage: "square.grid.2x2",
-                     isActive: !viewModel.selectedCategoryIds.isEmpty) {
+                     style: viewModel.selectedCategoryIds.isEmpty ? .off : .on,
+                     onClear: {
+                         viewModel.selectedCategoryIds = []
+                         viewModel.filtersCommitted()
+                     }) {
                     categorySnapshot = viewModel.selectedCategoryIds
                     showCategories = true
                 }
@@ -77,21 +89,50 @@ struct AnalyticsFilterBar: View {
         return String(localized: "\(n) category")
     }
 
-    private func chip(_ text: String, systemImage: String, isActive: Bool,
+    /// `off` — no restriction. `on` — the user narrowed the data here, drawn
+    /// filled so it is unmistakable after a drill-down changed it without the
+    /// user touching the bar. `always` — inherently set (the time range).
+    private enum ChipStyle { case off, on, always }
+
+    private func chip(_ text: String, systemImage: String, style: ChipStyle,
+                      onClear: (() -> Void)? = nil,
                       action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: systemImage).font(.caption2)
-                Text(text).font(.caption).lineLimit(1)
-                Image(systemName: "chevron.down").font(.system(size: 8, weight: .semibold))
-            }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 7)
-            .background(isActive ? Color.accentColor.opacity(0.15) : Color(.secondarySystemBackground))
-            .foregroundStyle(isActive ? Color.accentColor : Color.primary)
-            .clipShape(Capsule())
+        let background: Color = switch style {
+        case .on: Color.accentColor
+        case .always: Color.accentColor.opacity(0.15)
+        case .off: Color(.secondarySystemBackground)
         }
-        .buttonStyle(.plain)
+        let foreground: Color = switch style {
+        case .on: .white
+        case .always: .accentColor
+        case .off: .primary
+        }
+        return HStack(spacing: 5) {
+            Button(action: action) {
+                HStack(spacing: 5) {
+                    Image(systemName: systemImage).font(.caption2)
+                    Text(text).font(.caption.weight(style == .on ? .semibold : .regular)).lineLimit(1)
+                    if style != .on {
+                        Image(systemName: "chevron.down").font(.system(size: 8, weight: .semibold))
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            // Clearing an active filter without reopening the sheet — the
+            // fastest way back out of a drill-down.
+            if style == .on, let onClear {
+                Button(action: onClear) {
+                    Image(systemName: "xmark.circle.fill").font(.system(size: 13))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 7)
+        .background(background)
+        .foregroundStyle(foreground)
+        .clipShape(Capsule())
     }
 }
 

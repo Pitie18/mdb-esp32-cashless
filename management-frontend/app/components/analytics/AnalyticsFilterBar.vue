@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconBuildingStore, IconCalendar, IconCategory, IconCheck } from '@tabler/icons-vue'
+import { IconBuildingStore, IconCalendar, IconCategory, IconCheck, IconX } from '@tabler/icons-vue'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -57,6 +57,16 @@ function applyCustom() {
 function onMenuToggle(open: boolean) {
   if (!open) loadAll()
 }
+
+function clearMachines() {
+  machineIds.value = []
+  loadAll()
+}
+
+function clearCategories() {
+  categoryIds.value = []
+  loadAll()
+}
 </script>
 
 <template>
@@ -89,9 +99,13 @@ function onMenuToggle(open: boolean) {
       </DropdownMenuContent>
     </DropdownMenu>
 
+    <div class="flex items-center">
     <DropdownMenu @update:open="onMenuToggle">
       <DropdownMenuTrigger as-child>
-        <Button variant="outline" size="sm" class="gap-2">
+        <Button
+          :variant="machineIds.length ? 'default' : 'outline'" size="sm"
+          class="gap-2" :class="machineIds.length ? 'rounded-r-none font-semibold' : ''"
+        >
           <IconBuildingStore class="size-4" />
           {{ machineLabel }}
         </Button>
@@ -111,10 +125,25 @@ function onMenuToggle(open: boolean) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <!-- Clearing an active filter without reopening the menu — the fastest way
+         back out of a drill-down. -->
+    <Button
+      v-if="machineIds.length" variant="default" size="sm"
+      class="border-background/30 rounded-l-none border-l px-2"
+      :aria-label="t('analytics.allMachines')"
+      @click="clearMachines"
+    >
+      <IconX class="size-3.5" />
+    </Button>
+    </div>
 
+    <div class="flex items-center">
     <DropdownMenu @update:open="onMenuToggle">
       <DropdownMenuTrigger as-child>
-        <Button variant="outline" size="sm" class="gap-2">
+        <Button
+          :variant="categoryIds.length ? 'default' : 'outline'" size="sm"
+          class="gap-2" :class="categoryIds.length ? 'rounded-r-none font-semibold' : ''"
+        >
           <IconCategory class="size-4" />
           {{ categoryLabel }}
         </Button>
@@ -134,5 +163,14 @@ function onMenuToggle(open: boolean) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <Button
+      v-if="categoryIds.length" variant="default" size="sm"
+      class="border-background/30 rounded-l-none border-l px-2"
+      :aria-label="t('analytics.allCategories')"
+      @click="clearCategories"
+    >
+      <IconX class="size-3.5" />
+    </Button>
+    </div>
   </div>
 </template>
