@@ -6,6 +6,7 @@ import SwiftUI
 struct AnalyticsView: View {
     @StateObject private var viewModel = AnalyticsViewModel()
     @State private var selectedProduct: AnalyticsBreakdownRow?
+    @State private var selectedBucket: Date?
 
     var body: some View {
         Group {
@@ -107,10 +108,18 @@ struct AnalyticsView: View {
     /// hairlines, so the points are folded into weekly buckets first.
     private var trendChart: some View {
         let points = bucketedPoints
-        let prevAvg = previousDailyAverage
+        let average = bucketAverage
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Trend")
-                .font(.caption).textCase(.uppercase).foregroundStyle(.secondary)
+            HStack {
+                Text("Trend")
+                    .font(.caption).textCase(.uppercase).foregroundStyle(.secondary)
+                Spacer()
+                if average > 0 {
+                    Text(verbatim: "⌀ \(format(average, metric: viewModel.metric))")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.orange)
+                }
+            }
             Chart {
                 ForEach(points) { point in
                     BarMark(
@@ -122,17 +131,87 @@ struct AnalyticsView: View {
                                      : Color.accentColor.gradient)
                     .cornerRadius(3)
                 }
-                if prevAvg > 0 {
-                    RuleMark(y: .value("Previous average", prevAvg))
-                        .foregroundStyle(.secondary)
+
+                // Same treatment as the dashboard's revenue chart: orange,
+                // dashed, with the value spelled out on the line.
+                if average > 0 {
+                    RuleMark(y: .value("Average", average))
+                        .foregroundStyle(.orange)
                         .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                        .annotation(
+                            position: .top,
+                            alignment: .trailing,
+                            spacing: 2,
+                            overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                        ) {
+                            Text(verbatim: "⌀ \(format(average, metric: viewModel.metric))")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.orange)
+                        }
+                }
+
+                if selectedBucket != nil, let point = selectedPoint {
+                    RuleMark(x: .value("Selected", point.day, unit: bucketUnit))
+                        .foregroundStyle(.gray.opacity(0.35))
+                        .annotation(
+                            position: .top,
+                            alignment: .center,
+                            spacing: 4,
+                            overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                        ) {
+                            tooltip(for: point)
+                        }
                 }
             }
             .frame(height: 150)
+            .chartXSelection(value: $selectedBucket)
             .chartYAxis { AxisMarks(position: .leading) }
+            .animation(.smooth, value: selectedBucket)
         }
         .padding(14)
         .background { RoundedRectangle(cornerRadius: 14).fill(.regularMaterial) }
+    }
+
+    /// Average per rendered bucket, so the line sits where the bars are: with
+    /// weekly bars it is the weekly average, not the daily one.
+    private var bucketAverage: Double {
+        let points = bucketedPoints
+        guard !points.isEmpty else { return 0 }
+        return points.reduce(0) { $0 + $1.value(for: viewModel.metric) } / Double(points.count)
+    }
+
+    private var selectedPoint: AnalyticsDailyPoint? {
+        guard let selectedBucket else { return nil }
+        let unit: Calendar.Component = bucketUnit == .weekOfYear ? .weekOfYear : .day
+        return bucketedPoints.first {
+            Calendar.current.isDate($0.day, equalTo: selectedBucket, toGranularity: unit)
+        }
+    }
+
+    private func tooltip(for point: AnalyticsDailyPoint) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(point.day, format: .dateTime.day().month(.abbreviated).year())
+                .font(.caption.weight(.semibold))
+            tooltipRow("Revenue", String(format: "%.2f €", point.revenueGross))
+            tooltipRow("Units", "\(point.units)")
+            tooltipRow("Gross profit", String(format: "%.2f €", point.grossProfit))
+        }
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .background {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+        }
+        .frame(minWidth: 150)
+    }
+
+    private func tooltipRow(_ label: LocalizedStringKey, _ value: String) -> some View {
+        HStack(spacing: 12) {
+            Text(label).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).monospacedDigit()
+        }
+        .font(.caption2)
     }
 
     private var bucketUnit: Calendar.Component {
@@ -154,13 +233,6 @@ struct AnalyticsView: View {
                 grossProfit: group.reduce(0) { $0 + $1.grossProfit })
         }
         .sorted { $0.day < $1.day }
-    }
-
-    /// The previous period's average per bucket — the dashed reference line.
-    private var previousDailyAverage: Double {
-        guard let summary = viewModel.summary, summary.range.days > 0 else { return 0 }
-        let perDay = summary.previous.value(for: viewModel.metric) / summary.range.days
-        return bucketUnit == .weekOfYear ? perDay * 7 : perDay
     }
 
     private func format(_ value: Double, metric: AnalyticsMetric) -> String {
