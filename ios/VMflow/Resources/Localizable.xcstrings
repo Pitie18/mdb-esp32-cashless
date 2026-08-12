@@ -16442,6 +16442,16 @@
           }
         }
       }
+    },
+    "Filtered": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gefiltert"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

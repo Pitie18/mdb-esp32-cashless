@@ -2292,6 +2292,7 @@
     "sellThrough": "Abverkauf {value} %",
     "daysOfSupply": "Reicht noch etwa {days} Tage",
     "sortDescending": "Größte zuerst",
-    "sortAscending": "Kleinste zuerst"
+    "sortAscending": "Kleinste zuerst",
+    "filtered": "Gefiltert"
   }
 }

@@ -64,6 +64,8 @@ struct AnalyticsBreakdownList: View {
 
             AnalyticsMetricPicker(metric: $viewModel.metric)
 
+            activeFilters
+
             if viewModel.isLoadingRows && rows.isEmpty {
                 ProgressView().frame(maxWidth: .infinity).padding(.vertical, 24)
             } else if rows.isEmpty {
@@ -101,6 +103,50 @@ struct AnalyticsBreakdownList: View {
         .background {
             RoundedRectangle(cornerRadius: 14).fill(.regularMaterial)
         }
+    }
+
+    /// The active filter repeated right above the rows. The filter bar sits far
+    /// enough up the page that a drill-down changes it out of sight, which is
+    /// exactly when knowing about it matters most.
+    @ViewBuilder
+    private var activeFilters: some View {
+        let category = viewModel.activeCategoryFilterLabel
+        let machine = viewModel.activeMachineFilterLabel
+        if category != nil || machine != nil {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    Text("Filtered")
+                        .font(.caption2).foregroundStyle(.secondary)
+                    if let category {
+                        filterPill(category, systemImage: "square.grid.2x2") {
+                            viewModel.clearCategoryFilter()
+                        }
+                    }
+                    if let machine {
+                        filterPill(machine, systemImage: "storefront") {
+                            viewModel.clearMachineFilter()
+                        }
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+    }
+
+    private func filterPill(_ text: String, systemImage: String,
+                            onClear: @escaping () -> Void) -> some View {
+        Button(action: onClear) {
+            HStack(spacing: 4) {
+                Image(systemName: systemImage).font(.system(size: 9))
+                Text(text).font(.caption2.weight(.semibold)).lineLimit(1)
+                Image(systemName: "xmark").font(.system(size: 8, weight: .bold))
+            }
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(Color.accentColor)
+            .foregroundStyle(.white)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private func rowView(_ row: AnalyticsBreakdownRow, maxValue: Double,

@@ -25,19 +25,13 @@ struct AnalyticsFilterBar: View {
                      style: .always) { showRange = true }
                 chip(machineLabel, systemImage: "storefront",
                      style: viewModel.selectedMachineIds.isEmpty ? .off : .on,
-                     onClear: {
-                         viewModel.selectedMachineIds = []
-                         viewModel.filtersCommitted()
-                     }) {
+                     onClear: { viewModel.clearMachineFilter() }) {
                     machineSnapshot = viewModel.selectedMachineIds
                     showMachines = true
                 }
                 chip(categoryLabel, systemImage: "square.grid.2x2",
                      style: viewModel.selectedCategoryIds.isEmpty ? .off : .on,
-                     onClear: {
-                         viewModel.selectedCategoryIds = []
-                         viewModel.filtersCommitted()
-                     }) {
+                     onClear: { viewModel.clearCategoryFilter() }) {
                     categorySnapshot = viewModel.selectedCategoryIds
                     showCategories = true
                 }
@@ -70,23 +64,11 @@ struct AnalyticsFilterBar: View {
     }
 
     private var machineLabel: String {
-        let n = viewModel.selectedMachineIds.count
-        if n == 0 { return String(localized: "All machines") }
-        if n == 1, let id = viewModel.selectedMachineIds.first,
-           let m = viewModel.machines.first(where: { $0.id == id }) {
-            return m.name ?? String(localized: "Unnamed")
-        }
-        return String(localized: "\(n) machine")
+        viewModel.activeMachineFilterLabel ?? String(localized: "All machines")
     }
 
     private var categoryLabel: String {
-        let n = viewModel.selectedCategoryIds.count
-        if n == 0 { return String(localized: "All categories") }
-        if n == 1, let id = viewModel.selectedCategoryIds.first,
-           let c = viewModel.categories.first(where: { $0.id == id }) {
-            return c.name
-        }
-        return String(localized: "\(n) category")
+        viewModel.activeCategoryFilterLabel ?? String(localized: "All categories")
     }
 
     /// `off` — no restriction. `on` — the user narrowed the data here, drawn
