@@ -68,3 +68,20 @@ val StockRed = Color(0xFFF44336)
 
 val OnlineGreen = Color(0xFF4CAF50)
 val OfflineGray = Color(0xFF9E9E9E)
+
+// ─── Analysis slot tiers ────────────────────────────────────────────────────
+// Deliberately fixed, distinct hues rather than scheme roles. The brand
+// scheme's primary/secondary/tertiary sit close together, so deriving the five
+// tiers from them rendered as near-identical tones in dark mode — which defeats
+// the whole point of a grid you are meant to read at a glance. Each tier gets a
+// light- and a dark-surface variant so contrast holds in both themes.
+val TierStrongLight = Color(0xFF2E7D32)
+val TierStrongDark = Color(0xFF66BB6A)
+val TierOkLight = Color(0xFF0277BD)
+val TierOkDark = Color(0xFF4FC3F7)
+val TierTestingLight = Color(0xFF6A1B9A)
+val TierTestingDark = Color(0xFFBA68C8)
+val TierWeakLight = Color(0xFFEF6C00)
+val TierWeakDark = Color(0xFFFFB74D)
+val TierDeadLight = Color(0xFFC62828)
+val TierDeadDark = Color(0xFFEF5350)

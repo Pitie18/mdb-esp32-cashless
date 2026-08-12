@@ -141,7 +141,7 @@
     <string name="analysis_legend_empty">Leer</string>
     <string name="analysis_products_to_review">Zu prüfende Produkte</string>
     <string name="analysis_sell_through_sold">%1$d %% Abverkauf · %2$d verkauft</string>
-    <string name="analysis_tenure_suffix"> · %1$d T im Automat</string>
+    <string name="analysis_tenure_suffix">" · %1$d T im Automat"</string>
     <string name="analysis_try_instead">Stattdessen versuchen: %1$s</string>
     <string name="analysis_slot_empty">Fach %1$d, leer</string>
     <string name="analysis_replace_title">Produkt ersetzen</string>

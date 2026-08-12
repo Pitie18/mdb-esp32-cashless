@@ -58,6 +58,17 @@ import xyz.vmflow.BuildConfig
 import xyz.vmflow.R
 import xyz.vmflow.data.AnalysisGridSlot
 import xyz.vmflow.data.MachineAnalysis
+import androidx.compose.foundation.isSystemInDarkTheme
+import xyz.vmflow.ui.theme.TierStrongLight
+import xyz.vmflow.ui.theme.TierStrongDark
+import xyz.vmflow.ui.theme.TierOkLight
+import xyz.vmflow.ui.theme.TierOkDark
+import xyz.vmflow.ui.theme.TierTestingLight
+import xyz.vmflow.ui.theme.TierTestingDark
+import xyz.vmflow.ui.theme.TierWeakLight
+import xyz.vmflow.ui.theme.TierWeakDark
+import xyz.vmflow.ui.theme.TierDeadLight
+import xyz.vmflow.ui.theme.TierDeadDark
 import xyz.vmflow.data.SlotTier
 import xyz.vmflow.data.Suggestion
 import xyz.vmflow.data.SuggestionKind
@@ -242,7 +253,7 @@ private fun GridSection(rowCount: Int, slots: List<AnalysisGridSlot>, onSlotClic
     }
 }
 
-private const val GRID_CELL_HEIGHT_DP = 56
+private const val GRID_CELL_HEIGHT_DP = 44
 private const val GRID_SPACING_DP = 4
 
 /** One cell of the flattened row-major grid; `slot == null` is a gap/spacer column. */
@@ -293,19 +304,28 @@ private fun AnalysisLayoutGrid(rowCount: Int, slots: List<AnalysisGridSlot>, onS
         verticalArrangement = Arrangement.spacedBy(GRID_SPACING_DP.dp),
         userScrollEnabled = false,
     ) {
-        items(entries, key = { it.id }, span = { GridItemSpan(it.span) }) { entry ->
+        // Every cell is pinned to the same height the container was sized from.
+        // Without this the cells size to their own content, the container stays
+        // at the computed height, and the difference shows up as a large empty
+        // gap between the grid and the legend.
+        items(
+            entries,
+            key = { it.id },
+            span = { GridItemSpan(it.span) },
+        ) { entry ->
             val slot = entry.slot
             if (slot != null) {
                 AnalysisGridCell(slot = slot, onClick = { onSlotClick(slot) })
             } else if (entry.isGap) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .height(GRID_CELL_HEIGHT_DP.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
                 )
             } else {
-                Spacer(modifier = Modifier.fillMaxSize())
+                Spacer(modifier = Modifier.fillMaxWidth().height(GRID_CELL_HEIGHT_DP.dp))
             }
         }
     }
@@ -314,11 +334,16 @@ private fun AnalysisLayoutGrid(rowCount: Int, slots: List<AnalysisGridSlot>, onS
 @Composable
 private fun AnalysisGridCell(slot: AnalysisGridSlot, onClick: () -> Unit) {
     val tierColor = slot.tier.tierColor()
-    val description = slot.productName ?: stringResource(R.string.analysis_slot_empty, slot.itemNumber)
+    // The tier must not be conveyed by colour alone: screen-reader users and
+    // anyone with a colour vision deficiency get it spoken with the product.
+    val description = slot.productName
+        ?.let { "$it — ${slot.tier.tierLabel()}" }
+        ?: stringResource(R.string.analysis_slot_empty, slot.itemNumber)
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .height(GRID_CELL_HEIGHT_DP.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(tierColor.copy(alpha = if (slot.tier == SlotTier.EMPTY) 0.15f else 0.35f))
             .clickable(onClick = onClick)
@@ -582,16 +607,24 @@ private fun SwapConfirmDialog(pending: PendingSwap, onConfirm: () -> Unit, onDis
     )
 }
 
-// ─── Tier styling — derived from the Material colour scheme, never hardcoded hex ───
+// ─── Tier styling ───────────────────────────────────────────────────────────
+// Fixed hues, not scheme roles: primary/secondary/tertiary sit close together
+// in this brand palette and produced five indistinguishable tones in dark mode.
+// A grid whose only job is to be read at a glance has to use separable hues.
+// Tier is never conveyed by colour alone — the review list carries a text badge
+// and every slot carries its tier in its content description.
 
 @Composable
-private fun SlotTier.tierColor(): Color = when (this) {
-    SlotTier.STRONG -> MaterialTheme.colorScheme.primary
-    SlotTier.OK -> MaterialTheme.colorScheme.tertiary
-    SlotTier.TESTING -> MaterialTheme.colorScheme.secondary
-    SlotTier.WEAK -> MaterialTheme.colorScheme.error.copy(alpha = 0.65f)
-    SlotTier.DEAD -> MaterialTheme.colorScheme.error
-    SlotTier.EMPTY -> MaterialTheme.colorScheme.outline
+private fun SlotTier.tierColor(): Color {
+    val dark = isSystemInDarkTheme()
+    return when (this) {
+        SlotTier.STRONG -> if (dark) TierStrongDark else TierStrongLight
+        SlotTier.OK -> if (dark) TierOkDark else TierOkLight
+        SlotTier.TESTING -> if (dark) TierTestingDark else TierTestingLight
+        SlotTier.WEAK -> if (dark) TierWeakDark else TierWeakLight
+        SlotTier.DEAD -> if (dark) TierDeadDark else TierDeadLight
+        SlotTier.EMPTY -> MaterialTheme.colorScheme.outline
+    }
 }
 
 @Composable

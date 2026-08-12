@@ -145,7 +145,7 @@
     <string name="analysis_legend_empty">Empty</string>
     <string name="analysis_products_to_review">Products to Review</string>
     <string name="analysis_sell_through_sold">%1$d%% sell-through · %2$d sold</string>
-    <string name="analysis_tenure_suffix"> · %1$dd in machine</string>
+    <string name="analysis_tenure_suffix">" · %1$dd in machine"</string>
     <string name="analysis_try_instead">Try instead: %1$s</string>
     <string name="analysis_slot_empty">Slot %1$d, empty</string>
     <string name="analysis_replace_title">Replace Product</string>
