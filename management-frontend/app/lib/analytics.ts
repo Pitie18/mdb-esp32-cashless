@@ -8,7 +8,11 @@
 
 export type AnalyticsMetric = 'units' | 'revenue' | 'grossProfit'
 export type AnalyticsDimension = 'product' | 'category' | 'machine'
-export type RangePreset = 'days7' | 'days30' | 'days90' | 'thisMonth' | 'lastMonth' | 'custom'
+export type RangePreset =
+  | 'days7' | 'days30' | 'days90'
+  | 'thisMonth' | 'lastMonth'
+  | 'thisYear' | 'lastYear'
+  | 'allTime' | 'custom'
 export type SortDirection = 'desc' | 'asc'
 
 export interface AnalyticsTotals {
@@ -100,8 +104,12 @@ export function deltaPct(current: number, previous: number): number | null {
   return ((current - previous) / Math.abs(previous)) * 100
 }
 
-/** Daily bars turn into hairlines past roughly two months. */
-export function chartBucket(days: number): 'day' | 'week' {
+/**
+ * Daily bars turn into hairlines past roughly two months, and weekly bars do
+ * the same past about a year — "all time" would otherwise be a solid block.
+ */
+export function chartBucket(days: number): 'day' | 'week' | 'month' {
+  if (days > 400) return 'month'
   return days > 60 ? 'week' : 'day'
 }
 
@@ -199,6 +207,8 @@ export function resolveRange(
   customFrom: string,
   customTo: string,
   now: Date = new Date(),
+  /** Timestamp of the oldest sale, used as the start of "all time". */
+  earliest?: string | null,
 ): { from: string; to: string } {
   const today = startOfLocalDay(now)
   const tomorrow = addDays(today, 1)
@@ -218,6 +228,22 @@ export function resolveRange(
       const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
       return { from: iso(lastMonth), to: iso(thisMonth) }
+    }
+    case 'thisYear':
+      return { from: iso(new Date(now.getFullYear(), 0, 1)), to: iso(tomorrow) }
+    case 'lastYear': {
+      const thisYear = new Date(now.getFullYear(), 0, 1)
+      return { from: iso(new Date(now.getFullYear() - 1, 0, 1)), to: iso(thisYear) }
+    }
+    case 'allTime': {
+      // Anchored on the oldest sale rather than a fixed early date: the RPC
+      // builds one row per day in the window, so a 1970 start would return
+      // ~20k empty buckets. Without any sales, fall back to the current year.
+      const start = earliest ? startOfLocalDay(new Date(earliest)) : new Date(now.getFullYear(), 0, 1)
+      if (Number.isNaN(start.getTime())) {
+        return { from: iso(new Date(now.getFullYear(), 0, 1)), to: iso(tomorrow) }
+      }
+      return { from: iso(start), to: iso(tomorrow) }
     }
     case 'custom': {
       const a = startOfLocalDay(new Date(`${customFrom}T00:00:00`))
@@ -240,20 +266,24 @@ export function resolveRange(
  */
 export function bucketDaily(
   points: AnalyticsDailyPoint[],
-  bucket: 'day' | 'week',
+  bucket: 'day' | 'week' | 'month',
 ): AnalyticsDailyPoint[] {
   if (bucket === 'day') return points
 
   const byWeek = new Map<string, AnalyticsDailyPoint>()
   for (const point of points) {
     const date = new Date(`${point.day}T00:00:00`)
-    // getDay(): 0 = Sunday. Shift so Monday anchors the week.
-    const offset = (date.getDay() + 6) % 7
-    const monday = addDays(date, -offset)
+    let anchor: Date
+    if (bucket === 'month') {
+      anchor = new Date(date.getFullYear(), date.getMonth(), 1)
+    } else {
+      // getDay(): 0 = Sunday. Shift so Monday anchors the week.
+      anchor = addDays(date, -((date.getDay() + 6) % 7))
+    }
     const key = [
-      monday.getFullYear(),
-      String(monday.getMonth() + 1).padStart(2, '0'),
-      String(monday.getDate()).padStart(2, '0'),
+      anchor.getFullYear(),
+      String(anchor.getMonth() + 1).padStart(2, '0'),
+      String(anchor.getDate()).padStart(2, '0'),
     ].join('-')
 
     const existing = byWeek.get(key)

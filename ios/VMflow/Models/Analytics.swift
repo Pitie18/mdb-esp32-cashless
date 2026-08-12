@@ -27,11 +27,11 @@ enum AnalyticsDimension: String, CaseIterable, Identifiable {
 }
 
 enum AnalyticsRangePreset: String, CaseIterable, Identifiable {
-    case days7, days30, days90, thisMonth, lastMonth, custom
+    case days7, days30, days90, thisMonth, lastMonth, thisYear, lastYear, allTime, custom
     var id: String { rawValue }
 }
 
-enum ChartBucket { case day, week }
+enum ChartBucket { case day, week, month }
 
 enum AnalyticsSortDirection: String, CaseIterable, Identifiable {
     case descending, ascending
@@ -413,10 +413,11 @@ func deltaPct(current: Double, previous: Double) -> Double? {
     return (current - previous) / abs(previous) * 100
 }
 
-/// Daily bars stay readable up to about two months; beyond that they turn into
-/// unreadable hairlines, so the chart switches to weekly buckets.
+/// Daily bars stay readable up to about two months, weekly ones up to about a
+/// year; beyond that "all time" would be a solid block, so it folds to months.
 func chartBucket(forDays days: Double) -> ChartBucket {
-    days > 60 ? .week : .day
+    if days > 400 { return .month }
+    return days > 60 ? .week : .day
 }
 
 /// 0…1 colour intensity for a heatmap cell.
@@ -460,7 +461,8 @@ func metricShares(_ rows: [AnalyticsBreakdownRow],
 /// the RPC filters `created_at < p_to`, so an inclusive end would silently
 /// drop the last day's sales.
 func dateRange(for preset: AnalyticsRangePreset, customFrom: Date, customTo: Date,
-               calendar: Calendar = .current, now: Date = Date()) -> (from: Date, to: Date) {
+               calendar: Calendar = .current, now: Date = Date(),
+               earliest: Date? = nil) -> (from: Date, to: Date) {
     let startOfToday = calendar.startOfDay(for: now)
     let tomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
 
@@ -478,6 +480,17 @@ func dateRange(for preset: AnalyticsRangePreset, customFrom: Date, customTo: Dat
         let thisMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
         let start = calendar.date(byAdding: .month, value: -1, to: thisMonth)!
         return (start, thisMonth)
+    case .thisYear:
+        return (calendar.date(from: calendar.dateComponents([.year], from: now))!, tomorrow)
+    case .lastYear:
+        let thisYear = calendar.date(from: calendar.dateComponents([.year], from: now))!
+        return (calendar.date(byAdding: .year, value: -1, to: thisYear)!, thisYear)
+    case .allTime:
+        // Anchored on the oldest sale rather than a fixed early date: the RPC
+        // builds one row per day in the window, so a 1970 start would return
+        // ~20k empty buckets. Without any sales, fall back to the current year.
+        let thisYear = calendar.date(from: calendar.dateComponents([.year], from: now))!
+        return (earliest.map { calendar.startOfDay(for: $0) } ?? thisYear, tomorrow)
     case .custom:
         let from = calendar.startOfDay(for: min(customFrom, customTo))
         let toDay = calendar.startOfDay(for: max(customFrom, customTo))

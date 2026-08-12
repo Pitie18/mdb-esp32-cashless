@@ -3,7 +3,7 @@ import { VisAxis, VisStackedBar, VisXYContainer } from '@unovis/vue'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { chartBucket, metricValue } from '~/lib/analytics'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { summary, metric, bucketedDaily } = useAnalytics()
 
 interface Point { date: Date; value: number }
@@ -16,8 +16,12 @@ const points = computed<Point[]>(() =>
 
 const isWeekly = computed(() => chartBucket(summary.value?.range.days ?? 30) === 'week')
 
-const tickFormat = (d: Date) =>
-  d.toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' })
+// unovis' default x scale is linear (core/xy-component: `Scale.scaleLinear()`),
+// so `.ticks()` hands the formatter NUMBERS — epoch milliseconds — even though
+// the accessor returns Dates. Calling a Date method on that throws inside the
+// axis render and unovis then draws nothing at all, card and axes included.
+const tickFormat = (d: number) =>
+  new Date(d).toLocaleDateString(locale.value, { day: '2-digit', month: '2-digit' })
 </script>
 
 <template>
@@ -37,7 +41,15 @@ const tickFormat = (d: Date) =>
           :bar-padding="isWeekly ? 0.3 : 0.2"
           :rounded-corners="4"
         />
-        <VisAxis type="x" :tick-format="tickFormat" :tick-line="false" :domain-line="false" />
+        <VisAxis
+          type="x"
+          :x="(d: Point) => d.date"
+          :tick-format="tickFormat"
+          :tick-line="false"
+          :domain-line="false"
+          :grid-line="false"
+          :num-ticks="6"
+        />
         <VisAxis type="y" :num-ticks="3" :tick-line="false" :domain-line="false" />
       </VisXYContainer>
     </CardContent>

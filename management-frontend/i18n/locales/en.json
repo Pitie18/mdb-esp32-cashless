@@ -2293,6 +2293,9 @@
     "daysOfSupply": "Lasts about {days} more days",
     "sortDescending": "Highest first",
     "sortAscending": "Lowest first",
-    "filtered": "Filtered"
+    "filtered": "Filtered",
+    "thisYear": "This year",
+    "lastYear": "Last year",
+    "allTime": "All time"
   }
 }

@@ -21,6 +21,10 @@ final class AnalyticsViewModel: ObservableObject {
     }
     @Published var sortDirection: AnalyticsSortDirection = .descending
 
+    /// created_at of the oldest visible sale — the anchor for "all time".
+    /// Looked up once; nil means "none" or "not looked up yet".
+    @Published private(set) var earliestSale: Date?
+
     // MARK: - Data
 
     @Published var summary: AnalyticsSummary?
@@ -58,7 +62,7 @@ final class AnalyticsViewModel: ObservableObject {
     var sortedRows: [AnalyticsBreakdownRow] { sortRows(rows, by: metric, direction: sortDirection) }
 
     var range: (from: Date, to: Date) {
-        dateRange(for: preset, customFrom: customFrom, customTo: customTo)
+        dateRange(for: preset, customFrom: customFrom, customTo: customTo, earliest: earliestSale)
     }
 
     var rangeLabel: String {
@@ -184,7 +188,32 @@ final class AnalyticsViewModel: ObservableObject {
         }
     }
 
+    /// Oldest sale the caller can see. RLS already scopes this to the company.
+    /// Looked up once and cached: "all time" has to start somewhere, and a
+    /// fixed early date would make the RPC build one empty daily bucket per day
+    /// back to that date.
+    private func loadEarliestSale() async {
+        guard earliestSale == nil else { return }
+        struct Row: Decodable {
+            let createdAt: Date
+            enum CodingKeys: String, CodingKey { case createdAt = "created_at" }
+        }
+        do {
+            let rows: [Row] = try await client
+                .from("sales")
+                .select("created_at")
+                .order("created_at", ascending: true)
+                .limit(1)
+                .execute()
+                .value
+            earliestSale = rows.first?.createdAt
+        } catch {
+            // Non-fatal: "all time" then falls back to the current year.
+        }
+    }
+
     func loadFilterOptions() async {
+        await loadEarliestSale()
         do {
             let company = try await resolveCompanyId()
             async let machineTask: [VendingMachine] = client

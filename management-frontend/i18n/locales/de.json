@@ -2293,6 +2293,9 @@
     "daysOfSupply": "Reicht noch etwa {days} Tage",
     "sortDescending": "Größte zuerst",
     "sortAscending": "Kleinste zuerst",
-    "filtered": "Gefiltert"
+    "filtered": "Gefiltert",
+    "thisYear": "Dieses Jahr",
+    "lastYear": "Letztes Jahr",
+    "allTime": "Gesamte Zeit"
   }
 }
