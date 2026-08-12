@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation bar -->
+    <string name="nav_dashboard">Übersicht</string>
+    <string name="nav_machines">Automaten</string>
+    <string name="nav_refill">Befüllen</string>
+</resources>
