@@ -1903,3 +1903,530 @@ SharedPreferences.
 The KeyValueStore seam exists so the store is unit-testable without an
 Android runtime, which keeps Robolectric off the test classpath."
 ```
+
+---
+
+### Task 13: Den Supabase-Client umschaltbar machen
+
+Heute ist `SupabaseService.client` ein `by lazy`-Wert aus `BuildConfig`. Damit ein anderer Server gewählt werden kann, muss der Client austauschbar werden.
+
+Der Fallstrick dabei: `AuthRepository.authState` ist ein `val`, der `SupabaseService.client.auth.sessionStatus` **einmalig** einfängt. Wird der Client ersetzt, beobachtet `authState` weiter den alten und der Anmeldezustand friert ein. Deshalb wird der Client als `StateFlow` veröffentlicht und `authState` daraus abgeleitet.
+
+**Files:**
+- Modify: `android/app/src/main/java/xyz/vmflow/data/SupabaseService.kt`
+- Modify: `android/app/src/main/java/xyz/vmflow/data/AuthRepository.kt:23-33`
+
+**Interfaces:**
+- Consumes: `ServerStoreHolder.instance` und `ServerEntry` aus Task 12
+- Produces:
+  - `SupabaseService.clientFlow: StateFlow<SupabaseClient>`
+  - `SupabaseService.client: SupabaseClient` (weiterhin, jetzt `clientFlow.value` — alle bestehenden Aufrufer bleiben unverändert)
+  - `SupabaseService.reconfigure(server: ServerEntry)`
+
+- [ ] **Step 1: `SupabaseService` umbauen**
+
+`android/app/src/main/java/xyz/vmflow/data/SupabaseService.kt` vollständig ersetzen durch:
+
+```kotlin
+package xyz.vmflow.data
+
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.functions.Functions
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.realtime.Realtime
+import io.github.jan.supabase.storage.Storage
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import xyz.vmflow.models.ServerEntry
+
+object SupabaseService {
+
+    private fun build(server: ServerEntry): SupabaseClient =
+        createSupabaseClient(
+            supabaseUrl = server.sanitizedUrl,
+            supabaseKey = server.anonKey
+        ) {
+            install(Auth)
+            install(Postgrest)
+            install(Realtime)
+            install(Storage)
+            install(Functions)
+        }
+
+    private val _clientFlow = MutableStateFlow(build(ServerStoreHolder.instance.selectedServer.value))
+
+    /**
+     * The active client. Observe this rather than capturing [client] in a
+     * `val`: switching servers replaces the instance, and anything holding
+     * the old one silently stops receiving updates.
+     */
+    val clientFlow: StateFlow<SupabaseClient> = _clientFlow.asStateFlow()
+
+    val client: SupabaseClient
+        get() = _clientFlow.value
+
+    /** Rebuilds the client against [server]. Only valid while signed out. */
+    fun reconfigure(server: ServerEntry) {
+        _clientFlow.value = build(server)
+    }
+}
+```
+
+- [ ] **Step 2: `authState` an den aktuellen Client binden**
+
+In `android/app/src/main/java/xyz/vmflow/data/AuthRepository.kt` den Block
+
+```kotlin
+    val authState: Flow<AuthState> = auth.sessionStatus.map { status ->
+```
+
+ersetzen durch:
+
+```kotlin
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val authState: Flow<AuthState> = SupabaseService.clientFlow
+        .flatMapLatest { it.auth.sessionStatus }
+        .map { status ->
+```
+
+Der Rest des `map`-Rumpfs bleibt unverändert. Die Importe ergänzen:
+
+```kotlin
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
+```
+
+Ohne `flatMapLatest` würde `authState` nach einem Serverwechsel weiter die Sitzung des alten Clients beobachten.
+
+- [ ] **Step 3: Build und Tests**
+
+```bash
+cd android && ./gradlew assembleDebug testDebugUnitTest
+```
+
+Erwartet: `BUILD SUCCESSFUL`, alle bestehenden Tests grün. `SupabaseService.client` behält seine Signatur, deshalb muss kein Aufrufer angefasst werden.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add android/app/src/main/java/xyz/vmflow/data/SupabaseService.kt android/app/src/main/java/xyz/vmflow/data/AuthRepository.kt
+git commit -m "feat(android): make the Supabase client switchable at runtime
+
+authState captured the client's sessionStatus once, so replacing the
+client would have frozen the sign-in state. It now follows clientFlow
+via flatMapLatest."
+```
+
+---
+
+### Task 14: Serverauswahl im Login-Bildschirm
+
+Die Oberfläche: unten im Login ein Eintrag mit dem Namen des gewählten Servers, der ein `ModalBottomSheet` öffnet. Darin alle Server, eigene mit Bearbeiten und Löschen, dazu „Eigenen Server hinzufügen".
+
+Android-Idiom statt iOS-Swipe-Actions: die Aktionen liegen als sichtbare `IconButton` in der Zeile, weil Swipe-Gesten auf Android nicht entdeckbar sind und hier kein `SwipeToDismissBox` mit Löschsemantik passt.
+
+**Files:**
+- Create: `android/app/src/main/java/xyz/vmflow/ui/auth/ServerSelectionSheet.kt`
+- Create: `android/app/src/main/java/xyz/vmflow/ui/auth/AddEditServerSheet.kt`
+- Modify: `android/app/src/main/java/xyz/vmflow/ui/auth/LoginScreen.kt`
+- Modify: `android/app/src/main/res/values/strings.xml`
+- Modify: `android/app/src/main/res/values-de/strings.xml`
+
+**Interfaces:**
+- Consumes: `ServerStoreHolder.instance`, `ServerEntry`, `SupabaseService.reconfigure`
+- Produces:
+  - `ServerSelectionSheet(onDismiss: () -> Unit)`
+  - `AddEditServerSheet(editing: ServerEntry?, onDismiss: () -> Unit)`
+
+- [ ] **Step 1: Textressourcen anlegen**
+
+In `android/app/src/main/res/values/strings.xml` ergänzen:
+
+```xml
+    <!-- Server selection -->
+    <string name="server_selected">Server: %1$s</string>
+    <string name="server_select_title">Select server</string>
+    <string name="server_add">Add self-hosted server</string>
+    <string name="server_edit">Edit server</string>
+    <string name="server_delete">Delete server</string>
+    <string name="server_delete_confirm">Delete “%1$s”?</string>
+    <string name="server_name">Name</string>
+    <string name="server_url">Supabase URL</string>
+    <string name="server_anon_key">Anon key</string>
+    <string name="server_name_hint">My Server</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_done">Done</string>
+```
+
+In `android/app/src/main/res/values-de/strings.xml` ergänzen:
+
+```xml
+    <!-- Serverauswahl -->
+    <string name="server_selected">Server: %1$s</string>
+    <string name="server_select_title">Server wählen</string>
+    <string name="server_add">Eigenen Server hinzufügen</string>
+    <string name="server_edit">Server bearbeiten</string>
+    <string name="server_delete">Server löschen</string>
+    <string name="server_delete_confirm">„%1$s" löschen?</string>
+    <string name="server_name">Name</string>
+    <string name="server_url">Supabase-URL</string>
+    <string name="server_anon_key">Anon-Key</string>
+    <string name="server_name_hint">Mein Server</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_done">Fertig</string>
+```
+
+- [ ] **Step 2: `AddEditServerSheet` schreiben**
+
+Neue Datei `android/app/src/main/java/xyz/vmflow/ui/auth/AddEditServerSheet.kt`:
+
+```kotlin
+package xyz.vmflow.ui.auth
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.unit.dp
+import xyz.vmflow.R
+import xyz.vmflow.data.ServerStoreHolder
+import xyz.vmflow.models.ServerEntry
+import java.util.UUID
+
+/**
+ * Create or edit a self-hosted server. The build-supplied default is
+ * never passed here — it is not editable, matching iOS.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddEditServerSheet(
+    editing: ServerEntry?,
+    onDismiss: () -> Unit,
+) {
+    val store = ServerStoreHolder.instance
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    var name by remember { mutableStateOf(editing?.name.orEmpty()) }
+    var url by remember { mutableStateOf(editing?.url.orEmpty()) }
+    var anonKey by remember { mutableStateOf(editing?.anonKey.orEmpty()) }
+
+    val draft = ServerEntry(
+        id = editing?.id ?: "",
+        name = name,
+        url = url,
+        anonKey = anonKey,
+        isDefault = false,
+    )
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = stringResource(if (editing == null) R.string.server_add else R.string.server_edit),
+                style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+            )
+
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.server_name)) },
+                placeholder = { Text(stringResource(R.string.server_name_hint)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            OutlinedTextField(
+                value = url,
+                onValueChange = { url = it },
+                label = { Text(stringResource(R.string.server_url)) },
+                placeholder = { Text("https://supabase.example.com") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Uri,
+                    capitalization = KeyboardCapitalization.None,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            OutlinedTextField(
+                value = anonKey,
+                onValueChange = { anonKey = it },
+                label = { Text(stringResource(R.string.server_anon_key)) },
+                placeholder = { Text("eyJhbGciOi...") },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Button(
+                onClick = {
+                    if (editing == null) {
+                        store.addServer(draft.copy(id = UUID.randomUUID().toString()))
+                    } else {
+                        store.updateServer(draft)
+                    }
+                    onDismiss()
+                },
+                enabled = draft.isValid,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.action_save))
+            }
+
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    }
+}
+```
+
+- [ ] **Step 3: `ServerSelectionSheet` schreiben**
+
+Neue Datei `android/app/src/main/java/xyz/vmflow/ui/auth/ServerSelectionSheet.kt`:
+
+```kotlin
+package xyz.vmflow.ui.auth
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import xyz.vmflow.R
+import xyz.vmflow.data.ServerStoreHolder
+import xyz.vmflow.data.SupabaseService
+import xyz.vmflow.models.ServerEntry
+
+/**
+ * Picks which backend the app talks to. Only reachable while signed
+ * out — switching rebuilds the Supabase client.
+ *
+ * Edit and delete are visible icon buttons rather than swipe actions:
+ * on Android a swipe-to-edit affordance is undiscoverable.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ServerSelectionSheet(onDismiss: () -> Unit) {
+    val store = ServerStoreHolder.instance
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val customServers by store.customServers.collectAsState()
+    val selected by store.selectedServer.collectAsState()
+
+    var editing by remember { mutableStateOf<ServerEntry?>(null) }
+    var adding by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<ServerEntry?>(null) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.padding(bottom = 32.dp)) {
+            Text(
+                text = stringResource(R.string.server_select_title),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            )
+
+            (listOf(store.defaultServer) + customServers).forEach { server ->
+                ListItem(
+                    modifier = Modifier.clickable {
+                        store.selectServer(server)
+                        SupabaseService.reconfigure(server)
+                    },
+                    leadingContent = {
+                        RadioButton(
+                            selected = server.id == selected.id,
+                            onClick = {
+                                store.selectServer(server)
+                                SupabaseService.reconfigure(server)
+                            },
+                        )
+                    },
+                    headlineContent = { Text(server.name) },
+                    supportingContent = {
+                        Text(server.url, style = MaterialTheme.typography.bodySmall)
+                    },
+                    trailingContent = {
+                        if (server.isDefault) {
+                            Icon(Icons.Default.Cloud, contentDescription = null)
+                        } else {
+                            Row {
+                                IconButton(onClick = { editing = server }) {
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = stringResource(R.string.server_edit),
+                                    )
+                                }
+                                IconButton(onClick = { pendingDelete = server }) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = stringResource(R.string.server_delete),
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+
+            ListItem(
+                modifier = Modifier.clickable { adding = true },
+                leadingContent = { Icon(Icons.Default.Add, contentDescription = null) },
+                headlineContent = { Text(stringResource(R.string.server_add)) },
+            )
+
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+            ) {
+                Text(stringResource(R.string.action_done))
+            }
+        }
+    }
+
+    if (adding) {
+        AddEditServerSheet(editing = null, onDismiss = { adding = false })
+    }
+
+    editing?.let { server ->
+        AddEditServerSheet(editing = server, onDismiss = { editing = null })
+    }
+
+    pendingDelete?.let { server ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(stringResource(R.string.server_delete_confirm, server.name)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    store.deleteServer(server)
+                    SupabaseService.reconfigure(store.selectedServer.value)
+                    pendingDelete = null
+                }) {
+                    Text(stringResource(R.string.action_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+}
+```
+
+Der `Icons.Default.Storage`-Import wird nicht verwendet und ist zu entfernen, falls der Compiler ihn anmahnt.
+
+- [ ] **Step 4: In den Login-Bildschirm einhängen**
+
+In `android/app/src/main/java/xyz/vmflow/ui/auth/LoginScreen.kt` innerhalb der äußeren `Column`, **nach** dem „Don't have an account? Register"-`TextButton`, ergänzen:
+
+```kotlin
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val selectedServer by ServerStoreHolder.instance.selectedServer.collectAsState()
+                TextButton(onClick = { showServerSheet = true }) {
+                    Text(
+                        text = stringResource(R.string.server_selected, selectedServer.name),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+```
+
+und oben im Composable, bei den übrigen `remember`-Zuständen:
+
+```kotlin
+    var showServerSheet by remember { mutableStateOf(false) }
+```
+
+sowie am Ende des Composable-Rumpfs, außerhalb der `Column`:
+
+```kotlin
+    if (showServerSheet) {
+        ServerSelectionSheet(onDismiss = { showServerSheet = false })
+    }
+```
+
+Die Importe ergänzen:
+
+```kotlin
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.res.stringResource
+import xyz.vmflow.R
+import xyz.vmflow.data.ServerStoreHolder
+```
+
+- [ ] **Step 5: Build und Tests**
+
+```bash
+cd android && ./gradlew assembleDebug testDebugUnitTest
+```
+
+Erwartet: `BUILD SUCCESSFUL`, alle bestehenden Tests grün.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add android/app/src/main/java/xyz/vmflow/ui/auth/ServerSelectionSheet.kt android/app/src/main/java/xyz/vmflow/ui/auth/AddEditServerSheet.kt android/app/src/main/java/xyz/vmflow/ui/auth/LoginScreen.kt android/app/src/main/res/values/strings.xml android/app/src/main/res/values-de/strings.xml
+git commit -m "feat(android): pick the backend from the login screen
+
+Mirrors ServerSelectionSheet.swift. Edit and delete are visible icon
+buttons rather than iOS-style swipe actions, which are undiscoverable
+on Android. The build-supplied default stays read-only."
+```
