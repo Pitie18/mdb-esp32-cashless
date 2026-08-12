@@ -5,6 +5,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Base version, bumped by hand. The date is stamped at build time so a
+// version string from the field identifies the exact build.
+def versionBase = "2.0"
+def buildDate = new Date()
+def versionDate = buildDate.format("yyMMdd")
+def displayVersion = "${versionBase}.${buildDate.format("M.d")}"
+
 android {
     namespace 'xyz.vmflow'
     compileSdk 36
@@ -14,7 +21,8 @@ android {
         minSdk 26
         targetSdk 36
         versionCode 7
-        versionName "v2.0.0"
+        versionName "${versionBase}.${versionDate}"
+        buildConfigField "String", "DISPLAY_VERSION", "\"${displayVersion}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
