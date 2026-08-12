@@ -5,7 +5,9 @@ import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.functions.functions
 import io.ktor.client.call.body
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import xyz.vmflow.models.Organization
@@ -20,7 +22,10 @@ sealed class AuthState {
 object AuthRepository {
     private val auth get() = SupabaseService.client.auth
 
-    val authState: Flow<AuthState> = auth.sessionStatus.map { status ->
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val authState: Flow<AuthState> = SupabaseService.clientFlow
+        .flatMapLatest { it.auth.sessionStatus }
+        .map { status ->
         when (status) {
             is SessionStatus.Authenticated -> AuthState.Authenticated(
                 status.session.user?.id ?: ""
