@@ -74,3 +74,7 @@ coverage/
 test-results/
 test-output/
 
+
+# Android Studio pins the daemon JVM here and points it at a foojay download.
+# Every machine already builds fine on its ambient JDK 21.
+gradle/gradle-daemon-jvm.properties

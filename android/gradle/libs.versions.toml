@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.2"
+agp = "9.3.1"
 kotlin = "2.4.10"
 # NOT the newest: core 1.19.0 and lifecycle 2.11.0's compose artifacts
 # declare minCompileSdk=37, which would force compileSdk 37 and AGP 9.1+.
