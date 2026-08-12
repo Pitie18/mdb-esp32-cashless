@@ -5,6 +5,7 @@ import {
   chartBucket,
   deltaPct,
   heatIntensity,
+  metricShares,
   metricValue,
   prevMetricValue,
   resolveRange,
@@ -65,6 +66,47 @@ describe('sortRows', () => {
   it('does not mutate the input', () => {
     sortRows(rows, 'units')
     expect(rows[0]!.label).toBe('low')
+  })
+
+  it('reverses on ascending', () => {
+    expect(sortRows(rows, 'units', 'asc').map(r => r.label)).toEqual(['low', 'high'])
+    expect(sortRows(rows, 'revenue', 'asc').map(r => r.label)).toEqual(['high', 'low'])
+  })
+
+  it('keeps the label tie-break ascending in both directions', () => {
+    const tied = [row({ label: 'b', units: 5 }), row({ label: 'a', units: 5 })]
+    expect(sortRows(tied, 'units', 'desc').map(r => r.label)).toEqual(['a', 'b'])
+    expect(sortRows(tied, 'units', 'asc').map(r => r.label)).toEqual(['a', 'b'])
+  })
+})
+
+describe('metricShares', () => {
+  const rows = [
+    row({ key: 'drinks', label: 'Drinks', units: 30, revenue_gross: 10 }),
+    row({ key: 'sweets', label: 'Sweets', units: 70, revenue_gross: 90 }),
+  ]
+
+  it('is computed from the selected metric, not from share_pct', () => {
+    // share_pct on these rows is 0 — a revenue-based field would report 0 %
+    // while the list is showing units.
+    expect(metricShares(rows, 'units').get('drinks')).toBe(30)
+    expect(metricShares(rows, 'revenue').get('drinks')).toBe(10)
+  })
+
+  it('sums to 100 %', () => {
+    const shares = [...metricShares(rows, 'units').values()]
+    expect(shares.reduce((a, b) => a + b, 0)).toBeCloseTo(100)
+  })
+
+  it('keys null-key rows by their label, like the list does', () => {
+    const unknown = [row({ key: null, label: 'Unknown', units: 5 })]
+    expect(metricShares(unknown, 'units').get('Unknown')).toBe(100)
+  })
+
+  it('returns nothing when the total is not positive', () => {
+    expect(metricShares([row({ units: 0 })], 'units').size).toBe(0)
+    // Gross profit can go negative when purchase prices exceed sale prices.
+    expect(metricShares([row({ gross_profit: -5 })], 'grossProfit').size).toBe(0)
   })
 })
 

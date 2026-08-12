@@ -2290,6 +2290,8 @@
     "stockOf": "stock {current}/{capacity}",
     "empty": "empty",
     "sellThrough": "Sell-through {value}%",
-    "daysOfSupply": "Lasts about {days} more days"
+    "daysOfSupply": "Lasts about {days} more days",
+    "sortDescending": "Highest first",
+    "sortAscending": "Lowest first"
   }
 }
