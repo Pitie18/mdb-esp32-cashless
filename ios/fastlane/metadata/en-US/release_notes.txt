@@ -1,1 +1,27 @@
-Initial release.
+New
+• Repeat the active filter above the breakdown list
+• Make an active filter unmistakable
+• Drill into a category or machine from its row
+• Sortable breakdown and share of the selected metric
+• German strings for the analytics page
+• Analytics product detail sheet
+• Analytics peak-hours heatmap and channel split
+• Analytics trend chart and breakdown list
+• Analytics filter bar with range and multi-select sheets
+• Analytics page with KPI header
+• Analytics DTOs and pure helpers
+• Show zero-stock products that are still in a machine
+• Show date-based version in Settings
+
+Improved
+• I18n: pluralise analytics counts in both clients
+• Localize Deals search prompt and Inbox empty states
+• Localize Deals filters and empty-state text
+
+Fixed
+• Stop greying out non-tappable breakdown rows
+• Discard stale analytics responses and drop wasted work
+• Stop deducting warehouse stock for unpacked products
+• Pull-to-refresh silently dropped its reload
+
+…and 14 smaller changes.
