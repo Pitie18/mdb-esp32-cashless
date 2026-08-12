@@ -73,14 +73,20 @@ struct AnalyticsBreakdownList: View {
             } else {
                 LazyVStack(spacing: 2) {
                     ForEach(rows) { row in
-                        Button {
-                            guard viewModel.dimension == .product, row.key != nil else { return }
-                            onSelectProduct(row)
-                        } label: {
+                        // Only products have a detail sheet. The other
+                        // dimensions render as plain rows rather than disabled
+                        // buttons — `.disabled()` greys the label out, which
+                        // reads as "unavailable" instead of "not tappable".
+                        if viewModel.dimension == .product, row.key != nil {
+                            Button {
+                                onSelectProduct(row)
+                            } label: {
+                                rowView(row, maxValue: maxValue, share: shares[row.id])
+                            }
+                            .buttonStyle(.plain)
+                        } else {
                             rowView(row, maxValue: maxValue, share: shares[row.id])
                         }
-                        .buttonStyle(.plain)
-                        .disabled(viewModel.dimension != .product || row.key == nil)
                     }
                 }
             }
