@@ -782,18 +782,25 @@ Neue Datei `android/app/src/main/java/xyz/vmflow/ui/navigation/NavigationExtensi
 package xyz.vmflow.ui.navigation
 
 import androidx.navigation.NavHostController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 
 /**
  * Switches between navigation-bar destinations.
  *
- * Pops back to the graph's start destination while saving each tab's
- * back stack, so returning to a tab restores where the user was — the
- * behaviour Material specifies for bottom navigation.
+ * Pops back to the dashboard while saving each tab's back stack, so
+ * returning to a tab restores where the user was — the behaviour
+ * Material specifies for bottom navigation.
+ *
+ * The anchor is deliberately the dashboard route and NOT
+ * `graph.findStartDestination()`. On a cold start without a session the
+ * graph's start destination is `login`, and the sign-in handler removes
+ * it from the back stack with `popUpTo(LOGIN) { inclusive = true }`.
+ * Popping to an id that is no longer on the stack is a silent no-op, so
+ * nothing would ever be popped or saved and the stack would grow with
+ * every tab tap. The dashboard is on the stack in both entry paths.
  */
 fun NavHostController.navigateToTopLevel(destination: TopLevelDestination) {
     navigate(destination.route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
+        popUpTo(TopLevelDestination.DASHBOARD.route) { saveState = true }
         launchSingleTop = true
         restoreState = true
     }
@@ -1462,3 +1469,430 @@ Damit steht das Fundament für Paket 2 (Lager mit Barcode): aktuelle Toolchain, 
 Der Spec sieht vor, dass sich Dynamic Color zugunsten der Markenfarben abschalten lässt („Wer die Markenfarben erzwingen will, kann das in den Einstellungen tun"). Dafür gibt es keinen Ort: Einstellungen sind laut Modulschnitt ein Büro-Modul und bleiben auf der PWA, die das Android-Theme nicht steuern kann.
 
 Entweder bekommt die App doch einen kleinen eigenen Einstellungsbildschirm, oder der Schalter entfällt und Dynamic Color bleibt fest eingeschaltet. Die Entscheidung ist für Phase 1 nicht nötig — `VMflowTheme` hat den Parameter `dynamicColor` bereits — muss aber vor Paket 7 fallen.
+
+---
+
+# Nachtrag: Serverauswahl im Login (Tasks 12–15)
+
+Nachgereichte Anforderung. Im Spec war das Paket 7 ("Multi-Server + QR-Scan analog iOS `ServerStore`"); es wird auf Wunsch in Phase 1 vorgezogen.
+
+**Entschiedener Umfang: exakte iOS-Parität.** Die Werkseinstellung kommt weiter aus dem Build (`gradle.properties` / `-PSUPABASE_URL`) und ist in der App **nicht** editierbar. Eigene Server werden daneben angelegt, bearbeitet und gelöscht. Das entspricht `ServerStore.swift`, wo `deleteServer` auf `isDefault` prüft und `ServerSelectionSheet` Bearbeiten nur für Nicht-Default anbietet.
+
+**Der QR-Vertrag ist bereits etabliert** und darf nicht abgewandelt werden. `management-frontend/app/pages/mobile-app/index.vue` erzeugt `JSON.stringify({ v: 1, url, anonKey })`; `AddServerView.swift` liest daraus `v` (muss `1` sein), `url` und `anonKey`. Android liest exakt dasselbe.
+
+**Ein Fallstrick, der mitgelöst werden muss:** `AuthRepository.authState` ist heute ein `val`, der `SupabaseService.client.auth.sessionStatus` **einmalig** einfängt. Wird der Client beim Serverwechsel ersetzt, beobachtet `authState` weiter den alten Client und der Login-Zustand friert ein. Task 14 macht den Client beobachtbar und leitet `authState` daraus ab.
+
+**Wann darf gewechselt werden:** nur im abgemeldeten Zustand, also vom Login-Bildschirm aus — wie auf iOS, wo der Wähler in `LoginView` sitzt. Ein Wechsel bei aktiver Sitzung ist nicht vorgesehen.
+
+---
+
+### Task 12: `ServerEntry` und `ServerStore`
+
+**Files:**
+- Create: `android/app/src/main/java/xyz/vmflow/models/ServerEntry.kt`
+- Create: `android/app/src/main/java/xyz/vmflow/data/ServerStore.kt`
+- Create: `android/app/src/test/java/xyz/vmflow/models/ServerEntryTest.kt`
+- Create: `android/app/src/test/java/xyz/vmflow/data/ServerStoreTest.kt`
+
+**Interfaces:**
+- Consumes: `BuildConfig.SUPABASE_URL`, `BuildConfig.SUPABASE_ANON_KEY`
+- Produces:
+  - `data class ServerEntry(val id: String, val name: String, val url: String, val anonKey: String, val isDefault: Boolean)` mit `val sanitizedUrl: String` und `val isValid: Boolean`
+  - `interface KeyValueStore { fun getString(key: String): String?; fun putString(key: String, value: String?) }`
+  - `class ServerStore(private val storage: KeyValueStore, private val defaultServer: ServerEntry)` mit `allServers: List<ServerEntry>`, `customServers: StateFlow<List<ServerEntry>>`, `selectedServer: StateFlow<ServerEntry>`, `selectServer(ServerEntry)`, `addServer(ServerEntry)`, `updateServer(ServerEntry)`, `deleteServer(ServerEntry)`
+  - `object ServerStoreHolder { val instance: ServerStore }` — baut den echten Store über `SharedPreferences`
+
+`SharedPreferences` statt DataStore: entspricht der `UserDefaults`-Semantik von iOS, braucht keine neue Abhängigkeit. Die `KeyValueStore`-Abstraktion existiert allein, damit `ServerStoreTest` ohne Android-Laufzeit und ohne Robolectric läuft.
+
+- [ ] **Step 1: Fehlschlagende Tests für `ServerEntry` schreiben**
+
+Neue Datei `android/app/src/test/java/xyz/vmflow/models/ServerEntryTest.kt`:
+
+```kotlin
+package xyz.vmflow.models
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ServerEntryTest {
+
+    private fun entry(
+        name: String = "My Server",
+        url: String = "https://supabase.example.com",
+        anonKey: String = "eyJhbGciOi",
+    ) = ServerEntry(id = "id-1", name = name, url = url, anonKey = anonKey, isDefault = false)
+
+    @Test
+    fun `sanitizedUrl strips a single trailing slash`() {
+        assertEquals("https://a.example.com", entry(url = "https://a.example.com/").sanitizedUrl)
+    }
+
+    @Test
+    fun `sanitizedUrl strips repeated trailing slashes`() {
+        assertEquals("https://a.example.com", entry(url = "https://a.example.com///").sanitizedUrl)
+    }
+
+    @Test
+    fun `sanitizedUrl leaves a clean url alone`() {
+        assertEquals("https://a.example.com", entry(url = "https://a.example.com").sanitizedUrl)
+    }
+
+    @Test
+    fun `sanitizedUrl keeps a path segment`() {
+        assertEquals("https://a.example.com/api", entry(url = "https://a.example.com/api/").sanitizedUrl)
+    }
+
+    @Test
+    fun `a fully populated https entry is valid`() {
+        assertTrue(entry().isValid)
+    }
+
+    @Test
+    fun `http is accepted for lan servers`() {
+        assertTrue(entry(url = "http://10.0.1.181:8000").isValid)
+    }
+
+    @Test
+    fun `blank fields are invalid`() {
+        assertFalse(entry(name = "").isValid)
+        assertFalse(entry(url = "").isValid)
+        assertFalse(entry(anonKey = "").isValid)
+    }
+
+    @Test
+    fun `a url without a scheme is invalid`() {
+        assertFalse(entry(url = "supabase.example.com").isValid)
+    }
+
+    @Test
+    fun `a non http scheme is invalid`() {
+        assertFalse(entry(url = "ftp://a.example.com").isValid)
+    }
+
+    @Test
+    fun `a url without a host is invalid`() {
+        assertFalse(entry(url = "https://").isValid)
+    }
+}
+```
+
+- [ ] **Step 2: Tests laufen lassen, Fehlschlag bestätigen**
+
+```bash
+cd android && ./gradlew testDebugUnitTest --tests "xyz.vmflow.models.ServerEntryTest"
+```
+
+Erwartet: `BUILD FAILED` mit `Unresolved reference` auf `ServerEntry`.
+
+- [ ] **Step 3: `ServerEntry` implementieren**
+
+Neue Datei `android/app/src/main/java/xyz/vmflow/models/ServerEntry.kt`:
+
+```kotlin
+package xyz.vmflow.models
+
+import kotlinx.serialization.Serializable
+
+/**
+ * One Supabase backend the app can talk to.
+ *
+ * The default entry comes from the build configuration and is not
+ * editable in the app; everything else is user-defined. Mirrors
+ * ServerEntry.swift on iOS so both clients accept the same QR payload.
+ */
+@Serializable
+data class ServerEntry(
+    val id: String,
+    val name: String,
+    val url: String,
+    val anonKey: String,
+    val isDefault: Boolean,
+) {
+    /** Trailing slashes break Supabase's URL joining, so drop them. */
+    val sanitizedUrl: String
+        get() = url.trimEnd('/')
+
+    val isValid: Boolean
+        get() {
+            if (name.isBlank() || url.isBlank() || anonKey.isBlank()) return false
+            val parsed = runCatching { java.net.URI(sanitizedUrl) }.getOrNull() ?: return false
+            val scheme = parsed.scheme?.lowercase() ?: return false
+            if (scheme != "http" && scheme != "https") return false
+            return !parsed.host.isNullOrBlank()
+        }
+}
+```
+
+- [ ] **Step 4: Tests laufen lassen**
+
+```bash
+cd android && ./gradlew testDebugUnitTest --tests "xyz.vmflow.models.ServerEntryTest"
+```
+
+Erwartet: `BUILD SUCCESSFUL`, 10 Tests grün.
+
+- [ ] **Step 5: Fehlschlagende Tests für `ServerStore` schreiben**
+
+Neue Datei `android/app/src/test/java/xyz/vmflow/data/ServerStoreTest.kt`:
+
+```kotlin
+package xyz.vmflow.data
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import xyz.vmflow.models.ServerEntry
+
+class ServerStoreTest {
+
+    private class FakeStorage : KeyValueStore {
+        val values = mutableMapOf<String, String>()
+        override fun getString(key: String): String? = values[key]
+        override fun putString(key: String, value: String?) {
+            if (value == null) values.remove(key) else values[key] = value
+        }
+    }
+
+    private val default = ServerEntry(
+        id = "00000000-0000-0000-0000-000000000001",
+        name = "VMflow Cloud",
+        url = "https://supabase.vmflow.xyz",
+        anonKey = "factory-key",
+        isDefault = true,
+    )
+
+    private lateinit var storage: FakeStorage
+    private lateinit var store: ServerStore
+
+    private fun custom(id: String, url: String = "https://a.example.com") =
+        ServerEntry(id = id, name = "Server $id", url = url, anonKey = "k", isDefault = false)
+
+    @Before
+    fun setUp() {
+        storage = FakeStorage()
+        store = ServerStore(storage, default)
+    }
+
+    @Test
+    fun `a fresh store offers only the default and selects it`() {
+        assertEquals(listOf(default), store.allServers)
+        assertEquals(default, store.selectedServer.value)
+    }
+
+    @Test
+    fun `added servers appear after the default`() {
+        store.addServer(custom("a"))
+        assertEquals(listOf("00000000-0000-0000-0000-000000000001", "a"), store.allServers.map { it.id })
+    }
+
+    @Test
+    fun `added servers are stored with the url sanitized`() {
+        store.addServer(custom("a", url = "https://a.example.com//"))
+        assertEquals("https://a.example.com", store.allServers.first { it.id == "a" }.url)
+    }
+
+    @Test
+    fun `custom servers survive a new store over the same storage`() {
+        store.addServer(custom("a"))
+        val reopened = ServerStore(storage, default)
+        assertEquals(listOf("00000000-0000-0000-0000-000000000001", "a"), reopened.allServers.map { it.id })
+    }
+
+    @Test
+    fun `the selection survives a new store over the same storage`() {
+        val a = custom("a")
+        store.addServer(a)
+        store.selectServer(a)
+        val reopened = ServerStore(storage, default)
+        assertEquals("a", reopened.selectedServer.value.id)
+    }
+
+    @Test
+    fun `updating a server replaces it in place`() {
+        store.addServer(custom("a"))
+        store.updateServer(custom("a").copy(name = "Renamed"))
+        assertEquals("Renamed", store.allServers.first { it.id == "a" }.name)
+        assertEquals(2, store.allServers.size)
+    }
+
+    @Test
+    fun `deleting the selected server falls back to the default`() {
+        val a = custom("a")
+        store.addServer(a)
+        store.selectServer(a)
+        store.deleteServer(a)
+        assertEquals(default, store.selectedServer.value)
+        assertEquals(listOf(default), store.allServers)
+    }
+
+    @Test
+    fun `the default server cannot be deleted`() {
+        store.deleteServer(default)
+        assertTrue(store.allServers.contains(default))
+    }
+
+    @Test
+    fun `a selection pointing at a deleted server falls back to the default`() {
+        storage.putString("selectedServerId", "ghost")
+        val reopened = ServerStore(storage, default)
+        assertEquals(default, reopened.selectedServer.value)
+    }
+
+    @Test
+    fun `corrupt stored json is ignored rather than crashing`() {
+        storage.putString("savedServers", "{not json")
+        val reopened = ServerStore(storage, default)
+        assertEquals(listOf(default), reopened.allServers)
+    }
+}
+```
+
+- [ ] **Step 6: Tests laufen lassen, Fehlschlag bestätigen**
+
+```bash
+cd android && ./gradlew testDebugUnitTest --tests "xyz.vmflow.data.ServerStoreTest"
+```
+
+Erwartet: `BUILD FAILED` mit `Unresolved reference` auf `ServerStore` bzw. `KeyValueStore`.
+
+- [ ] **Step 7: `ServerStore` implementieren**
+
+Neue Datei `android/app/src/main/java/xyz/vmflow/data/ServerStore.kt`:
+
+```kotlin
+package xyz.vmflow.data
+
+import android.content.Context
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.json.Json
+import xyz.vmflow.BuildConfig
+import xyz.vmflow.VMflowApp
+import xyz.vmflow.models.ServerEntry
+
+/** Minimal persistence seam so the store is testable without an Android runtime. */
+interface KeyValueStore {
+    fun getString(key: String): String?
+    fun putString(key: String, value: String?)
+}
+
+/**
+ * The set of backends the user can pick from.
+ *
+ * The default entry is supplied by the build and is neither editable nor
+ * deletable — matching ServerStore.swift. Switching servers is only
+ * offered while signed out.
+ */
+class ServerStore(
+    private val storage: KeyValueStore,
+    val defaultServer: ServerEntry,
+) {
+    private val json = Json { ignoreUnknownKeys = true }
+
+    private val _customServers = MutableStateFlow(loadCustomServers())
+    val customServers: StateFlow<List<ServerEntry>> = _customServers.asStateFlow()
+
+    private val _selectedServer = MutableStateFlow(loadSelectedServer())
+    val selectedServer: StateFlow<ServerEntry> = _selectedServer.asStateFlow()
+
+    val allServers: List<ServerEntry>
+        get() = listOf(defaultServer) + _customServers.value
+
+    fun selectServer(server: ServerEntry) {
+        storage.putString(SELECTED_KEY, server.id)
+        _selectedServer.value = server
+    }
+
+    fun addServer(server: ServerEntry) {
+        _customServers.value = _customServers.value + server.copy(url = server.sanitizedUrl)
+        persistCustomServers()
+    }
+
+    fun updateServer(server: ServerEntry) {
+        val sanitized = server.copy(url = server.sanitizedUrl)
+        _customServers.value = _customServers.value.map { if (it.id == server.id) sanitized else it }
+        persistCustomServers()
+        if (_selectedServer.value.id == server.id) _selectedServer.value = sanitized
+    }
+
+    fun deleteServer(server: ServerEntry) {
+        if (server.isDefault) return
+        _customServers.value = _customServers.value.filterNot { it.id == server.id }
+        persistCustomServers()
+        if (_selectedServer.value.id == server.id) selectServer(defaultServer)
+    }
+
+    private fun loadCustomServers(): List<ServerEntry> {
+        val raw = storage.getString(SERVERS_KEY) ?: return emptyList()
+        // Corrupt or older-format data must not brick the login screen.
+        return runCatching { json.decodeFromString<List<ServerEntry>>(raw) }.getOrDefault(emptyList())
+    }
+
+    private fun loadSelectedServer(): ServerEntry {
+        val id = storage.getString(SELECTED_KEY) ?: return defaultServer
+        return allServers.firstOrNull { it.id == id } ?: defaultServer
+    }
+
+    private fun persistCustomServers() {
+        storage.putString(SERVERS_KEY, json.encodeToString(_customServers.value))
+    }
+
+    private companion object {
+        const val SERVERS_KEY = "savedServers"
+        const val SELECTED_KEY = "selectedServerId"
+    }
+}
+
+/** The app-wide instance, backed by SharedPreferences. */
+object ServerStoreHolder {
+    private const val PREFS = "vmflow_servers"
+
+    /** Fixed id so the default entry keeps its identity across launches. */
+    const val DEFAULT_SERVER_ID = "00000000-0000-0000-0000-000000000001"
+
+    val instance: ServerStore by lazy {
+        val prefs = VMflowApp.instance.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        ServerStore(
+            storage = object : KeyValueStore {
+                override fun getString(key: String): String? = prefs.getString(key, null)
+                override fun putString(key: String, value: String?) {
+                    prefs.edit().putString(key, value).apply()
+                }
+            },
+            defaultServer = ServerEntry(
+                id = DEFAULT_SERVER_ID,
+                name = "VMflow Cloud",
+                url = BuildConfig.SUPABASE_URL,
+                anonKey = BuildConfig.SUPABASE_ANON_KEY,
+                isDefault = true,
+            ),
+        )
+    }
+}
+```
+
+- [ ] **Step 8: Alle Tests laufen lassen**
+
+```bash
+cd android && ./gradlew assembleDebug testDebugUnitTest
+```
+
+Erwartet: `BUILD SUCCESSFUL`. Insgesamt 27 Tests (7 bestehende + 10 `ServerEntryTest` + 10 `ServerStoreTest`), keine Fehlschläge.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add android/app/src/main/java/xyz/vmflow/models/ServerEntry.kt android/app/src/main/java/xyz/vmflow/data/ServerStore.kt android/app/src/test/java/xyz/vmflow/models/ServerEntryTest.kt android/app/src/test/java/xyz/vmflow/data/ServerStoreTest.kt
+git commit -m "feat(android): model and persist the set of selectable servers
+
+Mirrors ServerStore.swift: the build-supplied default is neither
+editable nor deletable, user-defined servers live alongside it in
+SharedPreferences.
+
+The KeyValueStore seam exists so the store is unit-testable without an
+Android runtime, which keeps Robolectric off the test classpath."
+```
