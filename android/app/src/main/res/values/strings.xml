@@ -83,6 +83,10 @@
 
     <!-- Dashboard: needs attention -->
     <string name="dashboard_needs_attention_title">Needs Attention</string>
+    <plurals name="dashboard_trays_need_refill">
+        <item quantity="one">%1$d tray needs refill</item>
+        <item quantity="other">%1$d trays need refill</item>
+    </plurals>
 
     <!-- Dashboard: recent activity feed -->
     <string name="dashboard_recent_activity_title">Recent Activity</string>

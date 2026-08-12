@@ -459,11 +459,12 @@ private fun NeedsAttentionCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                // TODO(task 21): hardcoded English "(s)" plural — the
-                // pre-existing defect this phase's string-resource pass
-                // fixes with a <plurals> resource in both languages.
                 Text(
-                    text = "${machineStats.lowTrayCount} tray(s) need refill",
+                    text = pluralStringResource(
+                        R.plurals.dashboard_trays_need_refill,
+                        machineStats.lowTrayCount,
+                        machineStats.lowTrayCount,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

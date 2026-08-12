@@ -31,4 +31,96 @@
     <string name="qr_invalid">Dieser QR-Code ist keine Serverkonfiguration</string>
     <string name="qr_permission_needed">Für den Scan wird Kamerazugriff gebraucht</string>
     <string name="qr_grant_permission">Kamera erlauben</string>
+    <string name="action_sign_out">Abmelden</string>
+
+    <!-- Dashboard: Banner für neue Angebote -->
+    <plurals name="dashboard_new_deals">
+        <item quantity="one">%1$d neues Angebot</item>
+        <item quantity="other">%1$d neue Angebote</item>
+    </plurals>
+
+    <!-- Dashboard: KPI-Karten -->
+    <string name="dashboard_kpi_today">Heute</string>
+    <string name="dashboard_kpi_yesterday">Gestern</string>
+    <string name="dashboard_kpi_this_week">Diese Woche</string>
+    <string name="dashboard_kpi_last_week">Letzte Woche</string>
+    <string name="dashboard_kpi_this_month">Dieser Monat</string>
+    <string name="dashboard_kpi_last_month">Letzter Monat</string>
+    <plurals name="dashboard_sales_count">
+        <item quantity="one">%1$d Verkauf</item>
+        <item quantity="other">%1$d Verkäufe</item>
+    </plurals>
+    <string name="dashboard_kpi_stock_title">Bestand</string>
+    <string name="dashboard_kpi_stock_ok">OK</string>
+    <string name="dashboard_kpi_stock_all_ok">Alle Automaten aufgefüllt</string>
+    <plurals name="dashboard_alerts_count">
+        <item quantity="one">%1$d Warnung</item>
+        <item quantity="other">%1$d Warnungen</item>
+    </plurals>
+    <string name="dashboard_machines_online">Automaten online</string>
+
+    <!-- Dashboard: Umsatz-Chart -->
+    <string name="dashboard_chart_title">Umsatz (30 Tage)</string>
+    <string name="dashboard_chart_empty">Keine Verkaufsdaten</string>
+    <string name="dashboard_chart_average">Ø %1$s</string>
+
+    <!-- Dashboard: Kassenbuch-Kachel -->
+    <string name="dashboard_cash_book_title">Kassenbuch</string>
+    <string name="dashboard_cash_book_setup_hint">Im Web-Dashboard ein Kassenbuch anlegen</string>
+    <string name="dashboard_cash_book_in_box">In der Kasse</string>
+    <string name="dashboard_cash_book_in_machines">In Automaten</string>
+    <string name="dashboard_cash_book_last_deposit">Letzte Bankeinzahlung</string>
+    <string name="dashboard_cash_book_no_deposit">Noch keine</string>
+    <string name="dashboard_cash_book_deposit_today">Heute</string>
+    <plurals name="dashboard_cash_book_deposit_days_ago">
+        <item quantity="one">Vor %1$d Tag</item>
+        <item quantity="other">Vor %1$d Tagen</item>
+    </plurals>
+
+    <!-- Dashboard: Braucht Aufmerksamkeit -->
+    <string name="dashboard_needs_attention_title">Braucht Aufmerksamkeit</string>
+    <plurals name="dashboard_trays_need_refill">
+        <item quantity="one">%1$d Fach muss aufgefüllt werden</item>
+        <item quantity="other">%1$d Fächer müssen aufgefüllt werden</item>
+    </plurals>
+
+    <!-- Dashboard: Aktivitäts-Feed -->
+    <string name="dashboard_recent_activity_title">Letzte Aktivität</string>
+    <string name="dashboard_no_recent_activity">Keine Aktivität</string>
+    <string name="dashboard_day_today">Heute</string>
+    <string name="dashboard_day_yesterday">Gestern</string>
+    <plurals name="dashboard_entries_count">
+        <item quantity="one">%1$d Eintrag</item>
+        <item quantity="other">%1$d Einträge</item>
+    </plurals>
+    <string name="dashboard_retry">Erneut versuchen</string>
+    <string name="dashboard_tour_started">Tour gestartet</string>
+    <string name="dashboard_stock_intake">Ware eingebucht</string>
+    <string name="dashboard_filled_by">Gefüllt von %1$s</string>
+    <plurals name="dashboard_items_count">
+        <item quantity="one">%1$d Artikel</item>
+        <item quantity="other">%1$d Artikel</item>
+    </plurals>
+    <plurals name="dashboard_machines_count">
+        <item quantity="one">%1$d Automat</item>
+        <item quantity="other">%1$d Automaten</item>
+    </plurals>
+    <plurals name="dashboard_products_count">
+        <item quantity="one">%1$d Produkt</item>
+        <item quantity="other">%1$d Produkte</item>
+    </plurals>
+
+    <!-- Kassenbuch-Eintragstypen (Feed-Zeilen) -->
+    <string name="cash_book_type_initial">Anfangsbestand</string>
+    <string name="cash_book_type_withdrawal">Aus Automat</string>
+    <string name="cash_book_type_correction">Korrektur</string>
+    <string name="cash_book_type_payout">Bankeinzahlung</string>
+    <string name="cash_book_type_expense">Ausgabe</string>
+    <string name="cash_book_type_reversal">Storno</string>
+    <string name="cash_book_type_unknown">Sonstige</string>
+    <string name="cash_book_category_rent">Miete</string>
+    <string name="cash_book_category_goods">Wareneinkauf</string>
+    <string name="cash_book_category_cleaning">Reinigung</string>
+    <string name="cash_book_category_fees">Gebühren</string>
+    <string name="cash_book_category_other">Sonstiges</string>
 </resources>
