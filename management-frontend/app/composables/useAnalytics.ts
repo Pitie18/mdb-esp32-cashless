@@ -8,6 +8,7 @@ import {
   type AnalyticsSummary,
   type BreakdownRow,
   type RangePreset,
+  type SortDirection,
 } from '~/lib/analytics'
 
 interface MachineOption { id: string; name: string | null }
@@ -31,6 +32,7 @@ export const useAnalytics = () => {
   const categoryIds = useState<string[]>('analytics-category-ids', () => [])
   const metric = useState<AnalyticsMetric>('analytics-metric', () => 'revenue')
   const dimension = useState<AnalyticsDimension>('analytics-dimension', () => 'product')
+  const sortDirection = useState<SortDirection>('analytics-sort', () => 'desc')
 
   const summary = useState<AnalyticsSummary | null>('analytics-summary', () => null)
   const rows = useState<BreakdownRow[]>('analytics-rows', () => [])
@@ -47,7 +49,7 @@ export const useAnalytics = () => {
 
   const range = computed(() => resolveRange(preset.value, customFrom.value, customTo.value))
 
-  const sortedRows = computed(() => sortRows(rows.value, metric.value))
+  const sortedRows = computed(() => sortRows(rows.value, metric.value, sortDirection.value))
 
   const bucketedDaily = computed(() =>
     bucketDaily(summary.value?.daily ?? [], chartBucket(summary.value?.range.days ?? 30)))
@@ -177,7 +179,7 @@ export const useAnalytics = () => {
   }
 
   return {
-    preset, customFrom, customTo, machineIds, categoryIds, metric, dimension,
+    preset, customFrom, customTo, machineIds, categoryIds, metric, dimension, sortDirection,
     summary, rows, machines, categories,
     loading, loadingRows, error, backendUnsupported,
     range, sortedRows, bucketedDaily, rangeLabel, previousRangeLabel,

@@ -1,15 +1,19 @@
 <script setup lang="ts">
+import { IconSortAscending, IconSortDescending } from '@tabler/icons-vue'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency } from '@/lib/utils'
 import {
-  avgDailyValue, deltaPct, metricValue, prevMetricValue, type BreakdownRow,
+  avgDailyValue, deltaPct, metricShares, metricValue, prevMetricValue, type BreakdownRow,
 } from '~/lib/analytics'
 
 const emit = defineEmits<{ select: [row: BreakdownRow] }>()
 
 const { t } = useI18n()
-const { dimension, metric, sortedRows, loadingRows, loadBreakdown } = useAnalytics()
+const {
+  dimension, metric, sortDirection, sortedRows, loadingRows, loadBreakdown,
+} = useAnalytics()
 
 watch(dimension, () => { loadBreakdown() })
 
@@ -23,15 +27,26 @@ const rowDeltas = computed(() => new Map(sortedRows.value.map(row => [
   deltaPct(metricValue(row, metric.value), prevMetricValue(row, metric.value)),
 ])))
 
+/** Share of the window total for the selected metric — so switching to units
+ *  reports unit shares, not the revenue-based share_pct from the RPC. */
+const shares = computed(() => metricShares(sortedRows.value, metric.value))
+
+function toggleSort() {
+  sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
+}
+
 function display(value: number) {
   return metric.value === 'units' ? String(Math.round(value)) : formatCurrency(value)
 }
 
 function subtitle(row: BreakdownRow) {
   const avg = avgDailyValue(row, metric.value)
-  const parts = [t('analytics.perDay', {
+  const share = shares.value.get(row.key ?? row.label)
+  const parts: string[] = []
+  if (share !== undefined) parts.push(`${share.toFixed(1)} %`)
+  parts.push(t('analytics.perDay', {
     value: metric.value === 'units' ? avg.toFixed(1) : formatCurrency(avg),
-  })]
+  }))
   if (metric.value !== 'units') parts.push(t('analytics.nPieces', row.units))
   if (!row.has_cost && metric.value === 'grossProfit') parts.push(t('analytics.noPurchasePrice'))
   if (dimension.value === 'product' && row.machine_count) {
@@ -58,7 +73,19 @@ function onRowClick(row: BreakdownRow) {
 <template>
   <Card>
     <CardHeader class="gap-3 pb-2">
-      <CardDescription>{{ t('analytics.breakdown') }}</CardDescription>
+      <div class="flex items-center justify-between gap-2">
+        <CardDescription>{{ t('analytics.breakdown') }}</CardDescription>
+        <Button
+          variant="ghost" size="sm" class="gap-1.5 text-xs"
+          @click="toggleSort"
+        >
+          <component
+            :is="sortDirection === 'desc' ? IconSortDescending : IconSortAscending"
+            class="size-4"
+          />
+          {{ t(sortDirection === 'desc' ? 'analytics.sortDescending' : 'analytics.sortAscending') }}
+        </Button>
+      </div>
       <Tabs v-model="dimension">
         <TabsList>
           <TabsTrigger value="product">{{ t('analytics.products') }}</TabsTrigger>

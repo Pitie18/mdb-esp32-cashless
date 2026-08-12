@@ -17,6 +17,7 @@ final class AnalyticsViewModel: ObservableObject {
     /// segment switches both, by design.
     @Published var metric: AnalyticsMetric = .revenue
     @Published var dimension: AnalyticsDimension = .product { didSet { dimensionDidChange() } }
+    @Published var sortDirection: AnalyticsSortDirection = .descending
 
     // MARK: - Data
 
@@ -48,7 +49,7 @@ final class AnalyticsViewModel: ObservableObject {
 
     // MARK: - Derived
 
-    var sortedRows: [AnalyticsBreakdownRow] { sortRows(rows, by: metric) }
+    var sortedRows: [AnalyticsBreakdownRow] { sortRows(rows, by: metric, direction: sortDirection) }
 
     var range: (from: Date, to: Date) {
         dateRange(for: preset, customFrom: customFrom, customTo: customTo)

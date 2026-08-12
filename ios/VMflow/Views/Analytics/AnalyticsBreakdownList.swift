@@ -30,10 +30,29 @@ struct AnalyticsBreakdownList: View {
         // Computed once per render pass rather than once per row — accessing it
         // from inside the row builder made the list O(n²) in the row count.
         let maxValue = rows.map { $0.value(for: viewModel.metric) }.max() ?? 0
+        // Share of the window total for the selected metric — so switching to
+        // units reports unit shares, not the revenue-based sharePct.
+        let shares = metricShares(rows, by: viewModel.metric)
         return VStack(alignment: .leading, spacing: 10) {
-            Text("Breakdown")
-                .font(.caption).textCase(.uppercase)
-                .foregroundStyle(.secondary)
+            HStack {
+                Text("Breakdown")
+                    .font(.caption).textCase(.uppercase)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    viewModel.sortDirection = viewModel.sortDirection.toggled
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: viewModel.sortDirection == .descending
+                              ? "arrow.down" : "arrow.up")
+                        Text(viewModel.sortDirection == .descending
+                             ? "Highest first" : "Lowest first")
+                    }
+                    .font(.caption2)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+            }
 
             Picker("", selection: $viewModel.dimension) {
                 Text("Products").tag(AnalyticsDimension.product)
@@ -58,7 +77,7 @@ struct AnalyticsBreakdownList: View {
                             guard viewModel.dimension == .product, row.key != nil else { return }
                             onSelectProduct(row)
                         } label: {
-                            rowView(row, maxValue: maxValue)
+                            rowView(row, maxValue: maxValue, share: shares[row.id])
                         }
                         .buttonStyle(.plain)
                         .disabled(viewModel.dimension != .product || row.key == nil)
@@ -72,7 +91,8 @@ struct AnalyticsBreakdownList: View {
         }
     }
 
-    private func rowView(_ row: AnalyticsBreakdownRow, maxValue: Double) -> some View {
+    private func rowView(_ row: AnalyticsBreakdownRow, maxValue: Double,
+                         share: Double?) -> some View {
         let value = row.value(for: viewModel.metric)
         let delta = deltaPct(current: value, previous: row.previousValue(for: viewModel.metric))
         return HStack(spacing: 9) {
@@ -91,7 +111,7 @@ struct AnalyticsBreakdownList: View {
                     }
                     Text(row.label).font(.subheadline.weight(.medium)).lineLimit(1)
                 }
-                Text(subtitle(row))
+                Text(subtitle(row, share: share))
                     .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 6)
@@ -117,8 +137,9 @@ struct AnalyticsBreakdownList: View {
         .contentShape(Rectangle())
     }
 
-    private func subtitle(_ row: AnalyticsBreakdownRow) -> String {
+    private func subtitle(_ row: AnalyticsBreakdownRow, share: Double?) -> String {
         var parts: [String] = []
+        if let share { parts.append(String(format: "%.1f %%", share)) }
         parts.append(String(format: String(localized: "%@ /day"), format(row.avgDaily(for: viewModel.metric))))
         if viewModel.metric != .units {
             parts.append(String(localized: "\(row.units) pc"))

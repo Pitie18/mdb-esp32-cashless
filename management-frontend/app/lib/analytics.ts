@@ -9,6 +9,7 @@
 export type AnalyticsMetric = 'units' | 'revenue' | 'grossProfit'
 export type AnalyticsDimension = 'product' | 'category' | 'machine'
 export type RangePreset = 'days7' | 'days30' | 'days90' | 'thisMonth' | 'lastMonth' | 'custom'
+export type SortDirection = 'desc' | 'asc'
 
 export interface AnalyticsTotals {
   units: number
@@ -132,16 +133,46 @@ export function avgDailyValue(row: BreakdownRow, metric: AnalyticsMetric): numbe
 }
 
 /**
- * Sorts a copy by the selected metric, descending. The RPC returns rows
- * revenue-sorted; switching the metric reorders client-side rather than
+ * Sorts a copy by the selected metric. The RPC returns rows revenue-sorted;
+ * switching the metric or the direction reorders client-side rather than
  * triggering another round trip.
+ *
+ * Ties always fall back to the label ascending, in both directions — a stable,
+ * readable order beats mirroring the tie-break along with the values.
  */
-export function sortRows(rows: BreakdownRow[], metric: AnalyticsMetric): BreakdownRow[] {
+export function sortRows(
+  rows: BreakdownRow[],
+  metric: AnalyticsMetric,
+  direction: SortDirection = 'desc',
+): BreakdownRow[] {
+  const sign = direction === 'asc' ? -1 : 1
   return [...rows].sort((a, b) => {
-    const diff = metricValue(b, metric) - metricValue(a, metric)
+    const diff = (metricValue(b, metric) - metricValue(a, metric)) * sign
     if (diff !== 0) return diff
     return a.label.localeCompare(b.label)
   })
+}
+
+/**
+ * Each row's share of the window total for the selected metric, keyed the same
+ * way the list keys its rows.
+ *
+ * Deliberately not `share_pct` from the RPC: that one is always revenue-based
+ * because it backs the ABC class, so it would report revenue shares while the
+ * list is showing units. Returns an empty map when the total is zero or
+ * negative (possible for gross profit when purchase prices exceed sale
+ * prices), where a percentage would be meaningless rather than merely large.
+ */
+export function metricShares(
+  rows: BreakdownRow[],
+  metric: AnalyticsMetric,
+): Map<string, number> {
+  const total = rows.reduce((sum, row) => sum + metricValue(row, metric), 0)
+  if (total <= 0) return new Map()
+  return new Map(rows.map(row => [
+    row.key ?? row.label,
+    (metricValue(row, metric) / total) * 100,
+  ]))
 }
 
 function startOfLocalDay(d: Date): Date {

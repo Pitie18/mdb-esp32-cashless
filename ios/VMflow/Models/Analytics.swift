@@ -33,6 +33,13 @@ enum AnalyticsRangePreset: String, CaseIterable, Identifiable {
 
 enum ChartBucket { case day, week }
 
+enum AnalyticsSortDirection: String, CaseIterable, Identifiable {
+    case descending, ascending
+    var id: String { rawValue }
+
+    var toggled: AnalyticsSortDirection { self == .descending ? .ascending : .descending }
+}
+
 // MARK: - Decoding helpers
 
 // The container and its key must share one generic parameter — two separate
@@ -418,15 +425,34 @@ func heatIntensity(units: Int, max: Int) -> Double {
     return min(Double(units) / Double(max), 1)
 }
 
-/// Sorts breakdown rows by the currently selected metric, descending. The RPC
-/// returns them revenue-sorted; switching the metric must reorder client-side
-/// rather than trigger another round trip.
-func sortRows(_ rows: [AnalyticsBreakdownRow], by metric: AnalyticsMetric) -> [AnalyticsBreakdownRow] {
+/// Sorts breakdown rows by the currently selected metric. The RPC returns them
+/// revenue-sorted; switching the metric or the direction must reorder
+/// client-side rather than trigger another round trip.
+///
+/// Ties always fall back to the label ascending, in both directions — a stable,
+/// readable order beats mirroring the tie-break along with the values.
+func sortRows(_ rows: [AnalyticsBreakdownRow], by metric: AnalyticsMetric,
+              direction: AnalyticsSortDirection = .descending) -> [AnalyticsBreakdownRow] {
     rows.sorted {
         let l = $0.value(for: metric), r = $1.value(for: metric)
-        if l != r { return l > r }
+        if l != r { return direction == .descending ? l > r : l < r }
         return $0.label.localizedCaseInsensitiveCompare($1.label) == .orderedAscending
     }
+}
+
+/// Each row's share of the window total for the selected metric, keyed the same
+/// way the list keys its rows.
+///
+/// Deliberately not the RPC's `sharePct`: that one is always revenue-based
+/// because it backs the ABC class, so it would report revenue shares while the
+/// list is showing units. Empty when the total is not positive (gross profit
+/// can go negative when purchase prices exceed sale prices), where a
+/// percentage would be meaningless rather than merely large.
+func metricShares(_ rows: [AnalyticsBreakdownRow],
+                  by metric: AnalyticsMetric) -> [String: Double] {
+    let total = rows.reduce(0) { $0 + $1.value(for: metric) }
+    guard total > 0 else { return [:] }
+    return Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0.value(for: metric) / total * 100) })
 }
 
 /// Resolves a preset into a half-open `[from, to)` window on local day

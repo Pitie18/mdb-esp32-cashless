@@ -2290,6 +2290,8 @@
     "stockOf": "Bestand {current}/{capacity}",
     "empty": "leer",
     "sellThrough": "Abverkauf {value} %",
-    "daysOfSupply": "Reicht noch etwa {days} Tage"
+    "daysOfSupply": "Reicht noch etwa {days} Tage",
+    "sortDescending": "Größte zuerst",
+    "sortAscending": "Kleinste zuerst"
   }
 }
