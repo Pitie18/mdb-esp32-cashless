@@ -131,6 +131,14 @@ describe('resolveRange', () => {
     expect(r.to).toBe('2026-03-10T00:00:00.000Z')
   })
 
+  it('falls back to the default window on an unparseable custom range', () => {
+    // Without the guard these throw a RangeError inside toISOString().
+    const fallback = resolveRange('days30', '', '', now)
+    expect(resolveRange('custom', '', '', now)).toEqual(fallback)
+    expect(resolveRange('custom', 'not-a-date', '2026-03-09', now)).toEqual(fallback)
+    expect(resolveRange('custom', '2026-03-05', '', now)).toEqual(fallback)
+  })
+
   it('always emits a full ISO timestamp, never a bare local datetime', () => {
     // A bare `yyyy-MM-ddT00:00:00` is read as UTC by PostgREST while the UI
     // renders local, shifting the window by the local offset.

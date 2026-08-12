@@ -191,6 +191,11 @@ export function resolveRange(
     case 'custom': {
       const a = startOfLocalDay(new Date(`${customFrom}T00:00:00`))
       const b = startOfLocalDay(new Date(`${customTo}T00:00:00`))
+      // An unparseable custom range would throw inside toISOString() and take
+      // the whole page down. Fall back to the default window instead.
+      if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+        return resolveRange('days30', '', '', now)
+      }
       const from = a <= b ? a : b
       const lastDay = a <= b ? b : a
       return { from: iso(from), to: iso(addDays(lastDay, 1)) }
