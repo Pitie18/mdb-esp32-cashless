@@ -1820,6 +1820,10 @@ class ServerStore(
     }
 
     fun updateServer(server: ServerEntry) {
+        // The build-supplied default is read-only, same as deleteServer.
+        // Without this the selected entry could be replaced by a mutated
+        // copy that is not in allServers and never gets persisted.
+        if (server.isDefault) return
         val sanitized = server.copy(url = server.sanitizedUrl)
         _customServers.value = _customServers.value.map { if (it.id == server.id) sanitized else it }
         persistCustomServers()

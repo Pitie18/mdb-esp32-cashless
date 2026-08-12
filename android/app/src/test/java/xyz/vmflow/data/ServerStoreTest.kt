@@ -89,6 +89,14 @@ class ServerStoreTest {
     }
 
     @Test
+    fun `the default server cannot be edited`() {
+        store.selectServer(default)
+        store.updateServer(default.copy(name = "Hijacked", url = "https://evil.example.com"))
+        assertEquals(default, store.allServers.first())
+        assertEquals(default, store.selectedServer.value)
+    }
+
+    @Test
     fun `the default server cannot be deleted`() {
         store.deleteServer(default)
         assertTrue(store.allServers.contains(default))
