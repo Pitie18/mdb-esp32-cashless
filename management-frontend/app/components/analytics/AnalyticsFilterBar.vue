@@ -17,7 +17,12 @@ const {
   activeMachineLabel, activeCategoryLabel, clearMachineFilter, clearCategoryFilter,
 } = useAnalytics()
 
-const presets: RangePreset[] = ['days7', 'days30', 'days90', 'thisMonth', 'lastMonth']
+const presets: RangePreset[] = [
+  'days7', 'days30', 'days90',
+  'thisMonth', 'lastMonth',
+  'thisYear', 'lastYear',
+  'allTime',
+]
 
 const machineLabel = computed(() => {
   if (!machineIds.value.length) return t('analytics.allMachines')

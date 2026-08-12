@@ -173,6 +173,9 @@ private struct AnalyticsRangeSheet: View {
         case .days90: return String(localized: "Last 90 days")
         case .thisMonth: return String(localized: "This month")
         case .lastMonth: return String(localized: "Last month")
+        case .thisYear: return String(localized: "This year")
+        case .lastYear: return String(localized: "Last year")
+        case .allTime: return String(localized: "All time")
         case .custom: return String(localized: "Custom range")
         }
     }

@@ -33,6 +33,9 @@ export const useAnalytics = () => {
   const metric = useState<AnalyticsMetric>('analytics-metric', () => 'revenue')
   const dimension = useState<AnalyticsDimension>('analytics-dimension', () => 'product')
   const sortDirection = useState<SortDirection>('analytics-sort', () => 'desc')
+  /** created_at of the oldest sale, the anchor for the "all time" preset.
+   *  null = looked up and there are none; undefined = not looked up yet. */
+  const earliestSale = useState<string | null | undefined>('analytics-earliest', () => undefined)
 
   const summary = useState<AnalyticsSummary | null>('analytics-summary', () => null)
   const rows = useState<BreakdownRow[]>('analytics-rows', () => [])
@@ -47,7 +50,8 @@ export const useAnalytics = () => {
 
   const timezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
-  const range = computed(() => resolveRange(preset.value, customFrom.value, customTo.value))
+  const range = computed(() =>
+    resolveRange(preset.value, customFrom.value, customTo.value, new Date(), earliestSale.value))
 
   const sortedRows = computed(() => sortRows(rows.value, metric.value, sortDirection.value))
 
@@ -191,7 +195,26 @@ export const useAnalytics = () => {
     }
   }
 
+  /**
+   * Oldest sale the caller can see. RLS already scopes this to the company, so
+   * no filter is needed. Looked up once and cached: "all time" has to start
+   * somewhere, and a fixed early date would make the RPC build one empty daily
+   * bucket per day back to that date.
+   */
+  async function loadEarliestSale() {
+    if (earliestSale.value !== undefined) return
+    try {
+      const { data, error: err } = await (supabase as any)
+        .from('sales').select('created_at').order('created_at', { ascending: true }).limit(1)
+      if (err) throw err
+      earliestSale.value = (data?.[0]?.created_at as string) ?? null
+    } catch {
+      earliestSale.value = null
+    }
+  }
+
   async function loadFilterOptions() {
+    await loadEarliestSale()
     const companyId = organization.value?.id
     if (!companyId) return
     const [machineRes, categoryRes] = await Promise.all([
@@ -232,5 +255,6 @@ export const useAnalytics = () => {
     range, sortedRows, bucketedDaily, rangeLabel, previousRangeLabel,
     activeMachineLabel, activeCategoryLabel, clearMachineFilter, clearCategoryFilter,
     loadSummary, loadBreakdown, loadProductMachines, loadFilterOptions, loadAll, drillDown,
+    earliestSale, loadEarliestSale,
   }
 }

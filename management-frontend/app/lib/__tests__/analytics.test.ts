@@ -39,6 +39,12 @@ describe('chartBucket', () => {
   it('switches to weekly bars beyond 60 days', () => {
     expect(chartBucket(61)).toBe('week')
     expect(chartBucket(365)).toBe('week')
+    expect(chartBucket(400)).toBe('week')
+  })
+  it('switches to monthly bars beyond 400 days', () => {
+    // "All time" spans years; weekly bars would be a solid block.
+    expect(chartBucket(401)).toBe('month')
+    expect(chartBucket(3650)).toBe('month')
   })
 })
 
@@ -173,6 +179,31 @@ describe('resolveRange', () => {
     expect(r.to).toBe('2026-03-10T00:00:00.000Z')
   })
 
+  it('bounds this year and last year on 1 January', () => {
+    expect(resolveRange('thisYear', '', '', now).from).toBe('2026-01-01T00:00:00.000Z')
+    const last = resolveRange('lastYear', '', '', now)
+    expect(last.from).toBe('2025-01-01T00:00:00.000Z')
+    expect(last.to).toBe('2026-01-01T00:00:00.000Z')
+  })
+
+  describe('allTime', () => {
+    it('starts at the oldest sale', () => {
+      const r = resolveRange('allTime', '', '', now, '2024-03-07T14:12:00.000Z')
+      expect(r.from).toBe('2024-03-07T00:00:00.000Z')
+      expect(r.to).toBe('2026-07-16T00:00:00.000Z')
+    })
+
+    it('falls back to the current year without any sales', () => {
+      // A fixed early date would make the RPC build ~20k empty daily buckets.
+      expect(resolveRange('allTime', '', '', now, null).from).toBe('2026-01-01T00:00:00.000Z')
+      expect(resolveRange('allTime', '', '', now).from).toBe('2026-01-01T00:00:00.000Z')
+    })
+
+    it('falls back on an unparseable oldest sale', () => {
+      expect(resolveRange('allTime', '', '', now, 'nonsense').from).toBe('2026-01-01T00:00:00.000Z')
+    })
+  })
+
   it('falls back to the default window on an unparseable custom range', () => {
     // Without the guard these throw a RangeError inside toISOString().
     const fallback = resolveRange('days30', '', '', now)
@@ -222,5 +253,17 @@ describe('bucketDaily', () => {
     const weeks = bucketDaily(points, 'week')
     const sum = (xs: AnalyticsDailyPoint[]) => xs.reduce((n, p) => n + p.units, 0)
     expect(sum(weeks)).toBe(sum(points))
+  })
+
+  it('folds days into calendar months', () => {
+    const spanning: AnalyticsDailyPoint[] = [
+      { day: '2026-07-06', units: 1, revenue_gross: 1, gross_profit: 0 },
+      { day: '2026-07-28', units: 2, revenue_gross: 2, gross_profit: 0 },
+      { day: '2026-08-03', units: 4, revenue_gross: 4, gross_profit: 0 },
+    ]
+    const months = bucketDaily(spanning, 'month')
+    expect(months.map(m => m.day)).toEqual(['2026-07-01', '2026-08-01'])
+    expect(months[0]!.units).toBe(3)
+    expect(months[1]!.units).toBe(4)
   })
 })
