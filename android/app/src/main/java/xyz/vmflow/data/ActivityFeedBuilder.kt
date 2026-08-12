@@ -1,5 +1,8 @@
 package xyz.vmflow.data
 
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import xyz.vmflow.models.ActivityFeedItem
 import xyz.vmflow.models.ActivityLogRow
 import xyz.vmflow.models.CashBookActivity
@@ -10,6 +13,9 @@ import xyz.vmflow.models.ProductLine
 import xyz.vmflow.models.RefillActivity
 import xyz.vmflow.models.SaleWithMachine
 import xyz.vmflow.models.TourActivity
+
+/** One calendar day's worth of feed items, newest first. */
+data class FeedDayGroup(val date: LocalDate, val items: List<ActivityFeedItem>)
 
 /**
  * Pure builders for the dashboard timeline — no I/O, so they are unit
@@ -131,4 +137,16 @@ object ActivityFeedBuilder {
             makeActivityItems(activityRows) +
             intakeGroups.map { ActivityFeedItem.StockIntake(it) })
             .sortedByDescending { it.date }
+
+    /**
+     * Groups a (newest-first) feed into calendar-day buckets, each sorted
+     * newest-first, with the days themselves sorted newest-first. Mirrors
+     * `groupFeedItemsByDay` in `ios/VMflow/Views/Dashboard/DashboardView.swift`
+     * — day headers in the dashboard feed must land on the same boundaries
+     * on both clients.
+     */
+    fun groupByDay(items: List<ActivityFeedItem>, zone: TimeZone): List<FeedDayGroup> =
+        items.groupBy { it.date.toLocalDateTime(zone).date }
+            .toSortedMap(compareByDescending { it })
+            .map { (date, dayItems) -> FeedDayGroup(date, dayItems.sortedByDescending { it.date }) }
 }

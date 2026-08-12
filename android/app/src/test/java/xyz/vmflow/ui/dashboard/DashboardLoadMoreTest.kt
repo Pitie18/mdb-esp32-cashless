@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import xyz.vmflow.data.CashBookSummary
 import xyz.vmflow.data.DashboardDataSource
 import xyz.vmflow.data.MachineStockHealth
 import xyz.vmflow.models.ActivityLogRow
@@ -60,6 +61,8 @@ class DashboardLoadMoreTest {
         override suspend fun resolveUserNames(ids: List<String>): Map<String, String> = emptyMap()
 
         override suspend fun fetchNewDealsCount(): Int = 0
+
+        override suspend fun fetchCashBookSummary(): CashBookSummary = CashBookSummary(hasCashBook = false)
     }
 
     // MARK: - State machine

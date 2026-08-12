@@ -35,4 +35,92 @@
     <string name="qr_invalid">That QR code is not a server configuration</string>
     <string name="qr_permission_needed">Camera access is needed to scan a code</string>
     <string name="qr_grant_permission">Allow camera</string>
+    <string name="action_sign_out">Sign out</string>
+
+    <!-- Dashboard: new deals banner -->
+    <plurals name="dashboard_new_deals">
+        <item quantity="one">%1$d new deal</item>
+        <item quantity="other">%1$d new deals</item>
+    </plurals>
+
+    <!-- Dashboard: KPI cards -->
+    <string name="dashboard_kpi_today">Today</string>
+    <string name="dashboard_kpi_yesterday">Yesterday</string>
+    <string name="dashboard_kpi_this_week">This Week</string>
+    <string name="dashboard_kpi_last_week">Last Week</string>
+    <string name="dashboard_kpi_this_month">This Month</string>
+    <string name="dashboard_kpi_last_month">Last Month</string>
+    <plurals name="dashboard_sales_count">
+        <item quantity="one">%1$d sale</item>
+        <item quantity="other">%1$d sales</item>
+    </plurals>
+    <string name="dashboard_kpi_stock_title">Stock</string>
+    <string name="dashboard_kpi_stock_ok">OK</string>
+    <string name="dashboard_kpi_stock_all_ok">All machines stocked</string>
+    <plurals name="dashboard_alerts_count">
+        <item quantity="one">%1$d alert</item>
+        <item quantity="other">%1$d alerts</item>
+    </plurals>
+    <string name="dashboard_machines_online">Machines online</string>
+
+    <!-- Dashboard: revenue chart -->
+    <string name="dashboard_chart_title">Revenue (30 days)</string>
+    <string name="dashboard_chart_empty">No sales data</string>
+    <string name="dashboard_chart_average">Ø %1$s</string>
+
+    <!-- Dashboard: cash book (Barkasse) summary tile -->
+    <string name="dashboard_cash_book_title">Cash Book</string>
+    <string name="dashboard_cash_book_setup_hint">Set up a cash book in the web dashboard</string>
+    <string name="dashboard_cash_book_in_box">In the box</string>
+    <string name="dashboard_cash_book_in_machines">In machines</string>
+    <string name="dashboard_cash_book_last_deposit">Last bank deposit</string>
+    <string name="dashboard_cash_book_no_deposit">No deposit yet</string>
+    <string name="dashboard_cash_book_deposit_today">Today</string>
+    <plurals name="dashboard_cash_book_deposit_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+
+    <!-- Dashboard: needs attention -->
+    <string name="dashboard_needs_attention_title">Needs Attention</string>
+
+    <!-- Dashboard: recent activity feed -->
+    <string name="dashboard_recent_activity_title">Recent Activity</string>
+    <string name="dashboard_no_recent_activity">No recent activity</string>
+    <string name="dashboard_day_today">Today</string>
+    <string name="dashboard_day_yesterday">Yesterday</string>
+    <plurals name="dashboard_entries_count">
+        <item quantity="one">%1$d entry</item>
+        <item quantity="other">%1$d entries</item>
+    </plurals>
+    <string name="dashboard_retry">Retry</string>
+    <string name="dashboard_tour_started">Tour started</string>
+    <string name="dashboard_stock_intake">Stock intake</string>
+    <string name="dashboard_filled_by">Filled by %1$s</string>
+    <plurals name="dashboard_items_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="dashboard_machines_count">
+        <item quantity="one">%1$d machine</item>
+        <item quantity="other">%1$d machines</item>
+    </plurals>
+    <plurals name="dashboard_products_count">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
+
+    <!-- Cash book entry types (feed rows) -->
+    <string name="cash_book_type_initial">Initial balance</string>
+    <string name="cash_book_type_withdrawal">Withdrawal</string>
+    <string name="cash_book_type_correction">Correction</string>
+    <string name="cash_book_type_payout">Bank deposit</string>
+    <string name="cash_book_type_expense">Expense</string>
+    <string name="cash_book_type_reversal">Reversal</string>
+    <string name="cash_book_type_unknown">Cash book</string>
+    <string name="cash_book_category_rent">Rent</string>
+    <string name="cash_book_category_goods">Goods</string>
+    <string name="cash_book_category_cleaning">Cleaning</string>
+    <string name="cash_book_category_fees">Fees</string>
+    <string name="cash_book_category_other">Other</string>
 </resources>

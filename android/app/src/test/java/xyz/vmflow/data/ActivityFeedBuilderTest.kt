@@ -1,6 +1,7 @@
 package xyz.vmflow.data
 
 import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -9,6 +10,7 @@ import xyz.vmflow.models.ActivityLogMetadata
 import xyz.vmflow.models.ActivityLogRow
 import xyz.vmflow.models.IntakeTransactionRow
 import xyz.vmflow.models.NameOnly
+import xyz.vmflow.models.RefillActivity
 
 class ActivityFeedBuilderTest {
 
@@ -181,5 +183,65 @@ class ActivityFeedBuilderTest {
         assertEquals(2, merged.map { it.id }.toSet().size)
         assertTrue(merged.any { it.id.startsWith("refill-") })
         assertTrue(merged.any { it.id.startsWith("intake-") })
+    }
+
+    // MARK: - groupByDay (dashboard feed day headers)
+
+    @Test
+    fun `items on the same calendar day land in one group`() {
+        val items = listOf(
+            ActivityFeedItem.MachineRefilled(
+                RefillActivity(
+                    id = "a", createdAt = t(0), machineName = "M1", traysRefilled = 1,
+                    totalAdded = 1, userDisplay = null, tourId = null, products = emptyList(),
+                )
+            ),
+            ActivityFeedItem.MachineRefilled(
+                RefillActivity(
+                    id = "b", createdAt = t(60), machineName = "M1", traysRefilled = 1,
+                    totalAdded = 1, userDisplay = null, tourId = null, products = emptyList(),
+                )
+            ),
+        )
+        val groups = ActivityFeedBuilder.groupByDay(items, TimeZone.UTC)
+        assertEquals(1, groups.size)
+        assertEquals(2, groups[0].items.size)
+    }
+
+    @Test
+    fun `items are bucketed newest day first, each bucket newest item first`() {
+        val today = ActivityFeedItem.MachineRefilled(
+            RefillActivity(
+                id = "today", createdAt = t(0), machineName = "M1", traysRefilled = 1,
+                totalAdded = 1, userDisplay = null, tourId = null, products = emptyList(),
+            )
+        )
+        // base is 2026-08-12T10:00:00Z; 25h/20h back crosses into 2026-08-11.
+        val yesterdayEarlier = ActivityFeedItem.MachineRefilled(
+            RefillActivity(
+                id = "yesterday-early",
+                createdAt = base.minus(kotlin.time.Duration.parse("25h")),
+                machineName = "M1", traysRefilled = 1,
+                totalAdded = 1, userDisplay = null, tourId = null, products = emptyList(),
+            )
+        )
+        val yesterdayLater = ActivityFeedItem.MachineRefilled(
+            RefillActivity(
+                id = "yesterday-late",
+                createdAt = base.minus(kotlin.time.Duration.parse("20h")),
+                machineName = "M1", traysRefilled = 1,
+                totalAdded = 1, userDisplay = null, tourId = null, products = emptyList(),
+            )
+        )
+        val groups = ActivityFeedBuilder.groupByDay(
+            listOf(yesterdayEarlier, today, yesterdayLater),
+            TimeZone.UTC,
+        )
+        assertEquals(2, groups.size)
+        assertEquals(listOf("today"), groups[0].items.map { it.id.removePrefix("refill-") })
+        assertEquals(
+            listOf("yesterday-late", "yesterday-early"),
+            groups[1].items.map { it.id.removePrefix("refill-") },
+        )
     }
 }

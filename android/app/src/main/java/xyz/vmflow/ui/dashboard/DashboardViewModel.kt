@@ -18,6 +18,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import xyz.vmflow.data.ActivityFeedBuilder
 import xyz.vmflow.data.AuthRepository
+import xyz.vmflow.data.CashBookSummary
 import xyz.vmflow.data.DailySales
 import xyz.vmflow.data.DashboardDataSource
 import xyz.vmflow.data.DashboardKpis
@@ -70,6 +71,8 @@ data class DashboardUiState(
     val stockCriticalCount: Int = 0,
     /** Machines with >=1 tray at/under min_stock, that aren't already critical. */
     val stockLowCount: Int = 0,
+    /** Dashboard cash-book (Barkasse) summary tile. */
+    val cashBookSummary: CashBookSummary = CashBookSummary(hasCashBook = false),
 ) {
     val todayRevenue: Double get() = machines.sumOf { it.todayRevenue }
     val todaySalesCount: Int get() = machines.sumOf { it.todaySalesCount }
@@ -116,6 +119,7 @@ internal class DashboardEngine(private val repository: DashboardDataSource) {
                 launch { loadSalesKpisAndChart() }
                 launch { loadRecentActivity() }
                 launch { loadNewDealsCount() }
+                launch { loadCashBookSummary() }
             }
         } catch (e: CancellationException) {
             throw e
@@ -163,6 +167,13 @@ internal class DashboardEngine(private val repository: DashboardDataSource) {
     private suspend fun loadNewDealsCount() {
         val count = repository.fetchNewDealsCount()
         _uiState.update { it.copy(newDealsCount = count) }
+    }
+
+    // MARK: - Cash book summary tile
+
+    private suspend fun loadCashBookSummary() {
+        val summary = repository.fetchCashBookSummary()
+        _uiState.update { it.copy(cashBookSummary = summary) }
     }
 
     // MARK: - Sales KPIs + 30-day chart

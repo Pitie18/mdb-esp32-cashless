@@ -7,6 +7,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 import xyz.vmflow.models.ActivityLogRow
 import xyz.vmflow.models.IntakeTransactionRow
 import xyz.vmflow.models.Sale
@@ -27,6 +30,23 @@ data class MachineStockHealth(
 )
 
 /**
+ * Dashboard-tile projection of the cash book (Barkasse) state. Deliberately
+ * thinner than the full `ios/VMflow/ViewModels/CashBookViewModel.swift`
+ * pipeline (no per-machine breakdown, no write paths) — this only backs the
+ * dashboard's compact summary tile, not the (not yet ported) Cash Book
+ * screen itself.
+ */
+data class CashBookSummary(
+    val hasCashBook: Boolean,
+    val bookName: String? = null,
+    /** Latest `balance_after`, falling back to `initial_balance` with no entries yet. */
+    val currentBalance: Double = 0.0,
+    /** `cash_sales_since` from the `get_theoretical_cash` RPC — cash sitting in the machines. */
+    val cashInMachines: Double = 0.0,
+    val lastDepositAt: Instant? = null,
+)
+
+/**
  * Seam between [DashboardViewModel][xyz.vmflow.ui.dashboard.DashboardViewModel]
  * and the network so tests can substitute a fake — no Robolectric, no fake
  * Postgrest server, no new test dependency.
@@ -39,6 +59,7 @@ interface DashboardDataSource {
     suspend fun fetchIntakeRows(windowStart: Instant): List<IntakeTransactionRow>
     suspend fun resolveUserNames(ids: List<String>): Map<String, String>
     suspend fun fetchNewDealsCount(): Int
+    suspend fun fetchCashBookSummary(): CashBookSummary
 }
 
 /** `users` row shape used only to resolve intake attribution display names. */
@@ -48,6 +69,38 @@ private data class UserRow(
     @SerialName("first_name") val firstName: String? = null,
     @SerialName("last_name") val lastName: String? = null,
     val email: String? = null,
+)
+
+/** `cash_books` row shape used only by the dashboard summary tile. */
+@Serializable
+private data class CashBookRow(
+    val id: String,
+    val name: String,
+    @SerialName("company_id") val companyId: String,
+    @SerialName("initial_balance") val initialBalance: Double = 0.0,
+    @SerialName("is_active") val isActive: Boolean = true,
+)
+
+@Serializable
+private data class CashBookBalanceRow(
+    @SerialName("balance_after") val balanceAfter: Double = 0.0,
+)
+
+@Serializable
+private data class CashBookPayoutRow(
+    @SerialName("created_at") val createdAt: Instant,
+)
+
+@Serializable
+private data class TheoreticalCashParams(
+    @SerialName("p_cash_book_id") val cashBookId: String,
+    @SerialName("p_company_id") val companyId: String,
+)
+
+/** Only the field the dashboard tile shows; the RPC returns more (see `get_theoretical_cash`). */
+@Serializable
+private data class TheoreticalCashResult(
+    @SerialName("cash_sales_since") val cashSalesSince: Double = 0.0,
 )
 
 /**
@@ -255,4 +308,70 @@ object DashboardRepository : DashboardDataSource {
         } catch (e: Exception) {
             0
         }
+
+    /**
+     * Dashboard cash-book tile. Picks the first active Barkasse (alphabetical
+     * — Android has no persisted per-user selection like
+     * `CashBookViewModel.selectedCashBookId` on iOS, so there is nothing to
+     * reconcile against). Swallows any failure (missing tables on an older
+     * backend, RPC error, etc.) down to "no cash book" so a Barkasse problem
+     * never breaks the rest of the dashboard.
+     */
+    override suspend fun fetchCashBookSummary(): CashBookSummary = try {
+        val books = postgrest.from("cash_books")
+            .select(Columns.raw("id, name, company_id, initial_balance, is_active")) {
+                order("name", Order.ASCENDING)
+            }
+            .decodeList<CashBookRow>()
+        val book = books.firstOrNull { it.isActive } ?: books.firstOrNull()
+
+        if (book == null) {
+            CashBookSummary(hasCashBook = false)
+        } else {
+            val latest = postgrest.from("cash_book_entries")
+                .select(Columns.raw("balance_after")) {
+                    filter { eq("cash_book_id", book.id) }
+                    order("entry_number", Order.DESCENDING)
+                    limit(1)
+                }
+                .decodeList<CashBookBalanceRow>()
+                .firstOrNull()
+
+            val lastPayout = postgrest.from("cash_book_entries")
+                .select(Columns.raw("created_at")) {
+                    filter {
+                        eq("cash_book_id", book.id)
+                        eq("type", "payout")
+                        eq("is_reversed", false)
+                    }
+                    order("entry_number", Order.DESCENDING)
+                    limit(1)
+                }
+                .decodeList<CashBookPayoutRow>()
+                .firstOrNull()
+
+            val cashInMachines = try {
+                val params = Json.encodeToJsonElement(
+                    TheoreticalCashParams(cashBookId = book.id, companyId = book.companyId),
+                ).jsonObject
+                postgrest.rpc("get_theoretical_cash", params).decodeAs<TheoreticalCashResult>().cashSalesSince
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                0.0
+            }
+
+            CashBookSummary(
+                hasCashBook = true,
+                bookName = book.name,
+                currentBalance = latest?.balanceAfter ?: book.initialBalance,
+                cashInMachines = cashInMachines,
+                lastDepositAt = lastPayout?.createdAt,
+            )
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        CashBookSummary(hasCashBook = false)
+    }
 }
