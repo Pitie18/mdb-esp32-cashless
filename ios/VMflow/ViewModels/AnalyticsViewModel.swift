@@ -77,6 +77,37 @@ final class AnalyticsViewModel: ObservableObject {
         return "\(Self.dayFormatter.string(from: prevFrom)) – \(Self.dayFormatter.string(from: prevLast))"
     }
 
+    /// Label for the current machine selection, or nil when unfiltered. Lives
+    /// here rather than in the filter bar because the breakdown list shows the
+    /// same label, and two copies would drift.
+    var activeMachineFilterLabel: String? {
+        guard !selectedMachineIds.isEmpty else { return nil }
+        if selectedMachineIds.count == 1, let id = selectedMachineIds.first,
+           let machine = machines.first(where: { $0.id == id }) {
+            return machine.name ?? String(localized: "Unnamed")
+        }
+        return String(localized: "\(selectedMachineIds.count) machine")
+    }
+
+    var activeCategoryFilterLabel: String? {
+        guard !selectedCategoryIds.isEmpty else { return nil }
+        if selectedCategoryIds.count == 1, let id = selectedCategoryIds.first,
+           let category = categories.first(where: { $0.id == id }) {
+            return category.name
+        }
+        return String(localized: "\(selectedCategoryIds.count) category")
+    }
+
+    func clearMachineFilter() {
+        selectedMachineIds = []
+        filtersCommitted()
+    }
+
+    func clearCategoryFilter() {
+        selectedCategoryIds = []
+        filtersCommitted()
+    }
+
     private static let dayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .short

@@ -76,6 +76,37 @@ export const useAnalytics = () => {
     return `${dayFmt(prevFrom.toISOString())} – ${dayFmt(prevLast.toISOString())}`
   })
 
+  /**
+   * Label for the current selection, or null when unfiltered. Lives here
+   * rather than in the filter bar because the breakdown list shows the same
+   * label, and two copies would drift.
+   */
+  const activeMachineLabel = computed(() => {
+    if (!machineIds.value.length) return null
+    if (machineIds.value.length === 1) {
+      return machines.value.find(x => x.id === machineIds.value[0])?.name ?? null
+    }
+    return String(machineIds.value.length)
+  })
+
+  const activeCategoryLabel = computed(() => {
+    if (!categoryIds.value.length) return null
+    if (categoryIds.value.length === 1) {
+      return categories.value.find(x => x.id === categoryIds.value[0])?.name ?? null
+    }
+    return String(categoryIds.value.length)
+  })
+
+  async function clearMachineFilter() {
+    machineIds.value = []
+    await loadAll()
+  }
+
+  async function clearCategoryFilter() {
+    categoryIds.value = []
+    await loadAll()
+  }
+
   function baseParams() {
     const companyId = organization.value?.id
     if (!companyId) throw new Error('No organization')
@@ -199,6 +230,7 @@ export const useAnalytics = () => {
     summary, rows, machines, categories,
     loading, loadingRows, error, backendUnsupported,
     range, sortedRows, bucketedDaily, rangeLabel, previousRangeLabel,
+    activeMachineLabel, activeCategoryLabel, clearMachineFilter, clearCategoryFilter,
     loadSummary, loadBreakdown, loadProductMachines, loadFilterOptions, loadAll, drillDown,
   }
 }

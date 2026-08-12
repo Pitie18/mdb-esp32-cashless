@@ -2292,6 +2292,7 @@
     "sellThrough": "Sell-through {value}%",
     "daysOfSupply": "Lasts about {days} more days",
     "sortDescending": "Highest first",
-    "sortAscending": "Lowest first"
+    "sortAscending": "Lowest first",
+    "filtered": "Filtered"
   }
 }

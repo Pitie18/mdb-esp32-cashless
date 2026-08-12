@@ -14,25 +14,21 @@ const { t } = useI18n()
 const {
   preset, customFrom, customTo, machineIds, categoryIds,
   machines, categories, rangeLabel, loadAll,
+  activeMachineLabel, activeCategoryLabel, clearMachineFilter, clearCategoryFilter,
 } = useAnalytics()
 
 const presets: RangePreset[] = ['days7', 'days30', 'days90', 'thisMonth', 'lastMonth']
 
 const machineLabel = computed(() => {
   if (!machineIds.value.length) return t('analytics.allMachines')
-  if (machineIds.value.length === 1) {
-    return machines.value.find(x => x.id === machineIds.value[0])?.name || t('analytics.allMachines')
-  }
-  return t('analytics.nMachines', machineIds.value.length)
+  if (machineIds.value.length > 1) return t('analytics.nMachines', machineIds.value.length)
+  return activeMachineLabel.value || t('analytics.allMachines')
 })
 
 const categoryLabel = computed(() => {
   if (!categoryIds.value.length) return t('analytics.allCategories')
-  if (categoryIds.value.length === 1) {
-    return categories.value.find(x => x.id === categoryIds.value[0])?.name
-      || t('analytics.allCategories')
-  }
-  return t('analytics.nCategories', categoryIds.value.length)
+  if (categoryIds.value.length > 1) return t('analytics.nCategories', categoryIds.value.length)
+  return activeCategoryLabel.value || t('analytics.allCategories')
 })
 
 function toggle(list: string[], id: string) {
@@ -58,15 +54,7 @@ function onMenuToggle(open: boolean) {
   if (!open) loadAll()
 }
 
-function clearMachines() {
-  machineIds.value = []
-  loadAll()
-}
 
-function clearCategories() {
-  categoryIds.value = []
-  loadAll()
-}
 </script>
 
 <template>
@@ -131,7 +119,7 @@ function clearCategories() {
       v-if="machineIds.length" variant="default" size="sm"
       class="border-background/30 rounded-l-none border-l px-2"
       :aria-label="t('analytics.allMachines')"
-      @click="clearMachines"
+      @click="clearMachineFilter"
     >
       <IconX class="size-3.5" />
     </Button>
@@ -167,7 +155,7 @@ function clearCategories() {
       v-if="categoryIds.length" variant="default" size="sm"
       class="border-background/30 rounded-l-none border-l px-2"
       :aria-label="t('analytics.allCategories')"
-      @click="clearCategories"
+      @click="clearCategoryFilter"
     >
       <IconX class="size-3.5" />
     </Button>

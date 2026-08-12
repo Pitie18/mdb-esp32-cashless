@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconSortAscending, IconSortDescending } from '@tabler/icons-vue'
+import { IconBuildingStore, IconCategory, IconSortAscending, IconSortDescending, IconX } from '@tabler/icons-vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -13,6 +13,7 @@ const emit = defineEmits<{ select: [row: BreakdownRow] }>()
 const { t } = useI18n()
 const {
   dimension, metric, sortDirection, sortedRows, loadingRows, loadBreakdown, drillDown,
+  activeMachineLabel, activeCategoryLabel, clearMachineFilter, clearCategoryFilter,
 } = useAnalytics()
 
 // drillDown swaps the dimension itself and reloads once; this watcher would
@@ -112,6 +113,34 @@ async function onRowClick(row: BreakdownRow) {
     </CardHeader>
 
     <CardContent>
+      <!-- The active filter repeated right above the rows. The filter bar sits
+           far enough up the page that a drill-down changes it out of sight,
+           which is exactly when knowing about it matters most. -->
+      <div
+        v-if="activeCategoryLabel || activeMachineLabel"
+        class="mb-3 flex flex-wrap items-center gap-2"
+      >
+        <span class="text-muted-foreground text-xs">{{ t('analytics.filtered') }}</span>
+        <button
+          v-if="activeCategoryLabel" type="button"
+          class="bg-primary text-primary-foreground flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold"
+          @click="clearCategoryFilter"
+        >
+          <IconCategory class="size-3" />
+          {{ activeCategoryLabel }}
+          <IconX class="size-3" />
+        </button>
+        <button
+          v-if="activeMachineLabel" type="button"
+          class="bg-primary text-primary-foreground flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold"
+          @click="clearMachineFilter"
+        >
+          <IconBuildingStore class="size-3" />
+          {{ activeMachineLabel }}
+          <IconX class="size-3" />
+        </button>
+      </div>
+
       <p v-if="loadingRows && !sortedRows.length" class="text-muted-foreground py-8 text-center text-sm">
         …
       </p>
