@@ -65,18 +65,27 @@ fun VMflowAppRoot() {
     val start = startDestination ?: return
 
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentTopLevel = TopLevelDestination.fromRoute(backStackEntry?.destination?.route)
+    val currentRoute = backStackEntry?.destination?.route
+    // The bar is a persistent anchor, not a per-screen detail overlay: it
+    // stays visible on every destination except login/register (and while
+    // the start destination is still being resolved, i.e. no route yet).
+    // Previously this was `TopLevelDestination.fromRoute(route) == null`,
+    // which also hid it on `machines/{id}` — the exact same screen kept the
+    // bar when reached from the Machines tab (route stays `machines`) but
+    // lost it when reached from the Dashboard (route becomes
+    // `machines/{id}`), confirmed as the same bug on a device.
+    val isAuthRoute = currentRoute == null || currentRoute == Routes.LOGIN || currentRoute == Routes.REGISTER
+    val selectedDestination = TopLevelDestination.fromRouteRoot(currentRoute)
 
     NavigationSuiteScaffold(
-        // Hidden on login, register and every detail screen.
-        layoutType = if (currentTopLevel == null) {
+        layoutType = if (isAuthRoute) {
             NavigationSuiteType.None
         } else {
             NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
         },
         navigationSuiteItems = {
             TopLevelDestination.entries.forEach { destination ->
-                val selected = destination == currentTopLevel
+                val selected = destination == selectedDestination
                 item(
                     selected = selected,
                     onClick = { navController.navigateToTopLevel(destination) },
