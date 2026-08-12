@@ -2198,6 +2198,12 @@ fun AddEditServerSheet(
                         store.addServer(draft.copy(id = UUID.randomUUID().toString()))
                     } else {
                         store.updateServer(draft)
+                        // Editing the server we are currently pointed at has to
+                        // rebuild the client, otherwise the app keeps talking to
+                        // the old URL and key until the next launch.
+                        if (store.selectedServer.value.id == draft.id) {
+                            SupabaseService.reconfigure(store.selectedServer.value)
+                        }
                     }
                     onDismiss()
                 },
