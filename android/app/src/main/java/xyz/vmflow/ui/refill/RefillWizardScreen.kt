@@ -19,12 +19,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import xyz.vmflow.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RefillWizardScreen(
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
     onDone: () -> Unit,
     viewModel: RefillViewModel = viewModel()
 ) {
@@ -41,9 +43,12 @@ fun RefillWizardScreen(
             TopAppBar(
                 title = { Text(stepTitle) },
                 navigationIcon = {
-                    if (uiState.step != RefillStep.SUMMARY) {
+                    if (onNavigateBack != null && uiState.step != RefillStep.SUMMARY) {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.action_back)
+                            )
                         }
                     }
                 }

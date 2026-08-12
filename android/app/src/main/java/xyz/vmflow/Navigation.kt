@@ -84,8 +84,6 @@ fun VMflowNavHost(
 
         composable(Routes.DASHBOARD) {
             DashboardScreen(
-                onNavigateToMachines = { navController.navigate(Routes.MACHINES) },
-                onNavigateToRefill = { navController.navigate(Routes.REFILL) },
                 onNavigateToMachine = { id ->
                     navController.navigate(Routes.machineDetail(id))
                 },
@@ -99,7 +97,6 @@ fun VMflowNavHost(
 
         composable(Routes.MACHINES) {
             MachineListScreen(
-                onNavigateBack = { navController.popBackStack() },
                 onNavigateToMachine = { id ->
                     navController.navigate(Routes.machineDetail(id))
                 }
@@ -121,7 +118,6 @@ fun VMflowNavHost(
 
         composable(Routes.REFILL) {
             RefillWizardScreen(
-                onNavigateBack = { navController.popBackStack() },
                 onDone = {
                     navController.navigate(Routes.DASHBOARD) {
                         popUpTo(Routes.DASHBOARD) { inclusive = true }

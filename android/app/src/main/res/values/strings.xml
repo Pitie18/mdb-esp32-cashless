@@ -8,4 +8,5 @@
     <string name="nav_dashboard">Dashboard</string>
     <string name="nav_machines">Machines</string>
     <string name="nav_refill">Refill</string>
+    <string name="action_back">Back</string>
 </resources>
