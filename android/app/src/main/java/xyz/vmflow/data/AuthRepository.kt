@@ -32,6 +32,12 @@ object AuthRepository {
             )
             is SessionStatus.NotAuthenticated -> AuthState.NotAuthenticated
             is SessionStatus.Initializing -> AuthState.Loading
+            // A failed refresh (expired token, unreachable backend) must not
+            // fall into Loading: MainActivity awaits `first { it !is Loading }`,
+            // so landing here forever would strand the user on a blank screen
+            // with no spinner and no way forward. Treat it as signed out so
+            // the login screen shows and the flow can restart.
+            is SessionStatus.RefreshFailure -> AuthState.NotAuthenticated
             else -> AuthState.Loading
         }
     }
