@@ -4,7 +4,7 @@ import Foundation
 // DTOs and pure helpers for the Analytics page.
 //
 // Mirrors the JSON contracts of the RPCs get_sales_analytics_summary and
-// get_sales_analytics_breakdown (migrations 20260811000000 / 20260811000100).
+// get_sales_analytics_breakdown (migrations 20260811010000 / 20260811010100).
 //
 // Numeric fields are decoded defensively: PostgREST may serialize a Postgres
 // `numeric` as a JSON number or as a string depending on version, and a whole

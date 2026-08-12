@@ -1,5 +1,5 @@
 -- Integration test for get_sales_analytics_breakdown
--- (migration 20260811000100_sales_analytics_breakdown.sql).
+-- (migration 20260811010100_sales_analytics_breakdown.sql).
 --
 -- Rolled-back transaction, plain ASSERTs, fake JWT — same pattern as
 -- sales_analytics_summary.test.sql. Run via tests/run-sql-tests.sh.

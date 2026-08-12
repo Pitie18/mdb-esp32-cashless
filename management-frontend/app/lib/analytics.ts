@@ -4,7 +4,7 @@
 // testable under Vitest without a Nuxt runtime — same split as printSheet.ts.
 //
 // Types mirror the JSON contracts of get_sales_analytics_summary and
-// get_sales_analytics_breakdown (migrations 20260811000000 / 20260811000100).
+// get_sales_analytics_breakdown (migrations 20260811010000 / 20260811010100).
 
 export type AnalyticsMetric = 'units' | 'revenue' | 'grossProfit'
 export type AnalyticsDimension = 'product' | 'category' | 'machine'

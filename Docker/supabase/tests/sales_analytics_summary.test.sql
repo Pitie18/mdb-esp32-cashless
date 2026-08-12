@@ -1,5 +1,5 @@
 -- Integration test for get_sales_analytics_summary
--- (migration 20260811000000_sales_analytics_summary.sql).
+-- (migration 20260811010000_sales_analytics_summary.sql).
 --
 -- Runs inside one transaction that is rolled back at the end → no dev data touched.
 -- Plain ASSERT statements in a DO block (no pgTAP). Fake JWT via set_config so the
