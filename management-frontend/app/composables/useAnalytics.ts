@@ -178,11 +178,27 @@ export const useAnalytics = () => {
     await Promise.all([loadSummary(), loadBreakdown()])
   }
 
+  /**
+   * Tapping a category or machine row narrows the filter to that entry and
+   * switches to products — "which articles make up Drinks?" is the question
+   * that row raises. The filter chip then shows the selection, so the step is
+   * visible and undoable rather than a hidden mode change.
+   *
+   * Products are excluded: their click opens the detail dialog instead.
+   */
+  async function drillDown(row: BreakdownRow) {
+    if (!row.key || dimension.value === 'product') return
+    if (dimension.value === 'category') categoryIds.value = [row.key]
+    else machineIds.value = [row.key]
+    dimension.value = 'product'
+    await loadAll()
+  }
+
   return {
     preset, customFrom, customTo, machineIds, categoryIds, metric, dimension, sortDirection,
     summary, rows, machines, categories,
     loading, loadingRows, error, backendUnsupported,
     range, sortedRows, bucketedDaily, rangeLabel, previousRangeLabel,
-    loadSummary, loadBreakdown, loadProductMachines, loadFilterOptions, loadAll,
+    loadSummary, loadBreakdown, loadProductMachines, loadFilterOptions, loadAll, drillDown,
   }
 }

@@ -16,7 +16,9 @@ final class AnalyticsViewModel: ObservableObject {
     /// Shared by the trend chart and the breakdown list — switching either
     /// segment switches both, by design.
     @Published var metric: AnalyticsMetric = .revenue
-    @Published var dimension: AnalyticsDimension = .product { didSet { dimensionDidChange() } }
+    @Published var dimension: AnalyticsDimension = .product {
+        didSet { if !suppressDimensionReload { dimensionDidChange() } }
+    }
     @Published var sortDirection: AnalyticsSortDirection = .descending
 
     // MARK: - Data
@@ -46,6 +48,10 @@ final class AnalyticsViewModel: ObservableObject {
     /// succession must land on the range selected last, not on whichever
     /// request happened to finish last.
     private var loadGeneration = 0
+
+    /// Set while `drillDown` swaps the dimension, so the didSet reaction does
+    /// not fire a breakdown request that the following full reload replaces.
+    private var suppressDimensionReload = false
 
     // MARK: - Derived
 
@@ -186,6 +192,25 @@ final class AnalyticsViewModel: ObservableObject {
     /// Called by the filter sheets after the user commits a selection, so a
     /// multi-select does not fire one round trip per tap.
     func filtersCommitted() {
+        Task { await load() }
+    }
+
+    /// Tapping a category or machine row narrows the filter to that entry and
+    /// switches to products — "which articles make up Drinks?" is the question
+    /// that row raises. The filter chip then shows the selection, so the step
+    /// is visible and undoable rather than a hidden mode change.
+    ///
+    /// Products are excluded: their tap opens the detail sheet instead.
+    func drillDown(into row: AnalyticsBreakdownRow) {
+        guard let key = row.key, dimension != .product else { return }
+        switch dimension {
+        case .category: selectedCategoryIds = [key]
+        case .machine: selectedMachineIds = [key]
+        case .product: return
+        }
+        suppressDimensionReload = true
+        dimension = .product
+        suppressDimensionReload = false
         Task { await load() }
     }
 
