@@ -17,6 +17,7 @@ import {
   IconDevices,
   IconCloudUpload,
   IconBuildingSkyscraper,
+  IconChartHistogram,
 } from "@tabler/icons-vue"
 
 import NavMain from '@/components/NavMain.vue'
@@ -63,6 +64,11 @@ const navGroups = computed(() => {
     {
       label: t('nav.groupOperations'),
       items: [
+        {
+          title: t('nav.analytics'),
+          url: "/analytics",
+          icon: IconChartHistogram,
+        },
         {
           title: t('nav.machines'),
           url: "/machines",

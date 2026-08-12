@@ -52,6 +52,10 @@ struct SidebarNavigationView: View {
             NavigationStack {
                 DashboardView(onNavigate: { selectedItem = $0 })
             }
+        case .analytics:
+            NavigationStack {
+                AnalyticsView()
+            }
         case .machines:
             MachinesSplitView()
         case .refill:
