@@ -48,19 +48,16 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import xyz.vmflow.R
 import xyz.vmflow.data.SalesFeed
-import xyz.vmflow.data.SalesFeedDayGroup
 import xyz.vmflow.data.SalesFeedItem
 import xyz.vmflow.models.Sale
 import xyz.vmflow.models.SuppressedSale
 import xyz.vmflow.models.Tray
+import xyz.vmflow.ui.common.dayLabel
 import xyz.vmflow.ui.components.ProductImage
 import xyz.vmflow.ui.components.StatusChip
 import xyz.vmflow.ui.dashboard.DaySectionHeader
@@ -388,7 +385,7 @@ private fun SalesTab(
         groups.forEach { group ->
             item(key = "day-${group.date}") {
                 DaySectionHeader(
-                    label = dayLabel(group, zone),
+                    label = dayLabel(group.date, zone),
                     count = group.saleCount,
                     countRes = R.plurals.dashboard_sales_count,
                     modifier = Modifier.padding(vertical = 4.dp)
@@ -425,33 +422,6 @@ private fun SalesTab(
             },
             onDismiss = { pendingRestore = null }
         )
-    }
-}
-
-/**
- * "Today" / "Yesterday" / locale-formatted weekday+date, matching iOS
- * `dayLabel(for:)`. Mirrors `dayLabel(group: FeedDayGroup)` in
- * `DashboardScreen.kt` — same day-header formatting rule, ported to this
- * screen's own feed-group type.
- */
-@Composable
-private fun dayLabel(group: SalesFeedDayGroup, zone: TimeZone): String {
-    val today = remember(zone) { Clock.System.now().toLocalDateTime(zone).date }
-    val yesterday = remember(today) { today.minus(1, DateTimeUnit.DAY) }
-    return when (group.date) {
-        today -> stringResource(R.string.dashboard_day_today)
-        yesterday -> stringResource(R.string.dashboard_day_yesterday)
-        else -> {
-            // java.time is available unconditionally from minSdk 26 up, no
-            // core-library desugaring needed — locale-aware weekday/month
-            // formatting without hand-rolling a formatter table.
-            val javaDate = java.time.LocalDate.of(group.date.year, group.date.monthNumber, group.date.dayOfMonth)
-            val formatter = java.time.format.DateTimeFormatter.ofPattern(
-                "EEEE, d MMMM",
-                Locale.getDefault()
-            )
-            javaDate.format(formatter)
-        }
     }
 }
 
