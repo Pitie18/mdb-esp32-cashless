@@ -14,15 +14,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Euro
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -32,22 +37,26 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -76,6 +85,7 @@ fun MachineDetailScreen(
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale.GERMANY).apply {
         currency = java.util.Currency.getInstance("EUR")
     }
+    var showSendCredit by remember { mutableStateOf(false) }
 
     LaunchedEffect(machineId) {
         viewModel.loadMachine(machineId)
@@ -98,6 +108,12 @@ fun MachineDetailScreen(
                 },
                 actions = {
                     uiState.machineStats?.let {
+                        IconButton(onClick = { showSendCredit = true }) {
+                            Icon(
+                                Icons.Default.Euro,
+                                contentDescription = stringResource(R.string.send_credit_action)
+                            )
+                        }
                         StatusChip(
                             isOnline = it.machine.isOnline,
                             modifier = Modifier.padding(end = 8.dp)
@@ -171,6 +187,178 @@ fun MachineDetailScreen(
                 }
             }
         }
+    }
+
+    if (showSendCredit) {
+        uiState.machineStats?.let { stats ->
+            SendCreditSheet(
+                machineName = stats.machine.displayName,
+                hasLinkedDevice = stats.machine.embeddeds?.id != null,
+                errorMessage = uiState.error,
+                currencyFormat = currencyFormat,
+                onDismiss = {
+                    showSendCredit = false
+                    viewModel.clearError()
+                },
+                onSend = { amount -> viewModel.sendCredit(amount) }
+            )
+        }
+    }
+}
+
+/**
+ * Sends free credit to the machine's device, same effect as inserting a
+ * coin/card payment — no sale is recorded here, the device reports the vend
+ * itself over MQTT when it happens. Mirrors iOS `SendCreditSheet`
+ * (`MachineDetailView.swift` ~L791-863). Divergence: this is the only place
+ * in the app that pushes something to a device in the field, so unlike iOS
+ * (which sends immediately on tap) the "Send" action opens a confirmation
+ * [AlertDialog] naming the amount and the machine before calling the edge
+ * function.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SendCreditSheet(
+    machineName: String,
+    hasLinkedDevice: Boolean,
+    errorMessage: String?,
+    currencyFormat: NumberFormat,
+    onDismiss: () -> Unit,
+    onSend: suspend (Double) -> Boolean
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    var amountText by remember { mutableStateOf("") }
+    var isSending by remember { mutableStateOf(false) }
+    var sendFailed by remember { mutableStateOf(false) }
+    var pendingAmount by remember { mutableStateOf<Double?>(null) }
+
+    val amount = remember(amountText) { parseCreditAmount(amountText) }
+
+    // Swipe-to-dismiss/scrim-tap is blocked while a send is in flight — same
+    // intent as iOS's `.disabled(isSending)` on the whole form, so an
+    // in-progress request can't be abandoned mid-call.
+    ModalBottomSheet(
+        onDismissRequest = { if (!isSending) onDismiss() },
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.send_credit_title),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.send_credit_amount_label),
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it; sendFailed = false },
+                    enabled = !isSending && hasLinkedDevice,
+                    singleLine = true,
+                    placeholder = { Text("0,00") },
+                    trailingIcon = { Text("€") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.width(140.dp)
+                )
+            }
+            Text(
+                text = stringResource(R.string.send_credit_footer),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            if (!hasLinkedDevice) {
+                Text(
+                    text = stringResource(R.string.send_credit_no_device_error),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            } else if (sendFailed) {
+                Text(
+                    text = errorMessage ?: stringResource(R.string.send_credit_generic_error),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = onDismiss, enabled = !isSending) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        sendFailed = false
+                        pendingAmount = amount
+                    },
+                    enabled = amount != null && hasLinkedDevice && !isSending
+                ) {
+                    if (isSending) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text(stringResource(R.string.action_send))
+                    }
+                }
+            }
+        }
+    }
+
+    pendingAmount?.let { confirmAmount ->
+        AlertDialog(
+            onDismissRequest = { pendingAmount = null },
+            title = { Text(stringResource(R.string.send_credit_confirm_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.send_credit_confirm_message,
+                        currencyFormat.format(confirmAmount),
+                        machineName
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingAmount = null
+                    scope.launch {
+                        isSending = true
+                        val ok = onSend(confirmAmount)
+                        isSending = false
+                        if (ok) {
+                            onDismiss()
+                        } else {
+                            sendFailed = true
+                        }
+                    }
+                }) {
+                    Text(stringResource(R.string.action_send))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingAmount = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
     }
 }
 

@@ -173,4 +173,15 @@
 
     <!-- Maschinendetail: Fächer-Tab -->
     <string name="tray_fill_action">Bis zur Kapazität auffüllen</string>
+
+    <!-- Maschinendetail: Guthaben-senden-Sheet -->
+    <string name="send_credit_action">Guthaben senden</string>
+    <string name="send_credit_title">Guthaben senden</string>
+    <string name="send_credit_amount_label">Betrag</string>
+    <string name="send_credit_footer">Schreibt dem Automaten Guthaben gut, als wäre eine Münz- oder Kartenzahlung erfolgt. Ein Verkauf wird erst erfasst, wenn der Automat einen Warenausgabe meldet.</string>
+    <string name="send_credit_no_device_error">Diesem Automaten ist kein Gerät zugeordnet.</string>
+    <string name="send_credit_generic_error">Guthaben konnte nicht gesendet werden.</string>
+    <string name="send_credit_confirm_title">Guthaben senden?</string>
+    <string name="send_credit_confirm_message">%1$s Guthaben an „%2$s“ senden?</string>
+    <string name="action_send">Senden</string>
 </resources>

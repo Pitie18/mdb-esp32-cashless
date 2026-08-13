@@ -1,5 +1,6 @@
 package xyz.vmflow.data
 
+import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
@@ -24,8 +25,15 @@ private data class RestoreSuppressedSaleParams(
     @SerialName("p_suppressed_id") val suppressedId: String
 )
 
+@Serializable
+private data class SendCreditBody(
+    @SerialName("device_id") val deviceId: String,
+    val amount: Double
+)
+
 object MachineRepository {
     private val postgrest get() = SupabaseService.client.postgrest
+    private val functions get() = SupabaseService.client.functions
 
     suspend fun fetchMachines(): Result<List<VendingMachineWithEmbedded>> {
         return try {
@@ -281,6 +289,22 @@ object MachineRepository {
         return try {
             val params = Json.encodeToJsonElement(RestoreSuppressedSaleParams(suppressedId)).jsonObject
             postgrest.rpc("restore_suppressed_sale", params)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sends free credit to a machine's device via the `send-credit` edge
+     * function — same effect as inserting a coin/card payment. No sale is
+     * recorded here; the device reports the vend itself over MQTT when it
+     * happens. Mirrors iOS `MachineDetailViewModel.sendCredit(amount:)`: the
+     * response body isn't consumed, a non-throwing call is success.
+     */
+    suspend fun sendCredit(deviceId: String, amount: Double): Result<Unit> {
+        return try {
+            functions.invoke("send-credit", SendCreditBody(deviceId = deviceId, amount = amount))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

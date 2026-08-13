@@ -158,4 +158,34 @@ class MachineDetailViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * Sends free credit to the machine's linked device via the `send-credit`
+     * edge function. Plain suspend function (not viewModelScope-launched) so
+     * the sheet's own coroutine scope can await it and drive its local
+     * `isSending` state, mirroring iOS `sendCredit(amount:) async -> Bool`.
+     *
+     * No device linked → returns false without calling the function, same as
+     * iOS's guard clause. Unlike iOS (which can inline a localized string at
+     * the call site), this plain `ViewModel` has no `Context` to resolve a
+     * string resource, so the "no linked device" message is rendered by the
+     * caller (`MachineDetailScreen`'s `SendCreditSheet`, which already knows
+     * the link status and disables the action) rather than pushed through
+     * [MachineDetailUiState.error].
+     */
+    suspend fun sendCredit(amount: Double): Boolean {
+        val deviceId = _uiState.value.machineStats?.machine?.embeddeds?.id ?: return false
+        return MachineRepository.sendCredit(deviceId, amount).fold(
+            onSuccess = { true },
+            onFailure = { e ->
+                _uiState.value = _uiState.value.copy(error = e.message)
+                false
+            }
+        )
+    }
+
+    /** Clears a surfaced error once the caller has shown/dismissed it. */
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
+    }
 }

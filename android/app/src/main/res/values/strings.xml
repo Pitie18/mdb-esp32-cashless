@@ -177,4 +177,15 @@
 
     <!-- Machine detail: Trays tab -->
     <string name="tray_fill_action">Fill to capacity</string>
+
+    <!-- Machine detail: Send Credit sheet -->
+    <string name="send_credit_action">Send Credit</string>
+    <string name="send_credit_title">Send Credit</string>
+    <string name="send_credit_amount_label">Amount</string>
+    <string name="send_credit_footer">Credits the machine as if a coin or card payment had been made. No sale is recorded until the machine reports a vend.</string>
+    <string name="send_credit_no_device_error">This machine has no linked device.</string>
+    <string name="send_credit_generic_error">Failed to send credit.</string>
+    <string name="send_credit_confirm_title">Send credit?</string>
+    <string name="send_credit_confirm_message">Send %1$s credit to \"%2$s\"?</string>
+    <string name="action_send">Send</string>
 </resources>
