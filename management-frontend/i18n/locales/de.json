@@ -435,6 +435,7 @@
     "swapNeeded": "{count} Produkt wechseln",
     "refillNeeded": "{count} Refill nötig",
     "noWarehouseStock": "{count} kein Lager",
+    "topoffRecommended": "{count} Auffüllen empfohlen",
     "inStock": "auf Lager",
     "noStock": "kein Lager",
     "swap": "wechseln",

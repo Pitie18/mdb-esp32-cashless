@@ -58,9 +58,9 @@ const sortedMachines = computed(() => {
     if (key === 'name') return (a.name ?? '').localeCompare(b.name ?? '')
     if (key === 'todayRevenue') return (b.today_revenue ?? 0) - (a.today_revenue ?? 0)
     if (key === 'monthRevenue') return (b.this_month_revenue ?? 0) - (a.this_month_revenue ?? 0)
-    // stockHealth: critical > low > ok
-    const healthOrder: Record<string, number> = { critical: 0, low: 1, ok: 2 }
-    return (healthOrder[a.stock_health ?? 'ok'] ?? 2) - (healthOrder[b.stock_health ?? 'ok'] ?? 2)
+    // stockHealth: critical > low > fill > ok
+    const healthOrder: Record<string, number> = { critical: 0, low: 1, fill: 2, ok: 3 }
+    return (healthOrder[a.stock_health ?? 'ok'] ?? 3) - (healthOrder[b.stock_health ?? 'ok'] ?? 3)
   })
 })
 
@@ -212,6 +212,7 @@ async function submitCreateMachine() {
                     :class="{
                       'bg-red-500': (machine.stock_health ?? 'ok') === 'critical',
                       'bg-amber-500': (machine.stock_health ?? 'ok') === 'low',
+                      'bg-blue-500': (machine.stock_health ?? 'ok') === 'fill',
                       'bg-green-500': (machine.stock_health ?? 'ok') === 'ok',
                     }"
                   />
@@ -295,6 +296,12 @@ async function submitCreateMachine() {
                       class="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                     >
                       {{ t('machines.noWarehouseStock', { count: machine.no_stock_summary!.filter(i => i.severity !== 'critical').length }) }}
+                    </span>
+                    <span
+                      v-if="(machine.fill_trays ?? 0) > 0"
+                      class="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400"
+                    >
+                      {{ t('machines.topoffRecommended', { count: machine.fill_trays }) }}
                     </span>
                   </div>
 
