@@ -1,4 +1,5 @@
 import { useSupabaseClient } from '#imports'
+import { classifyTrayStock } from '@/lib/stock-health'
 import { useOrganization } from './useOrganization'
 import { useWarehouse } from './useWarehouse'
 
@@ -9,7 +10,7 @@ export type WizardStep = 'packing' | 'refill' | 'summary'
 export interface RefillMachine {
   id: string
   name: string
-  stock_health: 'ok' | 'low' | 'critical'
+  stock_health: 'ok' | 'low' | 'fill' | 'critical'
   stock_percent: number
   empty_trays: number
   low_trays: number
@@ -456,6 +457,7 @@ export function useRefillWizard() {
         total: number
         low: number
         empty: number
+        fill: number
         totalStock: number
         totalCapacity: number
         deficits: Map<string, RefillItem>
@@ -466,19 +468,21 @@ export function useRefillWizard() {
         if (!tray.machine_id) continue
         let entry = stockMap.get(tray.machine_id)
         if (!entry) {
-          entry = { total: 0, low: 0, empty: 0, totalStock: 0, totalCapacity: 0, deficits: new Map(), fillBelowPending: [] }
+          entry = { total: 0, low: 0, empty: 0, fill: 0, totalStock: 0, totalCapacity: 0, deficits: new Map(), fillBelowPending: [] }
           stockMap.set(tray.machine_id, entry)
         }
         entry.total++
         entry.totalStock += tray.current_stock
         entry.totalCapacity += tray.capacity
 
-        const isLow = tray.min_stock > 0 && tray.current_stock <= tray.min_stock
-        const isEmpty = tray.current_stock === 0
-        const isFillBelow = !isLow && !isEmpty && tray.fill_when_below > 0 && tray.current_stock <= tray.fill_when_below
+        const state = classifyTrayStock(tray)
+        const isLow = state === 'low'
+        const isEmpty = state === 'critical'
+        const isFillBelow = state === 'fill'
 
         if (isEmpty) entry.empty++
         else if (isLow) entry.low++
+        else if (isFillBelow) entry.fill++
 
         if (isLow || isEmpty) {
           const deficit = tray.capacity - tray.current_stock
@@ -499,9 +503,9 @@ export function useRefillWizard() {
         }
       }
 
-      // Add fill_when_below deficits for machines with critical trays
+      // Add fill_when_below deficits for every machine (not gated on already
+      // having a low/empty tray — a fill-only machine must still surface)
       for (const [, entry] of stockMap) {
-        if (entry.low + entry.empty === 0) continue
         for (const tray of entry.fillBelowPending) {
           const deficit = tray.capacity - tray.current_stock
           if (deficit <= 0) continue
@@ -522,11 +526,11 @@ export function useRefillWizard() {
       const result: RefillMachine[] = []
       for (const m of (machineData ?? []) as any[]) {
         const stock = stockMap.get(m.id)
-        if (!stock || (stock.empty === 0 && stock.low === 0)) continue
+        if (!stock || (stock.empty === 0 && stock.low === 0 && stock.fill === 0)) continue
         result.push({
           id: m.id,
           name: m.name ?? 'Unnamed',
-          stock_health: stock.empty > 0 ? 'critical' : 'low',
+          stock_health: stock.empty > 0 ? 'critical' : stock.low > 0 ? 'low' : 'fill',
           stock_percent: stock.totalCapacity > 0 ? Math.round((stock.totalStock / stock.totalCapacity) * 100) : 0,
           empty_trays: stock.empty,
           low_trays: stock.low + stock.empty,
@@ -536,7 +540,7 @@ export function useRefillWizard() {
       }
 
       // Sort by urgency
-      const healthOrder: Record<string, number> = { critical: 0, low: 1, ok: 2 }
+      const healthOrder: Record<string, number> = { critical: 0, low: 1, fill: 2, ok: 3 }
       result.sort((a, b) => {
         const ha = healthOrder[a.stock_health] ?? 2
         const hb = healthOrder[b.stock_health] ?? 2
@@ -732,10 +736,10 @@ export function useRefillWizard() {
       const remainingPacked = new Map(packed)
 
       for (const t of (data ?? []) as any[]) {
-        const isLow = t.min_stock > 0 && t.current_stock <= t.min_stock
-        const isEmpty = t.current_stock === 0
-        const hasCritical = (data as any[]).some((tr: any) => tr.current_stock === 0 || (tr.min_stock > 0 && tr.current_stock <= tr.min_stock))
-        const isFillBelow = hasCritical && !isLow && !isEmpty && t.fill_when_below > 0 && t.current_stock <= t.fill_when_below
+        const state = classifyTrayStock(t)
+        const isLow = state === 'low'
+        const isEmpty = state === 'critical'
+        const isFillBelow = state === 'fill'
 
         if (!isLow && !isEmpty && !isFillBelow) continue
 
