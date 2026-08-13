@@ -49,42 +49,42 @@ class MachineDeficitsTest {
     @Test
     fun `an empty tray is critical regardless of minStock and fillWhenBelow`() {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 0, minStock = 5, fillWhenBelow = 8, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertEquals(StockSeverity.CRITICAL, summary.trayDeficits.single().severity)
     }
 
     @Test
     fun `minStock of 0 never triggers low`() {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 3, minStock = 0, fillWhenBelow = null, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertTrue(summary.trayDeficits.isEmpty())
     }
 
     @Test
     fun `fillWhenBelow of 0 never triggers fillBelow`() {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 3, minStock = null, fillWhenBelow = 0, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertTrue(summary.trayDeficits.isEmpty())
     }
 
     @Test
     fun `currentStock exactly equal to minStock is low`() {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 5, minStock = 5, fillWhenBelow = null, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertEquals(StockSeverity.LOW, summary.trayDeficits.single().severity)
     }
 
     @Test
     fun `currentStock exactly equal to fillWhenBelow is fillBelow`() {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 8, minStock = null, fillWhenBelow = 8, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertEquals(StockSeverity.FILL_BELOW, summary.trayDeficits.single().severity)
     }
 
     @Test
     fun `a tray with currentStock above every threshold produces no deficit row`() {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 9, minStock = 5, fillWhenBelow = 8, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertTrue(summary.trayDeficits.isEmpty())
     }
 
@@ -94,7 +94,7 @@ class MachineDeficitsTest {
     fun `two trays of the same product merge into one row with summed deficit`() {
         val t1 = tray("t1", itemNumber = 1, productId = "p1", capacity = 10, currentStock = 5, minStock = 5, product = product("p1"))
         val t2 = tray("t2", itemNumber = 2, productId = "p1", capacity = 10, currentStock = 3, minStock = 5, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertEquals(1, summary.trayDeficits.size)
         assertEquals(5 + 7, summary.trayDeficits.single().deficit)
     }
@@ -104,14 +104,14 @@ class MachineDeficitsTest {
         // t1 is low (below minStock but not empty), t2 is critical (empty) — worst wins.
         val t1 = tray("t1", itemNumber = 1, productId = "p1", capacity = 10, currentStock = 4, minStock = 5, product = product("p1"))
         val t2 = tray("t2", itemNumber = 2, productId = "p1", capacity = 10, currentStock = 0, minStock = 5, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertEquals(StockSeverity.CRITICAL, summary.trayDeficits.single().severity)
     }
 
     @Test
     fun `a tray with null productId gets its own row named Slot N`() {
         val t = tray("t1", itemNumber = 7, productId = null, capacity = 10, currentStock = 0)
-        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertEquals("Slot 7", summary.trayDeficits.single().productName)
     }
 
@@ -119,7 +119,7 @@ class MachineDeficitsTest {
     fun `two unassigned trays never merge even at the same severity`() {
         val t1 = tray("t1", itemNumber = 7, productId = null, capacity = 10, currentStock = 0)
         val t2 = tray("t2", itemNumber = 8, productId = null, capacity = 10, currentStock = 0)
-        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertEquals(2, summary.trayDeficits.size)
     }
 
@@ -128,35 +128,35 @@ class MachineDeficitsTest {
     @Test
     fun `hasWarehouses false makes every row unknown regardless of warehouse stock`() {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 0, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t), setOf("p1"), hasWarehouses = false)
+        val summary = MachineDeficits.computeDeficits(listOf(t), setOf("p1"), hasWarehouses = false, slotLabel = { "Slot $it" })
         assertEquals(WarehouseAvailability.UNKNOWN, summary.trayDeficits.single().warehouseAvailability)
     }
 
     @Test
     fun `product present in warehouseProductIds is inStock`() {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 0, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t), setOf("p1"), hasWarehouses = true)
+        val summary = MachineDeficits.computeDeficits(listOf(t), setOf("p1"), hasWarehouses = true, slotLabel = { "Slot $it" })
         assertEquals(WarehouseAvailability.IN_STOCK, summary.trayDeficits.single().warehouseAvailability)
     }
 
     @Test
     fun `product absent from warehouse with an empty contributing tray needs swap`() {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 0, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = true)
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = true, slotLabel = { "Slot $it" })
         assertEquals(WarehouseAvailability.NEEDS_SWAP, summary.trayDeficits.single().warehouseAvailability)
     }
 
     @Test
     fun `product absent from warehouse with no empty contributing tray is noStock`() {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 4, minStock = 5, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = true)
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = true, slotLabel = { "Slot $it" })
         assertEquals(WarehouseAvailability.NO_STOCK, summary.trayDeficits.single().warehouseAvailability)
     }
 
     @Test
     fun `a null-productId row is always unknown even with warehouses present`() {
         val t = tray("t1", itemNumber = 3, productId = null, capacity = 10, currentStock = 0)
-        val summary = MachineDeficits.computeDeficits(listOf(t), setOf("anything"), hasWarehouses = true)
+        val summary = MachineDeficits.computeDeficits(listOf(t), setOf("anything"), hasWarehouses = true, slotLabel = { "Slot $it" })
         assertEquals(WarehouseAvailability.UNKNOWN, summary.trayDeficits.single().warehouseAvailability)
     }
 
@@ -166,7 +166,7 @@ class MachineDeficitsTest {
     fun `two empty trays of the same out-of-stock product count once, not twice`() {
         val t1 = tray("t1", itemNumber = 1, productId = "p1", capacity = 10, currentStock = 0, product = product("p1"))
         val t2 = tray("t2", itemNumber = 2, productId = "p1", capacity = 10, currentStock = 0, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = true)
+        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = true, slotLabel = { "Slot $it" })
         assertEquals(1, summary.swapNeededCount)
         assertEquals(0, summary.noStockCount)
     }
@@ -175,7 +175,7 @@ class MachineDeficitsTest {
     fun `noStockCount counts distinct low but non-empty out-of-stock products`() {
         val t1 = tray("t1", itemNumber = 1, productId = "p1", capacity = 10, currentStock = 4, minStock = 5, product = product("p1"))
         val t2 = tray("t2", itemNumber = 2, productId = "p1", capacity = 10, currentStock = 3, minStock = 5, product = product("p1"))
-        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = true)
+        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = true, slotLabel = { "Slot $it" })
         assertEquals(0, summary.swapNeededCount)
         assertEquals(1, summary.noStockCount)
     }
@@ -202,6 +202,7 @@ class MachineDeficitsTest {
             listOf(pInStock, pNonSwapLow, pSwapBigDeficit, pSwapSmallDeficit),
             warehouseProductIds = setOf("p1"),
             hasWarehouses = true,
+            slotLabel = { "Slot $it" },
         )
 
         val order = summary.trayDeficits.map { it.productName }

@@ -13,6 +13,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import xyz.vmflow.R
+import xyz.vmflow.VMflowApp
 import xyz.vmflow.models.DeviceRestart
 import xyz.vmflow.models.MachineWithStats
 import xyz.vmflow.models.MdbLogEntry
@@ -172,7 +174,9 @@ object MachineRepository {
                         } catch (_: Exception) { 0 }
                     } ?: 0
 
-                    val deficitSummary = MachineDeficits.computeDeficits(trays, warehouseProductIds, hasWarehouses)
+                    val deficitSummary = MachineDeficits.computeDeficits(trays, warehouseProductIds, hasWarehouses) { itemNumber ->
+                        VMflowApp.instance.getString(R.string.machine_card_unassigned_slot, itemNumber)
+                    }
 
                     MachineWithStats(
                         machine = machine,

@@ -55,11 +55,20 @@ object MachineDeficits {
      *   at all — when false every row is [WarehouseAvailability.UNKNOWN]
      *   regardless of [warehouseProductIds] (mirrors iOS: no warehouse data
      *   means "we can't say", not "nothing available").
+     * @param slotLabel formats the fallback row label for a tray with no
+     *   resolvable product name (unassigned slot, or an assigned slot whose
+     *   `products` relation wasn't joined), given the tray's `itemNumber`.
+     *   Kept as an injected function rather than a hardcoded `"Slot $n"`
+     *   string so this stays a pure, Android/Context-free function — the
+     *   caller resolves the localized `R.string.machine_card_unassigned_slot`
+     *   (same split as [parseRestartReason] returning a raw enum for the UI
+     *   layer to localize in `DeviceHealthSheet.kt`).
      */
     fun computeDeficits(
         trays: List<Tray>,
         warehouseProductIds: Set<String>,
         hasWarehouses: Boolean,
+        slotLabel: (Int) -> String,
     ): MachineDeficitSummary {
         val byProduct = LinkedHashMap<String, ProductAccumulator>()
         val unassigned = mutableListOf<ProductAccumulator>()
@@ -87,7 +96,7 @@ object MachineDeficits {
                     if (isEmpty) existing.hasEmptyTray = true
                 } else {
                     byProduct[productId] = ProductAccumulator(
-                        productName = tray.products?.name ?: "Slot ${tray.itemNumber}",
+                        productName = tray.products?.name ?: slotLabel(tray.itemNumber),
                         imagePath = tray.products?.imagePath,
                         totalDeficit = tray.deficit,
                         worstSeverity = severity,
@@ -98,7 +107,7 @@ object MachineDeficits {
             } else {
                 unassigned.add(
                     ProductAccumulator(
-                        productName = tray.products?.name ?: "Slot ${tray.itemNumber}",
+                        productName = tray.products?.name ?: slotLabel(tray.itemNumber),
                         imagePath = null,
                         totalDeficit = tray.deficit,
                         worstSeverity = severity,

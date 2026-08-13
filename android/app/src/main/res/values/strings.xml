@@ -140,6 +140,7 @@
     <string name="machine_card_deficit_no_stock">No Stock</string>
     <string name="machine_card_deficit_show_more">+%1$d more</string>
     <string name="machine_card_deficit_show_less">Show less</string>
+    <string name="machine_card_unassigned_slot">Slot %1$d</string>
 
     <!-- Machine Analysis tab -->
     <string name="analysis_tab_title">Analysis</string>

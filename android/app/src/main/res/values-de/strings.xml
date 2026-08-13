@@ -136,6 +136,7 @@
     <string name="machine_card_deficit_no_stock">Kein Lager</string>
     <string name="machine_card_deficit_show_more">+%1$d weitere</string>
     <string name="machine_card_deficit_show_less">Weniger anzeigen</string>
+    <string name="machine_card_unassigned_slot">Fach %1$d</string>
 
     <!-- Analyse-Tab -->
     <string name="analysis_tab_title">Analyse</string>
