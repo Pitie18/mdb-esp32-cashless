@@ -227,6 +227,7 @@ const currentMachineDone = computed(() =>
                 :class="{
                   'bg-red-500': effectiveStockHealth(machine) === 'critical',
                   'bg-amber-500': effectiveStockHealth(machine) === 'low',
+                  'bg-blue-500': effectiveStockHealth(machine) === 'fill',
                   'bg-green-500': effectiveStockHealth(machine) === 'ok',
                 }"
               />
