@@ -40,12 +40,13 @@ const machinesOnline = ref(0)
 const totalMachines = ref(0)
 const stockCritical = ref(0)
 const stockLow = ref(0)
+const stockFill = ref(0)
 const stockSwap = ref(0)
 const warehouseBelowMin = ref(0)
 const warehouseExpiringSoon = ref(0)
 const newDealsCount = ref(0)
 
-const machinesNeedingRefill = computed(() => stockCritical.value + stockLow.value + stockSwap.value)
+const machinesNeedingRefill = computed(() => stockCritical.value + stockLow.value + stockFill.value + stockSwap.value)
 
 // ── Company insights ──────────────────────────────────────────────────────────
 const { companyData: companyInsights, companyLoading, companyError, fetchCompanyInsights, history: companyHistory, historyLoading: companyHistoryLoading, fetchHistory: fetchCompanyHistory } = useInsights()
@@ -380,7 +381,7 @@ async function loadDashboard() {
   if (machineIds.length > 0) {
     const [todayMachineRes, traysRes, warehouseStockRes, ...lastSaleResults] = await Promise.all([
       supabase.from('sales').select('machine_id, item_price').in('machine_id', machineIds).gte('created_at', todayStart),
-      supabase.from('machine_trays').select('machine_id, product_id, capacity, current_stock, min_stock').in('machine_id', machineIds),
+      supabase.from('machine_trays').select('machine_id, product_id, capacity, current_stock, min_stock, fill_when_below').in('machine_id', machineIds),
       supabase.from('warehouse_stock_batches').select('product_id, quantity').gt('quantity', 0),
       ...machines.map(m =>
         supabase.from('sales').select('created_at').eq('machine_id', m.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
@@ -404,7 +405,7 @@ async function loadDashboard() {
 
     // Stock health per machine (warehouse-aware)
     const trayRows = (traysRes.data ?? []) as {
-      machine_id: string; product_id: string | null; capacity: number; current_stock: number; min_stock: number
+      machine_id: string; product_id: string | null; capacity: number; current_stock: number; min_stock: number; fill_when_below: number
     }[]
     const { warehouseStockMap, hasWarehouses } = buildWarehouseStockInfo(
       (warehouseStockRes.data ?? []) as { product_id: string; quantity: number }[],
@@ -414,18 +415,23 @@ async function loadDashboard() {
     // Count stock alerts (refillable + swap)
     let critCount = 0
     let lowCount = 0
+    let fillCount = 0
     let swapCount = 0
     for (const [, stock] of stockMap) {
       if (stock.health === 'critical') critCount++
       else if (stock.health === 'low') lowCount++
-      if (stock.health === 'ok' && stock.noStockEmptyCount > 0) swapCount++
+      else if (stock.health === 'fill') fillCount++
+      // "ok"/"fill" machines can still separately have non-refillable empty trays (swap candidates);
+      // critical/low machines are already counted above, so this avoids double-counting them.
+      if ((stock.health === 'ok' || stock.health === 'fill') && stock.noStockEmptyCount > 0) swapCount++
     }
     stockCritical.value = critCount
     stockLow.value = lowCount
+    stockFill.value = fillCount
     stockSwap.value = swapCount
 
     // Build dashboard machine list (sorted by stock urgency)
-    const healthOrder: Record<string, number> = { critical: 0, low: 1, ok: 2 }
+    const healthOrder: Record<string, number> = { critical: 0, low: 1, fill: 2, ok: 3 }
     dashboardMachines.value = machines.map(m => {
       const stock = stockMap.get(m.id)
       const health = stock?.health ?? 'ok'
@@ -442,8 +448,8 @@ async function loadDashboard() {
       }
       return dm
     }).sort((a, b) => {
-      const ha = healthOrder[a.stock_health] ?? 2
-      const hb = healthOrder[b.stock_health] ?? 2
+      const ha = healthOrder[a.stock_health] ?? 3
+      const hb = healthOrder[b.stock_health] ?? 3
       if (ha !== hb) return ha - hb
       return b.today_revenue - a.today_revenue
     }).slice(0, 6)
