@@ -100,14 +100,18 @@ fun MachineDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = uiState.machineStats?.machine?.displayName ?: "Machine",
+                        text = uiState.machineStats?.machine?.displayName
+                            ?: stringResource(R.string.machine_detail_title_fallback),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back)
+                        )
                     }
                 },
                 actions = {

@@ -171,7 +171,7 @@ fun TrayRow(
                     ) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "Delete tray",
+                            contentDescription = stringResource(R.string.tray_delete_action),
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
                         )

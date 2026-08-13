@@ -187,6 +187,8 @@
 
     <!-- Maschinendetail: Fächer-Tab -->
     <string name="tray_fill_action">Bis zur Kapazität auffüllen</string>
+    <string name="tray_delete_action">Fach löschen</string>
+    <string name="machine_detail_title_fallback">Automat</string>
 
     <!-- Maschinendetail: Guthaben-senden-Sheet -->
     <string name="send_credit_action">Guthaben senden</string>

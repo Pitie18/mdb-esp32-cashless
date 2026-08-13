@@ -191,6 +191,8 @@
 
     <!-- Machine detail: Trays tab -->
     <string name="tray_fill_action">Fill to capacity</string>
+    <string name="tray_delete_action">Delete tray</string>
+    <string name="machine_detail_title_fallback">Machine</string>
 
     <!-- Machine detail: Send Credit sheet -->
     <string name="send_credit_action">Send Credit</string>
