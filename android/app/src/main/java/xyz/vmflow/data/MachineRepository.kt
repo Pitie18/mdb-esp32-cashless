@@ -33,6 +33,21 @@ private data class SendCreditBody(
     val amount: Double
 )
 
+/** Full-row patch for the Machine Settings sheet — one `update` call, same shape as iOS `updateSettings(...)`'s `Patch`. */
+@Serializable
+private data class MachineSettingsPatch(
+    @SerialName("location_lat") val locationLat: Double?,
+    @SerialName("location_lon") val locationLon: Double?,
+    @SerialName("address_street") val addressStreet: String?,
+    @SerialName("address_house_number") val addressHouseNumber: String?,
+    @SerialName("address_postal_code") val addressPostalCode: String?,
+    @SerialName("address_city") val addressCity: String?,
+    @SerialName("formatted_address") val formattedAddress: String?,
+    @SerialName("country_code") val countryCode: String?,
+    @SerialName("nayax_machine_id") val nayaxMachineId: String?,
+    @SerialName("public_listing") val publicListing: Boolean
+)
+
 object MachineRepository {
     private val postgrest get() = SupabaseService.client.postgrest
     private val functions get() = SupabaseService.client.functions
@@ -150,6 +165,8 @@ object MachineRepository {
                 .select(
                     Columns.raw(
                         "id, name, location_lat, location_lon, country_code, " +
+                            "address_street, address_house_number, address_postal_code, address_city, " +
+                            "formatted_address, nayax_machine_id, public_listing, " +
                             "embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, " +
                             "mdb_diagnostics, last_restart_reason, last_restart_at, online_since)"
                     )
@@ -352,6 +369,50 @@ object MachineRepository {
     suspend fun sendCredit(deviceId: String, amount: Double): Result<Unit> {
         return try {
             functions.invoke("send-credit", SendCreditBody(deviceId = deviceId, amount = amount))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Persists the Machine Settings sheet's fields (location, address,
+     * country, Nayax ID, public listing) in a single `update`. Mirrors iOS
+     * `MachineDetailViewModel.updateSettings(...)`. No admin gating here —
+     * matches the iOS UI, which lets any member open and save this sheet; a
+     * non-admin write rejected by RLS surfaces as a normal failure.
+     */
+    suspend fun updateMachineSettings(
+        machineId: String,
+        locationLat: Double?,
+        locationLon: Double?,
+        addressStreet: String?,
+        addressHouseNumber: String?,
+        addressPostalCode: String?,
+        addressCity: String?,
+        formattedAddress: String?,
+        countryCode: String?,
+        nayaxMachineId: String?,
+        publicListing: Boolean
+    ): Result<Unit> {
+        return try {
+            postgrest.from("vendingMachine")
+                .update(
+                    MachineSettingsPatch(
+                        locationLat = locationLat,
+                        locationLon = locationLon,
+                        addressStreet = addressStreet,
+                        addressHouseNumber = addressHouseNumber,
+                        addressPostalCode = addressPostalCode,
+                        addressCity = addressCity,
+                        formattedAddress = formattedAddress,
+                        countryCode = countryCode,
+                        nayaxMachineId = nayaxMachineId,
+                        publicListing = publicListing
+                    )
+                ) {
+                    filter { eq("id", machineId) }
+                }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

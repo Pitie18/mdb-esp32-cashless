@@ -184,6 +184,51 @@ class MachineDetailViewModel : ViewModel() {
         )
     }
 
+    /**
+     * Persists the Machine Settings sheet's fields, then reloads machine
+     * detail on success so the reopened sheet reflects the save — this
+     * file's established reload-after-write pattern (see
+     * [restoreSuppressedSale], [deleteTray]) rather than hand-reconstructing
+     * local state the way iOS does. Plain suspend function (not
+     * viewModelScope-launched), mirroring [sendCredit], so the sheet's own
+     * coroutine scope can await it and drive its local `isSaving` state.
+     */
+    suspend fun updateSettings(
+        locationLat: Double?,
+        locationLon: Double?,
+        addressStreet: String?,
+        addressHouseNumber: String?,
+        addressPostalCode: String?,
+        addressCity: String?,
+        formattedAddress: String?,
+        countryCode: String?,
+        nayaxMachineId: String?,
+        publicListing: Boolean
+    ): Boolean {
+        return MachineRepository.updateMachineSettings(
+            machineId = machineId,
+            locationLat = locationLat,
+            locationLon = locationLon,
+            addressStreet = addressStreet,
+            addressHouseNumber = addressHouseNumber,
+            addressPostalCode = addressPostalCode,
+            addressCity = addressCity,
+            formattedAddress = formattedAddress,
+            countryCode = countryCode,
+            nayaxMachineId = nayaxMachineId,
+            publicListing = publicListing
+        ).fold(
+            onSuccess = {
+                loadMachine(machineId)
+                true
+            },
+            onFailure = { e ->
+                _uiState.value = _uiState.value.copy(error = e.message)
+                false
+            }
+        )
+    }
+
     /** Clears a surfaced error once the caller has shown/dismissed it. */
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)

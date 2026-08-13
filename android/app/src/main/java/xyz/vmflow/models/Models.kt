@@ -104,6 +104,13 @@ data class VendingMachineWithEmbedded(
     @SerialName("location_lat") val locationLat: Double? = null,
     @SerialName("location_lon") val locationLon: Double? = null,
     @SerialName("country_code") val countryCode: String? = null,
+    @SerialName("address_street") val addressStreet: String? = null,
+    @SerialName("address_house_number") val addressHouseNumber: String? = null,
+    @SerialName("address_postal_code") val addressPostalCode: String? = null,
+    @SerialName("address_city") val addressCity: String? = null,
+    @SerialName("formatted_address") val formattedAddress: String? = null,
+    @SerialName("nayax_machine_id") val nayaxMachineId: String? = null,
+    @SerialName("public_listing") val publicListing: Boolean? = null,
     val embeddeds: Embedded? = null
 ) {
     val displayName: String get() = name ?: "Machine ${id.take(8)}"

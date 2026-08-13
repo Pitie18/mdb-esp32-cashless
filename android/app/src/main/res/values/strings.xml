@@ -242,4 +242,25 @@
         <item quantity="one">%1$d day ago</item>
         <item quantity="other">%1$d days ago</item>
     </plurals>
+
+    <!-- Machine detail: Machine Settings sheet -->
+    <string name="machine_settings_action">Machine Settings</string>
+    <string name="machine_settings_title">Machine Settings</string>
+    <string name="machine_settings_section_nayax">Nayax</string>
+    <string name="machine_settings_nayax_label">Nayax Machine ID</string>
+    <string name="machine_settings_section_country">Country</string>
+    <string name="machine_settings_country_none">None</string>
+    <string name="machine_settings_section_location">Location</string>
+    <string name="machine_settings_location_footer">Use your current position to place this machine.</string>
+    <string name="machine_settings_use_location">Use My Location</string>
+    <string name="machine_settings_clear_location">Clear Location</string>
+    <string name="machine_settings_location_error">Couldn\'t determine your location.</string>
+    <string name="machine_settings_location_permission_denied">Location access is needed to use your current position.</string>
+    <string name="machine_settings_grant_location_permission">Allow Location Access</string>
+    <string name="machine_settings_section_public">Public Status Page</string>
+    <string name="machine_settings_public_toggle">Public Status Page</string>
+    <string name="machine_settings_public_origin_label">Public URL</string>
+    <string name="machine_settings_public_footer">Anyone with this link can see this machine\'s live status, without signing in.</string>
+    <string name="machine_settings_qr_content_description">QR code for the public status page</string>
+    <string name="machine_settings_save_error">Failed to save settings.</string>
 </resources>

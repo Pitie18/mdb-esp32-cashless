@@ -238,4 +238,25 @@
         <item quantity="one">vor %1$d Tag</item>
         <item quantity="other">vor %1$d Tagen</item>
     </plurals>
+
+    <!-- Maschinendetail: Maschineneinstellungen-Sheet -->
+    <string name="machine_settings_action">Maschineneinstellungen</string>
+    <string name="machine_settings_title">Maschineneinstellungen</string>
+    <string name="machine_settings_section_nayax">Nayax</string>
+    <string name="machine_settings_nayax_label">Nayax-Automaten-ID</string>
+    <string name="machine_settings_section_country">Land</string>
+    <string name="machine_settings_country_none">Keine</string>
+    <string name="machine_settings_section_location">Standort</string>
+    <string name="machine_settings_location_footer">Verwende deine aktuelle Position, um diesen Automaten zu platzieren.</string>
+    <string name="machine_settings_use_location">Meinen Standort verwenden</string>
+    <string name="machine_settings_clear_location">Standort löschen</string>
+    <string name="machine_settings_location_error">Standort konnte nicht ermittelt werden.</string>
+    <string name="machine_settings_location_permission_denied">Standortzugriff wird benötigt, um deine aktuelle Position zu verwenden.</string>
+    <string name="machine_settings_grant_location_permission">Standortzugriff erlauben</string>
+    <string name="machine_settings_section_public">Öffentliche Statusseite</string>
+    <string name="machine_settings_public_toggle">Öffentliche Statusseite</string>
+    <string name="machine_settings_public_origin_label">Öffentliche URL</string>
+    <string name="machine_settings_public_footer">Jeder mit diesem Link kann den Live-Status dieses Automaten sehen, ohne sich anzumelden.</string>
+    <string name="machine_settings_qr_content_description">QR-Code für die öffentliche Statusseite</string>
+    <string name="machine_settings_save_error">Einstellungen konnten nicht gespeichert werden.</string>
 </resources>

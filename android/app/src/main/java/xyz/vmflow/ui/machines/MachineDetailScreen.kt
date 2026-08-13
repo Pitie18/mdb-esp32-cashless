@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Euro
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -88,6 +89,7 @@ fun MachineDetailScreen(
     }
     var showSendCredit by remember { mutableStateOf(false) }
     var showDeviceHealth by remember { mutableStateOf(false) }
+    var showMachineSettings by remember { mutableStateOf(false) }
 
     LaunchedEffect(machineId) {
         viewModel.loadMachine(machineId)
@@ -120,6 +122,12 @@ fun MachineDetailScreen(
                             Icon(
                                 Icons.Default.MonitorHeart,
                                 contentDescription = stringResource(R.string.device_health_action)
+                            )
+                        }
+                        IconButton(onClick = { showMachineSettings = true }) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = stringResource(R.string.machine_settings_action)
                             )
                         }
                         StatusChip(
@@ -222,6 +230,33 @@ fun MachineDetailScreen(
             currencyFormat = currencyFormat,
             onDismiss = { showDeviceHealth = false }
         )
+    }
+
+    if (showMachineSettings) {
+        uiState.machineStats?.machine?.let { machine ->
+            MachineSettingsSheet(
+                machine = machine,
+                errorMessage = uiState.error,
+                onDismiss = {
+                    showMachineSettings = false
+                    viewModel.clearError()
+                },
+                onSave = { fields ->
+                    viewModel.updateSettings(
+                        locationLat = fields.locationLat,
+                        locationLon = fields.locationLon,
+                        addressStreet = fields.addressStreet,
+                        addressHouseNumber = fields.addressHouseNumber,
+                        addressPostalCode = fields.addressPostalCode,
+                        addressCity = fields.addressCity,
+                        formattedAddress = fields.formattedAddress,
+                        countryCode = fields.countryCode,
+                        nayaxMachineId = fields.nayaxMachineId,
+                        publicListing = fields.publicListing
+                    )
+                }
+            )
+        }
     }
 }
 
