@@ -42,6 +42,7 @@ fun TrayListContent(
     products: List<Product>,
     machineId: String,
     onStockChange: (trayId: String, delta: Int) -> Unit,
+    onFillTray: (trayId: String) -> Unit,
     onDeleteTray: (trayId: String) -> Unit,
     onTraysChanged: () -> Unit
 ) {
@@ -83,6 +84,7 @@ fun TrayListContent(
                     TrayRow(
                         tray = tray,
                         onStockChange = { delta -> onStockChange(tray.id, delta) },
+                        onFill = { onFillTray(tray.id) },
                         onDelete = { onDeleteTray(tray.id) }
                     )
                 }

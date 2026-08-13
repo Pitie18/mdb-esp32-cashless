@@ -124,6 +124,20 @@
     <string name="cash_book_category_fees">Gebühren</string>
     <string name="cash_book_category_other">Sonstiges</string>
 
+    <!-- Maschinenliste: Lagerverfügbarkeit pro Produkt (MachineCard) — Wortwahl an ios/VMflow/Resources/Localizable.xcstrings angeglichen -->
+    <string name="machine_card_badge_empty">%1$d Leer</string>
+    <string name="machine_card_badge_low">%1$d Niedrig</string>
+    <string name="machine_card_badge_swap">%1$d Tausch</string>
+    <string name="machine_card_badge_no_stock">%1$d Kein Lager</string>
+    <string name="machine_card_deficit_amount">(-%1$d)</string>
+    <string name="machine_card_deficit_discontinued">DC</string>
+    <string name="machine_card_deficit_in_stock">Auf Lager</string>
+    <string name="machine_card_deficit_needs_swap">Tausch</string>
+    <string name="machine_card_deficit_no_stock">Kein Lager</string>
+    <string name="machine_card_deficit_show_more">+%1$d weitere</string>
+    <string name="machine_card_deficit_show_less">Weniger anzeigen</string>
+    <string name="machine_card_unassigned_slot">Fach %1$d</string>
+
     <!-- Analyse-Tab -->
     <string name="analysis_tab_title">Analyse</string>
     <string name="analysis_loading">Analysiere…</string>
@@ -157,4 +171,108 @@
     <string name="analysis_error_title">Fehler</string>
     <string name="action_replace">Ersetzen</string>
     <string name="product_unnamed">Unbenannt</string>
+
+    <!-- Maschinendetail: Verkäufe-Tab (Tagesgruppen mit unterdrückten Zeilen) -->
+    <string name="sales_tab_empty">Noch keine Verkäufe erfasst</string>
+    <string name="sales_item_slot">Fach %1$d</string>
+    <string name="sales_item_generic">Verkauf</string>
+    <string name="suppressed_badge_auto_removed">Automatisch entfernt</string>
+    <string name="suppressed_reason_clock_unsynced">Uhr nicht synchron</string>
+    <string name="suppressed_reason_no_clock">Gerät hatte keine Uhr</string>
+    <string name="suppressed_reason_gap">identischer Verkauf %1$d s zuvor</string>
+    <string name="suppressed_reason_near_duplicate">Beinah-Duplikat eines kürzlichen Verkaufs</string>
+    <string name="restore_sale_action">Als Verkauf übernehmen</string>
+    <string name="restore_sale_dialog_title">Als echten Verkauf übernehmen?</string>
+    <string name="restore_sale_dialog_message">Fügt einen echten Verkauf hinzu und reduziert den Bestand um 1.</string>
+
+    <!-- Maschinendetail: Fächer-Tab -->
+    <string name="tray_fill_action">Bis zur Kapazität auffüllen</string>
+    <string name="tray_delete_action">Fach löschen</string>
+    <string name="machine_detail_title_fallback">Automat</string>
+
+    <!-- Maschinendetail: Guthaben-senden-Sheet -->
+    <string name="send_credit_action">Guthaben senden</string>
+    <string name="send_credit_title">Guthaben senden</string>
+    <string name="send_credit_amount_label">Betrag</string>
+    <string name="send_credit_amount_placeholder">0,00</string>
+    <string name="send_credit_currency_suffix">€</string>
+    <string name="send_credit_footer">Schreibt dem Automaten Guthaben gut, als wäre eine Münz- oder Kartenzahlung erfolgt. Ein Verkauf wird erst erfasst, wenn der Automat einen Warenausgabe meldet.</string>
+    <string name="send_credit_no_device_error">Diesem Automaten ist kein Gerät zugeordnet.</string>
+    <string name="send_credit_generic_error">Guthaben konnte nicht gesendet werden.</string>
+    <string name="send_credit_confirm_title">Guthaben senden?</string>
+    <string name="send_credit_confirm_message">%1$s Guthaben an „%2$s“ senden?</string>
+    <string name="action_send">Senden</string>
+
+    <!-- Maschinendetail: Gerätezustand-Sheet -->
+    <string name="device_health_action">Gerätezustand</string>
+    <string name="device_health_title">Gerätezustand</string>
+    <string name="device_health_section_uptime">Laufzeit</string>
+    <string name="device_health_offline">Offline</string>
+    <string name="device_health_last_restart_summary">%1$s · %2$s</string>
+    <string name="device_health_section_mdb_status">MDB-Status</string>
+    <string name="device_health_no_mdb_diagnostics">Noch keine MDB-Diagnosedaten.</string>
+    <string name="device_health_mdb_state">Zustand</string>
+    <string name="device_health_mdb_address">Adresse</string>
+    <string name="device_health_mdb_vmc_level">VMC-Level</string>
+    <string name="device_health_mdb_polls">Abfragen</string>
+    <string name="device_health_mdb_checksum_errors">Prüfsummenfehler</string>
+    <string name="device_health_mdb_last_command">Letzter Befehl</string>
+    <string name="device_health_section_restart_history">Neustartverlauf</string>
+    <string name="device_health_no_restarts">Keine Neustarts erfasst.</string>
+    <string name="device_health_restart_uptime">%1$s gelaufen</string>
+    <string name="device_health_section_mdb_state_changes">MDB-Zustandsänderungen</string>
+    <string name="device_health_no_state_changes">Keine Zustandsänderungen erfasst.</string>
+    <string name="device_health_state_transition">%1$s → %2$s</string>
+    <string name="device_health_state_initial">Anfangszustand: %1$s</string>
+    <string name="device_health_state_cmd">Befehl: %1$s</string>
+    <plurals name="device_health_polls_count">
+        <item quantity="one">%1$d Abfrage</item>
+        <item quantity="other">%1$d Abfragen</item>
+    </plurals>
+    <string name="device_health_section_duplicates">Automatisch entfernte Duplikate</string>
+    <string name="device_health_no_duplicates">Keine — es wurden keine Duplikate automatisch entfernt.</string>
+    <string name="device_health_duplicates_footer">Verkäufe, die als vermutete Brownout-Wiedermeldungen automatisch verworfen wurden.</string>
+    <string name="device_health_reason_mqtt_watchdog">MQTT-Watchdog</string>
+    <string name="device_health_reason_ota">OTA-Update</string>
+    <string name="device_health_reason_config">Konfigurationsänderung</string>
+    <string name="device_health_reason_provisioning">Bereitstellung</string>
+    <string name="device_health_reason_factory_reset">Werksreset</string>
+    <string name="device_health_reason_power_on">Einschalten</string>
+    <string name="device_health_reason_panic">Absturz</string>
+    <string name="device_health_reason_brownout">Spannungseinbruch</string>
+    <string name="device_health_unknown">Unbekannt</string>
+    <string name="device_health_just_now">Gerade eben</string>
+    <plurals name="device_health_minutes_ago">
+        <item quantity="one">vor %1$d Minute</item>
+        <item quantity="other">vor %1$d Minuten</item>
+    </plurals>
+    <plurals name="device_health_hours_ago">
+        <item quantity="one">vor %1$d Stunde</item>
+        <item quantity="other">vor %1$d Stunden</item>
+    </plurals>
+    <plurals name="device_health_days_ago">
+        <item quantity="one">vor %1$d Tag</item>
+        <item quantity="other">vor %1$d Tagen</item>
+    </plurals>
+
+    <!-- Maschinendetail: Maschineneinstellungen-Sheet -->
+    <string name="machine_settings_action">Maschineneinstellungen</string>
+    <string name="machine_settings_title">Maschineneinstellungen</string>
+    <string name="machine_settings_section_nayax">Nayax</string>
+    <string name="machine_settings_nayax_label">Nayax-Automaten-ID</string>
+    <string name="machine_settings_section_country">Land</string>
+    <string name="machine_settings_country_none">Keine</string>
+    <string name="machine_settings_section_location">Standort</string>
+    <string name="machine_settings_location_footer">Verwende deine aktuelle Position, um diesen Automaten zu platzieren.</string>
+    <string name="machine_settings_use_location">Meinen Standort verwenden</string>
+    <string name="machine_settings_clear_location">Standort löschen</string>
+    <string name="machine_settings_location_error">Standort konnte nicht ermittelt werden.</string>
+    <string name="machine_settings_location_permission_denied">Standortzugriff wird benötigt, um deine aktuelle Position zu verwenden.</string>
+    <string name="machine_settings_grant_location_permission">Standortzugriff erlauben</string>
+    <string name="machine_settings_section_public">Öffentliche Statusseite</string>
+    <string name="machine_settings_public_toggle">Öffentliche Statusseite</string>
+    <string name="machine_settings_public_origin_label">Öffentliche URL</string>
+    <string name="machine_settings_public_footer">Jeder mit diesem Link kann den Live-Status dieses Automaten sehen, ohne sich anzumelden.</string>
+    <string name="machine_settings_qr_content_description">QR-Code für die öffentliche Statusseite</string>
+    <string name="machine_settings_save_error">Einstellungen konnten nicht gespeichert werden.</string>
 </resources>

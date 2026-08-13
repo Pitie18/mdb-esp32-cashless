@@ -23,7 +23,13 @@ data class Embedded(
     @SerialName("status_at") val statusAt: String? = null,
     val subdomain: Int? = null,
     @SerialName("mac_address") val macAddress: String? = null,
-    @SerialName("firmware_version") val firmwareVersion: String? = null
+    @SerialName("firmware_version") val firmwareVersion: String? = null,
+    /** Live MDB status snapshot published by the firmware. Null until the device has reported at least once. */
+    @SerialName("mdb_diagnostics") val mdbDiagnostics: MdbDiagnostics? = null,
+    @SerialName("last_restart_reason") val lastRestartReason: String? = null,
+    @SerialName("last_restart_at") val lastRestartAt: String? = null,
+    /** Timestamp the device last transitioned to "online" — start of the current uptime run, distinct from [statusAt] (last status write of any kind). */
+    @SerialName("online_since") val onlineSince: String? = null
 ) {
     val isOnline: Boolean
         get() {
@@ -39,6 +45,47 @@ data class Embedded(
             }
         }
 }
+
+/**
+ * Live MDB status snapshot, published by the firmware into
+ * `embeddeds.mdb_diagnostics` (jsonb). Keys are mostly camelCase because this
+ * side is authored by the JS/TS mqtt-webhook ingest pipeline, not a Postgres
+ * column — `updated_at` is the one snake_case exception.
+ */
+@Serializable
+data class MdbDiagnostics(
+    val state: String? = null,
+    val addr: String? = null,
+    val vmcLevel: Int? = null,
+    val polls: Int? = null,
+    val chkErr: Int? = null,
+    val lastCmd: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
+)
+
+/** One ESP32 reboot event. Maps to the `device_restarts` table. */
+@Serializable
+data class DeviceRestart(
+    val id: String,
+    @SerialName("created_at") val createdAt: String,
+    val reason: String,
+    @SerialName("uptime_sec") val uptimeSec: Int? = null,
+    @SerialName("firmware_version") val firmwareVersion: String? = null,
+    @SerialName("hw_reason") val hwReason: String? = null
+)
+
+/** One MDB state transition. Maps to the `mdb_log` table. */
+@Serializable
+data class MdbLogEntry(
+    val id: String,
+    @SerialName("created_at") val createdAt: String,
+    val state: String,
+    @SerialName("prev_state") val prevState: String? = null,
+    val addr: String? = null,
+    val polls: Int? = null,
+    @SerialName("chk_err") val chkErr: Int? = null,
+    @SerialName("last_cmd") val lastCmd: String? = null
+)
 
 @Serializable
 data class VendingMachine(
@@ -57,6 +104,13 @@ data class VendingMachineWithEmbedded(
     @SerialName("location_lat") val locationLat: Double? = null,
     @SerialName("location_lon") val locationLon: Double? = null,
     @SerialName("country_code") val countryCode: String? = null,
+    @SerialName("address_street") val addressStreet: String? = null,
+    @SerialName("address_house_number") val addressHouseNumber: String? = null,
+    @SerialName("address_postal_code") val addressPostalCode: String? = null,
+    @SerialName("address_city") val addressCity: String? = null,
+    @SerialName("formatted_address") val formattedAddress: String? = null,
+    @SerialName("nayax_machine_id") val nayaxMachineId: String? = null,
+    @SerialName("public_listing") val publicListing: Boolean? = null,
     val embeddeds: Embedded? = null
 ) {
     val displayName: String get() = name ?: "Machine ${id.take(8)}"
@@ -130,6 +184,35 @@ data class Sale(
     val products: SaleProduct? = null
 )
 
+/** Matched real sale's `created_at`, joined via `matched:sales!matched_sale_id(created_at)`. */
+@Serializable
+data class MatchedSaleRef(
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+/**
+ * An auto-dropped brownout duplicate sale. Maps to the `suppressed_sales` table.
+ * Read-only: the app never inserts/updates/deletes this table directly.
+ */
+@Serializable
+data class SuppressedSale(
+    val id: String,
+    @SerialName("embedded_id") val embeddedId: String,
+    @SerialName("item_number") val itemNumber: Int? = null,
+    @SerialName("item_price") val itemPrice: Double? = null,
+    val channel: String? = null,
+    @SerialName("sale_seq") val saleSeq: Long? = null,
+    @SerialName("device_created_at") val deviceCreatedAt: String? = null,
+    @SerialName("received_at") val receivedAt: String,
+    @SerialName("matched_sale_id") val matchedSaleId: String? = null,
+    val reason: String,
+    @SerialName("product_id") val productId: String? = null,
+    /** Snapshotted product from the FK join (`products(name, image_path)`). */
+    val products: SaleProduct? = null,
+    /** Matched real sale's `created_at` — used for the gap fragment in the row's reason text. */
+    val matched: MatchedSaleRef? = null
+)
+
 @Serializable
 data class Warehouse(
     val id: String,
@@ -158,6 +241,28 @@ data class Paxcounter(
 )
 
 // UI state models (not serialized to/from Supabase)
+
+/**
+ * Severity of a single product's stock deficit. Declaration order matches
+ * `ios/VMflow/Models/VendingMachine.swift`'s `StockSeverity` so the
+ * synthesized `Comparable`/`ordinal` ordering agrees: [CRITICAL] is worst
+ * and sorts first.
+ */
+enum class StockSeverity { CRITICAL, LOW, FILL_BELOW }
+
+/** Warehouse stock availability for a deficient product. */
+enum class WarehouseAvailability { IN_STOCK, NO_STOCK, NEEDS_SWAP, UNKNOWN }
+
+/** Aggregated product deficit info for display on machine cards (machine list). */
+data class TrayDeficit(
+    val productName: String,
+    val imagePath: String?,
+    val deficit: Int,
+    val severity: StockSeverity,
+    val isDiscontinued: Boolean,
+    val warehouseAvailability: WarehouseAvailability
+)
+
 data class MachineWithStats(
     val machine: VendingMachineWithEmbedded,
     val todayRevenue: Double = 0.0,
@@ -165,7 +270,10 @@ data class MachineWithStats(
     val yesterdayRevenue: Double = 0.0,
     val lastSaleAt: String? = null,
     val paxCount: Int = 0,
-    val trays: List<Tray> = emptyList()
+    val trays: List<Tray> = emptyList(),
+    val trayDeficits: List<TrayDeficit> = emptyList(),
+    val swapNeededCount: Int = 0,
+    val noStockCount: Int = 0
 ) {
     enum class StockHealth { OK, LOW, CRITICAL }
 

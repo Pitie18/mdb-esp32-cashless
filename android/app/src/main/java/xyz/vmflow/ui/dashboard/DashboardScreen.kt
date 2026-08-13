@@ -52,16 +52,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
-import kotlinx.datetime.toLocalDateTime
 import xyz.vmflow.R
 import xyz.vmflow.data.ActivityFeedBuilder
 import xyz.vmflow.data.DashboardKpis
-import xyz.vmflow.data.FeedDayGroup
 import xyz.vmflow.models.MachineWithStats
+import xyz.vmflow.ui.common.dayLabel
 import xyz.vmflow.ui.theme.OnlineGreen
 import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
@@ -215,7 +211,7 @@ fun DashboardScreen(
                         groups.forEach { group ->
                             item(key = "day-${group.date}") {
                                 DaySectionHeader(
-                                    label = dayLabel(group),
+                                    label = dayLabel(group.date, remember { TimeZone.currentSystemDefault() }),
                                     count = group.items.size,
                                     modifier = SectionPadding,
                                 )
@@ -474,24 +470,3 @@ private fun NeedsAttentionCard(
     }
 }
 
-@Composable
-private fun dayLabel(group: FeedDayGroup): String {
-    val zone = remember { TimeZone.currentSystemDefault() }
-    val today = remember { Clock.System.now().toLocalDateTime(zone).date }
-    val yesterday = remember(today) { today.minus(1, DateTimeUnit.DAY) }
-    return when (group.date) {
-        today -> stringResource(R.string.dashboard_day_today)
-        yesterday -> stringResource(R.string.dashboard_day_yesterday)
-        else -> {
-            // java.time is available unconditionally from minSdk 26 up, no
-            // core-library desugaring needed — locale-aware weekday/month
-            // formatting without hand-rolling a formatter table.
-            val javaDate = java.time.LocalDate.of(group.date.year, group.date.monthNumber, group.date.dayOfMonth)
-            val formatter = java.time.format.DateTimeFormatter.ofPattern(
-                "EEEE, d MMMM",
-                java.util.Locale.getDefault(),
-            )
-            javaDate.format(formatter)
-        }
-    }
-}

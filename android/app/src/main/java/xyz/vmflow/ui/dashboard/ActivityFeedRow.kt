@@ -53,9 +53,19 @@ import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
 import java.text.NumberFormat
 
-/** Sticky-ish section header above each calendar day's rows, e.g. "Today · 3 entries". */
+/**
+ * Sticky-ish section header above each calendar day's rows, e.g. "Today · 3 entries".
+ * [countRes] defaults to the dashboard activity feed's "entries" wording; pass a
+ * different `<plurals>` (e.g. `dashboard_sales_count`) for other day-grouped feeds
+ * that reuse this same header, like the machine detail Sales tab.
+ */
 @Composable
-fun DaySectionHeader(label: String, count: Int, modifier: Modifier = Modifier) {
+fun DaySectionHeader(
+    label: String,
+    count: Int,
+    modifier: Modifier = Modifier,
+    countRes: Int = R.plurals.dashboard_entries_count,
+) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
@@ -66,7 +76,7 @@ fun DaySectionHeader(label: String, count: Int, modifier: Modifier = Modifier) {
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = pluralStringResource(R.plurals.dashboard_entries_count, count, count),
+            text = pluralStringResource(countRes, count, count),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

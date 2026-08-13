@@ -46,6 +46,14 @@ import java.text.NumberFormat
  * the row is identically sized regardless of content — the clipped-card bug
  * this replaces came from a `LazyRow` whose card widths didn't agree with
  * its `contentPadding`, not from intrinsic sizing itself.
+ *
+ * [width] is tuned (not the visually "nicer" round number) so the row's
+ * `KpiCardRow` `contentPadding`/`spacedBy` leaves only a sub-12dp peek of
+ * the next card at typical phone widths — every text row starts flush at
+ * the card's own internal padding with no leading icon offset, so any
+ * peek wider than that reveals a partial digit rather than a clean card
+ * edge. Verified on a 411dp-wide device (Galaxy S10); re-check this value
+ * if `KpiCardRow`'s padding/spacing changes.
  */
 @Composable
 fun RevenueKpiCard(
@@ -58,7 +66,7 @@ fun RevenueKpiCard(
     previousSales: Int,
     tint: androidx.compose.ui.graphics.Color,
     currencyFormat: NumberFormat,
-    width: androidx.compose.ui.unit.Dp = 168.dp,
+    width: androidx.compose.ui.unit.Dp = 178.dp,
 ) {
     Card(
         modifier = Modifier
@@ -122,6 +130,9 @@ fun RevenueKpiCard(
  * Stock + machines-online tile, same footprint as [RevenueKpiCard]. Mirrors
  * `StockAlertsCard` on iOS: top half is the alert summary, bottom half is
  * the online/total machine count.
+ *
+ * Shares [RevenueKpiCard]'s default [width] for the same reason — see that
+ * function's doc comment. Keep both in sync if either changes.
  */
 @Composable
 fun StockAlertsKpiCard(
@@ -129,7 +140,7 @@ fun StockAlertsKpiCard(
     low: Int,
     machinesOnline: Int,
     machinesTotal: Int,
-    width: androidx.compose.ui.unit.Dp = 168.dp,
+    width: androidx.compose.ui.unit.Dp = 178.dp,
 ) {
     val allClear = critical == 0 && low == 0
     val alertTint = when {
