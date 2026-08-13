@@ -44,6 +44,23 @@ export function isProductRefillable(
   return !hasWarehouses || warehouseStockMap.has(productId)
 }
 
+export type TrayStockState = 'critical' | 'low' | 'fill' | 'ok'
+
+/**
+ * Classify a single tray's stock state against its two independent thresholds.
+ * A threshold of 0 means "disabled" and is skipped.
+ */
+export function classifyTrayStock(tray: {
+  current_stock: number
+  min_stock: number
+  fill_when_below: number
+}): TrayStockState {
+  if (tray.current_stock === 0) return 'critical'
+  if (tray.min_stock > 0 && tray.current_stock <= tray.min_stock) return 'low'
+  if (tray.fill_when_below > 0 && tray.current_stock <= tray.fill_when_below) return 'fill'
+  return 'ok'
+}
+
 // ── Simple per-machine stock health (used by dashboard) ──────────────
 
 export interface MachineStockSummary {
