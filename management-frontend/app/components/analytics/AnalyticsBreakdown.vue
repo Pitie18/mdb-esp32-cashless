@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { IconBuildingStore, IconCategory, IconSortAscending, IconSortDescending, IconX } from '@tabler/icons-vue'
+import {
+  IconBuildingStore, IconCategory, IconPackage,
+  IconSortAscending, IconSortDescending, IconX,
+} from '@tabler/icons-vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+// getProductImageUrl is a module-level export of useProducts, not part of the
+// object useProducts() returns.
+import { getProductImageUrl } from '@/composables/useProducts'
 import { formatCurrency } from '@/lib/utils'
 import {
   avgDailyValue, deltaPct, metricShares, metricValue, prevMetricValue, type BreakdownRow,
@@ -160,6 +166,22 @@ async function onRowClick(row: BreakdownRow) {
             :style="{ width: maxValue > 0 ? `${(metricValue(row, metric) / maxValue) * 100}%` : '0%' }"
           />
           <span class="relative flex min-w-0 flex-1 items-center gap-2">
+            <!-- Products carry a thumbnail, the way the iOS breakdown does.
+                 Categories and machines have no image to show. -->
+            <template v-if="dimension === 'product'">
+              <img
+                v-if="row.image_path"
+                :src="getProductImageUrl(row.image_path)"
+                :alt="row.label"
+                class="size-8 shrink-0 rounded object-cover"
+              >
+              <span
+                v-else
+                class="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded"
+              >
+                <IconPackage class="size-4" />
+              </span>
+            </template>
             <span
               v-if="dimension === 'product'"
               class="rounded px-1 py-0.5 text-[10px] font-bold"
