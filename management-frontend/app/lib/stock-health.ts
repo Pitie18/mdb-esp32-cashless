@@ -66,11 +66,12 @@ export function classifyTrayStock(tray: {
 export interface MachineStockSummary {
   refillableEmpty: number
   refillableLow: number
+  refillableFill: number
   noStockCount: number
   noStockEmptyCount: number
   totalStock: number
   totalCapacity: number
-  health: 'ok' | 'low' | 'critical'
+  health: 'ok' | 'low' | 'fill' | 'critical'
   percent: number
 }
 
@@ -80,15 +81,16 @@ interface TrayRow {
   capacity: number
   current_stock: number
   min_stock: number
+  fill_when_below: number
 }
 
 /**
  * Compute warehouse-aware stock health per machine from raw tray rows.
  *
  * - Trays without a product (`product_id == null`) are ignored.
- * - Low/empty trays are split into "refillable" (product available in warehouse)
- *   and "no-stock" (not available).
- * - `health` is determined only by refillable trays.
+ * - Low/empty/fill-below trays are split into "refillable" (product available in
+ *   warehouse) and "no-stock" (not available).
+ * - `health` is determined only by refillable trays, priority critical > low > fill.
  */
 export function computeStockHealthPerMachine(
   trayRows: TrayRow[],
@@ -102,34 +104,39 @@ export function computeStockHealthPerMachine(
 
     let entry = map.get(tray.machine_id)
     if (!entry) {
-      entry = { refillableEmpty: 0, refillableLow: 0, noStockCount: 0, noStockEmptyCount: 0, totalStock: 0, totalCapacity: 0, health: 'ok', percent: 100 }
+      entry = { refillableEmpty: 0, refillableLow: 0, refillableFill: 0, noStockCount: 0, noStockEmptyCount: 0, totalStock: 0, totalCapacity: 0, health: 'ok', percent: 100 }
       map.set(tray.machine_id, entry)
     }
 
     entry.totalStock += tray.current_stock
     entry.totalCapacity += tray.capacity
 
-    const isEmpty = tray.current_stock === 0
-    const isLow = !isEmpty && tray.min_stock > 0 && tray.current_stock <= tray.min_stock
+    // Skip unassigned trays — nothing to refill
+    if (tray.product_id == null) continue
 
-    if (isEmpty || isLow) {
-      // Skip unassigned trays — nothing to refill
-      if (tray.product_id == null) continue
+    const state = classifyTrayStock(tray)
+    if (state === 'ok') continue
 
-      const refillable = isProductRefillable(tray.product_id, warehouseStockMap, hasWarehouses)
-      if (refillable) {
-        if (isEmpty) entry.refillableEmpty++
-        else entry.refillableLow++
-      } else {
-        entry.noStockCount++
-        if (isEmpty) entry.noStockEmptyCount++
-      }
+    const refillable = isProductRefillable(tray.product_id, warehouseStockMap, hasWarehouses)
+    if (refillable) {
+      if (state === 'critical') entry.refillableEmpty++
+      else if (state === 'low') entry.refillableLow++
+      else entry.refillableFill++
+    } else {
+      entry.noStockCount++
+      if (state === 'critical') entry.noStockEmptyCount++
     }
   }
 
   // Derive health + percent
   for (const entry of map.values()) {
-    entry.health = entry.refillableEmpty > 0 ? 'critical' : (entry.refillableLow > 0 ? 'low' : 'ok')
+    entry.health = entry.refillableEmpty > 0
+      ? 'critical'
+      : entry.refillableLow > 0
+        ? 'low'
+        : entry.refillableFill > 0
+          ? 'fill'
+          : 'ok'
     entry.percent = entry.totalCapacity > 0
       ? Math.round((entry.totalStock / entry.totalCapacity) * 100)
       : 100
