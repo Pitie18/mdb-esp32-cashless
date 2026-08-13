@@ -23,7 +23,13 @@ data class Embedded(
     @SerialName("status_at") val statusAt: String? = null,
     val subdomain: Int? = null,
     @SerialName("mac_address") val macAddress: String? = null,
-    @SerialName("firmware_version") val firmwareVersion: String? = null
+    @SerialName("firmware_version") val firmwareVersion: String? = null,
+    /** Live MDB status snapshot published by the firmware. Null until the device has reported at least once. */
+    @SerialName("mdb_diagnostics") val mdbDiagnostics: MdbDiagnostics? = null,
+    @SerialName("last_restart_reason") val lastRestartReason: String? = null,
+    @SerialName("last_restart_at") val lastRestartAt: String? = null,
+    /** Timestamp the device last transitioned to "online" — start of the current uptime run, distinct from [statusAt] (last status write of any kind). */
+    @SerialName("online_since") val onlineSince: String? = null
 ) {
     val isOnline: Boolean
         get() {
@@ -39,6 +45,47 @@ data class Embedded(
             }
         }
 }
+
+/**
+ * Live MDB status snapshot, published by the firmware into
+ * `embeddeds.mdb_diagnostics` (jsonb). Keys are mostly camelCase because this
+ * side is authored by the JS/TS mqtt-webhook ingest pipeline, not a Postgres
+ * column — `updated_at` is the one snake_case exception.
+ */
+@Serializable
+data class MdbDiagnostics(
+    val state: String? = null,
+    val addr: String? = null,
+    val vmcLevel: Int? = null,
+    val polls: Int? = null,
+    val chkErr: Int? = null,
+    val lastCmd: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
+)
+
+/** One ESP32 reboot event. Maps to the `device_restarts` table. */
+@Serializable
+data class DeviceRestart(
+    val id: String,
+    @SerialName("created_at") val createdAt: String,
+    val reason: String,
+    @SerialName("uptime_sec") val uptimeSec: Int? = null,
+    @SerialName("firmware_version") val firmwareVersion: String? = null,
+    @SerialName("hw_reason") val hwReason: String? = null
+)
+
+/** One MDB state transition. Maps to the `mdb_log` table. */
+@Serializable
+data class MdbLogEntry(
+    val id: String,
+    @SerialName("created_at") val createdAt: String,
+    val state: String,
+    @SerialName("prev_state") val prevState: String? = null,
+    val addr: String? = null,
+    val polls: Int? = null,
+    @SerialName("chk_err") val chkErr: Int? = null,
+    @SerialName("last_cmd") val lastCmd: String? = null
+)
 
 @Serializable
 data class VendingMachine(

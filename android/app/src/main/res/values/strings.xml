@@ -190,4 +190,56 @@
     <string name="send_credit_confirm_title">Send credit?</string>
     <string name="send_credit_confirm_message">Send %1$s credit to \"%2$s\"?</string>
     <string name="action_send">Send</string>
+
+    <!-- Machine detail: Device Health sheet -->
+    <string name="device_health_action">Device Health</string>
+    <string name="device_health_title">Device Health</string>
+    <string name="device_health_section_uptime">Uptime</string>
+    <string name="device_health_offline">Offline</string>
+    <string name="device_health_last_restart_summary">%1$s · %2$s</string>
+    <string name="device_health_section_mdb_status">MDB Status</string>
+    <string name="device_health_no_mdb_diagnostics">No MDB diagnostics yet.</string>
+    <string name="device_health_mdb_state">State</string>
+    <string name="device_health_mdb_address">Address</string>
+    <string name="device_health_mdb_vmc_level">VMC Level</string>
+    <string name="device_health_mdb_polls">Polls</string>
+    <string name="device_health_mdb_checksum_errors">Checksum Errors</string>
+    <string name="device_health_mdb_last_command">Last Command</string>
+    <string name="device_health_section_restart_history">Restart History</string>
+    <string name="device_health_no_restarts">No restarts recorded.</string>
+    <string name="device_health_restart_uptime">Up %1$s</string>
+    <string name="device_health_section_mdb_state_changes">MDB State Changes</string>
+    <string name="device_health_no_state_changes">No state changes recorded.</string>
+    <string name="device_health_state_transition">%1$s → %2$s</string>
+    <string name="device_health_state_initial">Initial: %1$s</string>
+    <string name="device_health_state_cmd">Cmd: %1$s</string>
+    <plurals name="device_health_polls_count">
+        <item quantity="one">%1$d poll</item>
+        <item quantity="other">%1$d polls</item>
+    </plurals>
+    <string name="device_health_section_duplicates">Auto-Removed Duplicates</string>
+    <string name="device_health_no_duplicates">None — no duplicates auto-removed.</string>
+    <string name="device_health_duplicates_footer">Sales auto-dropped as suspected brownout re-reports.</string>
+    <string name="device_health_reason_mqtt_watchdog">MQTT Watchdog</string>
+    <string name="device_health_reason_ota">OTA Update</string>
+    <string name="device_health_reason_config">Config Change</string>
+    <string name="device_health_reason_provisioning">Provisioning</string>
+    <string name="device_health_reason_factory_reset">Factory Reset</string>
+    <string name="device_health_reason_power_on">Power On</string>
+    <string name="device_health_reason_panic">Panic</string>
+    <string name="device_health_reason_brownout">Brownout</string>
+    <string name="device_health_unknown">Unknown</string>
+    <string name="device_health_just_now">Just now</string>
+    <plurals name="device_health_minutes_ago">
+        <item quantity="one">%1$d minute ago</item>
+        <item quantity="other">%1$d minutes ago</item>
+    </plurals>
+    <plurals name="device_health_hours_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <plurals name="device_health_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
 </resources>

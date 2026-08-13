@@ -186,4 +186,56 @@
     <string name="send_credit_confirm_title">Guthaben senden?</string>
     <string name="send_credit_confirm_message">%1$s Guthaben an „%2$s“ senden?</string>
     <string name="action_send">Senden</string>
+
+    <!-- Maschinendetail: Gerätezustand-Sheet -->
+    <string name="device_health_action">Gerätezustand</string>
+    <string name="device_health_title">Gerätezustand</string>
+    <string name="device_health_section_uptime">Laufzeit</string>
+    <string name="device_health_offline">Offline</string>
+    <string name="device_health_last_restart_summary">%1$s · %2$s</string>
+    <string name="device_health_section_mdb_status">MDB-Status</string>
+    <string name="device_health_no_mdb_diagnostics">Noch keine MDB-Diagnosedaten.</string>
+    <string name="device_health_mdb_state">Zustand</string>
+    <string name="device_health_mdb_address">Adresse</string>
+    <string name="device_health_mdb_vmc_level">VMC-Level</string>
+    <string name="device_health_mdb_polls">Abfragen</string>
+    <string name="device_health_mdb_checksum_errors">Prüfsummenfehler</string>
+    <string name="device_health_mdb_last_command">Letzter Befehl</string>
+    <string name="device_health_section_restart_history">Neustartverlauf</string>
+    <string name="device_health_no_restarts">Keine Neustarts erfasst.</string>
+    <string name="device_health_restart_uptime">%1$s gelaufen</string>
+    <string name="device_health_section_mdb_state_changes">MDB-Zustandsänderungen</string>
+    <string name="device_health_no_state_changes">Keine Zustandsänderungen erfasst.</string>
+    <string name="device_health_state_transition">%1$s → %2$s</string>
+    <string name="device_health_state_initial">Anfangszustand: %1$s</string>
+    <string name="device_health_state_cmd">Befehl: %1$s</string>
+    <plurals name="device_health_polls_count">
+        <item quantity="one">%1$d Abfrage</item>
+        <item quantity="other">%1$d Abfragen</item>
+    </plurals>
+    <string name="device_health_section_duplicates">Automatisch entfernte Duplikate</string>
+    <string name="device_health_no_duplicates">Keine — es wurden keine Duplikate automatisch entfernt.</string>
+    <string name="device_health_duplicates_footer">Verkäufe, die als vermutete Brownout-Wiedermeldungen automatisch verworfen wurden.</string>
+    <string name="device_health_reason_mqtt_watchdog">MQTT-Watchdog</string>
+    <string name="device_health_reason_ota">OTA-Update</string>
+    <string name="device_health_reason_config">Konfigurationsänderung</string>
+    <string name="device_health_reason_provisioning">Bereitstellung</string>
+    <string name="device_health_reason_factory_reset">Werksreset</string>
+    <string name="device_health_reason_power_on">Einschalten</string>
+    <string name="device_health_reason_panic">Absturz</string>
+    <string name="device_health_reason_brownout">Spannungseinbruch</string>
+    <string name="device_health_unknown">Unbekannt</string>
+    <string name="device_health_just_now">Gerade eben</string>
+    <plurals name="device_health_minutes_ago">
+        <item quantity="one">vor %1$d Minute</item>
+        <item quantity="other">vor %1$d Minuten</item>
+    </plurals>
+    <plurals name="device_health_hours_ago">
+        <item quantity="one">vor %1$d Stunde</item>
+        <item quantity="other">vor %1$d Stunden</item>
+    </plurals>
+    <plurals name="device_health_days_ago">
+        <item quantity="one">vor %1$d Tag</item>
+        <item quantity="other">vor %1$d Tagen</item>
+    </plurals>
 </resources>

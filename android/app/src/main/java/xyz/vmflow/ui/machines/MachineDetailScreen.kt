@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Euro
+import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -86,6 +87,7 @@ fun MachineDetailScreen(
         currency = java.util.Currency.getInstance("EUR")
     }
     var showSendCredit by remember { mutableStateOf(false) }
+    var showDeviceHealth by remember { mutableStateOf(false) }
 
     LaunchedEffect(machineId) {
         viewModel.loadMachine(machineId)
@@ -112,6 +114,12 @@ fun MachineDetailScreen(
                             Icon(
                                 Icons.Default.Euro,
                                 contentDescription = stringResource(R.string.send_credit_action)
+                            )
+                        }
+                        IconButton(onClick = { showDeviceHealth = true }) {
+                            Icon(
+                                Icons.Default.MonitorHeart,
+                                contentDescription = stringResource(R.string.device_health_action)
                             )
                         }
                         StatusChip(
@@ -203,6 +211,17 @@ fun MachineDetailScreen(
                 onSend = { amount -> viewModel.sendCredit(amount) }
             )
         }
+    }
+
+    if (showDeviceHealth) {
+        DeviceHealthSheet(
+            embedded = uiState.machineStats?.machine?.embeddeds,
+            suppressedSales = uiState.suppressedSales,
+            trays = uiState.machineStats?.trays ?: emptyList(),
+            isAdmin = uiState.isAdmin,
+            currencyFormat = currencyFormat,
+            onDismiss = { showDeviceHealth = false }
+        )
     }
 }
 
@@ -508,8 +527,9 @@ private fun OverviewTab(
     }
 }
 
+/** Shared by the Overview tab's info cards and [DeviceHealthSheet]'s MDB Status section. */
 @Composable
-private fun DeviceInfoRow(label: String, value: String) {
+internal fun DeviceInfoRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -700,10 +720,12 @@ private fun SaleFeedCard(
  * A suppressed (auto-removed brownout duplicate) sale: muted, struck-through
  * price, "Auto-removed" badge, reason text — never counted in the day header
  * and, unlike a real sale row, offers a restore affordance (admin-only).
- * Mirrors iOS `SuppressedSaleListRow`.
+ * Mirrors iOS `SuppressedSaleListRow`. Shared by the Sales tab
+ * (restore-capable) and [DeviceHealthSheet]'s read-only "Auto-Removed
+ * Duplicates" section (`isAdmin = false` hides the restore button there).
  */
 @Composable
-private fun SuppressedSaleCard(
+internal fun SuppressedSaleCard(
     sale: SuppressedSale,
     instant: Instant,
     trays: List<Tray>,

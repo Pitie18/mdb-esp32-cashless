@@ -13,7 +13,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import xyz.vmflow.models.DeviceRestart
 import xyz.vmflow.models.MachineWithStats
+import xyz.vmflow.models.MdbLogEntry
 import xyz.vmflow.models.Paxcounter
 import xyz.vmflow.models.Sale
 import xyz.vmflow.models.SuppressedSale
@@ -145,7 +147,13 @@ object MachineRepository {
     suspend fun fetchMachineDetail(machineId: String): Result<MachineWithStats> {
         return try {
             val machine = postgrest.from("vendingMachine")
-                .select(Columns.raw("id, name, location_lat, location_lon, country_code, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version)")) {
+                .select(
+                    Columns.raw(
+                        "id, name, location_lat, location_lon, country_code, " +
+                            "embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, " +
+                            "mdb_diagnostics, last_restart_reason, last_restart_at, online_since)"
+                    )
+                ) {
                     filter { eq("id", machineId) }
                     limit(1)
                 }
@@ -274,6 +282,45 @@ object MachineRepository {
                 }
                 .decodeList<SuppressedSale>()
             Result.success(sales)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Past reboots of a machine's embedded device, newest first. Feeds the
+     * Device Health sheet's "Restart History" section (all members).
+     */
+    suspend fun fetchDeviceRestarts(embeddedId: String, limit: Int = 50): Result<List<DeviceRestart>> {
+        return try {
+            val restarts = postgrest.from("device_restarts")
+                .select(Columns.raw("id, created_at, reason, uptime_sec, firmware_version, hw_reason")) {
+                    filter { eq("embedded_id", embeddedId) }
+                    order("created_at", Order.DESCENDING)
+                    limit(limit.toLong())
+                }
+                .decodeList<DeviceRestart>()
+            Result.success(restarts)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Past MDB state transitions of a machine's embedded device, newest
+     * first. Feeds the Device Health sheet's admin-only "MDB State Changes"
+     * section.
+     */
+    suspend fun fetchMdbLog(embeddedId: String, limit: Int = 50): Result<List<MdbLogEntry>> {
+        return try {
+            val logs = postgrest.from("mdb_log")
+                .select(Columns.raw("id, created_at, state, prev_state, addr, polls, chk_err, last_cmd")) {
+                    filter { eq("embedded_id", embeddedId) }
+                    order("created_at", Order.DESCENDING)
+                    limit(limit.toLong())
+                }
+                .decodeList<MdbLogEntry>()
+            Result.success(logs)
         } catch (e: Exception) {
             Result.failure(e)
         }
