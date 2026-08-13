@@ -355,8 +355,12 @@ private fun LazyListScope.duplicatesSection(
 
 // ─── Shared row/section building blocks ─────────────────────────────────
 
+/**
+ * Shared by every sheet in this package (also used by `MachineSettingsSheet`)
+ * — kept here since `DeviceHealthSheet` (Task 27b) defined it first.
+ */
 @Composable
-private fun SectionCard(title: String, content: @Composable () -> Unit) {
+internal fun SectionCard(title: String, content: @Composable () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)

@@ -14,9 +14,18 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 import java.util.Locale
 import kotlin.coroutines.resume
+
+/**
+ * Bound on the pre-API-30 `requestLocationUpdates` fallback below — the API
+ * 30+ `getCurrentLocation` path is already bounded by the OS's own internal
+ * default (~30s) via its `CancellationSignal`; this mirrors that so a weak
+ * signal on an older device can't hang the "locating" spinner forever.
+ */
+private const val LEGACY_LOCATION_TIMEOUT_MS = 30_000L
 
 /**
  * One-shot current-location fetch, wrapped as a suspend function. Android
@@ -40,8 +49,8 @@ suspend fun fetchOneShotLocation(context: Context): Location? {
         else -> null
     } ?: return null
 
-    return suspendCancellableCoroutine { continuation ->
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        return suspendCancellableCoroutine { continuation ->
             val cancellationSignal = CancellationSignal()
             continuation.invokeOnCancellation { cancellationSignal.cancel() }
             locationManager.getCurrentLocation(
@@ -51,7 +60,18 @@ suspend fun fetchOneShotLocation(context: Context): Location? {
             ) { location ->
                 if (continuation.isActive) continuation.resume(location)
             }
-        } else {
+        }
+    }
+
+    // Pre-API-30 fallback: `requestLocationUpdates` has no built-in timeout,
+    // so a provider that never produces a fix (weak signal, etc.) would
+    // otherwise hang this coroutine forever. `withTimeoutOrNull` cancels the
+    // inner `suspendCancellableCoroutine` on timeout, which runs the same
+    // `invokeOnCancellation` cleanup (`removeUpdates`) as any other
+    // cancellation path, then resolves to `null` here — same "no fix
+    // obtained" contract as the API 30+ path already has.
+    return withTimeoutOrNull(LEGACY_LOCATION_TIMEOUT_MS) {
+        suspendCancellableCoroutine { continuation ->
             val listener = object : LocationListener {
                 override fun onLocationChanged(location: Location) {
                     locationManager.removeUpdates(this)
