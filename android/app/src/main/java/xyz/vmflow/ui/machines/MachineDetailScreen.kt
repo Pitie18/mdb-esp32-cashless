@@ -266,8 +266,8 @@ private fun SendCreditSheet(
                     onValueChange = { amountText = it; sendFailed = false },
                     enabled = !isSending && hasLinkedDevice,
                     singleLine = true,
-                    placeholder = { Text("0,00") },
-                    trailingIcon = { Text("€") },
+                    placeholder = { Text(stringResource(R.string.send_credit_amount_placeholder)) },
+                    trailingIcon = { Text(stringResource(R.string.send_credit_currency_suffix)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.width(140.dp)
                 )

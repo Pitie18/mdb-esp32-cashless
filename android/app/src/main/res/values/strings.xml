@@ -182,6 +182,8 @@
     <string name="send_credit_action">Send Credit</string>
     <string name="send_credit_title">Send Credit</string>
     <string name="send_credit_amount_label">Amount</string>
+    <string name="send_credit_amount_placeholder">0,00</string>
+    <string name="send_credit_currency_suffix">€</string>
     <string name="send_credit_footer">Credits the machine as if a coin or card payment had been made. No sale is recorded until the machine reports a vend.</string>
     <string name="send_credit_no_device_error">This machine has no linked device.</string>
     <string name="send_credit_generic_error">Failed to send credit.</string>
