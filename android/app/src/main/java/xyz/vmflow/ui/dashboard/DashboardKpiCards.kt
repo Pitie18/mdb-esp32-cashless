@@ -130,6 +130,9 @@ fun RevenueKpiCard(
  * Stock + machines-online tile, same footprint as [RevenueKpiCard]. Mirrors
  * `StockAlertsCard` on iOS: top half is the alert summary, bottom half is
  * the online/total machine count.
+ *
+ * Shares [RevenueKpiCard]'s default [width] for the same reason — see that
+ * function's doc comment. Keep both in sync if either changes.
  */
 @Composable
 fun StockAlertsKpiCard(
