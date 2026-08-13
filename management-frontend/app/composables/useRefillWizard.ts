@@ -482,7 +482,6 @@ export function useRefillWizard() {
 
         if (isEmpty) entry.empty++
         else if (isLow) entry.low++
-        else if (isFillBelow) entry.fill++
 
         if (isLow || isEmpty) {
           const deficit = tray.capacity - tray.current_stock
@@ -509,6 +508,7 @@ export function useRefillWizard() {
         for (const tray of entry.fillBelowPending) {
           const deficit = tray.capacity - tray.current_stock
           if (deficit <= 0) continue
+          entry.fill++
           const productName = tray.products?.name ?? `Slot ${tray.item_number}`
           const imagePath = tray.products?.image_path ?? null
           const sellprice = tray.products?.sellprice ?? null

@@ -116,6 +116,7 @@ export function computeStockHealthPerMachine(
 
     const state = classifyTrayStock(tray)
     if (state === 'ok') continue
+    if (state === 'fill' && tray.capacity - tray.current_stock <= 0) continue
 
     const refillable = isProductRefillable(tray.product_id, warehouseStockMap, hasWarehouses)
     if (refillable) {

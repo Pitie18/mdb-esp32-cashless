@@ -67,4 +67,23 @@ describe('computeStockHealthPerMachine', () => {
     expect(result.has('m1')).toBe(true)
     expect(result.get('m1')?.health).toBe('fill')
   })
+
+  it('does not count a fill-tier tray whose fill_when_below is misconfigured >= capacity (zero deficit)', () => {
+    const rows = [
+      { machine_id: 'm1', product_id: 'p1', capacity: 20, current_stock: 20, min_stock: 5, fill_when_below: 20 },
+    ]
+    const result = computeStockHealthPerMachine(rows, warehouseMap, true)
+    expect(result.get('m1')?.health).toBe('ok')
+    expect(result.get('m1')?.refillableFill).toBe(0)
+  })
+
+  it('is ok when a non-refillable product only breaches fill_when_below (fill health only applies to refillable trays)', () => {
+    const emptyWarehouse = new Map<string, number>()
+    const rows = [
+      { machine_id: 'm1', product_id: 'p1', capacity: 20, current_stock: 8, min_stock: 5, fill_when_below: 10 },
+    ]
+    const result = computeStockHealthPerMachine(rows, emptyWarehouse, true)
+    expect(result.get('m1')?.health).toBe('ok')
+    expect(result.get('m1')?.noStockCount).toBe(1)
+  })
 })
