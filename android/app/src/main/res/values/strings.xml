@@ -161,4 +161,20 @@
     <string name="analysis_error_title">Error</string>
     <string name="action_replace">Replace</string>
     <string name="product_unnamed">Unnamed</string>
+
+    <!-- Machine detail: Sales tab (day-grouped feed with suppressed rows) -->
+    <string name="sales_tab_empty">No sales recorded yet</string>
+    <string name="sales_item_slot">Slot %1$d</string>
+    <string name="sales_item_generic">Sale</string>
+    <string name="suppressed_badge_auto_removed">Auto-removed</string>
+    <string name="suppressed_reason_clock_unsynced">Clock not synced</string>
+    <string name="suppressed_reason_no_clock">Device had no clock</string>
+    <string name="suppressed_reason_gap">identical sale %1$ds earlier</string>
+    <string name="suppressed_reason_near_duplicate">near-duplicate of a recent sale</string>
+    <string name="restore_sale_action">Take up as sale</string>
+    <string name="restore_sale_dialog_title">Take up as real sale?</string>
+    <string name="restore_sale_dialog_message">Adds a real sale and reduces stock by 1.</string>
+
+    <!-- Machine detail: Trays tab -->
+    <string name="tray_fill_action">Fill to capacity</string>
 </resources>

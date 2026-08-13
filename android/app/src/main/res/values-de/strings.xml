@@ -157,4 +157,20 @@
     <string name="analysis_error_title">Fehler</string>
     <string name="action_replace">Ersetzen</string>
     <string name="product_unnamed">Unbenannt</string>
+
+    <!-- Maschinendetail: Verkäufe-Tab (Tagesgruppen mit unterdrückten Zeilen) -->
+    <string name="sales_tab_empty">Noch keine Verkäufe erfasst</string>
+    <string name="sales_item_slot">Fach %1$d</string>
+    <string name="sales_item_generic">Verkauf</string>
+    <string name="suppressed_badge_auto_removed">Automatisch entfernt</string>
+    <string name="suppressed_reason_clock_unsynced">Uhr nicht synchron</string>
+    <string name="suppressed_reason_no_clock">Gerät hatte keine Uhr</string>
+    <string name="suppressed_reason_gap">identischer Verkauf %1$d s zuvor</string>
+    <string name="suppressed_reason_near_duplicate">Beinah-Duplikat eines kürzlichen Verkaufs</string>
+    <string name="restore_sale_action">Als Verkauf übernehmen</string>
+    <string name="restore_sale_dialog_title">Als echten Verkauf übernehmen?</string>
+    <string name="restore_sale_dialog_message">Fügt einen echten Verkauf hinzu und reduziert den Bestand um 1.</string>
+
+    <!-- Maschinendetail: Fächer-Tab -->
+    <string name="tray_fill_action">Bis zur Kapazität auffüllen</string>
 </resources>

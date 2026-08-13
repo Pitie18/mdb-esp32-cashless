@@ -130,6 +130,35 @@ data class Sale(
     val products: SaleProduct? = null
 )
 
+/** Matched real sale's `created_at`, joined via `matched:sales!matched_sale_id(created_at)`. */
+@Serializable
+data class MatchedSaleRef(
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+/**
+ * An auto-dropped brownout duplicate sale. Maps to the `suppressed_sales` table.
+ * Read-only: the app never inserts/updates/deletes this table directly.
+ */
+@Serializable
+data class SuppressedSale(
+    val id: String,
+    @SerialName("embedded_id") val embeddedId: String,
+    @SerialName("item_number") val itemNumber: Int? = null,
+    @SerialName("item_price") val itemPrice: Double? = null,
+    val channel: String? = null,
+    @SerialName("sale_seq") val saleSeq: Long? = null,
+    @SerialName("device_created_at") val deviceCreatedAt: String? = null,
+    @SerialName("received_at") val receivedAt: String,
+    @SerialName("matched_sale_id") val matchedSaleId: String? = null,
+    val reason: String,
+    @SerialName("product_id") val productId: String? = null,
+    /** Snapshotted product from the FK join (`products(name, image_path)`). */
+    val products: SaleProduct? = null,
+    /** Matched real sale's `created_at` — used for the gap fragment in the row's reason text. */
+    val matched: MatchedSaleRef? = null
+)
+
 @Serializable
 data class Warehouse(
     val id: String,

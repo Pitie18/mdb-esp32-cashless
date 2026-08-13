@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardDoubleArrowUp
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,9 +27,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import xyz.vmflow.R
 import xyz.vmflow.models.Tray
 import xyz.vmflow.ui.components.ProductImage
 import xyz.vmflow.ui.components.StockBar
@@ -38,6 +41,7 @@ import xyz.vmflow.ui.theme.StockRed
 fun TrayRow(
     tray: Tray,
     onStockChange: (delta: Int) -> Unit,
+    onFill: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -144,16 +148,34 @@ fun TrayRow(
                     }
                 }
 
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(28.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete tray",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
-                    )
+                    IconButton(
+                        onClick = onFill,
+                        modifier = Modifier.size(28.dp),
+                        enabled = tray.currentStock < tray.capacity
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardDoubleArrowUp,
+                            contentDescription = stringResource(R.string.tray_fill_action),
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete tray",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
         }

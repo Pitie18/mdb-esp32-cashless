@@ -6,11 +6,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import xyz.vmflow.data.AuthRepository
 import xyz.vmflow.data.MachineRepository
 import xyz.vmflow.data.TrayRepository
 import xyz.vmflow.models.MachineWithStats
 import xyz.vmflow.models.Product
 import xyz.vmflow.models.Sale
+import xyz.vmflow.models.SuppressedSale
 import xyz.vmflow.models.Tray
 
 data class MachineDetailUiState(
@@ -18,7 +20,10 @@ data class MachineDetailUiState(
     val isRefreshing: Boolean = false,
     val machineStats: MachineWithStats? = null,
     val sales: List<Sale> = emptyList(),
+    val suppressedSales: List<SuppressedSale> = emptyList(),
     val products: List<Product> = emptyList(),
+    /** Whether the caller is an org admin — gates the "restore suppressed sale" affordance. */
+    val isAdmin: Boolean = false,
     val error: String? = null,
     val selectedTab: Int = 0
 )
@@ -35,8 +40,10 @@ class MachineDetailViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             val detailResult = MachineRepository.fetchMachineDetail(id)
+            var embeddedId: String? = null
             detailResult.fold(
                 onSuccess = { stats ->
+                    embeddedId = stats.machine.embeddeds?.id
                     _uiState.value = _uiState.value.copy(machineStats = stats)
                 },
                 onFailure = { e ->
@@ -49,12 +56,40 @@ class MachineDetailViewModel : ViewModel() {
                 _uiState.value = _uiState.value.copy(sales = sales)
             }
 
+            // Best-effort, same as iOS: no linked device means no suppressed
+            // sales are possible, and a failed fetch must not block the tab.
+            val suppressedResult = embeddedId?.let { MachineRepository.fetchSuppressedSales(it) }
+                ?: Result.success(emptyList())
+            suppressedResult.onSuccess { suppressed ->
+                _uiState.value = _uiState.value.copy(suppressedSales = suppressed)
+            }
+
             val productsResult = TrayRepository.fetchProducts()
             productsResult.onSuccess { products ->
                 _uiState.value = _uiState.value.copy(products = products)
             }
 
+            // Best-effort: a failed role fetch just leaves isAdmin false, which
+            // safely keeps the restore-suppressed-sale action hidden.
+            AuthRepository.fetchOrganization().onSuccess { response ->
+                _uiState.value = _uiState.value.copy(isAdmin = response.role == "admin")
+            }
+
             _uiState.value = _uiState.value.copy(isLoading = false)
+        }
+    }
+
+    /**
+     * Promotes an auto-removed sale back into a real sale, then reloads the
+     * whole detail so trays (stock -1), sales, and suppressedSales all
+     * reflect the change. Mirrors iOS `restoreSuppressed(_:)`.
+     */
+    fun restoreSuppressedSale(suppressedId: String) {
+        viewModelScope.launch {
+            MachineRepository.restoreSuppressedSale(suppressedId).fold(
+                onSuccess = { loadMachine(machineId) },
+                onFailure = { e -> _uiState.value = _uiState.value.copy(error = e.message) }
+            )
         }
     }
 
@@ -91,6 +126,23 @@ class MachineDetailViewModel : ViewModel() {
                             products = it.products
                         )
                     } else it
+                }
+                _uiState.value = _uiState.value.copy(
+                    machineStats = _uiState.value.machineStats?.copy(trays = updatedTrays)
+                )
+            }
+        }
+    }
+
+    /** Sets a tray's stock straight to its capacity in one write. Mirrors iOS `fillTray(_:)`. */
+    fun fillTray(trayId: String) {
+        viewModelScope.launch {
+            val trays = _uiState.value.machineStats?.trays ?: return@launch
+            val tray = trays.find { it.id == trayId } ?: return@launch
+            if (tray.currentStock == tray.capacity) return@launch
+            TrayRepository.updateStock(trayId, tray.capacity).onSuccess {
+                val updatedTrays = trays.map {
+                    if (it.id == trayId) it.copy(currentStock = tray.capacity) else it
                 }
                 _uiState.value = _uiState.value.copy(
                     machineStats = _uiState.value.machineStats?.copy(trays = updatedTrays)

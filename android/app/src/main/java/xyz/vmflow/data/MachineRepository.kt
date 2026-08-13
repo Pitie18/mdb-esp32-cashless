@@ -7,11 +7,22 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import xyz.vmflow.models.MachineWithStats
 import xyz.vmflow.models.Paxcounter
 import xyz.vmflow.models.Sale
+import xyz.vmflow.models.SuppressedSale
 import xyz.vmflow.models.Tray
 import xyz.vmflow.models.VendingMachineWithEmbedded
+
+@Serializable
+private data class RestoreSuppressedSaleParams(
+    @SerialName("p_suppressed_id") val suppressedId: String
+)
 
 object MachineRepository {
     private val postgrest get() = SupabaseService.client.postgrest
@@ -229,6 +240,48 @@ object MachineRepository {
                 }
                 .decodeList<Sale>()
             Result.success(sales)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Auto-dropped brownout duplicates for a machine's embedded device, newest
+     * first. Mirrors iOS `loadSuppressedSales()` — empty list when the machine
+     * has no linked device (caller passes the `embedded_id`, not the machine).
+     */
+    suspend fun fetchSuppressedSales(embeddedId: String, limit: Int = 100): Result<List<SuppressedSale>> {
+        return try {
+            val sales = postgrest.from("suppressed_sales")
+                .select(
+                    Columns.raw(
+                        "id, embedded_id, item_number, item_price, channel, sale_seq, device_created_at, " +
+                            "received_at, matched_sale_id, reason, product_id, products(name, image_path), " +
+                            "matched:sales!matched_sale_id(created_at)"
+                    )
+                ) {
+                    filter { eq("embedded_id", embeddedId) }
+                    order("received_at", Order.DESCENDING)
+                    limit(limit.toLong())
+                }
+                .decodeList<SuppressedSale>()
+            Result.success(sales)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Promotes an auto-removed sale back into a real sale via the
+     * `restore_suppressed_sale` RPC (admin-only — the RPC itself enforces it).
+     * Caller reloads machine detail on success so trays/sales/suppressedSales
+     * all reflect the change.
+     */
+    suspend fun restoreSuppressedSale(suppressedId: String): Result<Unit> {
+        return try {
+            val params = Json.encodeToJsonElement(RestoreSuppressedSaleParams(suppressedId)).jsonObject
+            postgrest.rpc("restore_suppressed_sale", params)
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
