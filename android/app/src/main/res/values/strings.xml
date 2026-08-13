@@ -128,6 +128,19 @@
     <string name="cash_book_category_fees">Fees</string>
     <string name="cash_book_category_other">Other</string>
 
+    <!-- Machine list: per-product warehouse-availability deficit list (MachineCard) -->
+    <string name="machine_card_badge_empty">%1$d Empty</string>
+    <string name="machine_card_badge_low">%1$d Low</string>
+    <string name="machine_card_badge_swap">%1$d Swap</string>
+    <string name="machine_card_badge_no_stock">%1$d No Stock</string>
+    <string name="machine_card_deficit_amount">(-%1$d)</string>
+    <string name="machine_card_deficit_discontinued">DC</string>
+    <string name="machine_card_deficit_in_stock">In Stock</string>
+    <string name="machine_card_deficit_needs_swap">Swap</string>
+    <string name="machine_card_deficit_no_stock">No Stock</string>
+    <string name="machine_card_deficit_show_more">+%1$d more</string>
+    <string name="machine_card_deficit_show_less">Show less</string>
+
     <!-- Machine Analysis tab -->
     <string name="analysis_tab_title">Analysis</string>
     <string name="analysis_loading">Analyzing…</string>

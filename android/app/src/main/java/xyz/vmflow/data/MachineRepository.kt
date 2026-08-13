@@ -22,6 +22,18 @@ import xyz.vmflow.models.SuppressedSale
 import xyz.vmflow.models.Tray
 import xyz.vmflow.models.VendingMachineWithEmbedded
 
+/**
+ * Lightweight decode target for the warehouse-availability presence check —
+ * mirrors iOS's private `WarehouseStockBatchLite`. Selecting only these two
+ * columns keeps the query cheap; the full `WarehouseStockBatch` model
+ * requires columns (`id`, `warehouse_id`) this query doesn't fetch.
+ */
+@Serializable
+private data class WarehouseStockBatchLite(
+    @SerialName("product_id") val productId: String,
+    val quantity: Int = 0
+)
+
 @Serializable
 private data class RestoreSuppressedSaleParams(
     @SerialName("p_suppressed_id") val suppressedId: String
@@ -63,9 +75,36 @@ object MachineRepository {
         }
     }
 
+    /**
+     * Product ids with any positive-quantity warehouse stock, for the
+     * machine list's per-product warehouse-availability check. Presence
+     * only (yes/no), not quantity — mirrors iOS's actual behaviour, not a
+     * coverage percentage. Fetched once for all machines by
+     * [fetchMachinesWithStats], not per-machine.
+     */
+    suspend fun fetchWarehouseStockProductIds(): Result<Set<String>> {
+        return try {
+            val batches = postgrest.from("warehouse_stock_batches")
+                .select(Columns.raw("product_id, quantity")) {
+                    filter {
+                        gt("quantity", 0)
+                    }
+                }
+                .decodeList<WarehouseStockBatchLite>()
+            Result.success(batches.map { it.productId }.toSet())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun fetchMachinesWithStats(): Result<List<MachineWithStats>> {
         return try {
             val machines = fetchMachines().getOrThrow()
+            // A warehouse-fetch failure degrades gracefully to "no warehouse
+            // data" (every deficit row becomes UNKNOWN) rather than failing
+            // the whole machine list — this is enrichment, not core data.
+            val warehouseProductIds = fetchWarehouseStockProductIds().getOrDefault(emptySet())
+            val hasWarehouses = warehouseProductIds.isNotEmpty()
             val now = Clock.System.now()
             val tz = TimeZone.currentSystemDefault()
             val todayDate = now.toLocalDateTime(tz).date
@@ -133,6 +172,8 @@ object MachineRepository {
                         } catch (_: Exception) { 0 }
                     } ?: 0
 
+                    val deficitSummary = MachineDeficits.computeDeficits(trays, warehouseProductIds, hasWarehouses)
+
                     MachineWithStats(
                         machine = machine,
                         todayRevenue = todaySales.sumOf { it.itemPrice },
@@ -140,7 +181,10 @@ object MachineRepository {
                         yesterdayRevenue = yesterdaySales.sumOf { it.itemPrice },
                         lastSaleAt = lastSale?.createdAt,
                         paxCount = paxCount,
-                        trays = trays
+                        trays = trays,
+                        trayDeficits = deficitSummary.trayDeficits,
+                        swapNeededCount = deficitSummary.swapNeededCount,
+                        noStockCount = deficitSummary.noStockCount
                     )
                 } catch (_: Exception) {
                     MachineWithStats(machine = machine)

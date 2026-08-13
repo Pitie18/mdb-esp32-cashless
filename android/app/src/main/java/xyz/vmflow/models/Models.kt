@@ -241,6 +241,28 @@ data class Paxcounter(
 )
 
 // UI state models (not serialized to/from Supabase)
+
+/**
+ * Severity of a single product's stock deficit. Declaration order matches
+ * `ios/VMflow/Models/VendingMachine.swift`'s `StockSeverity` so the
+ * synthesized `Comparable`/`ordinal` ordering agrees: [CRITICAL] is worst
+ * and sorts first.
+ */
+enum class StockSeverity { CRITICAL, LOW, FILL_BELOW }
+
+/** Warehouse stock availability for a deficient product. */
+enum class WarehouseAvailability { IN_STOCK, NO_STOCK, NEEDS_SWAP, UNKNOWN }
+
+/** Aggregated product deficit info for display on machine cards (machine list). */
+data class TrayDeficit(
+    val productName: String,
+    val imagePath: String?,
+    val deficit: Int,
+    val severity: StockSeverity,
+    val isDiscontinued: Boolean,
+    val warehouseAvailability: WarehouseAvailability
+)
+
 data class MachineWithStats(
     val machine: VendingMachineWithEmbedded,
     val todayRevenue: Double = 0.0,
@@ -248,7 +270,10 @@ data class MachineWithStats(
     val yesterdayRevenue: Double = 0.0,
     val lastSaleAt: String? = null,
     val paxCount: Int = 0,
-    val trays: List<Tray> = emptyList()
+    val trays: List<Tray> = emptyList(),
+    val trayDeficits: List<TrayDeficit> = emptyList(),
+    val swapNeededCount: Int = 0,
+    val noStockCount: Int = 0
 ) {
     enum class StockHealth { OK, LOW, CRITICAL }
 

@@ -124,6 +124,19 @@
     <string name="cash_book_category_fees">Gebühren</string>
     <string name="cash_book_category_other">Sonstiges</string>
 
+    <!-- Maschinenliste: Lagerverfügbarkeit pro Produkt (MachineCard) — Wortwahl an ios/VMflow/Resources/Localizable.xcstrings angeglichen -->
+    <string name="machine_card_badge_empty">%1$d Leer</string>
+    <string name="machine_card_badge_low">%1$d Niedrig</string>
+    <string name="machine_card_badge_swap">%1$d Tausch</string>
+    <string name="machine_card_badge_no_stock">%1$d Kein Lager</string>
+    <string name="machine_card_deficit_amount">(-%1$d)</string>
+    <string name="machine_card_deficit_discontinued">DC</string>
+    <string name="machine_card_deficit_in_stock">Auf Lager</string>
+    <string name="machine_card_deficit_needs_swap">Tausch</string>
+    <string name="machine_card_deficit_no_stock">Kein Lager</string>
+    <string name="machine_card_deficit_show_more">+%1$d weitere</string>
+    <string name="machine_card_deficit_show_less">Weniger anzeigen</string>
+
     <!-- Analyse-Tab -->
     <string name="analysis_tab_title">Analyse</string>
     <string name="analysis_loading">Analysiere…</string>
