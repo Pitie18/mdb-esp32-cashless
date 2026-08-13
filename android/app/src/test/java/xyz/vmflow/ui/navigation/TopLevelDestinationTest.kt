@@ -31,6 +31,31 @@ class TopLevelDestinationTest {
         assertNull(TopLevelDestination.fromRoute(null))
     }
 
+    // MARK: - fromRouteRoot (task 22: nav-bar selection follows the route root)
+
+    @Test
+    fun `a detail route resolves to its parent tab by root`() {
+        assertEquals(TopLevelDestination.MACHINES, TopLevelDestination.fromRouteRoot(Routes.machineDetail("abc")))
+        assertEquals(TopLevelDestination.MACHINES, TopLevelDestination.fromRouteRoot("machines/{machineId}"))
+    }
+
+    @Test
+    fun `a bare top level route still resolves by root`() {
+        assertEquals(TopLevelDestination.MACHINES, TopLevelDestination.fromRouteRoot(Routes.MACHINES))
+        assertEquals(TopLevelDestination.DASHBOARD, TopLevelDestination.fromRouteRoot(Routes.DASHBOARD))
+    }
+
+    @Test
+    fun `auth routes have no root match`() {
+        assertNull(TopLevelDestination.fromRouteRoot(Routes.LOGIN))
+        assertNull(TopLevelDestination.fromRouteRoot(Routes.REGISTER))
+    }
+
+    @Test
+    fun `a null route has no root match`() {
+        assertNull(TopLevelDestination.fromRouteRoot(null))
+    }
+
     @Test
     fun `destinations are declared in navigation bar order`() {
         assertEquals(

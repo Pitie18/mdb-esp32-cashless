@@ -109,14 +109,25 @@ data class TrayUpsert(
     @SerialName("fill_when_below") val fillWhenBelow: Int? = null
 )
 
+/** Snapshotted product from a sale's FK join (select `products(name, image_path)`). */
+@Serializable
+data class SaleProduct(
+    val name: String? = null,
+    @SerialName("image_path") val imagePath: String? = null
+)
+
 @Serializable
 data class Sale(
     val id: String,
     @SerialName("machine_id") val machineId: String? = null,
+    @SerialName("embedded_id") val embeddedId: String? = null,
     @SerialName("item_price") val itemPrice: Double = 0.0,
     @SerialName("item_number") val itemNumber: Int? = null,
     val channel: String? = null,
-    @SerialName("created_at") val createdAt: String? = null
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("product_id") val productId: String? = null,
+    /** Present only when the select includes the `products(...)` FK join (dashboard recent-activity fetch). */
+    val products: SaleProduct? = null
 )
 
 @Serializable

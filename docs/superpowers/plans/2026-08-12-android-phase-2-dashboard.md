@@ -293,9 +293,10 @@ Erwartet: `BUILD FAILED` mit `Unresolved reference` auf die Modelle.
 Neue Datei `android/app/src/main/java/xyz/vmflow/models/ActivityFeed.kt`. Übersetze die Swift-Modelle aus `ios/VMflow/Models/ActivityFeed.swift` Zeile 1–172 nach Kotlin, mit diesen Vorgaben:
 
 - Alle Serialisierungs-Datenklassen `@Serializable`, IDs als `String` (nicht `UUID` — die bestehenden Android-Modelle nutzen durchgehend `String`).
-- `ActivityLogMetadata`: **jedes** Feld nullable mit Default `null`. `@SerialName` für die Snake-Case-Namen (`tour_id`, `machine_name`, `trays_refilled`, `total_added`, `machine_count`, `machine_names`, `warehouse_name`, `user_display`, `cash_type`).
+- `ActivityLogMetadata`: **jedes** Feld nullable mit Default `null`. Die Wire-Keys stehen in den `CodingKeys` von `ActivityFeed.swift` und sind teilweise **nicht** die naheliegenden — verifiziert am Original:
+  `tour_id`, `machine_name`, `trays_refilled`, `total_added`, `machine_count`, `machine_names`, `warehouse_name`, sowie `products`, `amount`, `category` unverändert — **aber** `userDisplay` heißt auf der Leitung `_user_display` (mit führendem Unterstrich), `cashType` heißt `type`, und `note` heißt `description`.
 - `ActivityFeedItem` wird eine `sealed interface` mit den Varianten `Sale`, `MachineRefilled`, `TourStarted`, `StockIntake`, `CashBookEntry`, jeweils mit `val id: String` und `val date: Instant`. Die ID-Präfixe (`sale-`, `refill-`, `tour-`, `intake-`, `cashentry-`) sind Pflicht — zwei Quellen können dieselbe Roh-ID tragen.
-- `CashBookEntryType` als Enum mit `deposit`, `withdrawal`, `expense`, `unknown`; unbekannte Strings werden zu `unknown`, niemals zu einer Ausnahme.
+- `CashBookEntryType` als Enum mit exakt den Fällen aus `ios/VMflow/Models/CashBook.swift`: `initial`, `withdrawal`, `correction`, `payout`, `expense`, `reversal`, `unknown`. Ein `deposit` gibt es **nicht**. Unbekannte Strings werden zu `unknown`, niemals zu einer Ausnahme.
 - Zeitstempel als `kotlinx.datetime.Instant`.
 
 - [ ] **Step 4: Builder implementieren**

@@ -47,5 +47,19 @@ enum class TopLevelDestination(
         /** Exact match only — `machines/{id}` is a detail screen, not a tab. */
         fun fromRoute(route: String?): TopLevelDestination? =
             entries.firstOrNull { it.route == route }
+
+        /**
+         * Root-of-route match: `machines/{id}` and `machines/abc` both
+         * resolve to MACHINES via their first path segment, same as the
+         * bare `machines` list route. Drives which entry the nav bar
+         * highlights (task 22) — the bar itself now stays visible on every
+         * destination except login/register (see `MainActivity`), so a
+         * machine detail screen needs its parent tab to stay marked rather
+         * than resolving to nothing the way [fromRoute] would.
+         */
+        fun fromRouteRoot(route: String?): TopLevelDestination? {
+            val root = route?.substringBefore('/') ?: return null
+            return entries.firstOrNull { it.route == root }
+        }
     }
 }
