@@ -389,11 +389,6 @@ data class IntakeEntry(
  * batch count across all of a product's batches, plus its earliest-expiring
  * batch's severity. UI-only — result of [xyz.vmflow.data.WarehouseIntakeLogic.buildProductSummaries],
  * never decoded/encoded directly. Mirrors iOS `WarehouseProductSummary`.
- *
- * [productName] matches the iOS field name verbatim. [name] is a thin alias
- * kept for compatibility with Task 1's `WarehouseIntakeLogicTest`, whose
- * assertions were written against the local placeholder's `name` field
- * before this real model existed.
  */
 data class WarehouseProductSummary(
     val productId: String,
@@ -407,7 +402,4 @@ data class WarehouseProductSummary(
 ) {
     val isLow: Boolean get() = totalQuantity > 0 && totalQuantity < 10
     val isOutOfStock: Boolean get() = totalQuantity == 0
-
-    /** Alias for [productName]; see class doc. */
-    val name: String get() = productName
 }

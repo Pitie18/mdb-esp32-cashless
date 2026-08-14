@@ -208,7 +208,7 @@ class WarehouseIntakeLogicTest {
         val products = listOf(ProductSummaryInput("p1", null, null, discontinued = false))
         val summaries = WarehouseIntakeLogic.buildProductSummaries(products, emptyList(), today)
 
-        assertEquals("Unknown", summaries[0].name)
+        assertEquals("Unknown", summaries[0].productName)
     }
 
     @Test
