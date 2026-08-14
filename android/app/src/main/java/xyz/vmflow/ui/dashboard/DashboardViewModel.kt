@@ -113,20 +113,38 @@ internal class DashboardEngine(private val repository: DashboardDataSource) {
         _uiState.update { it.copy(isLoading = true, error = null) }
         try {
             coroutineScope {
-                launch { loadOrganization() }
-                launch { loadLegacyMachinesAndSales() }
-                launch { loadStockHealth() }
-                launch { loadSalesKpisAndChart() }
-                launch { loadRecentActivity() }
-                launch { loadNewDealsCount() }
-                launch { loadCashBookSummary() }
+                launch { loadIsolated { loadOrganization() } }
+                launch { loadIsolated { loadLegacyMachinesAndSales() } }
+                launch { loadIsolated { loadStockHealth() } }
+                launch { loadIsolated { loadSalesKpisAndChart() } }
+                launch { loadIsolated { loadRecentActivity() } }
+                launch { loadIsolated { loadNewDealsCount() } }
+                launch { loadIsolated { loadCashBookSummary() } }
             }
+        } finally {
+            _uiState.update { it.copy(isLoading = false) }
+        }
+    }
+
+    /**
+     * Runs one dashboard sub-fetch and isolates its failure from its
+     * siblings. [loadDashboard] launches seven of these as sibling
+     * coroutines under one `coroutineScope` — without this wrapper, an
+     * uncaught exception in ANY of them (structured concurrency) cancels
+     * every other in-flight `launch`, so one broken widget (e.g. a
+     * `products(...)` select missing a required column) blanks the entire
+     * dashboard — KPIs, chart and activity that fetched fine included —
+     * instead of just leaving its own section empty. `CancellationException`
+     * is rethrown so cooperative cancellation (e.g. leaving the screen)
+     * still works normally; only genuine failures are swallowed here.
+     */
+    internal suspend fun loadIsolated(block: suspend () -> Unit) {
+        try {
+            block()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            _uiState.update { it.copy(error = e.message) }
-        } finally {
-            _uiState.update { it.copy(isLoading = false) }
+            _uiState.update { it.copy(error = it.error ?: e.message) }
         }
     }
 

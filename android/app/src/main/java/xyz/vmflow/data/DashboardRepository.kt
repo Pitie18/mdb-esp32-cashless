@@ -119,7 +119,7 @@ object DashboardRepository : DashboardDataSource {
     private const val MACHINE_COLUMNS =
         "id, name, location_lat, location_lon, country_code, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version)"
     private const val TRAY_COLUMNS =
-        "id, machine_id, item_number, product_id, capacity, current_stock, min_stock, fill_when_below, products(name, image_path, discontinued, sellprice)"
+        "id, machine_id, item_number, product_id, capacity, current_stock, min_stock, fill_when_below, products(id, name, image_path, discontinued, sellprice)"
 
     override suspend fun fetchSalesSince(since: Instant): List<Sale> =
         postgrest.from("sales")
