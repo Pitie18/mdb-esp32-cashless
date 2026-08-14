@@ -4,7 +4,16 @@
     <string name="nav_dashboard">Übersicht</string>
     <string name="nav_machines">Automaten</string>
     <string name="nav_refill">Befüllen</string>
+    <string name="nav_warehouse">Lager</string>
     <string name="action_back">Zurück</string>
+
+    <!-- Lager-Screen -->
+    <string name="warehouse_screen_title">Lager</string>
+    <string name="warehouse_picker_label">Lager</string>
+    <string name="warehouse_tab_stock">Bestand</string>
+    <string name="warehouse_tab_incoming">Wareneingang</string>
+    <string name="warehouse_empty_state">Noch kein Lager angelegt</string>
+    <string name="warehouse_tab_placeholder">Demnächst verfügbar</string>
 
     <!-- StockBar accessibility -->
     <string name="stock_bar_description">Bestand %1$d von %2$d</string>
