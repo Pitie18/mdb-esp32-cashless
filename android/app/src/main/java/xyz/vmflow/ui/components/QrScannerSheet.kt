@@ -43,18 +43,27 @@ import xyz.vmflow.R
 import java.util.concurrent.Executors
 
 /**
- * Scans a single QR code and hands its raw text to [onResult].
+ * Scans a single barcode and hands its raw text to [onResult].
  *
  * Deliberately generic — it returns the raw string rather than a parsed
  * server config, so the warehouse barcode work can reuse it unchanged.
  * The camera permission is requested here, at the moment of scanning,
  * rather than at app start.
+ *
+ * [formats] restricts which ML Kit barcode formats the analyzer accepts;
+ * it defaults to QR-only to preserve the server-provisioning flow's
+ * existing behavior. [title]/[hint] default to the QR-scan copy but can
+ * be overridden by callers (e.g. the warehouse barcode scanner) that
+ * want different wording.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalGetImage::class)
 @Composable
 fun QrScannerSheet(
     onResult: (String) -> Unit,
     onDismiss: () -> Unit,
+    formats: Set<Int> = setOf(Barcode.FORMAT_QR_CODE),
+    title: String = stringResource(R.string.qr_scan),
+    hint: String = stringResource(R.string.qr_scan_hint),
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -81,11 +90,11 @@ fun QrScannerSheet(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = stringResource(R.string.qr_scan),
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = stringResource(R.string.qr_scan_hint),
+                text = hint,
                 style = MaterialTheme.typography.bodySmall,
             )
 
@@ -142,7 +151,7 @@ fun QrScannerSheet(
                                             scanner.process(image)
                                                 .addOnSuccessListener { codes ->
                                                     codes.firstOrNull { code ->
-                                                        code.format == Barcode.FORMAT_QR_CODE
+                                                        code.format in formats
                                                     }?.rawValue?.let(onResult)
                                                 }
                                                 .addOnCompleteListener { proxy.close() }
