@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import xyz.vmflow.data.WarehouseIntakeLogic.BatchSummaryInput
-import xyz.vmflow.data.WarehouseIntakeLogic.ExpirationStatus
+import xyz.vmflow.data.ExpirationStatus
 import xyz.vmflow.data.WarehouseIntakeLogic.ProductSummaryInput
 import xyz.vmflow.data.WarehouseIntakeLogic.evaluateQuantityExpression
 import xyz.vmflow.data.WarehouseIntakeLogic.expirationStatus

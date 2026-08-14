@@ -19,6 +19,18 @@ import kotlin.math.roundToInt
  * to unit test cleanly and agree with iOS bit-for-bit — same split as
  * `MachineAnalysis.kt` / `DeviceHealth.kt`.
  */
+
+/**
+ * Expiration severity. Mirrors iOS `ExpirationStatus`. Declared top-level
+ * (sibling of [WarehouseIntakeLogic], not nested inside it) so its fully
+ * qualified name is `xyz.vmflow.data.ExpirationStatus` — the same shape as
+ * [SlotTier] in `MachineAnalysis.kt`, which is also a derived enum meant to
+ * be consumed outside the `data` layer that produces it. See the handoff
+ * note on [WarehouseIntakeLogic.WarehouseProductSummary] for how Task 2
+ * should import this.
+ */
+enum class ExpirationStatus { OK, WARNING, CRITICAL }
+
 object WarehouseIntakeLogic {
 
     /**
@@ -117,9 +129,6 @@ object WarehouseIntakeLogic {
         }
     }
 
-    /** Expiration severity. Mirrors iOS `ExpirationStatus`. */
-    enum class ExpirationStatus { OK, WARNING, CRITICAL }
-
     /**
      * Classifies a `yyyy-MM-dd` expiration date against [today]. Boundaries
      * match iOS `WarehouseProductSummary.expirationStatus(for:)` literally:
@@ -167,6 +176,19 @@ object WarehouseIntakeLogic {
      * so wiring it up in Task 2 is a pure rename/move — delete this data
      * class, add the equivalent one to `models/Models.kt`, and change this
      * file's import; no logic in [buildProductSummaries] needs to change.
+     *
+     * The `expirationStatus` field's type, [xyz.vmflow.data.ExpirationStatus],
+     * is ALREADY top-level in this file (not nested inside
+     * [WarehouseIntakeLogic]) specifically so it's importable from other
+     * layers. When Task 2 adds the real `WarehouseProductSummary` to
+     * `models/Models.kt`, its `expirationStatus` field should import and use
+     * `xyz.vmflow.data.ExpirationStatus` directly
+     * (`import xyz.vmflow.data.ExpirationStatus`) — do NOT re-nest it or
+     * duplicate it inside `models`. This matches the established precedent
+     * for derived enums produced by the `data` layer and consumed elsewhere:
+     * `SlotTier` in `MachineAnalysis.kt` is declared top-level in that file
+     * for the exact same reason and is imported the same way by its
+     * consumers.
      */
     data class WarehouseProductSummary(
         val productId: String,
