@@ -36,9 +36,8 @@ import xyz.vmflow.models.Warehouse
 /**
  * Warehouse management screen: warehouse picker (only shown when the
  * company has more than one warehouse) plus a Stock/Incoming tab switcher.
- * This is the scaffold only — [WarehouseStockTab]/[WarehouseIntakeTab]'s
- * real content lands in later tasks; for now each tab renders a simple
- * placeholder so switching between them can be verified end to end.
+ * The Stock tab renders the real [WarehouseStockTab] content (Task 9); the
+ * Incoming tab still renders [WarehouseIntakeTab]'s placeholder until Task 10.
  *
  * Mirrors iOS `WarehouseView` (`ios/VMflow/Views/Warehouse/WarehouseView.swift`
  * lines 1-105), adapted to Android idiom: an `ExposedDropdownMenuBox`
@@ -116,7 +115,14 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
                     }
 
                     when (selectedTab) {
-                        0 -> WarehouseStockTab()
+                        0 -> WarehouseStockTab(
+                            uiState = uiState,
+                            onSearchChange = { text -> viewModel.updateSearch(text) },
+                            onToggleOutOfStock = { viewModel.toggleIncludeOutOfStock() },
+                            onToggleArchived = { viewModel.toggleIncludeArchived() },
+                            onExpirationFilterChange = { filter -> viewModel.setExpirationFilter(filter) },
+                            onProductClick = { }
+                        )
                         1 -> WarehouseIntakeTab()
                     }
                 }
@@ -167,15 +173,6 @@ private fun WarehousePicker(
             }
         }
     }
-}
-
-/**
- * Stock overview tab content. Placeholder scaffold only — the real search /
- * filter / product-row UI lands in Task 9.
- */
-@Composable
-private fun WarehouseStockTab() {
-    WarehouseTabPlaceholder()
 }
 
 /**

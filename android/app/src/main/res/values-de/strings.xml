@@ -15,6 +15,22 @@
     <string name="warehouse_empty_state">Noch kein Lager angelegt</string>
     <string name="warehouse_tab_placeholder">Demnächst verfügbar</string>
 
+    <!-- Bestand-Tab -->
+    <string name="warehouse_stock_search_hint">Produkte suchen</string>
+    <string name="warehouse_stock_search_clear">Suche leeren</string>
+    <string name="warehouse_stock_out_of_stock">Nicht auf Lager</string>
+    <string name="warehouse_stock_filter_archived">Archiviert</string>
+    <string name="warehouse_stock_filter_expiring_soon">Läuft bald ab</string>
+    <string name="warehouse_stock_filter_critical">Kritisch</string>
+    <string name="warehouse_stock_low">Niedrig</string>
+    <string name="warehouse_stock_empty_no_stock">Kein Bestand in diesem Lager</string>
+    <string name="warehouse_stock_empty_search">Keine Produkte für „%1$s“</string>
+    <string name="warehouse_stock_empty_filtered">Keine Produkte entsprechen den aktuellen Filtern</string>
+    <plurals name="warehouse_batch_count">
+        <item quantity="one">%1$d Charge</item>
+        <item quantity="other">%1$d Chargen</item>
+    </plurals>
+
     <!-- StockBar accessibility -->
     <string name="stock_bar_description">Bestand %1$d von %2$d</string>
 
