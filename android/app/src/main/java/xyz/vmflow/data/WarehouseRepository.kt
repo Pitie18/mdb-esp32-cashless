@@ -10,6 +10,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import xyz.vmflow.models.IntakeEntry
+import xyz.vmflow.models.Product
 import xyz.vmflow.models.Warehouse
 import xyz.vmflow.models.WarehouseProductSummary
 import xyz.vmflow.models.WarehouseStockBatch
@@ -76,6 +77,29 @@ object WarehouseRepository {
     }
 
     /**
+     * Fetches every product, including discontinued ones. Deliberately
+     * separate from [TrayRepository.fetchProducts] — that function filters
+     * `discontinued = false` server-side for the tray-editing product
+     * picker (where discontinued products should never be assignable), but
+     * the warehouse stock overview needs the full catalogue so a future
+     * `includeArchived` toggle (matching iOS `WarehouseViewModel`'s
+     * client-side `filteredSummaries`) has discontinued products to reveal.
+     * Do not collapse this back into a call to `fetchProducts()`.
+     */
+    suspend fun fetchAllProductsIncludingDiscontinued(): Result<List<Product>> {
+        return try {
+            val products = postgrest.from("products")
+                .select(Columns.raw("id, name, image_path, discontinued")) {
+                    order("name", Order.ASCENDING)
+                }
+                .decodeList<Product>()
+            Result.success(products)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Builds one [WarehouseProductSummary] per product (including zero-stock
      * and discontinued products — no filtering here, see
      * [WarehouseIntakeLogic.buildProductSummaries]), merged with the given
@@ -83,7 +107,7 @@ object WarehouseRepository {
      */
     suspend fun fetchProductSummaries(warehouseId: String): Result<List<WarehouseProductSummary>> {
         return try {
-            val products = TrayRepository.fetchProducts().getOrThrow()
+            val products = fetchAllProductsIncludingDiscontinued().getOrThrow()
             val batches = postgrest.from("warehouse_stock_batches")
                 .select(Columns.raw("product_id, quantity, expiration_date")) {
                     filter {
