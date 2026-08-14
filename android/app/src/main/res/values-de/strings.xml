@@ -50,19 +50,6 @@
     <string name="warehouse_intake_submit">Wareneingang buchen</string>
     <string name="warehouse_intake_recent_header">Letzte Wareneingänge</string>
     <string name="warehouse_intake_recent_empty">Noch keine Wareneingänge</string>
-    <string name="warehouse_intake_time_just_now">Gerade eben</string>
-    <plurals name="warehouse_intake_time_minutes_ago">
-        <item quantity="one">vor %1$d Minute</item>
-        <item quantity="other">vor %1$d Minuten</item>
-    </plurals>
-    <plurals name="warehouse_intake_time_hours_ago">
-        <item quantity="one">vor %1$d Stunde</item>
-        <item quantity="other">vor %1$d Stunden</item>
-    </plurals>
-    <plurals name="warehouse_intake_time_days_ago">
-        <item quantity="one">vor %1$d Tag</item>
-        <item quantity="other">vor %1$d Tagen</item>
-    </plurals>
 
     <!-- StockBar accessibility -->
     <string name="stock_bar_description">Bestand %1$d von %2$d</string>

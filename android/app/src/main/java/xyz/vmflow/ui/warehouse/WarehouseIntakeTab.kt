@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
@@ -47,14 +46,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.google.mlkit.vision.barcode.common.Barcode
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import xyz.vmflow.R
 import xyz.vmflow.data.WarehouseIntakeLogic
 import xyz.vmflow.models.IntakeEntry
@@ -62,6 +58,7 @@ import xyz.vmflow.models.Product
 import xyz.vmflow.models.Supplier
 import xyz.vmflow.ui.components.ProductImage
 import xyz.vmflow.ui.components.QrScannerSheet
+import xyz.vmflow.ui.machines.relativeTimeAgo
 import xyz.vmflow.ui.theme.StockGreen
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -143,6 +140,7 @@ fun WarehouseIntakeTab(
                 onSelect = { productId ->
                     selectedProductId = productId
                     productSearchText = ""
+                    barcodeNotFound = false
                 },
                 onClear = { selectedProductId = null }
             )
@@ -233,6 +231,7 @@ fun WarehouseIntakeTab(
                         supplierName.trim().ifEmpty { null }
                     )
                     quantityText = ""
+                    barcodeNotFound = false
                 },
                 enabled = canSubmit,
                 modifier = Modifier.fillMaxWidth()
@@ -576,20 +575,5 @@ private fun RecentIntakeRow(entry: IntakeEntry) {
             fontWeight = FontWeight.Bold,
             color = StockGreen
         )
-    }
-}
-
-@Composable
-private fun relativeTimeAgo(iso: String): String {
-    val instant = runCatching { Instant.parse(iso) }.getOrNull() ?: return iso
-    val diff = Clock.System.now() - instant
-    val minutes = diff.inWholeMinutes.coerceAtLeast(0)
-    val hours = diff.inWholeHours.coerceAtLeast(0)
-    val days = diff.inWholeDays.coerceAtLeast(0)
-    return when {
-        minutes < 1 -> stringResource(R.string.warehouse_intake_time_just_now)
-        minutes < 60 -> pluralStringResource(R.plurals.warehouse_intake_time_minutes_ago, minutes.toInt(), minutes.toInt())
-        hours < 24 -> pluralStringResource(R.plurals.warehouse_intake_time_hours_ago, hours.toInt(), hours.toInt())
-        else -> pluralStringResource(R.plurals.warehouse_intake_time_days_ago, days.toInt(), days.toInt())
     }
 }

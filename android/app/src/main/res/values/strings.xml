@@ -54,19 +54,6 @@
     <string name="warehouse_intake_submit">Book Intake</string>
     <string name="warehouse_intake_recent_header">Recent Intakes</string>
     <string name="warehouse_intake_recent_empty">No recent intakes yet</string>
-    <string name="warehouse_intake_time_just_now">Just now</string>
-    <plurals name="warehouse_intake_time_minutes_ago">
-        <item quantity="one">%1$d minute ago</item>
-        <item quantity="other">%1$d minutes ago</item>
-    </plurals>
-    <plurals name="warehouse_intake_time_hours_ago">
-        <item quantity="one">%1$d hour ago</item>
-        <item quantity="other">%1$d hours ago</item>
-    </plurals>
-    <plurals name="warehouse_intake_time_days_ago">
-        <item quantity="one">%1$d day ago</item>
-        <item quantity="other">%1$d days ago</item>
-    </plurals>
 
     <!-- StockBar accessibility -->
     <string name="stock_bar_description">Stock %1$d of %2$d</string>
