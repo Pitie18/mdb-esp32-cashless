@@ -1,5 +1,5 @@
 import { useSupabaseClient } from '#imports'
-import { classifyTrayStock } from '@/lib/stock-health'
+import { buildWarehouseStockInfo, classifyTrayStock, isProductRefillable } from '@/lib/stock-health'
 import { useOrganization } from './useOrganization'
 import { useWarehouse } from './useWarehouse'
 
@@ -444,13 +444,25 @@ export function useRefillWizard() {
         return
       }
 
-      // Fetch all trays
-      const { data: trayData, error: trayErr } = await (supabase as any)
-        .from('machine_trays')
-        .select('machine_id, item_number, product_id, capacity, current_stock, min_stock, fill_when_below, products(name, image_path, sellprice)')
-        .in('machine_id', machineIds)
+      // Fetch all trays + company-wide warehouse stock (to tell whether a
+      // low/empty/fill-below tray is actually refillable, same check /machines uses)
+      const [trayRes, warehouseStockRes] = await Promise.all([
+        (supabase as any)
+          .from('machine_trays')
+          .select('machine_id, item_number, product_id, capacity, current_stock, min_stock, fill_when_below, products(name, image_path, sellprice)')
+          .in('machine_id', machineIds),
+        (supabase as any)
+          .from('warehouse_stock_batches')
+          .select('product_id, quantity')
+          .gt('quantity', 0),
+      ])
 
-      if (trayErr) throw trayErr
+      if (trayRes.error) throw trayRes.error
+      const trayData = trayRes.data
+
+      const { warehouseStockMap, hasWarehouses } = buildWarehouseStockInfo(
+        (warehouseStockRes.data ?? []) as { product_id: string; quantity: number }[],
+      )
 
       // Build machine stock info
       const stockMap = new Map<string, {
@@ -480,8 +492,10 @@ export function useRefillWizard() {
         const isEmpty = state === 'critical'
         const isFillBelow = state === 'fill'
 
-        if (isEmpty) entry.empty++
-        else if (isLow) entry.low++
+        if (isProductRefillable(tray.product_id, warehouseStockMap, hasWarehouses)) {
+          if (isEmpty) entry.empty++
+          else if (isLow) entry.low++
+        }
 
         if (isLow || isEmpty) {
           const deficit = tray.capacity - tray.current_stock
@@ -508,7 +522,7 @@ export function useRefillWizard() {
         for (const tray of entry.fillBelowPending) {
           const deficit = tray.capacity - tray.current_stock
           if (deficit <= 0) continue
-          entry.fill++
+          if (isProductRefillable(tray.product_id, warehouseStockMap, hasWarehouses)) entry.fill++
           const productName = tray.products?.name ?? `Slot ${tray.item_number}`
           const imagePath = tray.products?.image_path ?? null
           const sellprice = tray.products?.sellprice ?? null
