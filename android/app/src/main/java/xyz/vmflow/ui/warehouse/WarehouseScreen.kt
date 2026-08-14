@@ -36,8 +36,9 @@ import xyz.vmflow.models.Warehouse
 /**
  * Warehouse management screen: warehouse picker (only shown when the
  * company has more than one warehouse) plus a Stock/Incoming tab switcher.
- * The Stock tab renders the real [WarehouseStockTab] content (Task 9); the
- * Incoming tab still renders [WarehouseIntakeTab]'s placeholder until Task 10.
+ * The Stock tab renders [WarehouseStockTab] (Task 9); the Incoming tab
+ * renders [WarehouseIntakeTab] (Task 10) — both tabs only receive already
+ * ViewModel-bound callback lambdas here, never the `viewModel` itself.
  *
  * Mirrors iOS `WarehouseView` (`ios/VMflow/Views/Warehouse/WarehouseView.swift`
  * lines 1-105), adapted to Android idiom: an `ExposedDropdownMenuBox`
@@ -123,7 +124,16 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
                             onExpirationFilterChange = { filter -> viewModel.setExpirationFilter(filter) },
                             onProductClick = { }
                         )
-                        1 -> WarehouseIntakeTab()
+                        1 -> WarehouseIntakeTab(
+                            uiState = uiState,
+                            onSubmit = { productId, quantityText, batchNumber, expirationIso, supplierName ->
+                                viewModel.bookIntake(productId, quantityText, batchNumber, expirationIso, supplierName)
+                            },
+                            onScanRequested = { },
+                            onLookupBarcode = { barcode, onFound, onNotFound ->
+                                viewModel.lookupBarcode(barcode, onFound, onNotFound)
+                            }
+                        )
                     }
                 }
             }
@@ -175,25 +185,3 @@ private fun WarehousePicker(
     }
 }
 
-/**
- * Incoming (intake booking) tab content. Placeholder scaffold only — the
- * real product picker / quantity / date / supplier form lands in Task 10.
- */
-@Composable
-private fun WarehouseIntakeTab() {
-    WarehouseTabPlaceholder()
-}
-
-@Composable
-private fun WarehouseTabPlaceholder() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = stringResource(R.string.warehouse_tab_placeholder),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}

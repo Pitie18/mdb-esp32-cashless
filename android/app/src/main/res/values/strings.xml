@@ -17,7 +17,6 @@
     <string name="warehouse_tab_stock">Stock</string>
     <string name="warehouse_tab_incoming">Incoming</string>
     <string name="warehouse_empty_state">No warehouses yet</string>
-    <string name="warehouse_tab_placeholder">Coming soon</string>
 
     <!-- Warehouse stock tab -->
     <string name="warehouse_stock_search_hint">Search products</string>
@@ -33,6 +32,40 @@
     <plurals name="warehouse_batch_count">
         <item quantity="one">%1$d batch</item>
         <item quantity="other">%1$d batches</item>
+    </plurals>
+
+    <!-- Warehouse incoming (intake) tab -->
+    <string name="warehouse_intake_form_header">Book Intake</string>
+    <string name="warehouse_intake_product_label">Product</string>
+    <string name="warehouse_intake_product_empty">No matching products</string>
+    <string name="warehouse_intake_product_change">Change product</string>
+    <string name="warehouse_intake_scan_button">Scan Barcode</string>
+    <string name="warehouse_intake_scan_title">Scan Barcode</string>
+    <string name="warehouse_intake_scan_hint">Point the camera at the product\'s barcode</string>
+    <string name="warehouse_intake_scan_not_found">No product found for this barcode</string>
+    <string name="warehouse_intake_quantity_label">Quantity</string>
+    <string name="warehouse_intake_quantity_hint">e.g. 2*12</string>
+    <string name="warehouse_intake_quantity_preview">= %1$d</string>
+    <string name="warehouse_intake_batch_label">Batch No.</string>
+    <string name="warehouse_intake_optional_hint">Optional</string>
+    <string name="warehouse_intake_expiration_label">Best before</string>
+    <string name="warehouse_intake_expiration_clear">Clear expiration date</string>
+    <string name="warehouse_intake_supplier_label">Supplier</string>
+    <string name="warehouse_intake_submit">Book Intake</string>
+    <string name="warehouse_intake_recent_header">Recent Intakes</string>
+    <string name="warehouse_intake_recent_empty">No recent intakes yet</string>
+    <string name="warehouse_intake_time_just_now">Just now</string>
+    <plurals name="warehouse_intake_time_minutes_ago">
+        <item quantity="one">%1$d minute ago</item>
+        <item quantity="other">%1$d minutes ago</item>
+    </plurals>
+    <plurals name="warehouse_intake_time_hours_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <plurals name="warehouse_intake_time_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
     </plurals>
 
     <!-- StockBar accessibility -->
