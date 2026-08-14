@@ -2,6 +2,7 @@ package xyz.vmflow.data
 
 import kotlinx.datetime.LocalDate
 import kotlin.math.roundToInt
+import xyz.vmflow.models.WarehouseProductSummary
 
 /**
  * Pure, non-Android warehouse intake logic: the quantity-expression
@@ -25,9 +26,8 @@ import kotlin.math.roundToInt
  * (sibling of [WarehouseIntakeLogic], not nested inside it) so its fully
  * qualified name is `xyz.vmflow.data.ExpirationStatus` — the same shape as
  * [SlotTier] in `MachineAnalysis.kt`, which is also a derived enum meant to
- * be consumed outside the `data` layer that produces it. See the handoff
- * note on [WarehouseIntakeLogic.WarehouseProductSummary] for how Task 2
- * should import this.
+ * be consumed outside the `data` layer that produces it. Imported directly
+ * by [xyz.vmflow.models.WarehouseProductSummary].
  */
 enum class ExpirationStatus { OK, WARNING, CRITICAL }
 
@@ -169,39 +169,6 @@ object WarehouseIntakeLogic {
     )
 
     /**
-     * Placeholder for Task 2's `xyz.vmflow.models.WarehouseProductSummary`.
-     * Task 2 was not yet written when this task landed, so [buildProductSummaries]
-     * returns this local type instead. Field names and types match the real
-     * model 1:1 (see `ios/VMflow/Models/Warehouse.swift` `WarehouseProductSummary`),
-     * so wiring it up in Task 2 is a pure rename/move — delete this data
-     * class, add the equivalent one to `models/Models.kt`, and change this
-     * file's import; no logic in [buildProductSummaries] needs to change.
-     *
-     * The `expirationStatus` field's type, [xyz.vmflow.data.ExpirationStatus],
-     * is ALREADY top-level in this file (not nested inside
-     * [WarehouseIntakeLogic]) specifically so it's importable from other
-     * layers. When Task 2 adds the real `WarehouseProductSummary` to
-     * `models/Models.kt`, its `expirationStatus` field should import and use
-     * `xyz.vmflow.data.ExpirationStatus` directly
-     * (`import xyz.vmflow.data.ExpirationStatus`) — do NOT re-nest it or
-     * duplicate it inside `models`. This matches the established precedent
-     * for derived enums produced by the `data` layer and consumed elsewhere:
-     * `SlotTier` in `MachineAnalysis.kt` is declared top-level in that file
-     * for the exact same reason and is imported the same way by its
-     * consumers.
-     */
-    data class WarehouseProductSummary(
-        val productId: String,
-        val name: String,
-        val imagePath: String?,
-        val totalQuantity: Int,
-        val batchCount: Int,
-        val earliestExpiration: String?,
-        val discontinued: Boolean,
-        val expirationStatus: ExpirationStatus,
-    )
-
-    /**
      * Builds one summary per product — including zero-stock and discontinued
      * products, no filtering here; that happens later in the UI/ViewModel
      * layer (Task 9), same as iOS `loadProductSummaries()`. [batches] are
@@ -240,7 +207,7 @@ object WarehouseIntakeLogic {
             val earliestExpiration = aggregate?.earliestExpiration
             WarehouseProductSummary(
                 productId = product.productId,
-                name = product.name?.takeIf { it.isNotEmpty() } ?: "Unknown",
+                productName = product.name?.takeIf { it.isNotEmpty() } ?: "Unknown",
                 imagePath = product.imagePath,
                 totalQuantity = aggregate?.totalQuantity ?: 0,
                 batchCount = aggregate?.batchCount ?: 0,

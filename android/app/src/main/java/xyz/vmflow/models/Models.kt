@@ -2,6 +2,7 @@ package xyz.vmflow.models
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import xyz.vmflow.data.ExpirationStatus
 
 @Serializable
 data class Organization(
@@ -218,7 +219,8 @@ data class Warehouse(
     val id: String,
     val name: String? = null,
     val address: String? = null,
-    val notes: String? = null
+    val notes: String? = null,
+    @SerialName("company_id") val companyId: String
 )
 
 @Serializable
@@ -229,8 +231,69 @@ data class WarehouseStockBatch(
     val quantity: Int = 0,
     @SerialName("batch_number") val batchNumber: String? = null,
     @SerialName("expiration_date") val expirationDate: String? = null,
+    @SerialName("supplier_id") val supplierId: String? = null,
     val products: Product? = null
 )
+
+@Serializable
+data class Supplier(
+    val id: String,
+    val name: String
+)
+
+/** Encodable payload for inserting a `warehouse_stock_batches` row. Mirrors iOS `InsertStockBatch`. */
+@Serializable
+data class WarehouseStockBatchInsert(
+    @SerialName("warehouse_id") val warehouseId: String,
+    @SerialName("product_id") val productId: String,
+    val quantity: Int,
+    @SerialName("batch_number") val batchNumber: String? = null,
+    @SerialName("expiration_date") val expirationDate: String? = null,
+    @SerialName("company_id") val companyId: String,
+    @SerialName("supplier_id") val supplierId: String? = null
+)
+
+/**
+ * Encodable payload for inserting a `warehouse_transactions` row. Mirrors iOS
+ * `InsertWarehouseTransaction` (`Models/Warehouse.swift` L122-153).
+ *
+ * DEVIATION FROM BRIEF: the brief's prose says "all nullable except the
+ * first five required fields" (warehouseId, productId, transactionType,
+ * quantityChange, userId), which would make [companyId] nullable. The cited
+ * iOS source it's ported from declares `companyId` as non-optional
+ * (required), matching the DB constraint (`company_id` is `NOT NULL` on
+ * `warehouse_transactions` — see this task's own rationale for adding
+ * `companyId` to [Warehouse]). Following the DB constraint and iOS source
+ * over the brief's field count: [companyId] is required here.
+ */
+@Serializable
+data class WarehouseTransactionInsert(
+    @SerialName("warehouse_id") val warehouseId: String,
+    @SerialName("product_id") val productId: String,
+    @SerialName("transaction_type") val transactionType: String,
+    @SerialName("quantity_change") val quantityChange: Int,
+    @SerialName("user_id") val userId: String,
+    @SerialName("batch_id") val batchId: String? = null,
+    val notes: String? = null,
+    @SerialName("company_id") val companyId: String,
+    @SerialName("quantity_before") val quantityBefore: Int? = null,
+    @SerialName("quantity_after") val quantityAfter: Int? = null,
+    @SerialName("batch_number") val batchNumber: String? = null,
+    @SerialName("expiration_date") val expirationDate: String? = null,
+    @SerialName("supplier_id") val supplierId: String? = null
+)
+
+/**
+ * Reasons a manual stock adjustment can be booked for. `raw` is the literal
+ * value stored in `warehouse_transactions.transaction_type`. Mirrors iOS
+ * `WarehouseViewModel.AdjustReason`.
+ */
+enum class AdjustReason(val raw: String) {
+    REFILL_RETURN("adjustment_refill_return"),
+    CORRECTION("adjustment_correction"),
+    DAMAGE("adjustment_damage"),
+    EXPIRED("adjustment_expired")
+}
 
 @Serializable
 data class Paxcounter(
@@ -309,3 +372,42 @@ data class RefillSummary(
     val traysRefilled: Int,
     val totalItemsAdded: Int
 )
+
+/** One stock intake entry for the warehouse "recent intakes" list. UI-only, built from a decode-intermediate form in the repository layer. */
+data class IntakeEntry(
+    val id: String,
+    val productId: String,
+    val productName: String,
+    val imagePath: String?,
+    val quantity: Int,
+    val supplierName: String?,
+    val createdAt: String
+)
+
+/**
+ * Per-product stock summary for the warehouse overview: total quantity and
+ * batch count across all of a product's batches, plus its earliest-expiring
+ * batch's severity. UI-only — result of [xyz.vmflow.data.WarehouseIntakeLogic.buildProductSummaries],
+ * never decoded/encoded directly. Mirrors iOS `WarehouseProductSummary`.
+ *
+ * [productName] matches the iOS field name verbatim. [name] is a thin alias
+ * kept for compatibility with Task 1's `WarehouseIntakeLogicTest`, whose
+ * assertions were written against the local placeholder's `name` field
+ * before this real model existed.
+ */
+data class WarehouseProductSummary(
+    val productId: String,
+    val productName: String,
+    val imagePath: String?,
+    val totalQuantity: Int,
+    val batchCount: Int,
+    val earliestExpiration: String?,
+    val discontinued: Boolean,
+    val expirationStatus: ExpirationStatus
+) {
+    val isLow: Boolean get() = totalQuantity > 0 && totalQuantity < 10
+    val isOutOfStock: Boolean get() = totalQuantity == 0
+
+    /** Alias for [productName]; see class doc. */
+    val name: String get() = productName
+}
