@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,7 +104,6 @@ fun WarehouseIntakeTab(
         expirationIso: String?,
         supplierName: String?
     ) -> Unit,
-    onScanRequested: () -> Unit,
     onLookupBarcode: (barcode: String, onFound: (productId: String) -> Unit, onNotFound: () -> Unit) -> Unit,
 ) {
     var selectedProductId by remember { mutableStateOf<String?>(null) }
@@ -114,10 +114,31 @@ fun WarehouseIntakeTab(
     var supplierName by remember { mutableStateOf("") }
     var showScanner by remember { mutableStateOf(false) }
     var barcodeNotFound by remember { mutableStateOf(false) }
+    var wasBookingIntake by remember { mutableStateOf(false) }
 
     val selectedProduct = uiState.products.firstOrNull { it.id == selectedProductId }
     val evaluatedQuantity = remember(quantityText) { WarehouseIntakeLogic.evaluateQuantityExpression(quantityText) }
     val canSubmit = selectedProductId != null && evaluatedQuantity != null && !uiState.isBookingIntake
+
+    // Reset the whole form only after a booking that actually succeeded —
+    // i.e. isBookingIntake transitioning true -> false with no error left
+    // behind. A failed booking leaves every field as the operator typed it
+    // so they can fix whatever was wrong and retry without retyping batch
+    // number/expiration/supplier. Mirrors iOS, which resets the form on the
+    // success path only, after the booking completes (not synchronously on
+    // tap).
+    LaunchedEffect(uiState.isBookingIntake) {
+        if (wasBookingIntake && !uiState.isBookingIntake && uiState.error == null) {
+            selectedProductId = null
+            productSearchText = ""
+            quantityText = ""
+            batchNumber = ""
+            expirationIso = null
+            supplierName = ""
+            barcodeNotFound = false
+        }
+        wasBookingIntake = uiState.isBookingIntake
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -151,7 +172,6 @@ fun WarehouseIntakeTab(
                 OutlinedButton(
                     onClick = {
                         barcodeNotFound = false
-                        onScanRequested()
                         showScanner = true
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -230,8 +250,6 @@ fun WarehouseIntakeTab(
                         expirationIso,
                         supplierName.trim().ifEmpty { null }
                     )
-                    quantityText = ""
-                    barcodeNotFound = false
                 },
                 enabled = canSubmit,
                 modifier = Modifier.fillMaxWidth()
@@ -534,18 +552,20 @@ private fun SupplierField(
 /** One recent-intake row: product image, name, quantity delta, supplier, relative time. */
 @Composable
 private fun RecentIntakeRow(entry: IntakeEntry) {
+    val productName = entry.productName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.product_unnamed)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ProductImage(imagePath = entry.imagePath, contentDescription = entry.productName, size = 36.dp)
+        ProductImage(imagePath = entry.imagePath, contentDescription = productName, size = 36.dp)
         Spacer(Modifier.width(12.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = entry.productName,
+                text = productName,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

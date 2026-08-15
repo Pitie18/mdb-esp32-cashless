@@ -187,6 +187,11 @@ class WarehouseViewModel : ViewModel() {
         )
     }
 
+    /** Clears a surfaced error after the UI has shown it (e.g. via a snackbar). */
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
     fun updateSearch(text: String) {
         _uiState.update { it.copy(searchText = text) }
     }

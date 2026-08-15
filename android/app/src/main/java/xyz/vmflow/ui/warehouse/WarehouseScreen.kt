@@ -14,11 +14,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -62,11 +65,20 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
     // showing the refreshed batch list).
     var drilldownProductId by remember { mutableStateOf<String?>(null) }
     var adjustBatchId by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(stringResource(R.string.warehouse_screen_title)) })
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         when {
             uiState.isLoading && uiState.warehouses.isEmpty() -> {
@@ -144,7 +156,6 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
                             onSubmit = { productId, quantityText, batchNumber, expirationIso, supplierName ->
                                 viewModel.bookIntake(productId, quantityText, batchNumber, expirationIso, supplierName)
                             },
-                            onScanRequested = { },
                             onLookupBarcode = { barcode, onFound, onNotFound ->
                                 viewModel.lookupBarcode(barcode, onFound, onNotFound)
                             }
