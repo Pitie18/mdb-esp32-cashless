@@ -122,9 +122,10 @@ object WarehouseRepository {
      * separate from [TrayRepository.fetchProducts] — that function filters
      * `discontinued = false` server-side for the tray-editing product
      * picker (where discontinued products should never be assignable), but
-     * the warehouse stock overview needs the full catalogue so a future
+     * the warehouse stock overview needs the full catalogue so the
      * `includeArchived` toggle (matching iOS `WarehouseViewModel`'s
-     * client-side `filteredSummaries`) has discontinued products to reveal.
+     * client-side `filteredSummaries`; wired up in `WarehouseStockTab.kt`)
+     * has discontinued products to reveal.
      * Do not collapse this back into a call to `fetchProducts()`.
      */
     suspend fun fetchAllProductsIncludingDiscontinued(): Result<List<Product>> {
@@ -217,7 +218,7 @@ object WarehouseRepository {
                 IntakeEntry(
                     id = tx.id,
                     productId = tx.productId,
-                    productName = tx.products?.name ?: "Unknown",
+                    productName = tx.products?.name,
                     imagePath = tx.products?.imagePath,
                     quantity = tx.quantityChange,
                     supplierName = tx.suppliers?.name,
@@ -348,6 +349,9 @@ object WarehouseRepository {
         supplierId: String?
     ): Result<Unit> {
         return try {
+            val userId = auth.currentUserOrNull()?.id
+                ?: throw IllegalStateException("No authenticated user")
+
             val newBatch = WarehouseStockBatchInsert(
                 warehouseId = warehouseId,
                 productId = productId,
@@ -363,9 +367,6 @@ object WarehouseRepository {
                 }
                 .decodeList<InsertedBatchIdRow>()
             val batchId = insertedBatches.firstOrNull()?.id
-
-            val userId = auth.currentUserOrNull()?.id
-                ?: throw IllegalStateException("No authenticated user")
 
             val transaction = WarehouseTransactionInsert(
                 warehouseId = warehouseId,
@@ -427,6 +428,9 @@ object WarehouseRepository {
         notes: String?
     ): Result<Unit> {
         return try {
+            val userId = auth.currentUserOrNull()?.id
+                ?: throw IllegalStateException("No authenticated user")
+
             val current = postgrest.from("warehouse_stock_batches")
                 .select(Columns.raw("product_id, quantity, batch_number, expiration_date, supplier_id")) {
                     filter { eq("id", batchId) }
@@ -443,9 +447,6 @@ object WarehouseRepository {
                 }) {
                     filter { eq("id", batchId) }
                 }
-
-            val userId = auth.currentUserOrNull()?.id
-                ?: throw IllegalStateException("No authenticated user")
 
             val transaction = WarehouseTransactionInsert(
                 warehouseId = warehouseId,

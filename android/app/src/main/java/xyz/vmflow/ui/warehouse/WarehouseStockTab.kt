@@ -58,8 +58,8 @@ import java.util.Locale
  * this screen has no existing filter-menu precedent to follow (checked
  * `MachineListScreen.kt`, which only has a plain search field).
  *
- * Batch drilldown ([onProductClick]) is wired through but intentionally a
- * no-op from the caller for now — the sheet itself lands in Task 11.
+ * Batch drilldown ([onProductClick]) is wired through to `WarehouseScreen.kt`,
+ * which opens `BatchDrilldownSheet`/`BatchAdjustSheet` (Task 11).
  */
 @Composable
 fun WarehouseStockTab(

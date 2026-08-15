@@ -373,11 +373,18 @@ data class RefillSummary(
     val totalItemsAdded: Int
 )
 
-/** One stock intake entry for the warehouse "recent intakes" list. UI-only, built from a decode-intermediate form in the repository layer. */
+/**
+ * One stock intake entry for the warehouse "recent intakes" list. UI-only,
+ * built from a decode-intermediate form in the repository layer.
+ * [productName] is nullable (the joined `products` row may be missing, or
+ * its `name` may be null) — the repository passes it through as-is and the
+ * UI layer resolves a missing name to the localized `R.string.product_unnamed`
+ * fallback, the same pattern the intake product picker already uses.
+ */
 data class IntakeEntry(
     val id: String,
     val productId: String,
-    val productName: String,
+    val productName: String?,
     val imagePath: String?,
     val quantity: Int,
     val supplierName: String?,
