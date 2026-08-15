@@ -43,6 +43,17 @@ data class WarehouseUiState(
     val includeArchived: Boolean = false,
     val expirationFilter: ExpirationFilter = ExpirationFilter.ALL,
     val isBookingIntake: Boolean = false,
+    /**
+     * Increments exactly once per intake whose underlying write actually
+     * succeeded, regardless of whether the post-write refresh
+     * (`refreshProductSummaries`/`refreshRecentIntakes`) also succeeded. The
+     * intake form's success-gated reset keys off this counter changing, not
+     * off `error == null` — a refresh failure after a successful write still
+     * leaves `error` non-null, and inferring "did the booking succeed" from
+     * the absence of an error would leave the form armed for an accidental
+     * duplicate resubmission of a delivery that already landed.
+     */
+    val intakeBookedTick: Int = 0,
     val error: String? = null
 ) {
     /**
@@ -290,6 +301,7 @@ class WarehouseViewModel : ViewModel() {
                 }
             }
 
+            var booked = false
             WarehouseRepository.bookIntake(
                 warehouseId = warehouseId,
                 companyId = companyId,
@@ -300,6 +312,7 @@ class WarehouseViewModel : ViewModel() {
                 supplierId = supplierId
             ).fold(
                 onSuccess = {
+                    booked = true
                     coroutineScope {
                         launch { refreshProductSummaries(warehouseId) }
                         launch { refreshRecentIntakes(warehouseId) }
@@ -308,7 +321,17 @@ class WarehouseViewModel : ViewModel() {
                 onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
             )
 
-            _uiState.update { it.copy(isBookingIntake = false) }
+            // The tick only advances when the write itself (bookIntake) succeeded,
+            // never based on whether the refreshes above also succeeded — see the
+            // field doc on WarehouseUiState.intakeBookedTick. Stamped into the same
+            // update as isBookingIntake = false so the two are atomic, matching the
+            // ordering guarantee the previous fix established.
+            _uiState.update {
+                it.copy(
+                    isBookingIntake = false,
+                    intakeBookedTick = if (booked) it.intakeBookedTick + 1 else it.intakeBookedTick
+                )
+            }
         }
     }
 

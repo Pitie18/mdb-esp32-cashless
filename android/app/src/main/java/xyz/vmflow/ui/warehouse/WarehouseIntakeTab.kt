@@ -114,21 +114,23 @@ fun WarehouseIntakeTab(
     var supplierName by remember { mutableStateOf("") }
     var showScanner by remember { mutableStateOf(false) }
     var barcodeNotFound by remember { mutableStateOf(false) }
-    var wasBookingIntake by remember { mutableStateOf(false) }
+    var lastSeenBookedTick by remember { mutableStateOf(uiState.intakeBookedTick) }
 
     val selectedProduct = uiState.products.firstOrNull { it.id == selectedProductId }
     val evaluatedQuantity = remember(quantityText) { WarehouseIntakeLogic.evaluateQuantityExpression(quantityText) }
     val canSubmit = selectedProductId != null && evaluatedQuantity != null && !uiState.isBookingIntake
 
-    // Reset the whole form only after a booking that actually succeeded —
-    // i.e. isBookingIntake transitioning true -> false with no error left
-    // behind. A failed booking leaves every field as the operator typed it
-    // so they can fix whatever was wrong and retry without retyping batch
-    // number/expiration/supplier. Mirrors iOS, which resets the form on the
-    // success path only, after the booking completes (not synchronously on
-    // tap).
-    LaunchedEffect(uiState.isBookingIntake) {
-        if (wasBookingIntake && !uiState.isBookingIntake && uiState.error == null) {
+    // Reset the whole form only when the ViewModel signals that a booking's
+    // underlying write actually succeeded (intakeBookedTick incremented) —
+    // NOT based on uiState.error being null. The write can succeed while the
+    // post-write refresh (recent intakes / product summaries) fails, which
+    // leaves `error` non-null even though the batch + transaction rows
+    // genuinely landed; keying off `error == null` used to leave the form
+    // armed in that case, inviting an accidental duplicate resubmission of
+    // a delivery that already landed. A booking whose write itself fails
+    // never advances the tick, so the form still stays populated for retry.
+    LaunchedEffect(uiState.intakeBookedTick) {
+        if (uiState.intakeBookedTick != lastSeenBookedTick) {
             selectedProductId = null
             productSearchText = ""
             quantityText = ""
@@ -136,8 +138,8 @@ fun WarehouseIntakeTab(
             expirationIso = null
             supplierName = ""
             barcodeNotFound = false
+            lastSeenBookedTick = uiState.intakeBookedTick
         }
-        wasBookingIntake = uiState.isBookingIntake
     }
 
     LazyColumn(
