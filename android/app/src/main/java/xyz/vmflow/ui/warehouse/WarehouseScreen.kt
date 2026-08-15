@@ -52,6 +52,17 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
 
+    // Batch drilldown + adjust sheet state. Owned here (not inside
+    // WarehouseStockTab) because onProductClick is a callback WarehouseScreen
+    // wires down INTO the tab, and the adjust sheet needs the productId the
+    // drilldown was opened for to call viewModel.adjustBatch(...). Only one
+    // of the two sheets is ever rendered at a time: opening the adjust sheet
+    // for a batch hides the drilldown sheet underneath it (dismissing the
+    // adjust sheet — confirm or cancel — reveals the drilldown again, now
+    // showing the refreshed batch list).
+    var drilldownProductId by remember { mutableStateOf<String?>(null) }
+    var adjustBatchId by remember { mutableStateOf<String?>(null) }
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(stringResource(R.string.warehouse_screen_title)) })
@@ -122,7 +133,11 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
                             onToggleOutOfStock = { viewModel.toggleIncludeOutOfStock() },
                             onToggleArchived = { viewModel.toggleIncludeArchived() },
                             onExpirationFilterChange = { filter -> viewModel.setExpirationFilter(filter) },
-                            onProductClick = { }
+                            onProductClick = { productId ->
+                                drilldownProductId = productId
+                                adjustBatchId = null
+                                viewModel.loadBatchesForProduct(productId)
+                            }
                         )
                         1 -> WarehouseIntakeTab(
                             uiState = uiState,
@@ -136,6 +151,38 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
                         )
                     }
                 }
+            }
+        }
+    }
+
+    val openProductId = drilldownProductId
+    if (openProductId != null) {
+        val openBatchId = adjustBatchId
+        if (openBatchId == null) {
+            val productName = uiState.productSummaries.firstOrNull { it.productId == openProductId }?.productName.orEmpty()
+            BatchDrilldownSheet(
+                productName = productName,
+                batches = uiState.drilldownBatches,
+                isLoading = uiState.isLoadingBatches,
+                onAdjust = { batchId -> adjustBatchId = batchId },
+                onDismiss = { drilldownProductId = null }
+            )
+        } else {
+            val batch = uiState.drilldownBatches.firstOrNull { it.id == openBatchId }
+            if (batch != null) {
+                BatchAdjustSheet(
+                    batch = batch,
+                    onConfirm = { quantityChange, reason, notes ->
+                        viewModel.adjustBatch(
+                            batchId = batch.id,
+                            productId = openProductId,
+                            quantityChange = quantityChange,
+                            reason = reason,
+                            notes = notes
+                        )
+                    },
+                    onDismiss = { adjustBatchId = null }
+                )
             }
         }
     }

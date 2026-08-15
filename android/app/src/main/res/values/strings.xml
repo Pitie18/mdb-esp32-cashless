@@ -55,6 +55,28 @@
     <string name="warehouse_intake_recent_header">Recent Intakes</string>
     <string name="warehouse_intake_recent_empty">No recent intakes yet</string>
 
+    <!-- Warehouse batch drilldown sheet -->
+    <string name="warehouse_batch_drilldown_loading">Loading batches…</string>
+    <string name="warehouse_batch_drilldown_empty">No batches in stock</string>
+    <string name="warehouse_batch_no_number">No batch</string>
+
+    <!-- Warehouse batch adjust sheet -->
+    <string name="warehouse_adjust_title">Adjust Stock</string>
+    <string name="warehouse_adjust_current_stock_label">Current stock</string>
+    <string name="warehouse_adjust_direction_remove">Remove</string>
+    <string name="warehouse_adjust_direction_add">Add</string>
+    <string name="warehouse_adjust_quantity_remove_label">Quantity to remove</string>
+    <string name="warehouse_adjust_quantity_add_label">Quantity to add</string>
+    <string name="warehouse_adjust_exceeds_stock">Only %1$d available</string>
+    <string name="warehouse_adjust_reason_label">Reason</string>
+    <string name="warehouse_adjust_reason_damage">Damaged</string>
+    <string name="warehouse_adjust_reason_expired">Expired</string>
+    <string name="warehouse_adjust_reason_correction">Inventory correction</string>
+    <string name="warehouse_adjust_reason_refill_return">Refill return</string>
+    <string name="warehouse_adjust_notes_label">Notes</string>
+    <string name="warehouse_adjust_submit_remove">Remove stock</string>
+    <string name="warehouse_adjust_submit_add">Add stock</string>
+
     <!-- StockBar accessibility -->
     <string name="stock_bar_description">Stock %1$d of %2$d</string>
 
