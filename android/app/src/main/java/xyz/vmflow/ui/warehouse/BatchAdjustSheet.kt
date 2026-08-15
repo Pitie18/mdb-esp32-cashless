@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -62,9 +64,14 @@ private val REASON_OPTIONS = listOf(
  * either), and an optional notes field.
  *
  * There is no confirmation dialog — per the task brief, iOS has none
- * either; the sheet itself is the confirmation. [onConfirm] is fired and
- * the sheet dismissed immediately; the caller (`WarehouseScreen.kt`) is
- * responsible for actually calling `WarehouseViewModel.adjustBatch(...)`.
+ * either; the sheet itself is the confirmation. [onConfirm] is fired
+ * immediately; the caller (`WarehouseScreen.kt`) is responsible for actually
+ * calling `WarehouseViewModel.adjustBatch(...)`. [onDismiss] is still called
+ * right away too (its timing is unchanged), but [isSubmitting] — sourced
+ * from `WarehouseUiState.isAdjustingBatch` — gates the submit button (and
+ * the rest of the form) so a second tap can't fire a second `adjustBatch`
+ * call while the first is still in flight, mirroring how
+ * [WarehouseIntakeTab]'s `isBookingIntake` gates its own submit button.
  *
  * The quantity field reuses [WarehouseIntakeLogic.evaluateQuantityExpression]
  * so operators can type "2*12" here exactly like on the intake form.
@@ -75,6 +82,7 @@ private val REASON_OPTIONS = listOf(
 @Composable
 fun BatchAdjustSheet(
     batch: WarehouseStockBatch,
+    isSubmitting: Boolean,
     onConfirm: (quantityChange: Int, reason: AdjustReason, notes: String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -87,7 +95,7 @@ fun BatchAdjustSheet(
 
     val evaluatedQuantity = remember(quantityText) { WarehouseIntakeLogic.evaluateQuantityExpression(quantityText) }
     val exceedsStock = direction == AdjustDirection.REMOVE && evaluatedQuantity != null && evaluatedQuantity > batch.quantity
-    val canSubmit = evaluatedQuantity != null && !exceedsStock
+    val canSubmit = evaluatedQuantity != null && !exceedsStock && !isSubmitting
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -134,12 +142,14 @@ fun BatchAdjustSheet(
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                     selected = direction == AdjustDirection.REMOVE,
                     onClick = { direction = AdjustDirection.REMOVE },
+                    enabled = !isSubmitting,
                     label = { Text(stringResource(R.string.warehouse_adjust_direction_remove)) },
                 )
                 SegmentedButton(
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                     selected = direction == AdjustDirection.ADD,
                     onClick = { direction = AdjustDirection.ADD },
+                    enabled = !isSubmitting,
                     label = { Text(stringResource(R.string.warehouse_adjust_direction_add)) },
                 )
             }
@@ -162,6 +172,7 @@ fun BatchAdjustSheet(
                     },
                     placeholder = { Text(stringResource(R.string.warehouse_intake_quantity_hint)) },
                     singleLine = true,
+                    enabled = !isSubmitting,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (exceedsStock) {
@@ -193,11 +204,11 @@ fun BatchAdjustSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { reason = value }
+                            .clickable(enabled = !isSubmitting) { reason = value }
                             .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected = reason == value, onClick = { reason = value })
+                        RadioButton(selected = reason == value, onClick = { reason = value }, enabled = !isSubmitting)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(stringResource(labelRes))
                     }
@@ -212,6 +223,7 @@ fun BatchAdjustSheet(
                 placeholder = { Text(stringResource(R.string.warehouse_intake_optional_hint)) },
                 minLines = 2,
                 maxLines = 4,
+                enabled = !isSubmitting,
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -225,15 +237,23 @@ fun BatchAdjustSheet(
                 enabled = canSubmit,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(
-                    stringResource(
-                        if (direction == AdjustDirection.REMOVE) {
-                            R.string.warehouse_adjust_submit_remove
-                        } else {
-                            R.string.warehouse_adjust_submit_add
-                        }
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp,
                     )
-                )
+                } else {
+                    Text(
+                        stringResource(
+                            if (direction == AdjustDirection.REMOVE) {
+                                R.string.warehouse_adjust_submit_remove
+                            } else {
+                                R.string.warehouse_adjust_submit_add
+                            }
+                        )
+                    )
+                }
             }
 
             TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {

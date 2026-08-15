@@ -172,6 +172,7 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
             if (batch != null) {
                 BatchAdjustSheet(
                     batch = batch,
+                    isSubmitting = uiState.isAdjustingBatch,
                     onConfirm = { quantityChange, reason, notes ->
                         viewModel.adjustBatch(
                             batchId = batch.id,
