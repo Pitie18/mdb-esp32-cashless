@@ -84,7 +84,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     labelKey: 'print.motifs.kachel.label',
     descriptionKey: 'print.motifs.kachel.description',
     component: PosterKachel,
-    formats: ['a4', 'a5', 'a6', 'a5-2up', 'a6-4up', 'a7-8up'],
+    formats: ['a4', 'a5', 'a5-2up', 'a6-4up', 'a7-8up'],
     slots: [
       { id: 'tile1', labelKey: 'print.slots.tile1', compact: true, defaultSource: 'page', optional: false },
       { id: 'tile2', labelKey: 'print.slots.tile2', compact: true, defaultSource: 'whatsapp', optional: true },
@@ -101,7 +101,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     labelKey: 'print.motifs.qrFirst.label',
     descriptionKey: 'print.motifs.qrFirst.description',
     component: PosterQrFirst,
-    formats: ['a4', 'a5', 'a6', 'a5-2up', 'a6-4up', 'a7-8up'],
+    formats: ['a4', 'a5', 'a5-2up', 'a6-4up', 'a7-8up'],
     slots: [
       { id: 'main', labelKey: 'print.slots.main', defaultSource: 'page', optional: false },
     ],
@@ -116,7 +116,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     labelKey: 'print.motifs.duo.label',
     descriptionKey: 'print.motifs.duo.description',
     component: PosterDuo,
-    formats: ['a4', 'a5', 'a6', 'a5-2up', 'a6-4up', 'a7-8up'],
+    formats: ['a4', 'a5', 'a5-2up', 'a6-4up', 'a7-8up'],
     slots: [
       { id: 'main', labelKey: 'print.slots.top', defaultSource: 'page', optional: false },
       { id: 'issue', labelKey: 'print.slots.bottom', compact: true, defaultSource: 'problem', optional: true },
@@ -132,7 +132,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     labelKey: 'print.motifs.signal.label',
     descriptionKey: 'print.motifs.signal.description',
     component: PosterSignal,
-    formats: ['a4', 'a5', 'a6', 'a5-2up', 'a6-4up', 'a7-8up'],
+    formats: ['a4', 'a5', 'a5-2up', 'a6-4up', 'a7-8up'],
     slots: [
       { id: 'main', labelKey: 'print.slots.main', defaultSource: 'page', optional: false },
     ],
@@ -147,7 +147,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     labelKey: 'print.motifs.klassisch.label',
     descriptionKey: 'print.motifs.klassisch.description',
     component: PosterKlassisch,
-    formats: ['a4', 'a5', 'a6', 'a5-2up', 'a6-4up', 'a7-8up'],
+    formats: ['a4', 'a5', 'a5-2up', 'a6-4up', 'a7-8up'],
     slots: [
       { id: 'main', labelKey: 'print.slots.main', defaultSource: 'page', optional: false },
     ],
@@ -162,7 +162,7 @@ export const PRINT_MOTIFS: PrintMotif[] = [
     labelKey: 'print.motifs.dunkel.label',
     descriptionKey: 'print.motifs.dunkel.description',
     component: PosterDunkel,
-    formats: ['a4', 'a5', 'a6', 'a5-2up', 'a6-4up', 'a7-8up'],
+    formats: ['a4', 'a5', 'a5-2up', 'a6-4up', 'a7-8up'],
     slots: [
       { id: 'main', labelKey: 'print.slots.main', defaultSource: 'page', optional: false },
     ],
