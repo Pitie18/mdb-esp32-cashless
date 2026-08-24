@@ -482,9 +482,20 @@ private const val SLOT_SCRIM_ALPHA = 0.55f
 
 /**
  * Fill-state colour for a layout cell. Fixed tokens, same argument as
- * [stockColor] — and the red/orange/green run is deliberately *the same* ramp
- * the tray cards' bars use, so the grid and the card under it never disagree
- * about how full a slot is.
+ * [stockColor], and deliberately the *same palette* — red for empty, orange
+ * for low, green for stocked — so the grid and the tray cards under it speak
+ * one colour language.
+ *
+ * The same palette, **not** the same thresholds, and they genuinely differ:
+ * [stockColor] bands a bar at 0.25 / 0.5 / 0.75 (four steps, yellow
+ * included), while [xyz.vmflow.data.RefillLayout.classify] splits a slot once,
+ * at `LOW_FRACTION = 0.5`. A slot at 10 % of capacity is therefore orange in
+ * the grid and red on its card. That is acceptable because the two answer
+ * different questions at different resolutions: the grid says "does this slot
+ * need opening on this visit" (empty / low / fine), the card's bar quantifies
+ * how full the slot is while the driver dials a number into it. A grid that
+ * resolved four levels in a 30 dp cell would trade a legible map for a
+ * precision the driver reads off the card anyway.
  *
  * [RefillSlotState.JUST_FILLED] gets the brand blue rather than a fifth point on
  * that ramp: "the driver has dialled stock in here" is not a stock level, and

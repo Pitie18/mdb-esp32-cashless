@@ -476,6 +476,7 @@
         <item quantity="other">%1$d Artikel noch im Automaten</item>
     </plurals>
     <string name="refill_review_stock_empty">0 Artikel im Automaten</string>
+    <string name="refill_review_applied">Ersetzt — bereits gespeichert</string>
     <string name="refill_review_skipped_keeping">Übersprungen — aktuelles Produkt beibehalten</string>
     <string name="refill_review_skipped_unassigned">Übersprungen — Fach bleibt nicht zugewiesen</string>
     <string name="refill_review_action_replace">Ersetzen</string>

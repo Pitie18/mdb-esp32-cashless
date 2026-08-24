@@ -128,10 +128,28 @@ fun RefillWizardScreen(
         deductionWarning?.let { snackbarHostState.showSnackbar(it) }
     }
 
+    // ── Belt and braces: a review with nothing to review is not a screen ──
+    // [ReviewStep] renders its header and its bottom bar off `uiState`
+    // regardless of how many cards it has, so a `REVIEW` step that somehow
+    // arrives with an empty [RefillUiState.replacements] would put a
+    // "Product review" heading, no cards and an *enabled* Continue button in
+    // front of the driver ([allReplacementsHandled] is vacuously true over an
+    // empty list). The ViewModel already prevents that on every path it
+    // controls — `detectReplacements` routes an empty result to PACKING and
+    // every failure return of `performLoad` lands on PACKING — and this is
+    // the second lock: whatever the ViewModel says, this screen never renders
+    // the review with nothing on it. Used for the step indicator too, so the
+    // indicator and the content below it can never name different steps.
+    val step = if (uiState.step == RefillStep.REVIEW && uiState.replacements.isEmpty()) {
+        RefillStep.PACKING
+    } else {
+        uiState.step
+    }
+
     // A tour is a physical errand: the phone must not sleep while the driver
     // is standing at a machine filling trays. Scoped to the refill step only
     // — see [KeepScreenOn].
-    if (uiState.step == RefillStep.REFILL) {
+    if (step == RefillStep.REFILL) {
         KeepScreenOn()
     }
 
@@ -155,12 +173,20 @@ fun RefillWizardScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            StepIndicator(currentStep = uiState.step)
+            // Not rendered during the load: until the load lands, `step` is
+            // only a default and the indicator would name a step the wizard
+            // has not decided on yet (it used to flash "Pack" as current
+            // while the review was still being computed). The spinner below
+            // is the whole screen while `isLoading`, so there is nothing for
+            // the indicator to caption anyway.
+            if (!uiState.isLoading) {
+                StepIndicator(currentStep = step)
+            }
 
             if (uiState.isLoading) {
                 LoadingState()
             } else {
-                when (uiState.step) {
+                when (step) {
                     RefillStep.REVIEW -> ReviewStep(
                         uiState = uiState,
                         // ── Picker seam ─────────────────────────────────
@@ -284,7 +310,7 @@ fun RefillWizardScreen(
     // suggestions — `applyReplacementsAndContinue` reloads, so a stale id
     // must open nothing rather than an empty sheet.
     val pickerTray = pickerTrayId?.takeIf { trayId ->
-        uiState.step == RefillStep.REVIEW &&
+        step == RefillStep.REVIEW &&
             !uiState.isApplyingReplacements &&
             uiState.replacements.any { it.trayId == trayId }
     }

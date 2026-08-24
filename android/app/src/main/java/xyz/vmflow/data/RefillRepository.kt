@@ -426,11 +426,10 @@ object RefillRepository {
      * iOS writes no audit row for this operation. Android's own analysis
      * screen writes one for the identical `machine_trays` update
      * ([MachineAnalysisRepository.logProductSwap]), and a product swap with
-     * no audit trail is a gap in a multi-user operation — so this writes
-     * one too, under a distinct action so its origin (review step vs.
-     * analysis screen) stays distinguishable from `product_swapped` /
-     * `analysis_swap` in the feed. `ActivityFeedBuilder` ignores unknown
-     * actions (`mapNotNull`), so an unrendered row here breaks nothing.
+     * no audit trail is a gap in a multi-user operation — so this writes one
+     * too. This app's own feed does not render `product_swapped` at all;
+     * `ActivityFeedBuilder` drops actions it does not know (`mapNotNull`), so
+     * an unrendered row here breaks nothing.
      *
      * `activity_log.metadata` is a typed cross-client contract — the keys
      * below reuse the names the existing writers already use for the same

@@ -480,6 +480,7 @@
         <item quantity="other">%1$d items still in machine</item>
     </plurals>
     <string name="refill_review_stock_empty">0 items in machine</string>
+    <string name="refill_review_applied">Replaced — already saved</string>
     <string name="refill_review_skipped_keeping">Skipped — keeping current product</string>
     <string name="refill_review_skipped_unassigned">Skipped — slot stays unassigned</string>
     <string name="refill_review_action_replace">Replace</string>

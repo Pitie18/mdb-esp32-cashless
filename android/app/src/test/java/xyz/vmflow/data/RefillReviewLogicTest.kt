@@ -1,6 +1,8 @@
 package xyz.vmflow.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import xyz.vmflow.models.Product
@@ -53,6 +55,65 @@ class RefillReviewLogicTest {
         quantity = quantity,
         expirationDate = expirationDate,
     )
+
+    // ─── buildReplacementSuggestions: field mapping ───────────────────────
+
+    @Test
+    fun `every field of a suggestion comes from the tray and machine it was built from`() {
+        // The whole mapping in one assertion block, because three of these
+        // fields leave the app: `slotNumber` becomes `metadata.item_number`
+        // and `currentProductName` becomes `old_product_name` in the
+        // `product_swapped` audit row (`RefillRepository.logReviewSwap`),
+        // which the PWA and iOS read back. A transposition there writes wrong
+        // history, so every field is pinned to a distinct value: the slot
+        // number (23), the tray stock (4) and the capacity (12) are three
+        // different numbers, and no two strings are interchangeable.
+        //
+        // EXPIRED rather than DISCONTINUED as the reason, so the tray can
+        // carry non-zero stock — the discontinued rule only fires at stock 0
+        // and would pin `currentStock` to the one value a transposition could
+        // hide in.
+        val trays = mapOf(
+            "m9" to listOf(
+                tray(
+                    "t7",
+                    machineId = "m9",
+                    itemNumber = 23,
+                    productId = "p7",
+                    capacity = 12,
+                    currentStock = 4,
+                    product = Product(
+                        id = "p7",
+                        name = "Mars",
+                        imagePath = "products/p7.png",
+                    ),
+                )
+            )
+        )
+
+        val result = RefillReviewLogic.buildReplacementSuggestions(
+            machines = listOf(vm("m9", name = "Kantine Nord")),
+            traysByMachine = trays,
+            stockedProductIds = setOf("p7"),
+            expiredProductIds = setOf("p7"),
+            stockLoaded = true,
+        )
+
+        val suggestion = result.single()
+        assertEquals("t7", suggestion.trayId)
+        assertEquals("m9", suggestion.machineId)
+        assertEquals("Kantine Nord", suggestion.machineName)
+        assertEquals(23, suggestion.slotNumber)
+        assertEquals("p7", suggestion.currentProductId)
+        assertEquals("Mars", suggestion.currentProductName)
+        assertEquals("products/p7.png", suggestion.currentProductImage)
+        assertEquals(4, suggestion.currentStock)
+        assertEquals(ReplacementReason.EXPIRED, suggestion.reason)
+        // A freshly detected suggestion carries no decision and no write.
+        assertNull(suggestion.replacementProductId)
+        assertFalse(suggestion.isSkipped)
+        assertFalse(suggestion.isApplied)
+    }
 
     // ─── buildReplacementSuggestions: priority order ──────────────────────
 

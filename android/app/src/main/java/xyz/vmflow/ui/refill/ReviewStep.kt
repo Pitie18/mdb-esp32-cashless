@@ -93,7 +93,10 @@ import xyz.vmflow.ui.theme.StockRed
  *     blocks every slot behind it on every retry. The only escape is
  *     un-choosing it, so [onSkipReplacement] stays reachable from the chosen
  *     state too ([RefillViewModel.skipReplacement] clears
- *     `replacementProductId`, which is exactly that un-choose).
+ *     `replacementProductId`, which is exactly that un-choose). A slot that
+ *     already *committed* is the opposite case and stays out of it — see
+ *     [AppliedDecision]; the dead slot this divergence exists for is never
+ *     one of those, since its write is precisely the one that failed.
  *  2. **A skipped card offers "choose a replacement"**, not iOS's "Undo".
  *     iOS's Undo assigns `isSkipped = false` on the published array directly;
  *     this ViewModel exposes no such action, and adding one is out of scope.
@@ -134,10 +137,14 @@ fun ReviewStep(
     // The whole screen goes inert while the writes are in flight. The
     // ViewModel's own guards (`if (snapshot.isApplyingReplacements) return`)
     // stop a second *apply*, but nothing there stops a decision being
-    // changed underneath one — and a card whose write already committed
-    // (`isApplied`) would then never be written again, silently dropping the
-    // driver's newer choice. So the UI owns this: one apply in flight, no
+    // changed underneath one. So the UI owns this: one apply in flight, no
     // edits beneath it.
+    //
+    // This covers the in-flight window only. The window that *outlives* it —
+    // a partial failure, where the screen unlocks with some slots already
+    // committed — is handled per card by [AppliedDecision], because a
+    // committed slot must stop being editable permanently, not just while a
+    // write is running.
     val locked = uiState.isApplyingReplacements
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -201,6 +208,13 @@ private data class ReviewRowState(
     /** No product in the slot at all: nothing to strike through, "Assign" not "Replace". */
     val isUnassigned: Boolean,
     val isSkipped: Boolean,
+    /**
+     * This slot's write already committed — [xyz.vmflow.data.ReplacementSuggestion.isApplied].
+     * Not a decision any more, and it outranks [isSkipped] and [chosen] when
+     * the card is rendered: see [AppliedDecision] for why leaving it editable
+     * silently dropped the driver's newer choice.
+     */
+    val isApplied: Boolean,
     /** `null` until the driver picks a replacement. */
     val chosen: ChosenProduct?
 )
@@ -236,6 +250,7 @@ private fun reviewRows(uiState: RefillUiState): List<ReviewRowState> {
             currentStock = suggestion.currentStock,
             isUnassigned = suggestion.reason == ReplacementReason.UNASSIGNED,
             isSkipped = suggestion.isSkipped,
+            isApplied = suggestion.isApplied,
             chosen = chosen
         )
     }
@@ -373,6 +388,10 @@ private fun ReplacementCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             when {
+                // First, ahead of both decision branches: an applied slot is
+                // no longer a decision, whatever `isSkipped`/`chosen` say.
+                row.isApplied -> AppliedDecision(chosen = row.chosen)
+
                 row.isSkipped -> SkippedDecision(
                     isUnassigned = row.isUnassigned,
                     enabled = enabled,
@@ -488,6 +507,75 @@ private fun SkippedDecision(
             modifier = Modifier.defaultMinSize(minHeight = 48.dp)
         ) {
             Text(text = stringResource(R.string.refill_review_action_choose))
+        }
+    }
+}
+
+/**
+ * A slot whose write already **committed**: the tray now holds this product
+ * and its stock has been zeroed. A done state, with no controls at all.
+ *
+ * This exists because of what a *partial* apply leaves behind. The write loop
+ * in [RefillViewModel.applyReplacementsAndContinue] stops at the first
+ * failure, marking every slot it got through as
+ * [xyz.vmflow.data.ReplacementSuggestion.isApplied]; the screen then unlocks
+ * (`isApplyingReplacements` is false again) and the driver retries. Rendering
+ * those committed cards as ordinary decisions was silently lossy in both
+ * directions:
+ *
+ *  - "Change" on a committed card kept `isApplied = true`, so the retry's
+ *    filter (`!it.isApplied`) excluded it, the write never happened, and the
+ *    slot quietly kept the *first* product — wrong products in wrong slots,
+ *    with a green tick claiming otherwise.
+ *  - "Skip" on a committed card claimed the slot keeps its current product,
+ *    for a slot whose product had already been replaced and zeroed.
+ *
+ * Editing is therefore not merely disabled, it is *gone*: the decision has
+ * already been executed and audit-logged from this suggestion's original
+ * `currentProductId`/`currentProductName`, so re-deciding it would need the
+ * ViewModel to clear `isApplied` **and** restamp those two fields to what was
+ * actually written — otherwise the second audit row asserts a transition that
+ * never happened. Nothing needs that; the slot can be changed again from the
+ * machine's own tray screen after the tour.
+ */
+@Composable
+private fun AppliedDecision(chosen: ChosenProduct?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = StockGreen,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        // `chosen` is non-null for every slot the write loop can have
+        // applied (it only writes suggestions with a `replacementProductId`);
+        // the null branch keeps the done state readable rather than blank if
+        // that ever stops holding.
+        if (chosen != null) {
+            ProductImage(
+                imagePath = chosen.imagePath,
+                contentDescription = chosen.name,
+                size = 32.dp
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            if (chosen != null) {
+                Text(
+                    text = chosen.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Text(
+                text = stringResource(R.string.refill_review_applied),
+                style = MaterialTheme.typography.labelMedium,
+                color = StockGreen
+            )
         }
     }
 }

@@ -187,17 +187,22 @@ class ReplacementPickerLogicTest {
 
     @Test
     fun `bucket totalCount counts every group's rows`() {
+        // Two of the three products deliberately share a category, so the row
+        // count (3) and the group count (2) differ. With one row per group the
+        // two numbers coincide and this test passes just as happily against
+        // `groups.size` as against `groups.sumOf { it.rows.size }` — i.e. it
+        // cannot fail for the bug it exists to catch.
         val result = buckets(
             products = listOf(
                 product("a", category = "c1"),
-                product("b", category = "c2"),
-                product("c")
+                product("b", category = "c1"),
+                product("c", category = "c2")
             ),
             categories = listOf(category("c1"), category("c2")),
             stock = mapOf("a" to 1, "b" to 1, "c" to 1)
         )
         assertEquals(3, result.single().totalCount)
-        assertEquals(3, result.single().groups.size)
+        assertEquals(2, result.single().groups.size)
     }
 
     // ─── category grouping ───────────────────────────────────────────────

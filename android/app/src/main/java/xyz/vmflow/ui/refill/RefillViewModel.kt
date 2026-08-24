@@ -124,17 +124,20 @@ import xyz.vmflow.models.Warehouse
 data class RefillUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
-    // REVIEW, not PACKING: the wizard's first real step is the pre-tour
-    // review (`performLoad` routes to PACKING only once it has determined
-    // there is nothing to review), so defaulting to PACKING made the step
-    // indicator flash PACKING as current while the initial load is still in
-    // flight — `RefillWizardScreen` renders `StepIndicator(currentStep =
-    // uiState.step)` unconditionally, even during `isLoading`. Checked against
-    // both `isTourInMemory` (REVIEW is neither REFILL nor SUMMARY, same as
-    // PACKING was) and `TourStore.save`'s `when` (REVIEW and PACKING both
-    // map to `isResumable = false`) — a REVIEW default behaves identically
-    // to the old PACKING default everywhere else in this file.
-    val step: RefillStep = RefillStep.REVIEW,
+    // PACKING, not REVIEW, and that is load-bearing: REVIEW is only ever
+    // correct once `detectReplacements` has actually produced suggestions,
+    // and every *failure* path of `performLoad` returns without ever getting
+    // there. A REVIEW default therefore turned an ordinary offline entry into
+    // a review screen with no cards, whose Continue button was enabled
+    // (`allReplacementsHandled` is vacuously true over an empty list) and
+    // whose one tap latched `reviewCompleted` — switching the review off for
+    // the rest of this ViewModel's life, network or no network.
+    //
+    // This default was briefly REVIEW to stop the step indicator flashing
+    // PACKING as current during the initial load. That is a rendering
+    // problem and it is now solved where it belongs: `RefillWizardScreen`
+    // does not render the step indicator while `isLoading`.
+    val step: RefillStep = RefillStep.PACKING,
     val machines: List<RefillMachine> = emptyList(),
     val warehouses: List<Warehouse> = emptyList(),
     val selectedWarehouseId: String? = null,
@@ -170,8 +173,13 @@ val RefillUiState.stockLoaded: Boolean
 /**
  * Whether every review slot has a decision — a replacement product chosen or
  * an explicit skip. The gate on [RefillViewModel.applyReplacementsAndContinue].
- * Vacuously true for an empty list, which is why the review step is never
- * entered with no suggestions (see [RefillViewModel.loadData]). Ported from
+ * **Vacuously true for an empty list** — so this must never be the gate on a
+ * review that has no suggestions, or Continue is enabled over nothing. Three
+ * things keep that from happening: [RefillViewModel.detectReplacements] routes
+ * an empty result straight to [RefillStep.PACKING], every failure path of
+ * [RefillViewModel.performLoad] lands on [RefillStep.PACKING] rather than
+ * leaving the wizard wherever it was, and [RefillWizardScreen] renders a
+ * `REVIEW` step with no suggestions as the pack step regardless. Ported from
  * iOS `allReplacementsHandled` (`RefillWizardViewModel.swift:1566-1568`).
  */
 val RefillUiState.allReplacementsHandled: Boolean
@@ -228,6 +236,11 @@ class RefillViewModel : ViewModel() {
      * stock would come straight back as [xyz.vmflow.data.ReplacementReason.NO_STOCK])
      * and bounce the driver back into the review, forever.
      *
+     * Only ever latched by an apply over a **non-empty** suggestion list —
+     * see [applyReplacementsAndContinue]'s empty guard. A review that never
+     * had anything to show has not happened, and must not be able to switch
+     * itself off.
+     *
      * Cleared by [reset] alongside [didRunInitialLoad] — the next wizard run
      * is a new tour and must review again. Mirrors iOS `reviewCompleted`
      * (`RefillWizardViewModel.swift`).
@@ -272,6 +285,15 @@ class RefillViewModel : ViewModel() {
      * [loadData]: the review's caller has already established that no tour is
      * running (it cannot be reached from the refill step), and it must not be
      * able to have its reload silently skipped.
+     *
+     * **Every failure return below lands on [RefillStep.PACKING]** — written
+     * out explicitly rather than left to the default, because "wherever the
+     * step happened to be" is exactly what made a failed load render an empty
+     * review screen. Only [detectReplacements] may route to
+     * [RefillStep.REVIEW], and only once it holds suggestions to show. The
+     * pack step is the right landing place for a failed load: it renders its
+     * own empty/retry affordances, and the re-armed entry gate means the next
+     * visit loads again and can still route into the review.
      */
     private suspend fun performLoad() {
         val hasSavedTour = tourStore.hasSavedTour
@@ -304,7 +326,9 @@ class RefillViewModel : ViewModel() {
                 _uiState.update { it.copy(machines = machines).withSyncedPackedState() }
             },
             onFailure = { e ->
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update {
+                    it.copy(isLoading = false, step = RefillStep.PACKING, error = e.message)
+                }
                 rearmEntryGateUnlessTourInMemory()
             }
         )
@@ -325,7 +349,9 @@ class RefillViewModel : ViewModel() {
                 // but without a warehouse there is no stock cap, so the
                 // gate is re-armed to retry on the next entry (iOS does
                 // the same: the whole `loadData` catch re-arms).
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update {
+                    it.copy(isLoading = false, step = RefillStep.PACKING, error = e.message)
+                }
                 rearmEntryGateUnlessTourInMemory()
             }
         )
@@ -336,12 +362,15 @@ class RefillViewModel : ViewModel() {
         // The review runs off the data just loaded (trays, warehouse totals)
         // and is what decides whether this load lands on REVIEW or PACKING —
         // hence last, and only while the review is still pending. A failure
-        // here leaves `step` untouched (PACKING) and re-arms the gate, exactly
-        // like the fetches above: iOS's equivalent fetches throw into
-        // `loadData`'s catch, which also leaves the wizard at the pack step
-        // with an error.
+        // here lands on PACKING and re-arms the gate, exactly like the
+        // fetches above: iOS's equivalent fetches throw into `loadData`'s
+        // catch, which also leaves the wizard at the pack step with an error.
+        // `step` is set explicitly rather than left alone: a caller can reach
+        // this while the wizard already sits at REVIEW, and the step must
+        // never survive a load that failed to refresh the very suggestions
+        // that step renders.
         if (!reviewCompleted && !detectReplacements()) {
-            _uiState.update { it.copy(isLoading = false) }
+            _uiState.update { it.copy(isLoading = false, step = RefillStep.PACKING) }
             rearmEntryGateUnlessTourInMemory()
             return
         }
@@ -669,6 +698,15 @@ class RefillViewModel : ViewModel() {
         // append a second audit row per replacement. iOS relies on `isSaving`
         // disabling its button; this does not depend on the UI.
         if (snapshot.isApplyingReplacements) return
+        // Nothing to review means no review happened, so there is nothing to
+        // apply and nothing to declare finished. Without this, one tap on the
+        // Continue button of a review that a *failed* load left empty
+        // ([allReplacementsHandled] is vacuously true over an empty list)
+        // would latch [reviewCompleted] and switch the review off for the
+        // rest of this ViewModel's life — including after the network comes
+        // back and the re-armed entry gate loads the data successfully. The
+        // driver would pack the van with no review and nothing would say so.
+        if (snapshot.replacements.isEmpty()) return
         if (!snapshot.allReplacementsHandled) return
 
         val toApply = snapshot.replacements.filter {
