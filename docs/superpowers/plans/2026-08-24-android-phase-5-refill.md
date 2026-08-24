@@ -271,9 +271,11 @@ Regeln (Referenz iOS Z. 305-437):
 - Modify: `android/app/src/main/java/xyz/vmflow/models/Models.kt` (den `LegacyRefillItem`/`LegacyRefillMachine`/`LegacyRefillSummary`-Block **ersatzlos löschen** — er existiert nur als Kompilier-Brücke aus Task 2 und hat nach diesem Task keinen Nutzer mehr; er trägt einen entsprechenden Kommentar)
 
 **Interfaces:**
-- Produces: `RefillUiState` und `RefillViewModel` mit den in Task 7-9 ergänzten Aktionen. Das `UiState` ist ab hier der Vertrag für die UI-Tasks 10-12:
+- Produces: `RefillUiState` und `RefillViewModel` mit den in Task 7-9 ergänzten Aktionen. Das `UiState` ist ab hier der Vertrag für die UI-Tasks 10-12.
+- **`RefillStep` ist bereits nach `models/Models.kt` gewandert** (Task 5, `@Serializable`) — dieser Task deklariert das Enum **nicht** neu, sondern importiert es. Grund: `TourStore` liegt im Datenlayer und darf nicht aus `ui/` importieren; solange der Schritt ein `String` war, konnte ein Tippfehler im ViewModel dazu führen, dass `TourStore.save()` still nichts speichert. Der Guard ist jetzt ein erschöpfendes `when` über das Enum, also compilergeprüft. 5b stellt `REVIEW` vor `PACKING`.
 ```kotlin
-enum class RefillStep { PACKING, REFILL, SUMMARY }   // 5b stellt REVIEW davor
+// aus xyz.vmflow.models importieren, nicht neu deklarieren:
+// enum class RefillStep { PACKING, REFILL, SUMMARY }
 
 data class RefillUiState(
     val isLoading: Boolean = true,
