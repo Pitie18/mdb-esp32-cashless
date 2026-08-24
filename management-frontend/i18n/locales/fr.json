@@ -1,4 +1,194 @@
 {
+  "legal": {
+    "common": {
+      "lastUpdated": "Dernière mise à jour : juillet 2026"
+    },
+    "privacy": {
+      "title": "Politique de confidentialité",
+      "intro": "La présente politique de confidentialité vous informe des données à caractère personnel traitées lors de l'utilisation de VMflow (application web et application iOS), des finalités de ce traitement et des droits dont vous disposez.",
+      "sections": [
+        {
+          "heading": "1. Responsable du traitement",
+          "paragraphs": [
+            "Kerl Handel GmbH",
+            "Ziegelweg 1, 74676 Niedernhall, Allemagne",
+            "E-mail : info{'@'}kerl-handel.de"
+          ]
+        },
+        {
+          "heading": "2. Qu'est-ce que VMflow",
+          "paragraphs": [
+            "VMflow est un système de gestion de distributeurs automatiques destiné aux exploitants professionnels. Il traite en premier lieu les données d'exploitation de votre entreprise : machines, ventes, stocks, appareils et livre de caisse. Les données à caractère personnel interviennent principalement dans le cadre de votre compte utilisateur."
+          ]
+        },
+        {
+          "heading": "3. Compte et connexion",
+          "paragraphs": [
+            "L'utilisation de VMflow requiert un compte utilisateur. Nous traitons à cette fin votre adresse e-mail et un mot de passe (conservé sous forme d'empreinte cryptographique, jamais en clair). La base légale est l'art. 6, § 1, point b du RGPD (exécution d'un contrat).",
+            "Les comptes sont généralement créés sur invitation de l'administrateur de votre entreprise, ou par auto-inscription."
+          ]
+        },
+        {
+          "heading": "4. Données d'exploitation de votre entreprise",
+          "paragraphs": [
+            "Les données de vente, les stocks, la télémétrie des machines et les écritures du livre de caisse relèvent de votre entreprise, et non de personnes physiques. Lorsque des écritures portent une attribution à un utilisateur (par exemple qui a saisi une écriture), cela sert la traçabilité au sein de votre équipe. Les bases légales sont l'art. 6, § 1, point b et — pour les données comptables — le point c du RGPD."
+          ]
+        },
+        {
+          "heading": "5. Notifications push (Apple)",
+          "paragraphs": [
+            "Si vous activez les notifications push (par exemple les alertes de stock bas), nous conservons le jeton d'appareil de votre iPhone. La distribution est assurée par le service Apple Push Notification d'Apple Inc., One Apple Park Way, Cupertino, États-Unis. Des données sont à cette occasion transférées aux États-Unis ; Apple est certifiée au titre du cadre de protection des données UE—États-Unis (EU-US Data Privacy Framework). La base légale est votre consentement (art. 6, § 1, point a du RGPD), que vous pouvez retirer à tout moment dans les réglages iOS."
+          ]
+        },
+        {
+          "heading": "6. Appareil photo",
+          "paragraphs": [
+            "L'application iOS utilise l'appareil photo exclusivement en local sur votre appareil, pour lire des codes-barres et des QR codes. Aucune photo ni vidéo n'est prise, enregistrée ou transmise."
+          ]
+        },
+        {
+          "heading": "7. Cookies et stockage local",
+          "paragraphs": [
+            "VMflow n'utilise que des cookies et un stockage local techniquement nécessaires (§ 25, al. 2 TDDDG allemand) ; aucune bannière de consentement n'est donc requise. Concrètement : un cookie d'authentification pour votre session, un cookie mémorisant votre choix de langue, ainsi qu'une entrée dans le stockage local de votre navigateur pour le thème de couleurs (clair/sombre). Il n'y a ni traçage, ni cookies d'analyse, ni cookies publicitaires."
+          ]
+        },
+        {
+          "heading": "8. Hébergement et sous-traitance",
+          "paragraphs": [
+            "VMflow est exploité en propre. L'instance que nous hébergeons fonctionne sur les serveurs de Contabo GmbH (localisation des serveurs : Allemagne). Un contrat de sous-traitance au sens de l'art. 28 du RGPD est conclu avec l'hébergeur dans la mesure où cela est nécessaire. Les exploitants qui installent VMflow sur leur propre infrastructure sont eux-mêmes responsables du traitement correspondant."
+          ]
+        },
+        {
+          "heading": "9. Journaux serveur",
+          "paragraphs": [
+            "Lors de la consultation de ce site et de ses interfaces, des données d'accès sont traitées pour des raisons techniques (adresse IP, horodatage, ressource demandée). Ces journaux servent à la sécurité d'exploitation et à l'analyse des erreurs (art. 6, § 1, point f du RGPD) et sont supprimés après une courte durée."
+          ]
+        },
+        {
+          "heading": "10. Durée de conservation et suppression du compte",
+          "paragraphs": [
+            "Vous pouvez supprimer votre compte à tout moment directement dans l'application iOS (Réglages → Supprimer le compte). Si vous êtes le dernier administrateur ou la dernière administratrice de votre entreprise, les données de l'entreprise sont alors également supprimées, après confirmation expresse.",
+            "Des obligations légales de conservation (en particulier pour les documents comptables au titre du HGB et de l'AO allemands) peuvent faire obstacle à la suppression immédiate de certaines données (art. 17, § 3, point b du RGPD) ; ces données sont supprimées à l'expiration des délais."
+          ]
+        },
+        {
+          "heading": "11. Vos droits",
+          "paragraphs": [
+            "Vous disposez d'un droit d'accès (art. 15), de rectification (art. 16), d'effacement (art. 17), à la limitation du traitement (art. 18), à la portabilité des données (art. 20) et d'opposition aux traitements fondés sur des intérêts légitimes (art. 21 du RGPD). Vous pouvez retirer à tout moment un consentement donné, avec effet pour l'avenir.",
+            "Vous avez en outre le droit d'introduire une réclamation auprès d'une autorité de contrôle de la protection des données."
+          ]
+        },
+        {
+          "heading": "12. Aucun traçage",
+          "paragraphs": [
+            "VMflow n'utilise aucun service d'analyse, de traçage ou de publicité — ni sur ce site, ni dans l'application."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "title": "Conditions d'utilisation",
+      "intro": "Les présentes conditions d'utilisation s'appliquent à l'utilisation de VMflow (application web et application iOS) par les exploitants professionnels de distributeurs automatiques.",
+      "sections": [
+        {
+          "heading": "1. Champ d'application",
+          "paragraphs": [
+            "VMflow s'adresse exclusivement aux professionnels au sens du § 14 du BGB (code civil allemand). Le fournisseur est Kerl Handel GmbH (voir mentions légales)."
+          ]
+        },
+        {
+          "heading": "2. Prestation",
+          "paragraphs": [
+            "VMflow met à disposition des fonctions de gestion de distributeurs automatiques, en particulier l'analyse des ventes, la gestion des stocks et de l'entrepôt, la gestion des appareils et un livre de caisse. La nature et l'étendue de ces fonctions peuvent évoluer au fil du développement du produit, dans la mesure où cela reste raisonnable pour vous."
+          ]
+        },
+        {
+          "heading": "3. Compte et obligations",
+          "paragraphs": [
+            "Vous êtes tenu de garder vos identifiants confidentiels et de ne pas faire un usage abusif de la plateforme. Vous êtes responsable des contenus et des données saisis par votre entreprise."
+          ]
+        },
+        {
+          "heading": "4. Disponibilité",
+          "paragraphs": [
+            "Nous visons une disponibilité élevée, sans toutefois garantir un taux de disponibilité déterminé. Des travaux de maintenance peuvent entraîner des restrictions temporaires."
+          ]
+        },
+        {
+          "heading": "5. Responsabilité",
+          "paragraphs": [
+            "Notre responsabilité est illimitée en cas de faute intentionnelle et de négligence grave, ainsi qu'au titre de la loi allemande sur la responsabilité du fait des produits. En cas de négligence simple, notre responsabilité n'est engagée que pour les dommages résultant de la violation d'obligations contractuelles essentielles, et se limite au dommage prévisible typique de ce type de contrat."
+          ]
+        },
+        {
+          "heading": "6. Dispositions finales",
+          "paragraphs": [
+            "Le droit allemand est applicable. Le for compétent est, dans la mesure où cela est admissible, le siège du fournisseur. Si certaines dispositions devaient être invalides, la validité des autres dispositions n'en serait pas affectée."
+          ]
+        }
+      ]
+    },
+    "imprint": {
+      "title": "Mentions légales",
+      "sections": [
+        {
+          "heading": "Informations conformément au § 5 DDG (loi allemande sur les services numériques)",
+          "paragraphs": [
+            "Kerl Handel GmbH\nZiegelweg 1\n74676 Niedernhall, Allemagne"
+          ]
+        },
+        {
+          "heading": "Représentée par",
+          "paragraphs": [
+            "Gérants : Lucien Kerl, Steven Kerl"
+          ]
+        },
+        {
+          "heading": "Contact",
+          "paragraphs": [
+            "E-mail : info{'@'}kerl-handel.de"
+          ]
+        },
+        {
+          "heading": "Immatriculation et TVA",
+          "paragraphs": [
+            "Registre du commerce : Amtsgericht Stuttgart (tribunal d'instance), HRB 795950\nNuméro de TVA intracommunautaire conformément au § 27a UStG : DE414918778"
+          ]
+        },
+        {
+          "heading": "Responsable du contenu",
+          "paragraphs": [
+            "Lucien Kerl, Ziegelweg 1, 74676 Niedernhall, Allemagne"
+          ]
+        }
+      ]
+    },
+    "support": {
+      "title": "Assistance",
+      "intro": "Aide sur l'application iOS et l'application web VMflow.",
+      "contactHeading": "Contact",
+      "contactText": "Pour toute question ou tout problème, vous pouvez nous joindre par e-mail à info{'@'}kerl-handel.de. Nous répondons en général sous deux jours ouvrés.",
+      "faqHeading": "Questions fréquentes",
+      "faq": [
+        {
+          "q": "Comment obtenir un compte ?",
+          "a": "VMflow est un système destiné aux exploitants professionnels de distributeurs automatiques. Vous pouvez vous inscrire dans l'application ; vous rejoignez une entreprise existante sur invitation de son administrateur."
+        },
+        {
+          "q": "Je n'arrive pas à me connecter — que faire ?",
+          "a": "Vérifiez d'abord que le bon serveur est sélectionné dans l'application (sélecteur de serveur sur l'écran de connexion). Si vous avez oublié votre mot de passe, adressez-vous à l'administrateur de votre entreprise ou à l'assistance."
+        },
+        {
+          "q": "Comment supprimer mon compte ?",
+          "a": "Directement dans l'application iOS : Réglages → Supprimer le compte. Si vous n'appartenez encore à aucune entreprise, l'option se trouve sur l'écran affiché après la connexion. La suppression est définitive."
+        },
+        {
+          "q": "Mes données sont-elles utilisées à des fins publicitaires ?",
+          "a": "Non. VMflow ne contient ni traçage, ni services d'analyse, ni publicité. Les détails figurent dans la politique de confidentialité."
+        }
+      ]
+    }
+  },
   "platformAdmin": {
     "title": "Vue d'ensemble de la plateforme",
     "subtitle": "Tableau de bord multi-entreprises",
@@ -140,7 +330,8 @@
     "cashBook": "Caisse",
     "inbox": "Boîte de réception",
     "mobileApp": "Application mobile",
-    "deals": "Offres"
+    "deals": "Offres",
+    "analytics": "Analyses"
   },
   "auth": {
     "signIn": "Se connecter",
@@ -244,6 +435,7 @@
     "swapNeeded": "{count} produit(s) à remplacer",
     "refillNeeded": "{count} réapprovisionnement(s) requis",
     "noWarehouseStock": "{count} aucun stock",
+    "topoffRecommended": "{count} à réapprovisionner",
     "inStock": "en stock",
     "noStock": "pas de stock",
     "swap": "remplacer",
@@ -1252,6 +1444,11 @@
     "sourceNayax": "Rapprochement Nayax",
     "sourceAnalysisSwap": "Remplacement via analyse",
     "sourceSuppressedRestore": "Doublon supprimé restauré",
+    "technicalDetails": "Détails techniques",
+    "showMore": "Afficher plus",
+    "showLess": "Afficher moins",
+    "moreItems": "+{count} autres",
+    "timeUncertainWarning": "Horodatage incertain — possible doublon après un redémarrage de l'appareil",
     "actions": {
       "sale_recorded": "Vente enregistrée",
       "sale_deleted": "Vente supprimée",
@@ -1300,6 +1497,8 @@
       "cashBook": "Caisse",
       "minStock": "Stock min",
       "capacity": "Capacité",
+      "saleSeq": "Numéro de séquence",
+      "timeUncertain": "État de l'horodatage",
       "motif": "Modèle",
       "format": "Format"
     }
@@ -2050,5 +2249,58 @@
     "zoomIn": "Agrandir",
     "zoomOut": "Réduire",
     "zoomFit": "Ajuster"
+  },
+  "analytics": {
+    "title": "Analyses",
+    "subtitle": "Comprendre ce qui se vend, où et quand",
+    "unsupported": "Ce serveur ne prend pas encore en charge les analyses. Merci de mettre à jour le backend.",
+    "revenue": "Revenu",
+    "units": "Unités",
+    "grossProfit": "Marge brute",
+    "profit": "Marge brute",
+    "vsPrevious": "vs. {range}",
+    "costHint": "Marge brute hors taxes. {count} produit sans prix d'achat n'est pas inclus. | Marge brute hors taxes. {count} produits sans prix d'achat ne sont pas inclus.",
+    "timeRange": "Période",
+    "days7": "7 derniers jours",
+    "days30": "30 derniers jours",
+    "days90": "90 derniers jours",
+    "thisMonth": "Ce mois-ci",
+    "lastMonth": "Mois dernier",
+    "custom": "Période personnalisée",
+    "from": "Du",
+    "to": "Au",
+    "apply": "Appliquer",
+    "machines": "Machines",
+    "allMachines": "Toutes les machines",
+    "nMachines": "{count} machine | {count} machines",
+    "categories": "Catégories",
+    "allCategories": "Toutes les catégories",
+    "nCategories": "{count} catégorie | {count} catégories",
+    "products": "Produits",
+    "breakdown": "Répartition",
+    "trend": "Évolution",
+    "peakHours": "Heures de pointe",
+    "paymentMethods": "Moyens de paiement",
+    "cash": "Espèces",
+    "cashless": "Sans espèces",
+    "unknown": "Inconnu",
+    "noSales": "Aucune vente sur cette période.",
+    "noPurchasePrice": "pas de prix d'achat",
+    "perDay": "{value} /jour",
+    "nPieces": "{count} pc | {count} pcs",
+    "nProducts": "{count} produit | {count} produits",
+    "perMachine": "Par machine",
+    "abcClass": "Classe {class} · {share} % du revenu",
+    "stock": "Stock",
+    "stockOf": "stock {current}/{capacity}",
+    "empty": "vide",
+    "sellThrough": "Écoulement {value} %",
+    "daysOfSupply": "Suffit encore environ {days} jours",
+    "sortDescending": "Plus élevé d'abord",
+    "sortAscending": "Plus faible d'abord",
+    "filtered": "Filtré",
+    "thisYear": "Cette année",
+    "lastYear": "L'année dernière",
+    "allTime": "Toute la période"
   }
 }

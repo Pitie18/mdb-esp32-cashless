@@ -44,15 +44,11 @@ describe('locale key parity', () => {
     expect(missingPaths(en as LocaleTree, de as LocaleTree)).toEqual([])
   })
 
-  // Pre-existing gap, not introduced by this branch: fr.json and nl.json are
-  // each missing 130 leaf keys that de.json and en.json already have (mostly
-  // the legal.* pages and the analytics.* section). Remove the skip once
-  // those translations are filled in and this test starts asserting for real.
-  it.skip('fr has no keys missing relative to en', () => {
+  it('fr has no keys missing relative to en', () => {
     expect(missingPaths(en as LocaleTree, fr as LocaleTree)).toEqual([])
   })
 
-  it.skip('nl has no keys missing relative to en', () => {
+  it('nl has no keys missing relative to en', () => {
     expect(missingPaths(en as LocaleTree, nl as LocaleTree)).toEqual([])
   })
 })
