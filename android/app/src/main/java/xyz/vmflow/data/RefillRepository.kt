@@ -1,6 +1,5 @@
 package xyz.vmflow.data
 
-import android.util.Log
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
@@ -9,6 +8,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -24,8 +24,6 @@ import xyz.vmflow.models.Tray
 import xyz.vmflow.models.TrayApplicationResult
 import xyz.vmflow.models.WarehousePositionGroup
 import xyz.vmflow.models.WarehouseProductPosition
-
-private const val TAG = "RefillRepository"
 
 /** RPC input for [RefillRepository.refillMachineTrays] — mirrors iOS `applyRefillRPC` (`RefillWizardViewModel.swift:1848-1868`). */
 @Serializable
@@ -259,10 +257,15 @@ object RefillRepository {
                             "tour_id" to tourId
                         )
                     ).getOrThrow()
-                } catch (e: Exception) {
-                    Log.w(TAG, "Warehouse deduction failed for product ${deduction.productId}", e)
-                    // Non-critical: continue the tour even if one
-                    // deduction fails, matching iOS.
+                } catch (_: Exception) {
+                    // Non-critical: continue the tour even if one deduction
+                    // fails, matching iOS. Deliberately silent rather than
+                    // logged: `android.util.Log` is unmocked on the JVM test
+                    // path, so a log call *inside* this catch would throw and
+                    // escape to the outer catch — turning "one deduction may
+                    // fail, the tour continues" into a whole-call failure
+                    // under test. The caller cannot observe a partial failure
+                    // here by design (same as iOS).
                 }
             }
             Result.success(Unit)
@@ -309,8 +312,12 @@ object RefillRepository {
             val companyId = AuthRepository.fetchOrganization().getOrThrow().organization?.id
                 ?: throw IllegalStateException("Could not determine company")
 
-            val firstName = user.userMetadata?.get("first_name")?.let { (it as? JsonPrimitive)?.content }
-            val lastName = user.userMetadata?.get("last_name")?.let { (it as? JsonPrimitive)?.content }
+            // `JsonNull` is itself a JsonPrimitive whose `content` is the
+            // literal string "null", so an explicit `"first_name": null` in
+            // the user metadata would otherwise be written as the author name
+            // "null" and rendered as such in the activity feed.
+            val firstName = user.userMetadata?.get("first_name").asNonNullString()
+            val lastName = user.userMetadata?.get("last_name").asNonNullString()
             val fullName = listOfNotNull(firstName, lastName).joinToString(" ").trim()
             val userDisplay = fullName.ifEmpty { user.email }
 
@@ -335,9 +342,20 @@ object RefillRepository {
                 }
             )
             Result.success(Unit)
-        } catch (e: Exception) {
-            Log.w(TAG, "Activity log write failed for action=$action", e)
+        } catch (_: Exception) {
+            // Non-critical: a lost audit row must never fail a refill that
+            // already committed. Silent for the same reason as the deduction
+            // loop above — `android.util.Log` is unmocked on the JVM test path.
             Result.success(Unit)
         }
     }
 }
+
+/**
+ * Reads a `user_metadata` value as a real string, treating JSON null as
+ * absent. `JsonNull` is a [JsonPrimitive] whose `content` is `"null"`, so a
+ * bare `(value as? JsonPrimitive)?.content` turns an explicit null into the
+ * four-character string.
+ */
+private fun JsonElement?.asNonNullString(): String? =
+    (this as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content
