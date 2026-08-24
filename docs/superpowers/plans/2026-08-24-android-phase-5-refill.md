@@ -163,7 +163,7 @@ Dazu: `applyTourInclusion` verteilt eine `customQuantity` proportional über zwe
 **Files:**
 - Modify: `android/app/src/main/java/xyz/vmflow/models/Models.kt`
 
-Die bestehenden `RefillItem`/`RefillMachine`/`RefillSummary` (Z. 355-374) werden **ersetzt**, nicht ergänzt — der alte `RefillViewModel` ist ihr einziger Nutzer und wird in Task 6-9 ohnehin neu geschrieben. `RefillSummary` fällt weg (die Zusammenfassung wird in Task 9 aus dem `tourLog` berechnet, wie auf iOS).
+Die bestehenden `RefillItem`/`RefillMachine`/`RefillSummary` werden ersetzt. **Korrektur gegenüber der ersten Planfassung:** sie haben nicht einen, sondern **sechs** Nutzer (`RefillRepository`, `RefillViewModel`, `PackingStep`, `RefillStep`, `RefillSummaryStep`, `Models` selbst) und hängen an einer *live* Navigationsroute — ein Löschen in Task 2 hätte den Baum gebrochen. Umgesetzt wurde deshalb ein rein mechanisches Umbenennen in `LegacyRefillItem`/`LegacyRefillMachine`/`LegacyRefillSummary` (verhaltensneutral, unabhängig verifiziert). **Task 6 löscht diesen `Legacy*`-Block ersatzlos**, sobald das neue ViewModel steht. `RefillSummary` fällt dabei ganz weg (die Zusammenfassung wird in Task 9 aus dem `tourLog` berechnet, wie auf iOS).
 
 Neu bzw. ersetzt, `@Serializable` nur wo Persistenz oder Wire-Format es braucht:
 
@@ -253,7 +253,7 @@ Regeln (Referenz iOS Z. 305-437):
 - Serialisierung über `kotlinx.serialization` mit `ignoreUnknownKeys = true` — ein älterer gespeicherter Zustand darf nach einem App-Update nicht crashen, sondern höchstens verworfen werden.
 - `load()` gibt bei kaputtem JSON `null` zurück und **räumt den Schlüssel auf**, statt bei jedem Start erneut daran zu scheitern.
 - Gespeichert wird **nur** während `REFILL` und `SUMMARY`. Im Pack-Schritt gibt es nichts zu retten (kein `tourId`, keine Buchung) — iOS hat dafür einen expliziten Guard (Z. 361).
-- Ein Zustand älter als 24 h gilt als abgelaufen: `load()` gibt `null` zurück und räumt auf. (iOS zeigt ihn unbegrenzt an; auf einem Diensthandy ist eine Tour von letzter Woche kein sinnvolles Angebot. **Bewusste Abweichung — im Report begründen.**)
+- Ein Zustand älter als 24 h gilt als abgelaufen: `load()` gibt `null` zurück und räumt auf. **Korrektur aus dem Abschluss-Review: das ist keine Abweichung, sondern Parität.** iOS hat dieselben 24 h (`RefillWizardViewModel.swift:314-315`, Kommentar dort: matches web), die PWA ebenfalls (`MAX_AGE_MS` in `useRefillWizard.ts`). Die erste Planfassung behauptete, iOS biete eine gespeicherte Tour unbegrenzt an — das war falsch und stand eine Zeit lang auch so im Code-Kommentar. Wer das liest, soll die Ablaufprüfung nicht aus falsch verstandener Paritätstreue wieder ausbauen.
 
 - [ ] **Step 1: Tests schreiben** — Roundtrip save→load; `load` nach `clear` ist `null`; kaputtes JSON → `null` **und** Schlüssel geleert; Zustand mit `savedAt` vor 25 h → `null`; Zustand mit unbekanntem Zusatzfeld im JSON lädt trotzdem.
 - [ ] **Step 2:** Tests laufen lassen, Fehlschlag bestätigen.
@@ -268,11 +268,14 @@ Regeln (Referenz iOS Z. 305-437):
 **Files:**
 - Modify: `android/app/src/main/java/xyz/vmflow/ui/refill/RefillViewModel.kt` (Vollersatz)
 - Modify: `android/app/src/main/java/xyz/vmflow/data/RefillRepository.kt` (nur: `buildRefillPlan` und `applyRefill` entfernen — ab hier unbenutzt)
+- Modify: `android/app/src/main/java/xyz/vmflow/models/Models.kt` (den `LegacyRefillItem`/`LegacyRefillMachine`/`LegacyRefillSummary`-Block **ersatzlos löschen** — er existiert nur als Kompilier-Brücke aus Task 2 und hat nach diesem Task keinen Nutzer mehr; er trägt einen entsprechenden Kommentar)
 
 **Interfaces:**
-- Produces: `RefillUiState` und `RefillViewModel` mit den in Task 7-9 ergänzten Aktionen. Das `UiState` ist ab hier der Vertrag für die UI-Tasks 10-12:
+- Produces: `RefillUiState` und `RefillViewModel` mit den in Task 7-9 ergänzten Aktionen. Das `UiState` ist ab hier der Vertrag für die UI-Tasks 10-12.
+- **`RefillStep` ist bereits nach `models/Models.kt` gewandert** (Task 5, `@Serializable`) — dieser Task deklariert das Enum **nicht** neu, sondern importiert es. Grund: `TourStore` liegt im Datenlayer und darf nicht aus `ui/` importieren; solange der Schritt ein `String` war, konnte ein Tippfehler im ViewModel dazu führen, dass `TourStore.save()` still nichts speichert. Der Guard ist jetzt ein erschöpfendes `when` über das Enum, also compilergeprüft. 5b stellt `REVIEW` vor `PACKING`.
 ```kotlin
-enum class RefillStep { PACKING, REFILL, SUMMARY }   // 5b stellt REVIEW davor
+// aus xyz.vmflow.models importieren, nicht neu deklarieren:
+// enum class RefillStep { PACKING, REFILL, SUMMARY }
 
 data class RefillUiState(
     val isLoading: Boolean = true,
@@ -348,7 +351,8 @@ Reihenfolge — **exakt diese**, sie ist auf iOS bewusst so und in einem Memory 
 3. `RefillTourLogic.applyTourInclusion(...)` → neue `machines`-Liste mit `isInTour`/`fillAmount`.
 4. Falls ein Lager gewählt ist: `RefillTourLogic.buildDeductions(...)` → `RefillRepository.deductForTour(...)`. Fehler blockieren nicht.
 5. `writeTourActivity("tour_started", machineId = null, …)` mit `machine_count` (Int), `machine_ids` (Array), `machine_names` (Array) und — falls vorhanden — `warehouse_name`. Feldnamen gegen `models/ActivityFeed.kt:37-42` prüfen: der **Android-Dashboard-Feed liest diese Zeile selbst**, ein Tippfehler zeigt sich sofort als leere Tour-Karte.
-6. `step = REFILL`, `currentMachineId` = erste gepackte, nicht erledigte Maschine, `TourStore.save(...)`.
+6. **Besuchsreihenfolge festlegen** (Nachtrag aus dem Task-3-Review): `fetchRefillMachines` liefert die Maschinen in bedeutungsloser Reihenfolge — iOS sortiert nach Dringlichkeit in dem `buildRefillMachines`-Schritt, den dieser Plan absichtlich umgeht. Die Tour sortiert ihre gepackten Maschinen deshalb hier selbst, wie iOS (`RefillWizardViewModel.swift:1017-1022`): Maschinen mit leeren Trays zuerst, dann nach `totalDeficit` absteigend, mit einem stabilen letzten Tiebreaker (Maschinen-ID), damit die Reihenfolge zwischen zwei Aufrufen nicht springt.
+7. `step = REFILL`, `currentMachineId` = erste gepackte, nicht erledigte Maschine dieser Sortierung, `TourStore.save(...)`.
 
 - [ ] **Step 1:** iOS `startTour` (Z. 1652-1740) und `deductWarehouseStock` (Z. 1741-1800) lesen — inklusive des Kommentars, der den Abbuchungs-Bug beschreibt.
 - [ ] **Step 2:** `startTour()` implementieren.
@@ -373,7 +377,8 @@ Regeln (Referenz iOS Z. 1801-2024, 369-437):
 - Erfolgs-Nachbereitung: `isRefilled = true`, `TourLogEntry`, `writeTourActivity("stock_refill_tour", …)` mit `trays_refilled`, `total_added` und `products` (Array aus `{product_id, product_name, quantity}` — Snapshot der gebuchten Trays), dann nächste Maschine, dann `TourStore.save`.
 - `skipMachine`: `isSkipped = true`, Log-Eintrag mit `skipped = true`, `writeTourActivity("stock_refill_tour_skip", …)` ohne Zusatzfelder, weiter.
 - Weiterrücken: Wenn keine gepackte, nicht erledigte, nicht übersprungene Maschine bleibt → `step = SUMMARY`.
-- `resumeTour()`: Zustand aus `TourStore` in den State übernehmen (inkl. `tourId` — sonst verliert der Retry seine Idempotenz-Klammer). `discardSavedTour()` räumt auf. `reset()` leert alles, löscht den gespeicherten Zustand und entsperrt das Einstiegs-Gate, damit der nächste Tab-Besuch frisch lädt.
+- **`company_id` einmal je Tour auflösen** (Nachtrag aus dem Task-4-Review): `RefillRepository.writeTourActivity` löst die `company_id` heute pro Zeile über die Edge-Function `get-my-organization` auf (so wollte es der Plan, es ist das Muster von `MachineAnalysisRepository`). Bei einer Tour über N Maschinen sind das N Edge-Function-Aufrufe, jeder *nach* der schon committeten Tray-Buchung — fällt die Edge-Runtime aus, während PostgREST läuft, verschwindet die Audit-Zeile stillschweigend. iOS liest stattdessen direkt aus `organization_members`. Das ViewModel löst die `company_id` deshalb **einmal** beim Tourstart auf und gibt sie an jeden Log-Aufruf weiter; `writeTourActivity` bekommt dafür einen optionalen `companyId`-Parameter (fällt ohne ihn auf das heutige Verhalten zurück, damit kein bestehender Aufrufer bricht).
+- `resumeTour()`: Zustand aus `TourStore` in den State übernehmen (inkl. `tourId` — sonst verliert der Retry seine Idempotenz-Klammer). **Achtung (Nachtrag aus dem Task-6-Review):** der persistierte Zustand trägt einen `currentMachineIndex`, das laufende UiState aber eine `currentMachineId`. Der Index bezieht sich auf die **nach Dringlichkeit sortierte** Tour-Liste aus Task 8, nicht auf die Abrufreihenfolge des Repositories — beim Fortsetzen also erst sortieren, dann indizieren, sonst landet der Fahrer an der falschen Maschine. `discardSavedTour()` räumt auf. `reset()` leert alles, löscht den gespeicherten Zustand und entsperrt das Einstiegs-Gate, damit der nächste Tab-Besuch frisch lädt.
 
 - [ ] **Step 1:** iOS Z. 1801-2024 und die Persistenz Z. 305-437 lesen.
 - [ ] **Step 2:** Implementieren.
@@ -389,9 +394,9 @@ Regeln (Referenz iOS Z. 1801-2024, 369-437):
 
 Aufbau von oben nach unten (Referenz `PackingStepView.swift`):
 
-1. **Lager-Picker** — nur wenn mehr als ein Lager existiert (gleiches Gating wie `WarehouseScreen.kt` aus Phase 4).
+1. **Lager-Picker** — nur wenn mehr als ein Lager existiert (gleiches Gating wie `WarehouseScreen.kt` aus Phase 4). **Nachtrag aus dem Task-6-Review:** schlägt der Bestandsabruf fehl, bleibt `warehouseStock` leer, und leer heißt für die Deckelungslogik „kein Bestand geladen" — die Packmengen werden dann nur noch von der Tray-Kapazität begrenzt, der Fahrer bekommt also mehr zum Packen angezeigt, als das Lager hergibt, und der Fehler ist nach dem Snackbar weg. `selectWarehouse` mit derselben ID kehrt früh zurück, der Picker kann es also nicht erneut versuchen. Dieser Task braucht deshalb einen sichtbaren Wiederholen-Weg für einen fehlgeschlagenen Bestandsabruf (z. B. eine Hinweiszeile mit „Erneut laden" über der Liste, die das ViewModel zum Neuladen des aktuellen Lagers zwingt).
 2. **Chip-Leiste** — "Alle" plus ein Chip je Maschine mit Bedarf; je Chip die offene Stückzahl und ein Häkchen, wenn vollständig gepackt. Bei mehr als drei Chips **umbrechen** (`FlowRow`) — die 4-Chip-Zeile im Lager-Modul lief auf ~360 dp und in Deutsch aus dem Bild, das war ein Review-Befund in Phase 4 und muss hier nicht wiederholt werden.
-3. **Produktkarte** je Zeile der sichtbaren Packliste: Bild (Platzhalter bei fehlendem Pfad), Name, Gesamtmenge, Lagerbestands-Badge (verbleibender Bestand; rot bei 0, orange bei "weniger als gefordert"), und je Maschine eine **Bedarfszeile** mit Häkchen, Maschinenname, Mengen-Stepper (−/Wert/+) und der Kapazität als Kontext. Steppergrenzen kommen aus `maxPackingQuantity`, der Anzeigewert aus `displayQuantity`.
+3. **Produktkarte** je Zeile der sichtbaren Packliste: Bild (Platzhalter bei fehlendem Pfad), Name — `CombinedPackingItem.productName` ist **nullable**, ein fehlender Name wird hier über `R.string.machine_card_unassigned_slot` mit der Slot-Nummer aufgelöst (die reine Logik synthetisiert bewusst keinen Text, gleiche Konvention wie `IntakeEntry.productName`) —, Gesamtmenge, Lagerbestands-Badge (verbleibender Bestand; rot bei 0, orange bei "weniger als gefordert"), und je Maschine eine **Bedarfszeile** mit Häkchen, Maschinenname, Mengen-Stepper (−/Wert/+) und der Kapazität als Kontext. Steppergrenzen kommen aus `maxPackingQuantity`, der Anzeigewert aus `displayQuantity`.
 4. **Untere Aktionsleiste** — "Alles packen" bzw. bei aktivem Maschinen-Chip "Alles für <Maschine> packen", und "Tour starten" (deaktiviert, solange keine Maschine gepackt ist), mit der Anzahl gepackter Maschinen.
 
 Fehler erscheinen als Snackbar über `uiState.error` + `clearError()` (Muster aus `LoginScreen.kt`/`WarehouseScreen.kt`), nicht als stiller Zustand.
@@ -416,8 +421,9 @@ Befüllen-Schritt (Referenz `RefillStepView.swift`):
 - **Untere Leiste**: "Alle füllen", "Überspringen", "Befüllung bestätigen" (mit Spinner während `isSaving`, gesperrte Eingaben währenddessen — dasselbe Doppel-Absenden-Problem wie im `BatchAdjustSheet` in Phase 4).
 
 Wizard-Hülle:
-- **Schritt-Indikator** (Referenz `RefillWizardView.swift:112`) mit Rücksprung auf bereits erledigte Schritte, nicht nach vorn.
-- **Resume-Abfrage** beim Betreten, wenn `hasSavedTour`: "Tour fortsetzen?" mit Fortsetzen/Verwerfen.
+- **Schritt-Indikator** (Referenz `RefillWizardView.swift:112`). **Umgesetzt als reine Fortschrittsanzeige, absichtlich NICHT antippbar — Abweichung von dieser Planvorgabe, dem Nutzer vorzulegen:** iOS' `navigateToStep` setzt nur `currentStep`, und iOS' `startTour` prüft ausschließlich, ob irgendetwas gepackt ist. Wer dort vom Befüllen zurück auf Packen springt und erneut startet, erzeugt eine **neue** `tourId`, führt die FIFO-Abbuchung für dieselbe Ware **ein zweites Mal** aus und wirft die `tourId` weg, über die `refill_machine_trays` dedupliziert — also genau die Fehlerklasse, für die diese Phase existiert. Ein sicherer Rücksprung braucht eine Tour-Zurücksetzung **mit Rückbuchung** der Abbuchungen (`deduct_warehouse_stock_fifo` hat keinen Idempotenz-Schlüssel, eine Wiederverwendung der `tourId` genügt nicht) — eigener Task, nicht hier.
+- **Resume-Abfrage** beim Betreten, wenn `hasSavedTour`: „Tour fortsetzen?" mit Fortsetzen/Verwerfen. **Harte Anforderung aus dem Task-9-Review, nicht optional:** `loadData` veröffentlicht `hasSavedTour` *bevor* der Abruf fertig ist und schreibt `machines` danach bedingungslos — eine Abfrage, die sofort beim Umschlagen von `hasSavedTour` erscheint, kann also ein `resumeTour()` mitten in einen laufenden Ladevorgang legen, der anschließend `isRefilled`/`isSkipped`/`fillAmount` überschreibt. Die Abfrage darf deshalb erst *nach* Abschluss des Ladens erscheinen (oder das Laden braucht ein Generationen-Token). Ohne das verliert eine fortgesetzte Tour genau die Fortschritte, um die es beim Fortsetzen geht.
+- **`isSaving` bleibt über den Audit-Schreibvorgang hinweg gesetzt** (wie auf iOS): ein Tipp auf „Bestätigen" der nächsten Maschine wird in diesem Fenster vom Re-Entrancy-Guard verworfen. Das darf nicht rückmeldungslos passieren — Knopf während `isSaving` sichtbar deaktiviert mit Spinner, damit ein verworfener Tipp erklärt ist statt zu wirken wie eine kaputte App.
 - **Bildschirm bleibt an, solange `step == REFILL`** (Spec Z. 161): `KeepScreenOn` über `LocalView.current.keepScreenOn` in einem `DisposableEffect`, das die Flagge beim Verlassen zuverlässig zurücknimmt — nicht dauerhaft für den ganzen Wizard.
 - Die drei hart codierten englischen Titel verschwinden hier (Ausgangslage Befund 2).
 
@@ -435,7 +441,8 @@ Wizard-Hülle:
 - Modify: `android/app/src/main/res/values/strings.xml`, `android/app/src/main/res/values-de/strings.xml`
 
 - Zusammenfassung aus dem `tourLog`: Kennzahlen (besuchte Maschinen, befüllte Trays, eingefüllte Stück, übersprungene Maschinen) plus eine Zeile je Maschine mit ihrem Beitrag und einer Kennzeichnung für Übersprungene. "Fertig" ruft `reset()` und verlässt den Wizard.
-- **Lokalisierungs-Sweep über das gesamte Modul**: `grep -rn 'Text("' ui/refill/` und `grep -rn 'contentDescription = "' ui/refill/` müssen leer sein. Mengen über `<plurals>`, Währung über `NumberFormat.getCurrencyInstance`, Datum locale-abhängig.
+- **Lokalisierungs-Sweep über das gesamte Modul**: `grep -rn 'Text("' ui/refill/` und `grep -rn 'contentDescription = "' ui/refill/` müssen leer sein. **Zusätzlich** (aus dem Task-9-Review): Task 9 hat bewusst einen nicht lokalisierten Fehlertext im ViewModel hinterlassen — die Meldung nach drei fehlgeschlagenen Buchungsversuchen. Sie gehört ebenfalls in beide `strings.xml`; das ViewModel darf dafür keinen Text mehr selbst formulieren (Muster: das ViewModel setzt einen Fehlercode/Schlüssel oder die UI übersetzt beim Anzeigen).
+- **`reset()` hinterlässt `isLoading = true`** (der `RefillUiState()`-Default) bei zurückgesetztem Einstiegs-Gate. Das ist richtig, wenn der Screen verlassen und neu betreten wird — genau so muss „Fertig" also verdrahtet werden (erst `reset()`, dann raus). Bleibt die Zusammenfassung stattdessen stehen, zeigt sie einen dauerhaften Spinner. Mengen über `<plurals>`, Währung über `NumberFormat.getCurrencyInstance`, Datum locale-abhängig.
 - **Schlüssel-Paritätsprüfung** beider Locale-Dateien: Differenz darf nur aus den bekannten nicht-übersetzbaren technischen Schlüsseln bestehen (`app_name`, `supabase_anon_key`, `supabase_url`).
 
 - [ ] **Step 1:** `RefillSummaryView.swift` lesen, Zusammenfassung bauen.
@@ -457,5 +464,21 @@ Alles hiervon macht der **Orchestrator** selbst, nicht ein Umsetzer:
 6. Verlauf: Nach der Tour zeigt der **Android-Dashboard-Feed** selbst die Tour-Start-Karte (mit Maschinenanzahl und Lagername) und die Befüllungs-Karte (mit Produktzeilen) — `ActivityFeedBuilder` liest exakt die Schlüssel, die Task 4/8/9 schreiben, also ist das die schärfste Gegenprobe auf den Metadaten-Vertrag. Zusätzlich in der PWA `/history` und im iOS-Verlauf gegenprüfen, dass die Zeilen dort ebenso korrekt gerendert werden — der Vertrag gilt über drei Clients.
 7. Bildschirm bleibt während des Befüllen-Schritts an, geht danach wieder in den normalen Timeout.
 8. Kein hart codierter Text mehr in `ui/refill/`, Schlüssel-Parität beider Locale-Dateien geprüft.
+
+**Bekannte Abweichung von iOS, aufgedeckt im Task-10-Review** (dem Nutzer vorlegen, nicht stillschweigend abhaken): `RefillRepository.fetchRefillMachines` übernimmt **keine** von iOS' Vorfilterung (`RefillWizardViewModel.swift:998-1012`: eine Maschine kommt nur in die Liste, wenn sie ein leeres oder unter dem Mindestbestand liegendes Tray hat; Trays müssen kritisch/niedrig/unter der Nachfüllschwelle sein). Android zeigt damit jede Maschine, die überhaupt Trays hat — auch eine, die eine einzige Einheit unter Kapazität liegt. Das war eine bewusste Planentscheidung (der Befüllen-Schritt zeigt volle Trays eingeklappt mit), hat aber zwei Folgen, die der Plan nicht vorhergesehen hat: die „Alle"-Chip-Logik musste in der UI über die Packlisten-Maschinen statt über `uiState.machines` gebildet werden, und die Kosten pro Recomposition wachsen mit der Flottengröße statt mit dem Nachfüllbedarf. Kandidat für einen eigenen Folge-Task, nicht für einen Schnellschuss innerhalb dieser Phase.
+
+## Bekannte Restrisiken nach 5a (aus dem Abschluss-Review, bewusst nicht gefixt)
+
+Die Lager-Invariante dieser Phase ist **einseitig**: sie garantiert, dass nichts abgebucht wird, was der Fahrer nicht gepackt hat. Sie garantiert nicht die Rückrichtung. Das ist eine Prozessentscheidung des Nutzers (Rückbuchung bei reduzierten oder übersprungenen Füllungen bleibt manuell), aber es gehört aufgeschrieben, damit niemand die Invariante für geschlossen hält:
+
+1. **Nach Tourstart kann der Fahrer jedes Tray in der Tour bis zur Kapazität hochdrehen** (`adjustFillAmount`/`fillTrayToCapacity` deckeln auf `maxFill`, nicht auf die gepackte Menge) — dann wird Maschinenbestand gebucht, für den das Lager nie belastet wurde. Umgekehrt bleibt bei Herunterdrehen oder Überspringen das Lager belastet, obwohl die Ware im Auto geblieben ist. Es gibt auf keinem der drei Clients einen Rückbuchungspfad.
+2. **Prozesstod zwischen Abbuchung und erstem `TourStore.save()`** (innerhalb von `startTour`) verliert die Tour, während das Lager schon belastet ist — der Fahrer packt neu und wird ein zweites Mal belastet.
+3. **`deductForTour` hat keine `(tour_id, product_id)`-Deduplizierung** der Art, die die Tray-Buchung sicher macht.
+4. **Doppelte Audit-Zeile bei Prozesstod** zwischen dem Zustandsschreiben von `recordRefillSuccess` und dem `TourStore.save()` in `advanceToNextMachine`: die fortgesetzte Tour bestätigt dieselbe Maschine erneut, der RPC liefert die alten Werte zurück (DB-Bestand bleibt korrekt), aber eine zweite `stock_refill_tour`-Zeile mit demselben `total_added` entsteht. Vom legitimen Flugmodus-Retry nicht unterscheidbar, deshalb absichtlich unverändert.
+5. **Nicht zugewiesene Fächer** (`product_id IS NULL`) starten mit `fillAmount = deficit` und bleiben in der Tour — ein einfaches Bestätigen bucht sie auf Kapazität, ohne Produkt und ohne Lagerbelastung. iOS-Parität, in der Praxis überraschend; am Gerät ansehen.
+6. **`fetchRefillMachines` paginiert nicht.** Ein Abruf aller `machine_trays` einer Firma; die CLI-Dev-Konfiguration setzt `max_rows = 1000` (`Docker/supabase/config.toml`), die Docker-Prod-Konfiguration derzeit keine Grenze. Über 1000 Tray-Zeilen würde **still** abgeschnitten: Maschinen verlieren Fächer, halbleere Automaten sehen voll aus. Dieses Repo hatte die Klasse schon einmal (der Nayax-Import paginiert genau deswegen in 1000er-Blöcken). Vor dem Merge die Tray-Zeilenzahl der Zielfirma zählen; nahe an der Grenze → hier paginieren, nicht später.
+7. **Kosten pro Zustandsänderung skalieren mit der Flottengröße**, nicht mit dem Nachfüllbedarf: jedes `withPackingList()` gruppiert und sortiert die ganze Flotte neu, und der Namensvergleicher baut pro Aufruf einen frischen ICU-`Collator`. Am Gerät mit echten Daten fühlbar prüfen (Stepper halten und schnell tippen).
+8. **`flattenPickOrder` verliert Gruppen in einem Eltern-Zyklus** (eine zyklisch verkettete Gruppe ist von keiner Wurzel erreichbar, ihre Produkte fallen aus der Pickreihenfolge). Kein Absturz, kein Datenverlust außer der Sortierung; datengetrieben und unwahrscheinlich.
+9. **Der Rundungsfehler bei reduzierten Packmengen existiert weiterhin auf iOS und in der PWA** (`RefillWizardViewModel.swift:1705-1709` und das PWA-Äquivalent): dort wird jede Tray-Quote einzeln gerundet, sodass die Maschine mehr Einheiten gutgeschrieben bekommen kann als das Lager belastet wird. Auf Android in dieser Phase behoben (Largest-Remainder-Verteilung + Eigenschaftstest); für die anderen zwei Clients offen.
 
 **Was nach 5a bewusst offen bleibt** (Plan 5b, dem Nutzer vor dem Merge vorlegen, nicht stillschweigend abhaken): Review-Schritt mit Ersatzvorschlägen (4 Gründe: `discontinued`, `expired`, `noStock`, `unassigned`), Ersatzprodukt-Picker mit Kategorie-Gruppierung, Maschinen-Layout-Grid im Befüllen-Schritt, sowie die Barkassen-Auflösung am Tour-Ende (letztere braucht erst ein Kassenbuch-Modul auf Android).
