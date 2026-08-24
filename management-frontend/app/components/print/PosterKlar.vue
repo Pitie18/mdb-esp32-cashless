@@ -59,7 +59,7 @@ const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target
 .motif {
   height: 100%;
   box-sizing: border-box;
-  padding: max(5mm, 2.5em);
+  padding: max(var(--pad-min, 5mm), 2.5em);
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -97,7 +97,7 @@ const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target
   border-top: 0.3mm solid #d6d3d1;
   padding-top: 1.4em;
 }
-.qr { width: max(30mm, 12.5em); height: max(30mm, 12.5em); flex: none; }
+.qr { width: max(var(--qr-min, 30mm), 12.5em); height: max(var(--qr-min, 30mm), 12.5em); flex: none; }
 .foot-text { min-width: 0; }
 .foot-title { font-size: 2.2em; font-weight: 600; }
 .foot-sub { font-size: 1.86em; color: #57534e; margin-top: 0.25em; line-height: 1.4; }

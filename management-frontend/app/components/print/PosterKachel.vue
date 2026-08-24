@@ -78,7 +78,7 @@ const showCall = computed(() => Boolean(props.sheet.phone || call.value?.qr))
 .head {
   background: #0f6e56;
   color: #e1f5ee;
-  padding: max(5mm, 2.5em);
+  padding: max(var(--pad-min, 5mm), 2.5em);
   display: flex;
   align-items: center;
   gap: 1em;
@@ -95,7 +95,7 @@ const showCall = computed(() => Boolean(props.sheet.phone || call.value?.qr))
 .head-sub { font-size: 1.86em; margin-top: 0.3em; opacity: 0.85; }
 .body {
   flex: 1;
-  padding: max(5mm, 2.5em);
+  padding: max(var(--pad-min, 5mm), 2.5em);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -111,7 +111,7 @@ const showCall = computed(() => Boolean(props.sheet.phone || call.value?.qr))
   padding: 0.8em;
   text-align: center;
 }
-.qr { width: max(30mm, 10.5em); height: max(30mm, 10.5em); margin: 0 auto; }
+.qr { width: max(var(--qr-min, 30mm), 10.5em); height: max(var(--qr-min, 30mm), 10.5em); margin: 0 auto; }
 .tile-title { font-size: 1.86em; font-weight: 600; margin-top: 0.5em; }
 .tile-sub { font-size: 1.6em; color: #57534e; margin-top: 0.25em; line-height: 1.35; }
 .call {
@@ -123,7 +123,7 @@ const showCall = computed(() => Boolean(props.sheet.phone || call.value?.qr))
   gap: 1.2em;
   align-items: center;
 }
-.qr-call { width: max(30mm, 9em); height: max(30mm, 9em); flex: none; }
+.qr-call { width: max(var(--qr-min, 30mm), 9em); height: max(var(--qr-min, 30mm), 9em); flex: none; }
 .call-label { font-size: 1.86em; color: #78716c; }
 .call-phone { font-size: 2.88em; font-weight: 600; margin-top: 0.1em; }
 .call-hint { font-size: 1.86em; margin-top: 0.1em; }

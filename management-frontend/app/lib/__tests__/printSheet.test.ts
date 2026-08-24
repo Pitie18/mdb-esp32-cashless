@@ -13,6 +13,7 @@ import {
   posterFingerprint,
   qrErrorLevel,
   readableUrl,
+  sheetCssVars,
   tileBlockMm,
   TILE_LAYOUT,
   tileLayout,
@@ -654,5 +655,23 @@ describe('tiled sheet geometry', () => {
       expect(FORMAT_MM[format]).toBeDefined()
       expect(MIN_QR_MM[format]).toBeDefined()
     }
+  })
+})
+
+describe('sheetCssVars', () => {
+  // Switching to variables must not change anything for A4/A5/A6: the values
+  // are exactly what is hardcoded in the motif styles today.
+  it('reproduces the hardcoded values for the existing formats', () => {
+    for (const format of ['a4', 'a5', 'a6'] as const) {
+      expect(sheetCssVars(format)).toEqual({ '--qr-min': '30mm', '--pad-min': '5mm' })
+    }
+  })
+
+  it('shrinks both floors for an A7 tile', () => {
+    expect(sheetCssVars('a7-8up')).toEqual({ '--qr-min': '18mm', '--pad-min': '3mm' })
+  })
+
+  it('keeps the A6 tile at a scannable floor', () => {
+    expect(sheetCssVars('a6-4up')).toEqual({ '--qr-min': '25mm', '--pad-min': '5mm' })
   })
 })

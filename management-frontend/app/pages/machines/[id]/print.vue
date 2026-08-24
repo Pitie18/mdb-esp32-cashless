@@ -6,7 +6,7 @@ import MotifThumb from '@/components/print/MotifThumb.vue'
 import { useMachinePrint } from '@/composables/useMachinePrint'
 import { PRINT_MOTIFS, defaultLayout, isStickerFormat, motifById } from '@/lib/printMotifs'
 import type { MotifId } from '@/lib/printMotifs'
-import { FORMAT_MM, SLOT_SOURCES, distributeTiles, tilesPerSheet } from '@/lib/printSheet'
+import { FORMAT_MM, SLOT_SOURCES, distributeTiles, sheetCssVars, tilesPerSheet } from '@/lib/printSheet'
 import type { PosterLayout, PosterT, PrintBlock, PrintFormat, PrintSheet, SlotSource } from '@/lib/printSheet'
 
 definePageMeta({ middleware: 'auth', layout: false })
@@ -240,6 +240,7 @@ const sheetStyle = computed(() => ({
   height: `${sheetMm.value.h}mm`,
   // One layout scales across A4/A5/A6: motifs size everything in em.
   fontSize: `${(4 * sheetMm.value.w) / 210}mm`,
+  ...sheetCssVars(format.value),
 }))
 
 const THUMB_WIDTH = 150

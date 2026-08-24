@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FORMAT_MM, isStickerFormat, tileLayout } from '@/lib/printSheet'
+import { FORMAT_MM, isStickerFormat, sheetCssVars, tileLayout } from '@/lib/printSheet'
 import type { PosterT, PrintSheet } from '@/lib/printSheet'
 import type { PrintMotif } from '@/lib/printMotifs'
 
@@ -33,6 +33,7 @@ const innerStyle = computed(() => ({
   height: `${mm.value.h}mm`,
   fontSize: `${(4 * mm.value.w) / 210}mm`,
   transform: `scale(${scale.value})`,
+  ...sheetCssVars(props.motif.formats[0]!),
 }))
 </script>
 

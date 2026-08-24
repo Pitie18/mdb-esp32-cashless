@@ -65,7 +65,7 @@ const showIssue = computed(() => Boolean(issue.value?.qr || props.sheet.phone))
 .motif {
   height: 100%;
   box-sizing: border-box;
-  padding: max(5mm, 2.5em);
+  padding: max(var(--pad-min, 5mm), 2.5em);
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -84,7 +84,7 @@ const showIssue = computed(() => Boolean(issue.value?.qr || props.sheet.phone))
 .title { font-size: 2.71em; font-weight: 600; line-height: 1.2; margin-top: 0.8em; }
 .lead { font-size: 1.86em; color: #57534e; margin-top: 0.5em; line-height: 1.45; }
 .main-qr { margin-top: 1em; }
-.qr { width: max(30mm, 11em); height: max(30mm, 11em); margin: 0 auto; }
+.qr { width: max(var(--qr-min, 30mm), 11em); height: max(var(--qr-min, 30mm), 11em); margin: 0 auto; }
 .main-title { font-size: 2.2em; font-weight: 600; margin-top: 0.6em; }
 .main-hint { font-size: 1.86em; color: #57534e; margin-top: 0.25em; line-height: 1.4; }
 .url { font-size: 1.6em; color: #a8a29e; margin-top: 0.4em; word-break: break-all; }
@@ -106,7 +106,7 @@ const showIssue = computed(() => Boolean(issue.value?.qr || props.sheet.phone))
   margin-top: 0.9em;
   background: #fafaf9;
 }
-.strip-qr { width: max(20mm, 7em); height: max(20mm, 7em); flex: none; }
+.strip-qr { width: max(calc(var(--qr-min, 30mm) * 2 / 3), 7em); height: max(calc(var(--qr-min, 30mm) * 2 / 3), 7em); flex: none; }
 .strip-text { min-width: 0; }
 .strip-title { font-size: 1.86em; font-weight: 600; }
 .strip-sub { font-size: 1.6em; color: #57534e; margin-top: 0.2em; line-height: 1.4; }

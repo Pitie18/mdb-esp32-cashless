@@ -62,7 +62,7 @@ const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target
 .motif {
   height: 100%;
   box-sizing: border-box;
-  padding: max(5mm, 2.5em);
+  padding: max(var(--pad-min, 5mm), 2.5em);
   background: #fff;
   color: #14110f;
   /* System serifs only — a webfont would not be embedded in the print job. */
@@ -105,7 +105,7 @@ const url = computed(() => (props.sheet.showUrl ? readableUrl(main.value?.target
 .hours { font-size: 1.86em; color: #44403c; margin-top: 0.35em; }
 .custom { font-size: 1.86em; margin-top: 1.2em; line-height: 1.45; font-style: italic; }
 .spacer { flex: 1; min-height: 1em; }
-.qr { width: max(30mm, 9.5em); height: max(30mm, 9.5em); margin: 0 auto; }
+.qr { width: max(var(--qr-min, 30mm), 9.5em); height: max(var(--qr-min, 30mm), 9.5em); margin: 0 auto; }
 .qr-title { font-size: 2.03em; margin-top: 0.6em; }
 .qr-hint { font-size: 1.6em; color: #57534e; margin-top: 0.2em; line-height: 1.4; }
 .url { font-size: 1.6em; color: #a8a29e; margin-top: 0.3em; word-break: break-all; }

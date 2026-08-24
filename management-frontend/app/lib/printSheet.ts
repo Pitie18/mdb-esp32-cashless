@@ -186,6 +186,35 @@ export const MIN_QR_MM: Record<PrintFormat, number> = {
   'sticker-sheet-strip': 22,
 }
 
+/**
+ * Smallest inner margin a motif keeps. On a 68 mm A7 tile, 5 mm per side
+ * would cost almost a sixth of the width.
+ */
+export const PAD_MIN_MM: Record<PrintFormat, number> = {
+  a4: 5,
+  a5: 5,
+  a6: 5,
+  'a5-2up': 5,
+  'a6-4up': 5,
+  'a7-8up': 3,
+  'sticker-sheet': 5,
+  'sticker-sheet-small': 5,
+  'sticker-sheet-strip': 5,
+}
+
+/**
+ * The mm floors a motif cannot know on its own, because they depend on the
+ * format. Set as custom properties on the sheet (or tile); motifs read them
+ * with today's values as the fallback, so they render unchanged even without
+ * the variable set.
+ */
+export function sheetCssVars(format: PrintFormat): Record<string, string> {
+  return {
+    '--qr-min': `${MIN_QR_MM[format]}mm`,
+    '--pad-min': `${PAD_MIN_MM[format]}mm`,
+  }
+}
+
 export type StickerFormat = Extract<PrintFormat, 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'>
 
 export interface TileLayout {
