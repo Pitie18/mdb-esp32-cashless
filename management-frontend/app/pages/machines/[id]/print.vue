@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { IconArrowLeft, IconPrinter, IconAlertTriangle, IconLoader2, IconRotate, IconDeviceFloppy, IconPlus, IconMinus, IconArrowAutofitWidth } from '@tabler/icons-vue'
 import { watchDebounced } from '@vueuse/core'
-import StickerSheet from '@/components/print/StickerSheet.vue'
+import TiledSheet from '@/components/print/TiledSheet.vue'
 import MotifThumb from '@/components/print/MotifThumb.vue'
 import { useMachinePrint } from '@/composables/useMachinePrint'
 import { PRINT_MOTIFS, defaultLayout, isStickerFormat, motifById } from '@/lib/printMotifs'
@@ -684,7 +684,7 @@ async function doPrint() {
       <div class="sheets">
         <div v-for="(page, i) in pages" :key="i" class="preview" :style="previewStyle">
           <div class="sheet" :style="sheetStyle">
-            <StickerSheet
+            <TiledSheet
               v-if="isSticker"
               :sheets="page"
               :motif="motif.component"
