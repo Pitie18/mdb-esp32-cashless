@@ -4,6 +4,7 @@ import {
   distributeStickers,
   inherit,
   isPublicOrigin,
+  MIN_QR_MM,
   normalizeCustomUrl,
   normalizePhone,
   posterFingerprint,
@@ -19,6 +20,7 @@ import type {
   PosterLayout,
   PosterMachine,
   PrintBlock,
+  PrintFormat,
   SlotDeclaration,
 } from '../printSheet'
 
@@ -534,11 +536,25 @@ describe('distributeStickers', () => {
 })
 
 describe('qrErrorLevel', () => {
-  it('raises redundancy for stickers', () => {
-    expect(qrErrorLevel('sticker-sheet')).toBe('Q')
-    expect(qrErrorLevel('sticker-sheet-small')).toBe('Q')
-    expect(qrErrorLevel('sticker-sheet-strip')).toBe('Q')
+  // Mehr Fehlerkorrektur heisst mehr Module auf gleicher Flaeche. Unter etwa
+  // 0,5 mm Modulgroesse ist ein Code unlesbar, egal wie viel Redundanz er
+  // traegt — kleine Formate brauchen deshalb weniger, nicht mehr.
+  it('drops redundancy where the code is small', () => {
+    expect(qrErrorLevel('sticker-sheet')).toBe('L')
+    expect(qrErrorLevel('sticker-sheet-small')).toBe('L')
+    expect(qrErrorLevel('sticker-sheet-strip')).toBe('L')
+  })
+
+  it('keeps the print standard where there is room', () => {
     expect(qrErrorLevel('a4')).toBe('M')
+    expect(qrErrorLevel('a5')).toBe('M')
+    expect(qrErrorLevel('a6')).toBe('M')
+  })
+
+  it('derives the level from the format QR floor', () => {
+    for (const format of Object.keys(MIN_QR_MM) as PrintFormat[]) {
+      expect(qrErrorLevel(format)).toBe(MIN_QR_MM[format] < 25 ? 'L' : 'M')
+    }
   })
 })
 
