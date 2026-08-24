@@ -284,6 +284,7 @@
     <string name="device_health_mdb_polls">Abfragen</string>
     <string name="device_health_mdb_checksum_errors">Prüfsummenfehler</string>
     <string name="device_health_mdb_last_command">Letzter Befehl</string>
+    <string name="device_health_mdb_updated">Aktualisiert: %1$s</string>
     <string name="device_health_section_restart_history">Neustartverlauf</string>
     <string name="device_health_no_restarts">Keine Neustarts erfasst.</string>
     <string name="device_health_restart_uptime">%1$s gelaufen</string>
@@ -307,6 +308,7 @@
     <string name="device_health_reason_power_on">Einschalten</string>
     <string name="device_health_reason_panic">Absturz</string>
     <string name="device_health_reason_brownout">Spannungseinbruch</string>
+    <string name="device_health_reason_hw_watchdog">Hardware-Watchdog</string>
     <string name="device_health_unknown">Unbekannt</string>
     <string name="device_health_just_now">Gerade eben</string>
     <plurals name="device_health_minutes_ago">

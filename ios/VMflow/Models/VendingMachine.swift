@@ -11,17 +11,24 @@ struct Embedded: Codable, Identifiable, Equatable {
     /// Additive fields for Device Health / MDB diagnostics — all optional with a
     /// default so existing call sites (previews) that construct `Embedded`
     /// directly keep compiling unchanged.
-    let firmwareBuildDate: Date? = nil
-    let mdbAddress: Int? = nil
+    ///
+    /// These MUST stay `var`: Swift's synthesized `init(from:)` silently skips
+    /// a `let` property that already has an initial value, so declaring them
+    /// `let … = nil` leaves them permanently `nil` no matter what the server
+    /// sent (the explicit `CodingKeys` below even suppresses the compiler
+    /// warning that would otherwise flag it). That bug blanked the whole MDB
+    /// Status card and made uptime fall back to `statusAt`.
+    var firmwareBuildDate: Date? = nil
+    var mdbAddress: Int? = nil
     /// Live MDB status snapshot published by the firmware. `nil` until the
     /// device has reported at least once.
-    let mdbDiagnostics: MdbDiagnostics? = nil
-    let lastRestartReason: String? = nil
-    let lastRestartAt: Date? = nil
+    var mdbDiagnostics: MdbDiagnostics? = nil
+    var lastRestartReason: String? = nil
+    var lastRestartAt: Date? = nil
     /// Timestamp the device last transitioned to "online" — start of the
     /// current uptime run, distinct from `statusAt` (last status write of any
     /// kind).
-    let onlineSince: Date? = nil
+    var onlineSince: Date? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, status, subdomain

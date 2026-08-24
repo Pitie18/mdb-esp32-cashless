@@ -41,7 +41,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import xyz.vmflow.R
 import xyz.vmflow.data.RestartReason
-import xyz.vmflow.data.formatDurationSeconds
 import xyz.vmflow.data.formatUptimeSeconds
 import xyz.vmflow.data.groupSuppressedByDay
 import xyz.vmflow.data.parseRestartReason
@@ -158,7 +157,7 @@ private fun UptimeSection(embedded: Embedded?) {
             Text(
                 text = stringResource(
                     R.string.device_health_last_restart_summary,
-                    reasonLabel(parseRestartReason(reason)),
+                    reasonLabel(reason),
                     relativeTimeAgo(at)
                 ),
                 style = MaterialTheme.typography.bodySmall,
@@ -190,6 +189,17 @@ private fun MdbDiagnosticsSection(diagnostics: MdbDiagnostics?) {
             DeviceInfoRow(stringResource(R.string.device_health_mdb_polls), (diagnostics.polls ?: 0).toString())
             DeviceInfoRow(stringResource(R.string.device_health_mdb_checksum_errors), (diagnostics.chkErr ?: 0).toString())
             diagnostics.lastCmd?.let { DeviceInfoRow(stringResource(R.string.device_health_mdb_last_command), it) }
+            // Same "Updated …" line the web shows under its MDB grid: the
+            // snapshot is a last-known state, so its age is what tells you
+            // whether it still means anything.
+            diagnostics.updatedAt?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.device_health_mdb_updated, relativeTimeAgo(it)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -212,7 +222,7 @@ private fun RestartRow(restart: DeviceRestart, zone: TimeZone) {
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
-                text = reasonLabel(parseRestartReason(restart.reason)),
+                text = reasonLabel(restart.reason),
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
@@ -227,7 +237,7 @@ private fun RestartRow(restart: DeviceRestart, zone: TimeZone) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 uptime?.let {
                     Text(
-                        text = stringResource(R.string.device_health_restart_uptime, formatDurationSeconds(it)),
+                        text = stringResource(R.string.device_health_restart_uptime, formatUptimeSeconds(it.toLong())),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -384,8 +394,15 @@ private fun LoadingRow() {
 
 // ─── Labels ──────────────────────────────────────────────────────────────
 
+/**
+ * Takes the raw reason string rather than a parsed [RestartReason] so an
+ * unrecognised code can be shown verbatim instead of collapsing to
+ * "Unknown" — same fallback the web uses (`reasonLabel()` in
+ * `useDeviceRestarts.ts`), and the only way a future firmware's new reason
+ * stays diagnosable on an old app build.
+ */
 @Composable
-private fun reasonLabel(reason: RestartReason): String = when (reason) {
+private fun reasonLabel(raw: String?): String = when (parseRestartReason(raw)) {
     RestartReason.MQTT_WATCHDOG -> stringResource(R.string.device_health_reason_mqtt_watchdog)
     RestartReason.OTA_UPDATE -> stringResource(R.string.device_health_reason_ota)
     RestartReason.CONFIG_CHANGE -> stringResource(R.string.device_health_reason_config)
@@ -394,7 +411,10 @@ private fun reasonLabel(reason: RestartReason): String = when (reason) {
     RestartReason.POWER_ON -> stringResource(R.string.device_health_reason_power_on)
     RestartReason.PANIC -> stringResource(R.string.device_health_reason_panic)
     RestartReason.BROWNOUT -> stringResource(R.string.device_health_reason_brownout)
-    RestartReason.UNKNOWN -> stringResource(R.string.device_health_unknown)
+    RestartReason.HW_WATCHDOG -> stringResource(R.string.device_health_reason_hw_watchdog)
+    RestartReason.UNKNOWN ->
+        raw?.takeIf { it.isNotBlank() && it != "unknown" }
+            ?: stringResource(R.string.device_health_unknown)
 }
 
 /** `state?.capitalized ?? "Unknown"` — mirrors iOS `stateLabel(_:)` (`DeviceHealthSheet.swift` ~L299-301). */

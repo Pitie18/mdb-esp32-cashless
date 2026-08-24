@@ -8,8 +8,8 @@ import xyz.vmflow.models.SuppressedSale
 
 /**
  * Pure logic ported from `ios/VMflow/Views/Machines/DeviceHealthSheet.swift`:
- * `restartReasonLabel(_:)` (~L285-297), `uptimeString(since:)` (~L85-93), and
- * `formatDuration(_:)` (~L303-308), plus the sheet's own day-grouping for the
+ * `restartReasonLabel(_:)`, `uptimeString(since:)` and `formatUptime(_:)`
+ * (`DeviceHealthSheet.swift`), plus the sheet's own day-grouping for the
  * auto-removed-duplicates list.
  */
 class DeviceHealthTest {
@@ -36,6 +36,7 @@ class DeviceHealthTest {
         assertEquals(RestartReason.POWER_ON, parseRestartReason("power_on"))
         assertEquals(RestartReason.PANIC, parseRestartReason("panic"))
         assertEquals(RestartReason.BROWNOUT, parseRestartReason("brownout"))
+        assertEquals(RestartReason.HW_WATCHDOG, parseRestartReason("watchdog"))
     }
 
     @Test
@@ -47,8 +48,22 @@ class DeviceHealthTest {
     // ─── formatUptimeSeconds ─────────────────────────────────────────────
 
     @Test
+    fun `uptime under a minute is formatted as seconds only`() {
+        assertEquals("0s", formatUptimeSeconds(0))
+        assertEquals("45s", formatUptimeSeconds(45))
+        assertEquals("59s", formatUptimeSeconds(59))
+    }
+
+    @Test
+    fun `uptime under an hour is formatted as minutes and seconds`() {
+        assertEquals("1m 0s", formatUptimeSeconds(60))
+        assertEquals("45m 30s", formatUptimeSeconds(45 * 60 + 30))
+        assertEquals("59m 59s", formatUptimeSeconds(59 * 60 + 59))
+    }
+
+    @Test
     fun `uptime under a day is formatted as hours and minutes`() {
-        assertEquals("0h 0m", formatUptimeSeconds(0))
+        assertEquals("1h 0m", formatUptimeSeconds(3600))
         assertEquals("2h 5m", formatUptimeSeconds(2 * 3600 + 5 * 60))
         assertEquals("23h 59m", formatUptimeSeconds(23 * 3600 + 59 * 60 + 59))
     }
@@ -61,21 +76,7 @@ class DeviceHealthTest {
 
     @Test
     fun `a negative duration is clamped to zero`() {
-        assertEquals("0h 0m", formatUptimeSeconds(-100))
-    }
-
-    // ─── formatDurationSeconds ───────────────────────────────────────────
-
-    @Test
-    fun `duration under an hour is formatted as minutes only`() {
-        assertEquals("0m", formatDurationSeconds(0))
-        assertEquals("45m", formatDurationSeconds(45 * 60))
-    }
-
-    @Test
-    fun `duration of an hour or more includes the hour component`() {
-        assertEquals("1h 0m", formatDurationSeconds(3600))
-        assertEquals("2h 30m", formatDurationSeconds(2 * 3600 + 30 * 60))
+        assertEquals("0s", formatUptimeSeconds(-100))
     }
 
     // ─── groupSuppressedByDay ────────────────────────────────────────────

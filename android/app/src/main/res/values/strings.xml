@@ -288,6 +288,7 @@
     <string name="device_health_mdb_polls">Polls</string>
     <string name="device_health_mdb_checksum_errors">Checksum Errors</string>
     <string name="device_health_mdb_last_command">Last Command</string>
+    <string name="device_health_mdb_updated">Updated: %1$s</string>
     <string name="device_health_section_restart_history">Restart History</string>
     <string name="device_health_no_restarts">No restarts recorded.</string>
     <string name="device_health_restart_uptime">Up %1$s</string>
@@ -311,6 +312,7 @@
     <string name="device_health_reason_power_on">Power On</string>
     <string name="device_health_reason_panic">Panic</string>
     <string name="device_health_reason_brownout">Brownout</string>
+    <string name="device_health_reason_hw_watchdog">HW Watchdog</string>
     <string name="device_health_unknown">Unknown</string>
     <string name="device_health_just_now">Just now</string>
     <plurals name="device_health_minutes_ago">
