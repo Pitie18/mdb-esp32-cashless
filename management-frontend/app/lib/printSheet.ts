@@ -163,9 +163,9 @@ export const FORMAT_MM: Record<PrintFormat, { w: number; h: number }> = {
 export const MIN_QR_MM: Record<PrintFormat, number> = {
   a4: 30,
   a5: 30,
-  // Was die Motive im CSS ohnehin erzwingen. Der frühere Wert 25 war tote
-  // Dokumentation und würde A6 beim Umstieg auf --qr-min stillschweigend
-  // verkleinern.
+  // What the motifs already enforce in CSS. The earlier value of 25 was dead
+  // documentation and would silently shrink A6 once the switch to --qr-min
+  // makes these constants drive the CSS.
   a6: 30,
   'sticker-sheet': 20,
   // 50 x 30 mm leaves no room for more, and below this a phone camera has to
@@ -211,10 +211,10 @@ export function stickersPerSheet(format: PrintFormat): number {
 }
 
 /**
- * QR-Fehlerkorrektur. Nicht Papier gegen Vinyl, sondern Fläche: höhere
- * Redundanz erhöht die Modulzahl, und ein Symbol, dessen Module unter etwa
- * 0,5 mm fallen, ist unlesbar — egal wie viel Redundanz es trägt. Kleine
- * Formate bekommen deshalb weniger Fehlerkorrektur, nicht mehr.
+ * QR error correction. It is not about paper versus vinyl but about area:
+ * higher redundancy raises the module count, and a symbol whose modules fall
+ * below roughly 0.5 mm is unreadable no matter how much redundancy it
+ * carries. Small formats therefore get less error correction, not more.
  */
 export function qrErrorLevel(format: PrintFormat): 'L' | 'M' {
   return MIN_QR_MM[format] < 25 ? 'L' : 'M'
