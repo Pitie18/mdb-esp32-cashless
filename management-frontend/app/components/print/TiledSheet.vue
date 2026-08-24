@@ -72,7 +72,9 @@ const tileStyle = computed(() => {
   }
   // Poster motifs scale everything in em against the sheet width; inside a
   // tile the base has to come from the tile itself, or A4-sized text runs
-  // off an A6 card. Sticker motifs are trimmed to the sheet base.
+  // off an A6 card. Sticker motifs are false here, but not because they
+  // inherit the sheet base — each one sets its own root font-size in
+  // absolute mm, so this flag is simply moot for them.
   if (g.scaleToTile) style.fontSize = `${(4 * g.w) / 210}mm`
   // Rotated around its top-left corner, the tile hangs to the left of its
   // cell; translateX shoves it back in by its own height.
