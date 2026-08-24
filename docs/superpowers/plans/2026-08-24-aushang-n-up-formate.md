@@ -19,6 +19,8 @@ Spec: `docs/superpowers/specs/2026-08-24-aushang-n-up-formate-design.md`
 - Arbeitsverzeichnis für alle Kommandos: `management-frontend/`.
 - Tests laufen mit `npx vitest run app/lib/__tests__/printSheet.test.ts`.
 - Alle neuen i18n-Schlüssel immer in **beiden** Dateien (`i18n/locales/de.json`, `i18n/locales/en.json`).
+- **Code-Kommentare auf Englisch.** Alle berührten Dateien sind durchgehend englisch kommentiert. Die Kommentare in den Codeblöcken dieses Plans sind deutsche Entwürfe — beim Umsetzen ins Englische übertragen, Aussage unverändert. Das gilt nicht für Prosa, Commit-Messages und i18n-Werte.
+- **`npx nuxi typecheck` ist kein grünes Gate.** Das Repo trägt rund 192 vorbestehende Typfehler (fehlende `database.types.ts`, siehe CLAUDE.md). Die Bedingung lautet: keine *neuen* Fehler in den berührten Dateien. Zählstand vorher und nachher vergleichen, z. B. über `git stash`.
 
 ---
 
@@ -116,7 +118,7 @@ Expected: PASS, alle Blöcke grün.
 - [ ] **Step 5: Typecheck**
 
 Run: `npx nuxi typecheck`
-Expected: keine Fehler. `useMachinePrint.ts:178` reicht das Ergebnis an `QRCode.toString({ errorCorrectionLevel })` weiter, das `'L'` akzeptiert.
+Expected: keine *neuen* Fehler in `printSheet.ts` (siehe Global Constraints — das Repo trägt rund 192 vorbestehende). `useMachinePrint.ts:178` reicht das Ergebnis an `QRCode.toString({ errorCorrectionLevel })` weiter, das `'L'` akzeptiert.
 
 - [ ] **Step 6: Commit**
 
@@ -304,7 +306,7 @@ Erwartet werden Treffer in `app/components/print/StickerSheet.vue`, `app/compone
 - [ ] **Step 5: Tests und Typecheck**
 
 Run: `npx vitest run app/lib/__tests__/printSheet.test.ts && npx nuxi typecheck`
-Expected: PASS, keine Typfehler, keine Treffer mehr aus Step 4.
+Expected: Tests PASS, keine *neuen* Typfehler in den berührten Dateien, keine Treffer mehr aus Step 4.
 
 - [ ] **Step 6: Commit**
 
@@ -496,7 +498,7 @@ export function tileBlockMm(format: PrintFormat): { w: number; h: number } {
 - [ ] **Step 5: Tests und Typecheck**
 
 Run: `npx vitest run app/lib/__tests__/printSheet.test.ts && npx nuxi typecheck`
-Expected: PASS. Der Typecheck meldet fehlende `Record<PrintFormat, …>`-Einträge, falls `FORMAT_MM` oder `MIN_QR_MM` unvollständig sind — das ist erwünscht und muss grün sein, bevor es weitergeht.
+Expected: Tests PASS. Der Typecheck meldet fehlende `Record<PrintFormat, …>`-Einträge, falls `FORMAT_MM` oder `MIN_QR_MM` unvollständig sind — diese Klasse Fehler muss verschwunden sein, bevor es weitergeht (vorbestehende Fehler anderswo bleiben, siehe Global Constraints).
 
 - [ ] **Step 6: Commit**
 
@@ -657,7 +659,7 @@ Dev-Server starten, `/machines/<id>/print` öffnen, jedes der sieben Poster-Moti
 - [ ] **Step 9: Tests, Typecheck, Commit**
 
 Run: `npx vitest run && npx nuxi typecheck`
-Expected: PASS
+Expected: Tests PASS, keine *neuen* Typfehler.
 
 ```bash
 git add app/lib/printSheet.ts app/lib/__tests__/printSheet.test.ts app/components/print/ "app/pages/machines/[id]/print.vue"
@@ -844,7 +846,7 @@ Wenn die Aufkleber-Texte plötzlich kleiner sind, ist `scaleToTile` bei einem Au
 - [ ] **Step 4: Typecheck und Commit**
 
 Run: `npx nuxi typecheck`
-Expected: keine Fehler.
+Expected: keine *neuen* Fehler in den berührten Dateien.
 
 ```bash
 git add app/components/print/TiledSheet.vue "app/pages/machines/[id]/print.vue"
@@ -977,7 +979,7 @@ Motive, deren Inhalt in A7 überläuft, hier notieren und im Anschluss melden �
 - [ ] **Step 7: Volle Testsuite, Typecheck, Lint**
 
 Run: `npx vitest run && npx nuxi typecheck && npm run lint`
-Expected: PASS
+Expected: Tests und Lint PASS, keine *neuen* Typfehler.
 
 - [ ] **Step 8: Commit**
 
