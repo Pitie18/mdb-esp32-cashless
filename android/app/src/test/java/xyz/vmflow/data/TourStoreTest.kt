@@ -126,33 +126,40 @@ class TourStoreTest {
 
     // ─── expiry ─────────────────────────────────────────────────────────
 
+    /**
+     * `save` stamps `savedAt` from the store's own clock, so an aged record is
+     * produced by saving with the clock rewound and then advancing it — which
+     * also exercises the write and read halves of the age check together.
+     */
+    private fun saveAgedBy(age: kotlin.time.Duration, step: RefillStep = RefillStep.REFILL) {
+        clock.instant = fixedNow - age
+        store.save(state(step = step))
+        clock.instant = fixedNow
+    }
+
     @Test
     fun `load returns null for a state saved more than 24h ago`() {
-        val old = state(savedAt = fixedNow - 25.hours)
-        store.save(old)
+        saveAgedBy(25.hours)
         assertNull(store.load())
     }
 
     @Test
     fun `load clears the stored key for an expired state`() {
-        val old = state(savedAt = fixedNow - 25.hours)
-        store.save(old)
+        saveAgedBy(25.hours)
         store.load()
         assertNull(storage.getString("refill-tour-state"))
     }
 
     @Test
     fun `a state saved just under 24h ago is still loaded`() {
-        val fresh = state(savedAt = fixedNow - 23.hours)
-        store.save(fresh)
-        assertEquals(fresh, store.load())
+        saveAgedBy(23.hours)
+        assertEquals((fixedNow - 23.hours).toString(), store.load()?.savedAt)
     }
 
     @Test
     fun `a state saved exactly 24h ago is still loaded`() {
-        val boundary = state(savedAt = fixedNow - 24.hours)
-        store.save(boundary)
-        assertEquals(boundary, store.load())
+        saveAgedBy(24.hours)
+        assertEquals((fixedNow - 24.hours).toString(), store.load()?.savedAt)
     }
 
     // ─── forward compatibility ──────────────────────────────────────────
@@ -204,7 +211,7 @@ class TourStoreTest {
 
     @Test
     fun `hasSavedTour is false once the state has expired`() {
-        store.save(state(savedAt = fixedNow - 25.hours))
+        saveAgedBy(25.hours)
         assertFalse(store.hasSavedTour)
     }
 }

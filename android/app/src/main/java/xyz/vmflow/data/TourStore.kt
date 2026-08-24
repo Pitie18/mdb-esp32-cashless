@@ -36,14 +36,24 @@ class TourStore(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** No-op unless [PersistedTourState.step] is [RefillStep.REFILL] or [RefillStep.SUMMARY]. */
+    /**
+     * No-op unless [PersistedTourState.step] is [RefillStep.REFILL] or
+     * [RefillStep.SUMMARY].
+     *
+     * Stamps [PersistedTourState.savedAt] from this store's own clock,
+     * overwriting whatever the caller put there: [load]'s age check compares
+     * against the same clock, and letting the write and the read side use
+     * different time sources is how an expiry check quietly stops meaning
+     * anything.
+     */
     fun save(state: PersistedTourState) {
         val isResumable = when (state.step) {
             RefillStep.PACKING -> false
             RefillStep.REFILL, RefillStep.SUMMARY -> true
         }
         if (!isResumable) return
-        storage.putString(STORAGE_KEY, json.encodeToString(state))
+        val stamped = state.copy(savedAt = clock.now().toString())
+        storage.putString(STORAGE_KEY, json.encodeToString(stamped))
     }
 
     /**

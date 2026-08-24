@@ -490,17 +490,20 @@ class RefillTourLogicTest {
 
     @Test
     fun `sortByVisitOrder falls back to total deficit descending at equal empty-tray counts`() {
+        // The ids are chosen so the id tiebreaker would put them the OTHER way
+        // round ("a_small" < "z_big"). Without the totalDeficit key this test
+        // fails instead of passing by coincidence.
         val small = refillMachine(
-            "small",
-            listOf(refillTray(tray("t1", machineId = "small", capacity = 10, currentStock = 8)))
+            "a_small",
+            listOf(refillTray(tray("t1", machineId = "a_small", capacity = 10, currentStock = 8)))
         )
         val big = refillMachine(
-            "big",
-            listOf(refillTray(tray("t2", machineId = "big", capacity = 10, currentStock = 2)))
+            "z_big",
+            listOf(refillTray(tray("t2", machineId = "z_big", capacity = 10, currentStock = 2)))
         )
 
         val result = RefillTourLogic.sortByVisitOrder(listOf(small, big))
-        assertEquals(listOf("big", "small"), result.map { it.machine.id })
+        assertEquals(listOf("z_big", "a_small"), result.map { it.machine.id })
     }
 
     @Test

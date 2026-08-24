@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import xyz.vmflow.data.RefillRepository
@@ -638,6 +637,8 @@ class RefillViewModel : ViewModel() {
         // the same box of goods. Not in iOS, which relies on `isSaving`
         // disabling its button; double-charging is the exact failure class
         // this phase exists to prevent, so it is enforced here too.
+        // Task 9's reset path must clear BOTH tourId and step, or this guard
+        // latches shut and startTour() silently does nothing forever.
         if (isTourInMemory(snapshot)) return
 
         val tourId = UUID.randomUUID().toString()
@@ -727,13 +728,19 @@ class RefillViewModel : ViewModel() {
         return PersistedTourState(
             step = step,
             machines = machines,
+            // -1 (no match) collapses to the first remaining stop. Unreachable
+            // at tour start, where currentMachineId comes from this very list;
+            // on a later save a drifted id would resume the driver at the
+            // first remaining machine rather than fail loudly.
             currentMachineIndex = remaining
                 .indexOfFirst { it.machine.id == currentMachineId }
                 .coerceAtLeast(0),
             selectedWarehouseId = selectedWarehouseId,
             tourId = tourId,
             tourLog = tourLog,
-            savedAt = Clock.System.now().toString()
+            // Placeholder only: TourStore.save() re-stamps this from its own
+            // clock, so the write and the expiry check share one time source.
+            savedAt = ""
         )
     }
 
