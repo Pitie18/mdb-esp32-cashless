@@ -33,11 +33,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import xyz.vmflow.models.LegacyRefillSummary
 
+/**
+ * **Interim state**: the three figures the deleted `LegacyRefillSummary`
+ * carried are now passed in directly (the caller derives them from
+ * `RefillUiState.tourLog`). The real summary — per-machine rows, skipped
+ * machines, localized strings — is Task 12.
+ */
 @Composable
 fun RefillSummaryStep(
-    summary: LegacyRefillSummary,
+    machinesVisited: Int,
+    traysRefilled: Int,
+    totalItemsAdded: Int,
     onDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -93,19 +100,19 @@ fun RefillSummaryStep(
         ) {
             SummaryStatCard(
                 icon = Icons.Default.Computer,
-                value = "${summary.machinesVisited}",
+                value = "$machinesVisited",
                 label = "Machines",
                 modifier = Modifier.weight(1f)
             )
             SummaryStatCard(
                 icon = Icons.Default.Inventory2,
-                value = "${summary.traysRefilled}",
+                value = "$traysRefilled",
                 label = "Trays",
                 modifier = Modifier.weight(1f)
             )
             SummaryStatCard(
                 icon = Icons.Default.LocalShipping,
-                value = "${summary.totalItemsAdded}",
+                value = "$totalItemsAdded",
                 label = "Items",
                 modifier = Modifier.weight(1f)
             )

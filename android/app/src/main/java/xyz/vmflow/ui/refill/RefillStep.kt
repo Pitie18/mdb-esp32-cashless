@@ -48,17 +48,23 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import xyz.vmflow.models.LegacyRefillItem
-import xyz.vmflow.models.LegacyRefillMachine
+import xyz.vmflow.models.RefillMachine
+import xyz.vmflow.models.RefillTray
 import xyz.vmflow.ui.components.ProductImage
 import xyz.vmflow.ui.theme.StockGreen
 import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
 import xyz.vmflow.ui.theme.StockYellow
 
+/**
+ * **Interim state**: mechanically adapted from the deleted `LegacyRefillMachine`
+ * shape to [RefillMachine] so the tree compiles. The rebuilt refill step
+ * (machine picker sheet, collapsed full-tray row, bigger touch targets) is
+ * Task 11 — nothing here was redesigned.
+ */
 @Composable
 fun RefillStepContent(
-    refillMachine: LegacyRefillMachine,
+    refillMachine: RefillMachine,
     machineProgress: String,
     progressFraction: Float,
     isSaving: Boolean,
@@ -70,6 +76,7 @@ fun RefillStepContent(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    val items: List<RefillTray> = refillMachine.trays.filter { it.isInTour && it.deficit > 0 }
 
     Column(modifier = modifier.fillMaxSize()) {
         // Machine header with progress
@@ -141,7 +148,7 @@ fun RefillStepContent(
             modifier = Modifier.weight(1f)
         ) {
             items(
-                items = refillMachine.items,
+                items = items,
                 key = { it.tray.id }
             ) { item ->
                 RefillTrayCard(
@@ -196,15 +203,15 @@ fun RefillStepContent(
 
 @Composable
 private fun RefillTrayCard(
-    item: LegacyRefillItem,
+    item: RefillTray,
     onUpdateAmount: (Int) -> Unit,
     onFillFull: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
-    val currentStock = item.currentStock
+    val currentStock = item.tray.currentStock
     val targetStock = currentStock + item.fillAmount
     val capacity = item.tray.capacity
-    val isFull = item.fillAmount >= item.maxFillAmount
+    val isFull = item.fillAmount >= item.maxFill
 
     val currentPct = if (capacity > 0) currentStock.toFloat() / capacity else 0f
     val targetPct = if (capacity > 0) targetStock.toFloat() / capacity else 0f
@@ -400,7 +407,7 @@ private fun RefillTrayCard(
                         onUpdateAmount(item.fillAmount + 1)
                     },
                     modifier = Modifier.size(48.dp),
-                    enabled = item.fillAmount < item.maxFillAmount,
+                    enabled = item.fillAmount < item.maxFill,
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     )

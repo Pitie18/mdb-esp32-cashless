@@ -353,37 +353,6 @@ data class MachineWithStats(
         get() = trays.count { it.isLow || it.isCritical }
 }
 
-/**
- * Pre-"Phase 5" refill rump models. `RefillItem`/`RefillMachine`/
- * `RefillSummary` are the names the Phase 5 plan (`.superpowers/sdd/`)
- * hands to the new tour models below — `ui/refill/RefillViewModel.kt` and
- * its Compose steps plus `data/RefillRepository.kt` are the only remaining
- * consumers of this shape, and they are rewritten wholesale in Task 6-9 of
- * that plan. Renamed (not deleted) here purely so the still-wired old
- * wizard screens keep compiling in the meantime — delete this block
- * alongside that rewrite.
- */
-data class LegacyRefillItem(
-    val tray: Tray,
-    val targetStock: Int,
-    val fillAmount: Int = 0
-) {
-    val currentStock: Int get() = tray.currentStock
-    val maxFillAmount: Int get() = tray.capacity - tray.currentStock
-}
-
-data class LegacyRefillMachine(
-    val machine: VendingMachineWithEmbedded,
-    val items: List<LegacyRefillItem>,
-    val isCompleted: Boolean = false
-)
-
-data class LegacyRefillSummary(
-    val machinesVisited: Int,
-    val traysRefilled: Int,
-    val totalItemsAdded: Int
-)
-
 // ─────────────────────────────────────────────────────────────────────────
 // Refill tour models (Phase 5). Ported from the model structs at the top of
 // `ios/VMflow/ViewModels/RefillWizardViewModel.swift` (L7-166), plus

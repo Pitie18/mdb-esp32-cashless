@@ -39,19 +39,27 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import xyz.vmflow.models.LegacyRefillMachine
+import xyz.vmflow.models.RefillMachine
+import xyz.vmflow.models.RefillTray
 import xyz.vmflow.ui.components.ProductImage
 import xyz.vmflow.ui.theme.StockRed
 
+/**
+ * **Interim state**: mechanically adapted from the deleted `LegacyRefillMachine`
+ * shape to [RefillMachine] so the tree compiles. The real product-centric
+ * pack step (warehouse picker, chip bar, per-machine quantity steppers) is
+ * Task 10 — nothing here was redesigned.
+ */
 @Composable
 fun PackingStep(
-    refillMachines: List<LegacyRefillMachine>,
+    machines: List<RefillMachine>,
     packedMachineIds: Set<String>,
     onTogglePacked: (String) -> Unit,
     onStartTour: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
+    val machinesNeedingRefill = machines.filter { machine -> machine.trays.any { it.deficit > 0 } }
 
     Column(modifier = modifier.fillMaxSize()) {
         LazyColumn(
@@ -68,14 +76,14 @@ fun PackingStep(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "${refillMachines.size} machine(s) need refill",
+                        text = "${machinesNeedingRefill.size} machine(s) need refill",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            if (refillMachines.isEmpty()) {
+            if (machinesNeedingRefill.isEmpty()) {
                 item {
                     Column(
                         modifier = Modifier
@@ -99,7 +107,7 @@ fun PackingStep(
                 }
             } else {
                 items(
-                    items = refillMachines,
+                    items = machinesNeedingRefill,
                     key = { it.machine.id }
                 ) { refillMachine ->
                     PackingMachineCard(
@@ -115,7 +123,7 @@ fun PackingStep(
         }
 
         // Start Tour button
-        if (refillMachines.isNotEmpty()) {
+        if (machinesNeedingRefill.isNotEmpty()) {
             Button(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -140,11 +148,12 @@ fun PackingStep(
 
 @Composable
 private fun PackingMachineCard(
-    refillMachine: LegacyRefillMachine,
+    refillMachine: RefillMachine,
     isPacked: Boolean,
     onToggle: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val items: List<RefillTray> = refillMachine.trays.filter { it.deficit > 0 }
 
     Card(
         onClick = onToggle,
@@ -183,7 +192,7 @@ private fun PackingMachineCard(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "${refillMachine.items.size} items to pack",
+                            text = "${items.size} items to pack",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -202,7 +211,7 @@ private fun PackingMachineCard(
                     modifier = Modifier.padding(top = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    refillMachine.items.forEach { item ->
+                    items.forEach { item ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
