@@ -153,12 +153,29 @@ fun RefillWizardScreen(
                 LoadingState()
             } else {
                 when (uiState.step) {
-                    // The review screen and its replacement picker are a
-                    // later task in this phase; the ViewModel's review state
-                    // and actions landed first. Renders nothing until then —
-                    // and this branch of the wizard is unusable until it does,
-                    // so the review UI has to land before this work merges.
-                    RefillStep.REVIEW -> Unit
+                    RefillStep.REVIEW -> ReviewStep(
+                        uiState = uiState,
+                        // ── Picker seam ─────────────────────────────────
+                        // The one thing [ReviewStep] cannot do itself. The
+                        // replacement picker is the next task in this phase
+                        // and lands *here*: hold the tapped tray id in a
+                        // `rememberSaveable` state, render the picker (a
+                        // `ModalBottomSheet`, taking
+                        // `uiState.availableProducts`,
+                        // `uiState.productCategories` and
+                        // `viewModel.categoryIdOfCurrentProduct(trayId)`)
+                        // while it is non-null, and have its selection call
+                        // `viewModel.setReplacement(trayId, productId)` and
+                        // then clear the state. Until it does, this is a
+                        // deliberate no-op and the only thing the driver
+                        // cannot do on the review screen: every other
+                        // control — per-card skip, skip rest, continue — is
+                        // wired to the ViewModel below.
+                        onOpenPicker = { /* replacement picker: next task */ },
+                        onSkipReplacement = viewModel::skipReplacement,
+                        onSkipAll = viewModel::skipReview,
+                        onContinue = viewModel::applyReplacementsAndContinue
+                    )
 
                     RefillStep.PACKING -> PackingStep(
                         uiState = uiState,

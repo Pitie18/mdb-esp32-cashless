@@ -453,4 +453,26 @@
     </plurals>
     <string name="refill_summary_row_contribution">%1$s · %2$s</string>
     <string name="refill_summary_row_skipped">Übersprungen</string>
+    <!-- Nachfüll-Assistent — Prüf-Schritt (Phase 5b, Task 5) -->
+    <string name="refill_review_title">Produktprüfung</string>
+    <string name="refill_review_subtitle">Diese Fächer brauchen Aufmerksamkeit — eingestellte, abgelaufene, ausverkaufte oder nicht zugewiesene Produkte. Wähle einen Ersatz oder überspringe.</string>
+    <string name="refill_review_reason_discontinued">Eingestellt</string>
+    <string name="refill_review_reason_expired">Abgelaufen</string>
+    <string name="refill_review_reason_no_stock">Kein Lager</string>
+    <string name="refill_review_reason_unassigned">Nicht zugewiesen</string>
+    <plurals name="refill_review_stock_remaining">
+        <item quantity="one">%1$d Artikel noch im Automaten</item>
+        <item quantity="other">%1$d Artikel noch im Automaten</item>
+    </plurals>
+    <string name="refill_review_stock_empty">0 Artikel im Automaten</string>
+    <string name="refill_review_skipped_keeping">Übersprungen — aktuelles Produkt beibehalten</string>
+    <string name="refill_review_skipped_unassigned">Übersprungen — Fach bleibt nicht zugewiesen</string>
+    <string name="refill_review_action_replace">Ersetzen</string>
+    <string name="refill_review_action_assign">Zuweisen</string>
+    <string name="refill_review_action_change">Ändern</string>
+    <string name="refill_review_action_choose">Ersatz wählen</string>
+    <string name="refill_review_action_skip">Überspringen</string>
+    <string name="refill_review_skip_all">Rest überspringen</string>
+    <string name="refill_review_continue">Weiter</string>
+    <string name="refill_review_apply_continue">Anwenden &amp; weiter</string>
 </resources>

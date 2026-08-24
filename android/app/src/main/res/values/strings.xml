@@ -457,4 +457,26 @@
     </plurals>
     <string name="refill_summary_row_contribution">%1$s · %2$s</string>
     <string name="refill_summary_row_skipped">Skipped</string>
+    <!-- Refill wizard — review step (Phase 5b Task 5) -->
+    <string name="refill_review_title">Product Review</string>
+    <string name="refill_review_subtitle">The following trays need attention — discontinued, expired, out-of-stock, or unassigned products. Choose a replacement or skip.</string>
+    <string name="refill_review_reason_discontinued">Discontinued</string>
+    <string name="refill_review_reason_expired">Expired</string>
+    <string name="refill_review_reason_no_stock">No Stock</string>
+    <string name="refill_review_reason_unassigned">Unassigned</string>
+    <plurals name="refill_review_stock_remaining">
+        <item quantity="one">%1$d item still in machine</item>
+        <item quantity="other">%1$d items still in machine</item>
+    </plurals>
+    <string name="refill_review_stock_empty">0 items in machine</string>
+    <string name="refill_review_skipped_keeping">Skipped — keeping current product</string>
+    <string name="refill_review_skipped_unassigned">Skipped — slot stays unassigned</string>
+    <string name="refill_review_action_replace">Replace</string>
+    <string name="refill_review_action_assign">Assign</string>
+    <string name="refill_review_action_change">Change</string>
+    <string name="refill_review_action_choose">Choose replacement</string>
+    <string name="refill_review_action_skip">Skip</string>
+    <string name="refill_review_skip_all">Skip rest</string>
+    <string name="refill_review_continue">Continue</string>
+    <string name="refill_review_apply_continue">Apply &amp; continue</string>
 </resources>
