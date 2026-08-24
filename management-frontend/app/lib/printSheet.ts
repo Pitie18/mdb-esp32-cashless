@@ -164,9 +164,13 @@ export const FORMAT_MM: Record<PrintFormat, { w: number; h: number }> = {
 }
 
 /**
- * Smallest QR edge that still scans from arm's length. Below these values the
- * poster looks fine on screen and fails at the machine, so motifs treat them
- * as constants rather than as styling.
+ * The millimetre floor a motif's *primary* QR code must not fall below at
+ * this format, supplied to the motifs as `--qr-min`. Not "the smallest QR
+ * edge that still scans" in general — several sticker motifs render their
+ * primary code larger than the number listed here for their format
+ * (`sticker-sheet` says 20 while `StickerImprint` renders 17 and
+ * `StickerDuo`'s main code 26), so these are a CSS floor, not a scan-distance
+ * guarantee.
  */
 export const MIN_QR_MM: Record<PrintFormat, number> = {
   a4: 30,
@@ -184,6 +188,25 @@ export const MIN_QR_MM: Record<PrintFormat, number> = {
   // be held closer than the machine allows.
   'sticker-sheet-small': 16,
   'sticker-sheet-strip': 22,
+}
+
+/**
+ * Floor for a motif's *secondary* code — the smaller one some motifs put
+ * beside or below the main code. It cannot simply be a fraction of MIN_QR_MM:
+ * scaled down proportionally on an A7 tile, a secondary code lands at 12 mm,
+ * which is less readable than the sticker code this whole change set out to
+ * fix. 18 mm is the floor, and A7 sits on it.
+ */
+export const QR_MIN_2_MM: Record<PrintFormat, number> = {
+  a4: 20,
+  a5: 20,
+  a6: 20,
+  'a5-2up': 20,
+  'a6-4up': 20,
+  'a7-8up': 18,
+  'sticker-sheet': 20,
+  'sticker-sheet-small': 20,
+  'sticker-sheet-strip': 20,
 }
 
 /**
@@ -211,6 +234,7 @@ export const PAD_MIN_MM: Record<PrintFormat, number> = {
 export function sheetCssVars(format: PrintFormat): Record<string, string> {
   return {
     '--qr-min': `${MIN_QR_MM[format]}mm`,
+    '--qr-min-2': `${QR_MIN_2_MM[format]}mm`,
     '--pad-min': `${PAD_MIN_MM[format]}mm`,
   }
 }
@@ -231,8 +255,10 @@ export interface TileLayout {
   /**
    * Poster motifs scale everything in `em` against the sheet width; inside a
    * tile the base has to come from the tile instead, or A4-sized text
-   * overruns an A6 card. Sticker motifs are trimmed to the sheet base and
-   * keep it.
+   * overruns an A6 card. Sticker motifs are `false` here, but not because
+   * they inherit and keep the sheet base — every sticker motif sets its own
+   * root `font-size` in absolute mm, so the inherited base never reaches
+   * them in the first place, and this flag is simply moot for them.
    */
   scaleToTile: boolean
 }
@@ -291,13 +317,17 @@ export function tilesPerSheet(format: PrintFormat): number {
 }
 
 /**
- * QR error correction. It is not about paper versus vinyl but about area:
- * higher redundancy raises the module count, and a symbol whose modules fall
- * below roughly 0.5 mm is unreadable no matter how much redundancy it
- * carries. Small formats therefore get less error correction, not more.
+ * QR error correction. Not paper versus vinyl but area: more redundancy means
+ * more modules in the same space, and a symbol whose modules fall under
+ * roughly 0.5 mm is unreadable no matter how much redundancy it carries.
+ *
+ * Deliberately not derived from MIN_QR_MM. That constant is a CSS floor for a
+ * motif's primary code, which is a different question from "how small is the
+ * smallest code this format prints" — tying the two together made a routine
+ * correction of one silently change the other.
  */
 export function qrErrorLevel(format: PrintFormat): 'L' | 'M' {
-  return MIN_QR_MM[format] < 25 ? 'L' : 'M'
+  return isTiledFormat(format) ? 'L' : 'M'
 }
 
 const PRIVATE_IPV4 =

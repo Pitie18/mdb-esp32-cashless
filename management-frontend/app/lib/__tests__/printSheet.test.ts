@@ -640,10 +640,11 @@ describe('tiled sheet geometry', () => {
     expect(isTiledFormat('sticker-sheet')).toBe(true)
   })
 
-  it('drops the error level for A7 tiles, keeps it for A6', () => {
+  it('gives every tiled format the extra module size', () => {
+    // A tile is small by construction, so all three take L — see qrErrorLevel.
+    expect(qrErrorLevel('a5-2up')).toBe('L')
+    expect(qrErrorLevel('a6-4up')).toBe('L')
     expect(qrErrorLevel('a7-8up')).toBe('L')
-    expect(qrErrorLevel('a6-4up')).toBe('M')
-    expect(qrErrorLevel('a5-2up')).toBe('M')
   })
 
   it('describes every format exactly once', () => {
@@ -663,15 +664,15 @@ describe('sheetCssVars', () => {
   // are exactly what is hardcoded in the motif styles today.
   it('reproduces the hardcoded values for the existing formats', () => {
     for (const format of ['a4', 'a5', 'a6'] as const) {
-      expect(sheetCssVars(format)).toEqual({ '--qr-min': '30mm', '--pad-min': '5mm' })
+      expect(sheetCssVars(format)).toEqual({ '--qr-min': '30mm', '--qr-min-2': '20mm', '--pad-min': '5mm' })
     }
   })
 
   it('shrinks both floors for an A7 tile', () => {
-    expect(sheetCssVars('a7-8up')).toEqual({ '--qr-min': '18mm', '--pad-min': '3mm' })
+    expect(sheetCssVars('a7-8up')).toEqual({ '--qr-min': '18mm', '--qr-min-2': '18mm', '--pad-min': '3mm' })
   })
 
   it('keeps the A6 tile at a scannable floor', () => {
-    expect(sheetCssVars('a6-4up')).toEqual({ '--qr-min': '25mm', '--pad-min': '5mm' })
+    expect(sheetCssVars('a6-4up')).toEqual({ '--qr-min': '25mm', '--qr-min-2': '20mm', '--pad-min': '5mm' })
   })
 })

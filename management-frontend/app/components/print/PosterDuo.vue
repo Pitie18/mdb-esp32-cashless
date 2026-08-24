@@ -106,7 +106,9 @@ const showIssue = computed(() => Boolean(issue.value?.qr || props.sheet.phone))
   margin-top: 0.9em;
   background: #fafaf9;
 }
-.strip-qr { width: max(calc(var(--qr-min, 30mm) * 2 / 3), 7em); height: max(calc(var(--qr-min, 30mm) * 2 / 3), 7em); flex: none; }
+/* The secondary code, floored independently of the main one: two thirds of a
+   shrinking floor lands under 0.3 mm per module on the smallest tile. */
+.strip-qr { width: max(var(--qr-min-2, 20mm), 7em); height: max(var(--qr-min-2, 20mm), 7em); flex: none; }
 .strip-text { min-width: 0; }
 .strip-title { font-size: 1.86em; font-weight: 600; }
 .strip-sub { font-size: 1.6em; color: #57534e; margin-top: 0.2em; line-height: 1.4; }

@@ -73,19 +73,27 @@ describe('TiledSheet geometry', () => {
 
   it('cuts once per gutter, plus the block edges', () => {
     const w = mountSheet('a6-4up', 4)
-    // Two columns: left edge, gutter centre, right edge.
+    // Two columns: left edge, gutter centre, right edge. Each coordinate is
+    // offset by half the 0.25mm line thickness so the line is centred on it
+    // instead of sitting inside the preceding tile.
     expect(w.findAll('.cut-v').map((c) => (c.element as HTMLElement).style.left))
-      .toEqual(['6mm', '105mm', '204mm'])
+      .toEqual(['calc(6mm - 0.125mm)', 'calc(105mm - 0.125mm)', 'calc(204mm - 0.125mm)'])
     expect(w.findAll('.cut-h').map((c) => (c.element as HTMLElement).style.top))
-      .toEqual(['9.5mm', '148.5mm', '287.5mm'])
+      .toEqual(['calc(9.5mm - 0.125mm)', 'calc(148.5mm - 0.125mm)', 'calc(287.5mm - 0.125mm)'])
   })
 
   it('cuts a rotated grid on its own gutters', () => {
     const w = mountSheet('a7-8up', 8)
     expect(w.findAll('.cut-v').map((c) => (c.element as HTMLElement).style.left))
-      .toEqual(['7mm', '105mm', '203mm'])
+      .toEqual(['calc(7mm - 0.125mm)', 'calc(105mm - 0.125mm)', 'calc(203mm - 0.125mm)'])
     expect(w.findAll('.cut-h').map((c) => (c.element as HTMLElement).style.top))
-      .toEqual(['6.5mm', '76.5mm', '148.5mm', '220.5mm', '290.5mm'])
+      .toEqual([
+        'calc(6.5mm - 0.125mm)',
+        'calc(76.5mm - 0.125mm)',
+        'calc(148.5mm - 0.125mm)',
+        'calc(220.5mm - 0.125mm)',
+        'calc(290.5mm - 0.125mm)',
+      ])
   })
 
   it('passes the format QR floor down to the tile', () => {

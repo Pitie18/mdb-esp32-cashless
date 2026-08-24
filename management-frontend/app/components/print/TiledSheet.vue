@@ -104,8 +104,8 @@ const tileStyle = computed(() => {
 
     <!-- After the tiles, so the lines at the block edges don't half
          disappear under a tile. -->
-    <div v-for="x in xCuts" :key="`cx-${x}`" class="cut cut-v" :style="{ left: `${x}mm` }" />
-    <div v-for="y in yCuts" :key="`cy-${y}`" class="cut cut-h" :style="{ top: `${y}mm` }" />
+    <div v-for="x in xCuts" :key="`cx-${x}`" class="cut cut-v" :style="{ left: `calc(${x}mm - 0.125mm)` }" />
+    <div v-for="y in yCuts" :key="`cy-${y}`" class="cut cut-h" :style="{ top: `calc(${y}mm - 0.125mm)` }" />
   </div>
 </template>
 
