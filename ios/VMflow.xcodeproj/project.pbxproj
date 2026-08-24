@@ -20,6 +20,7 @@
 		03D79F9015404D80AB834727 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88AE90D09C92AEFE80475069 /* Foundation.framework */; };
 		0BEB2E18E56CCAF0DE150DF8 /* BatchAdjustSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B044726A1D09F334DDB0851 /* BatchAdjustSheet.swift */; };
 		0C7698AD6ED222844A1255F5 /* Tray.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D260DBBBEC69D0AD7B73C46 /* Tray.swift */; };
+		C0FFEE11ABCD22EF33445567 /* MachineStockHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE11ABCD22EF33445566 /* MachineStockHealth.swift */; };
 		123DDC46EFE39435A5A69CB5 /* RefillWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52A29D496BDB69F848C60674 /* RefillWizardView.swift */; };
 		1254787CC883CE8605189B4B /* PackingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90BC01B0752A47A20DF699E7 /* PackingStepView.swift */; };
 		14E8E7A13B8FB4BBA2CE3AA1 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4757F332F815A5F5300AC8 /* SettingsView.swift */; };
@@ -179,6 +180,7 @@
 		285CDF78E1AA2017C62282F8 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		2B17A2CD3A0F549B76FAFF29 /* ProductsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductsView.swift; sourceTree = "<group>"; };
 		2D260DBBBEC69D0AD7B73C46 /* Tray.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tray.swift; sourceTree = "<group>"; };
+		C0FFEE11ABCD22EF33445566 /* MachineStockHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineStockHealth.swift; sourceTree = "<group>"; };
 		2E4ECAF4493CB619B2F19A90 /* AdaptiveRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveRootView.swift; sourceTree = "<group>"; };
 		2FAA61B154F7ABC2401C2CCA /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		357877F547C30B7565611780 /* AddServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddServerView.swift; sourceTree = "<group>"; };
@@ -312,6 +314,7 @@
 				FE11AA12BB13CC14DD15EE16 /* SuppressedSale.swift */,
 				FE12AA13BB14CC15DD16EE17 /* ActivityFeed.swift */,
 				2D260DBBBEC69D0AD7B73C46 /* Tray.swift */,
+				C0FFEE11ABCD22EF33445566 /* MachineStockHealth.swift */,
 				4E7EC46F36DD12575C056A1A /* VendingMachine.swift */,
 				A6908142D65605FE1D58C1AE /* Warehouse.swift */,
 				FDAD3C8C007944B5FDC1D17E /* Supplier.swift */,
@@ -910,6 +913,7 @@
 				A1B2C3D4E5F600000000EF01 /* ExpiryDateField.swift in Sources */,
 				F0501A7FD0A96B9377D2DCCF /* SupabaseService.swift in Sources */,
 				0C7698AD6ED222844A1255F5 /* Tray.swift in Sources */,
+				C0FFEE11ABCD22EF33445567 /* MachineStockHealth.swift in Sources */,
 				5C989AE6260DDA7137C3A923 /* TrayEditSheet.swift in Sources */,
 				75FC6DAC6BC35B6F78317FBC /* TrayListView.swift in Sources */,
 				A1A27831F396EBCD53E5ED9A /* TrayRow.swift in Sources */,

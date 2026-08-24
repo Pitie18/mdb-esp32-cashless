@@ -18,6 +18,7 @@ import xyz.vmflow.ui.machines.MachineDetailScreen
 import xyz.vmflow.ui.machines.MachinesPane
 import xyz.vmflow.ui.navigation.TopLevelDestination
 import xyz.vmflow.ui.refill.RefillWizardScreen
+import xyz.vmflow.ui.warehouse.WarehouseScreen
 
 object Routes {
     const val LOGIN = "login"
@@ -26,6 +27,7 @@ object Routes {
     const val MACHINES = "machines"
     const val MACHINE_DETAIL = "machines/{machineId}"
     const val REFILL = "refill"
+    const val WAREHOUSE = "warehouse"
 
     fun machineDetail(machineId: String) = "machines/$machineId"
 }
@@ -144,6 +146,10 @@ fun VMflowNavHost(
                     }
                 }
             )
+        }
+
+        composable(Routes.WAREHOUSE) {
+            WarehouseScreen()
         }
     }
 }

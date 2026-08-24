@@ -12,6 +12,7 @@ class TopLevelDestinationTest {
         assertEquals(TopLevelDestination.DASHBOARD, TopLevelDestination.fromRoute(Routes.DASHBOARD))
         assertEquals(TopLevelDestination.MACHINES, TopLevelDestination.fromRoute(Routes.MACHINES))
         assertEquals(TopLevelDestination.REFILL, TopLevelDestination.fromRoute(Routes.REFILL))
+        assertEquals(TopLevelDestination.WAREHOUSE, TopLevelDestination.fromRoute(Routes.WAREHOUSE))
     }
 
     @Test
@@ -63,6 +64,7 @@ class TopLevelDestinationTest {
                 TopLevelDestination.DASHBOARD,
                 TopLevelDestination.MACHINES,
                 TopLevelDestination.REFILL,
+                TopLevelDestination.WAREHOUSE,
             ),
             TopLevelDestination.entries.toList(),
         )

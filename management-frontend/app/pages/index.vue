@@ -15,7 +15,7 @@ import { IconAlertTriangle, IconSparkles, IconRefresh, IconLoader2, IconTag } fr
 import { useInsights, sortedRecommendations, priorityVariant, recommendationTypeLabel } from '@/composables/useInsights'
 import { expirationStatus } from '@/composables/useWarehouse'
 import { getProductImageUrl } from '@/composables/useProducts'
-import { buildWarehouseStockInfo, computeStockHealthPerMachine } from '@/lib/stock-health'
+import { buildWarehouseStockInfo, computeStockHealthPerMachine, countMachineStockBuckets } from '@/lib/stock-health'
 import { timeAgo } from '@/lib/utils'
 
 const { t } = useI18n()
@@ -46,7 +46,7 @@ const warehouseBelowMin = ref(0)
 const warehouseExpiringSoon = ref(0)
 const newDealsCount = ref(0)
 
-const machinesNeedingRefill = computed(() => stockCritical.value + stockLow.value + stockFill.value + stockSwap.value)
+const machinesNeedingRefill = ref(0)
 
 // ── Company insights ──────────────────────────────────────────────────────────
 const { companyData: companyInsights, companyLoading, companyError, fetchCompanyInsights, history: companyHistory, historyLoading: companyHistoryLoading, fetchHistory: fetchCompanyHistory } = useInsights()
@@ -378,6 +378,13 @@ async function loadDashboard() {
   let todayPerMachine = new Map<string, { revenue: number; count: number }>()
   let lastSalePerMachine = new Map<string, string>()
 
+  // Reset the stock buckets — a fleet that lost its last machine must clear them.
+  stockCritical.value = 0
+  stockLow.value = 0
+  stockFill.value = 0
+  stockSwap.value = 0
+  machinesNeedingRefill.value = 0
+
   if (machineIds.length > 0) {
     const [todayMachineRes, traysRes, warehouseStockRes, ...lastSaleResults] = await Promise.all([
       supabase.from('sales').select('machine_id, item_price').in('machine_id', machineIds).gte('created_at', todayStart),
@@ -412,23 +419,14 @@ async function loadDashboard() {
     )
     const stockMap = computeStockHealthPerMachine(trayRows, warehouseStockMap, hasWarehouses)
 
-    // Count stock alerts (refillable + swap)
-    let critCount = 0
-    let lowCount = 0
-    let fillCount = 0
-    let swapCount = 0
-    for (const [, stock] of stockMap) {
-      if (stock.health === 'critical') critCount++
-      else if (stock.health === 'low') lowCount++
-      else if (stock.health === 'fill') fillCount++
-      // "ok"/"fill" machines can still separately have non-refillable empty trays (swap candidates);
-      // critical/low machines are already counted above, so this avoids double-counting them.
-      if ((stock.health === 'ok' || stock.health === 'fill') && stock.noStockEmptyCount > 0) swapCount++
-    }
-    stockCritical.value = critCount
-    stockLow.value = lowCount
-    stockFill.value = fillCount
-    stockSwap.value = swapCount
+    // Count stock alerts (refillable + swap). One bucket per machine, so the
+    // banner can never claim more machines than the fleet has.
+    const buckets = countMachineStockBuckets(stockMap.values())
+    stockCritical.value = buckets.critical
+    stockLow.value = buckets.low
+    stockFill.value = buckets.fill
+    stockSwap.value = buckets.swap
+    machinesNeedingRefill.value = buckets.needingAttention
 
     // Build dashboard machine list (sorted by stock urgency)
     const healthOrder: Record<string, number> = { critical: 0, low: 1, fill: 2, ok: 3 }

@@ -216,6 +216,106 @@ else
     success "MQTT admin credentials present"
 fi
 
+# ─── MQTT_PUBLIC_HOST / MQTT_PUBLIC_PORT (baked into every claimed device) ───
+# claim-device hands MQTT_PUBLIC_HOST:MQTT_PUBLIC_PORT to each ESP32 at claim
+# time and the device stores it in NVS -- a wrong value here is not a page you
+# fix by editing, it is a machine in the field that never reconnects.
+#
+# Until now setup.sh never wrote either key. It asked "MQTT broker hostname
+# (reachable by ESP32 devices)" and stored the answer in MQTT_HOST, which
+# docker-compose overrides with the internal service name for every consumer
+# -- so the answer was discarded and claim-device fell through to its upstream
+# default, mqtt.vmflow.xyz. Every install that never hand-edited .env has been
+# pointing its freshly claimed devices at somebody else's broker.
+if [ -z "${MQTT_PUBLIC_HOST:-}" ]; then
+    warn "MQTT_PUBLIC_HOST is not set in .env"
+    warn "It is the broker address claim-device writes into every device's NVS."
+    warn "While unset, newly claimed devices are pointed at mqtt.vmflow.xyz."
+
+    # A legacy MQTT_HOST holding anything other than an internal name IS the
+    # operator's answer to the old prompt -- migrate it verbatim, no guessing.
+    MQTT_PUBLIC_SUGGESTION=""
+    case "${MQTT_HOST:-}" in
+        ""|broker|localhost|127.0.0.1|host.docker.internal) ;;
+        *) MQTT_PUBLIC_SUGGESTION="$MQTT_HOST" ;;
+    esac
+    # Otherwise derive from the Supabase host, matching setup.sh's
+    # supabase.<domain> / mqtt.<domain> convention. Suggestion only.
+    if [ -z "$MQTT_PUBLIC_SUGGESTION" ] && [ -n "${SUPABASE_PUBLIC_URL:-}" ]; then
+        _sb_host=$(echo "$SUPABASE_PUBLIC_URL" | sed 's|^https\{0,1\}://||; s|[:/].*||')
+        _derived=$(echo "$_sb_host" | sed 's|^supabase\.|mqtt.|')
+        # Only suggest when the substitution actually fired -- otherwise the
+        # "suggestion" is the Supabase host itself, which is the wrong answer.
+        [ "$_derived" != "$_sb_host" ] && MQTT_PUBLIC_SUGGESTION="$_derived"
+    fi
+
+    if [ -t 0 ]; then
+        printf "  Public MQTT broker hostname%s: " "${MQTT_PUBLIC_SUGGESTION:+ [$MQTT_PUBLIC_SUGGESTION]}"
+        # Distinguish a deliberate empty Enter (accept the suggestion) from
+        # EOF/Ctrl-D (dismiss). A derived suggestion is only ever a guess at
+        # the operator's DNS convention, and this value gets written into
+        # device firmware -- it must not be adopted on a keystroke that means
+        # "cancel". Testing read in an `if` also keeps `set -e` from aborting
+        # the whole update on EOF.
+        if read -r MQTT_PUBLIC_INPUT; then
+            MQTT_PUBLIC_HOST="${MQTT_PUBLIC_INPUT:-$MQTT_PUBLIC_SUGGESTION}"
+        else
+            echo
+            MQTT_PUBLIC_HOST=""
+        fi
+        if [ -n "$MQTT_PUBLIC_HOST" ]; then
+            cat >> .env << MQTTPUBEOF
+
+##########
+# Public MQTT broker address
+# Added by update.sh on $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+# Handed to every ESP32 by claim-device and stored in the device's NVS, so it
+# must resolve from out in the field. This is NOT MQTT_HOST -- that one is the
+# internal compose service name used by the forwarder and the edge functions.
+# MQTT_PUBLIC_PORT doubles as the port docker-compose publishes the broker on.
+#########
+
+MQTT_PUBLIC_HOST=${MQTT_PUBLIC_HOST}
+MQTT_PUBLIC_PORT=${MQTT_PUBLIC_PORT:-1883}
+MQTTPUBEOF
+            export MQTT_PUBLIC_HOST
+            success "MQTT_PUBLIC_HOST set to ${MQTT_PUBLIC_HOST} and appended to .env"
+            info "Devices claimed before this update kept the old address in NVS."
+            info "Re-provision any device that cannot reach the broker."
+        else
+            warn "No value entered — devices will keep claiming against mqtt.vmflow.xyz"
+        fi
+    else
+        warn "Running non-interactively; not guessing a value."
+        [ -n "$MQTT_PUBLIC_SUGGESTION" ] && warn "Add it manually, e.g.: MQTT_PUBLIC_HOST=${MQTT_PUBLIC_SUGGESTION}"
+    fi
+else
+    case "$MQTT_PUBLIC_HOST" in
+        broker|localhost|127.0.0.1|host.docker.internal)
+            warn "MQTT_PUBLIC_HOST is ${MQTT_PUBLIC_HOST} — that is a container-internal"
+            warn "name. A device claimed against it would point at itself and never connect."
+            ;;
+        10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*)
+            # Legitimate for a bench/dev install, so this is not a warning.
+            info "MQTT_PUBLIC_HOST is ${MQTT_PUBLIC_HOST}:${MQTT_PUBLIC_PORT:-1883} (LAN address)"
+            info "Fine on the bench; machines out in the field will not reach it."
+            ;;
+        *)
+            success "MQTT_PUBLIC_HOST: ${MQTT_PUBLIC_HOST}:${MQTT_PUBLIC_PORT:-1883}"
+            ;;
+    esac
+fi
+
+# ─── MQTT_HOST (server-side name only — informational) ───────────────────────
+case "${MQTT_HOST:-}" in
+    ""|broker) ;;
+    *)
+        info "MQTT_HOST is ${MQTT_HOST}, but docker-compose pins the forwarder and"
+        info "the edge functions to the internal service name 'broker', so the value"
+        info "is unused. The device-facing address is MQTT_PUBLIC_HOST."
+        ;;
+esac
+
 # ─── FCM_SERVICE_ACCOUNT_JSON (informational only) ────────────────────────────
 if [ -z "${FCM_SERVICE_ACCOUNT_JSON:-}" ]; then
     info "FCM_SERVICE_ACCOUNT_JSON not set — Android push notifications disabled"
@@ -260,8 +360,18 @@ if [ -z "${SITE_URL:-}" ]; then
     fi
     if [ -t 0 ]; then
         printf "  Public frontend URL%s: " "${SITE_URL_SUGGESTION:+ [$SITE_URL_SUGGESTION]}"
-        read -r SITE_URL_INPUT
-        SITE_URL="${SITE_URL_INPUT:-$SITE_URL_SUGGESTION}"
+        # Distinguish a deliberate empty Enter (accept the suggestion) from
+        # EOF/Ctrl-D (dismiss). The suggestion is only a guess at the
+        # operator's DNS convention, and this value signs password-reset links
+        # and gets printed into QR codes -- it must not be adopted on a
+        # keystroke that means "cancel". Testing read in an `if` also keeps
+        # `set -e` from aborting the whole update on EOF.
+        if read -r SITE_URL_INPUT; then
+            SITE_URL="${SITE_URL_INPUT:-$SITE_URL_SUGGESTION}"
+        else
+            echo
+            SITE_URL=""
+        fi
         if [ -n "$SITE_URL" ]; then
             cat >> .env << SITEURLEOF
 

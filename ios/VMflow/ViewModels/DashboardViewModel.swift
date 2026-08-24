@@ -214,23 +214,38 @@ final class DashboardViewModel: ObservableObject {
             .execute()
             .value
 
-        // Group trays by machine
-        let traysByMachine = Dictionary(grouping: trays, by: { $0.machineId })
-
-        var criticalCount = 0
-        var lowCount = 0
-
-        for machine in machines {
-            let machineTrays = traysByMachine[machine.id] ?? []
-            let hasEmpty = machineTrays.contains { $0.isEmpty }
-            let hasLow = machineTrays.contains { $0.isBelowMinStock }
-
-            if hasEmpty { criticalCount += 1 }
-            else if hasLow { lowCount += 1 }
+        // Warehouse availability — a tray whose product the warehouse can't
+        // refill is a swap candidate, not a refill alert.
+        var stockBatches: [DashboardStockBatch] = []
+        do {
+            stockBatches = try await client
+                .from("warehouse_stock_batches")
+                .select("product_id, quantity")
+                .gt("quantity", value: 0)
+                .execute()
+                .value
+        } catch {
+            // Enrichment, not core data: a failure degrades to "no warehouse
+            // data" (every product refillable = the pre-warehouse behaviour)
+            // instead of failing the whole dashboard. Cancellation is not a
+            // failure — propagate it, or a cancelled refresh would publish
+            // counts classified against an empty warehouse.
+            if error is CancellationError || Task.isCancelled { throw error }
         }
+        let warehouseProductIds = Set(stockBatches.map(\.productId))
+        let hasWarehouses = !stockBatches.isEmpty
 
-        stockCriticalCount = criticalCount
-        stockLowCount = lowCount
+        let summaries = MachineStockHealth.summaries(
+            trays: trays,
+            warehouseProductIds: warehouseProductIds,
+            hasWarehouses: hasWarehouses
+        )
+        // Machines without a single tray row never reach `summaries` — they
+        // have nothing to refill, which is exactly the `ok` bucket.
+        let buckets = MachineStockHealth.buckets(summaries.values)
+
+        stockCriticalCount = buckets.critical
+        stockLowCount = buckets.low
     }
 
     // MARK: - Daily Chart (30 days)
@@ -486,5 +501,19 @@ final class DashboardViewModel: ObservableObject {
             loadMoreFailed = true
             self.error = error.localizedDescription
         }
+    }
+}
+
+// MARK: - Lightweight warehouse stock batch for the dashboard's refill check
+
+/// Mirrors `WarehouseStockBatchLite` in `MachineListViewModel` — both decode
+/// the same two columns; neither is shared because both are file-private.
+private struct DashboardStockBatch: Codable {
+    let productId: UUID
+    let quantity: Int
+
+    enum CodingKeys: String, CodingKey {
+        case quantity
+        case productId = "product_id"
     }
 }

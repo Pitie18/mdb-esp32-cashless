@@ -404,8 +404,9 @@ private fun mdbStateLabel(state: String?): String {
     return state.lowercase().replaceFirstChar { it.titlecase(Locale.getDefault()) }
 }
 
+/** Shared with [xyz.vmflow.ui.warehouse.WarehouseIntakeTab]'s recent-intakes row — kept internal rather than duplicated. */
 @Composable
-private fun relativeTimeAgo(iso: String): String {
+internal fun relativeTimeAgo(iso: String): String {
     val instant = runCatching { Instant.parse(iso) }.getOrNull()
         ?: return stringResource(R.string.device_health_unknown)
     val diff = (Clock.System.now() - instant)

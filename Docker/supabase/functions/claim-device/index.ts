@@ -1,5 +1,20 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+/**
+ * Read an env var, treating an empty/whitespace value as absent.
+ *
+ * These two values are written into the ESP32's NVS at claim time, so an
+ * empty string is the worst possible outcome: the device would be claimed
+ * against no broker at all and would have to be re-provisioned by hand.
+ * `?? fallback` only catches undefined, which is not enough -- config.toml
+ * declares both as env(...) for the CLI dev stack, where a key missing from
+ * Docker/supabase/.env can surface as "" instead of unset.
+ */
+function envOr(name: string, fallback: string): string {
+  const v = Deno.env.get(name)?.trim()
+  return v ? v : fallback
+}
+
 // Generates a random 18-character passkey (printable ASCII 33-126, excluding ' " \ for NVS safety)
 function generatePasskey(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+[]{}|;:,.<>?'
@@ -87,8 +102,8 @@ Deno.serve(async (req) => {
           device_id: existing.id,
           passkey: existing.passkey,
           softap_password: softapPassword,
-          mqtt_host: Deno.env.get('MQTT_PUBLIC_HOST') ?? 'mqtt.vmflow.xyz',
-          mqtt_port: Deno.env.get('MQTT_PUBLIC_PORT') ?? '1883',
+          mqtt_host: envOr('MQTT_PUBLIC_HOST', 'mqtt.vmflow.xyz'),
+          mqtt_port: envOr('MQTT_PUBLIC_PORT', '1883'),
           mqtt_user: 'vmflow',
           mqtt_pass: 'vmflow',
         }),
@@ -153,8 +168,8 @@ Deno.serve(async (req) => {
         device_id: embedded.id,
         passkey,
         softap_password: softapPassword,
-        mqtt_host: Deno.env.get('MQTT_PUBLIC_HOST') ?? 'mqtt.vmflow.xyz',
-        mqtt_port: Deno.env.get('MQTT_PUBLIC_PORT') ?? '1883',
+        mqtt_host: envOr('MQTT_PUBLIC_HOST', 'mqtt.vmflow.xyz'),
+        mqtt_port: envOr('MQTT_PUBLIC_PORT', '1883'),
         mqtt_user: 'vmflow',
         mqtt_pass: 'vmflow',
       }),
