@@ -182,6 +182,13 @@ export const MIN_QR_MM: Record<PrintFormat, number> = {
   'a5-2up': 30,
   'a6-4up': 25,
   // 68 mm tile width: a 25 mm code would eat more than a third of it.
+  // At level L the longest real target URL is 41 modules including the quiet
+  // zone, so 18 mm works out to 0.439 mm/module — under the ~0.5 mm rule
+  // above qrErrorLevel. Accepted anyway: 68 mm of tile width is a physical
+  // limit, the same trade StickerMini takes at 0.488 mm/module, and that
+  // rule assumes arm's-length reading at the machine, while an A7 card is
+  // held closer. Raising the floor is not an option either — at 20.5 mm
+  // PosterKachel's three-tile QR row no longer fits the 68 mm tile.
   'a7-8up': 18,
   'sticker-sheet': 20,
   // 50 x 30 mm leaves no room for more, and below this a phone camera has to
