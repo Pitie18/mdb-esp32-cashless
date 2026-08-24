@@ -31,6 +31,10 @@ private data class RefillTraysParams(
     @SerialName("p_trays") val trays: List<RefillTrayPayload>
 )
 
+/** Decode target for the `select("id")` returning-representation of [RefillRepository.applyReplacement]. */
+@Serializable
+private data class UpdatedTrayIdRow(val id: String)
+
 object RefillRepository {
     private val postgrest get() = SupabaseService.client.postgrest
     private val auth get() = SupabaseService.client.auth
@@ -368,17 +372,30 @@ object RefillRepository {
      * Blocking, unlike [logReviewSwap]: a later task keeps the driver in the
      * review step when this fails, and can only do that if this [Result]
      * faithfully reports failure.
+     *
+     * Asks for the updated row back (`select("id")`, the same
+     * returning-representation idiom as [WarehouseRepository.bookIntake]) and
+     * fails on an empty result. Without that, a tray deleted between loading
+     * the review and applying it — or one hidden by RLS — answers 204 and
+     * would report success while changing nothing, which is the one failure
+     * this [Result] exists to surface.
      */
     suspend fun applyReplacement(trayId: String, productId: String): Result<Unit> {
         return try {
-            postgrest.from("machine_trays")
+            val updated = postgrest.from("machine_trays")
                 .update({
                     set("product_id", productId)
                     set("current_stock", 0)
                 }) {
                     filter { eq("id", trayId) }
+                    select(Columns.raw("id"))
                 }
-            Result.success(Unit)
+                .decodeList<UpdatedTrayIdRow>()
+            if (updated.isEmpty()) {
+                Result.failure(IllegalStateException("Tray $trayId no longer exists"))
+            } else {
+                Result.success(Unit)
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -396,10 +413,15 @@ object RefillRepository {
      * with `source = "analysis_swap"`, and the shared PWA renderer
      * (`management-frontend/app/lib/activityDescriptor.ts`) keys its cases
      * off the ACTION and merely labels the source. Reusing the action gets
-     * these rows rendered on the web today and keeps the origin
-     * distinguishable — the property the plan actually wanted. The PWA has
-     * no label for this source value yet, so it renders the row without a
-     * source chip rather than breaking.
+     * these rows rendered on the web today, and keeps the origin
+     * distinguishable **in the data** — `metadata->>'source'` separates a
+     * review swap from an analysis swap.
+     *
+     * To be precise about what that does NOT buy, since an earlier version of
+     * this comment overclaimed it: the PWA's `product_swapped` case never
+     * calls its `pushSource()` helper, so neither source value is shown in the
+     * visible feed today — `analysis_swap` was already invisible there too.
+     * The two are queryable apart, not yet readable apart.
      *
      * iOS writes no audit row for this operation. Android's own analysis
      * screen writes one for the identical `machine_trays` update
