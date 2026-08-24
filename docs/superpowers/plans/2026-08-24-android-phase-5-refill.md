@@ -422,7 +422,8 @@ Befüllen-Schritt (Referenz `RefillStepView.swift`):
 
 Wizard-Hülle:
 - **Schritt-Indikator** (Referenz `RefillWizardView.swift:112`) mit Rücksprung auf bereits erledigte Schritte, nicht nach vorn.
-- **Resume-Abfrage** beim Betreten, wenn `hasSavedTour`: "Tour fortsetzen?" mit Fortsetzen/Verwerfen.
+- **Resume-Abfrage** beim Betreten, wenn `hasSavedTour`: „Tour fortsetzen?" mit Fortsetzen/Verwerfen. **Harte Anforderung aus dem Task-9-Review, nicht optional:** `loadData` veröffentlicht `hasSavedTour` *bevor* der Abruf fertig ist und schreibt `machines` danach bedingungslos — eine Abfrage, die sofort beim Umschlagen von `hasSavedTour` erscheint, kann also ein `resumeTour()` mitten in einen laufenden Ladevorgang legen, der anschließend `isRefilled`/`isSkipped`/`fillAmount` überschreibt. Die Abfrage darf deshalb erst *nach* Abschluss des Ladens erscheinen (oder das Laden braucht ein Generationen-Token). Ohne das verliert eine fortgesetzte Tour genau die Fortschritte, um die es beim Fortsetzen geht.
+- **`isSaving` bleibt über den Audit-Schreibvorgang hinweg gesetzt** (wie auf iOS): ein Tipp auf „Bestätigen" der nächsten Maschine wird in diesem Fenster vom Re-Entrancy-Guard verworfen. Das darf nicht rückmeldungslos passieren — Knopf während `isSaving` sichtbar deaktiviert mit Spinner, damit ein verworfener Tipp erklärt ist statt zu wirken wie eine kaputte App.
 - **Bildschirm bleibt an, solange `step == REFILL`** (Spec Z. 161): `KeepScreenOn` über `LocalView.current.keepScreenOn` in einem `DisposableEffect`, das die Flagge beim Verlassen zuverlässig zurücknimmt — nicht dauerhaft für den ganzen Wizard.
 - Die drei hart codierten englischen Titel verschwinden hier (Ausgangslage Befund 2).
 
@@ -440,7 +441,8 @@ Wizard-Hülle:
 - Modify: `android/app/src/main/res/values/strings.xml`, `android/app/src/main/res/values-de/strings.xml`
 
 - Zusammenfassung aus dem `tourLog`: Kennzahlen (besuchte Maschinen, befüllte Trays, eingefüllte Stück, übersprungene Maschinen) plus eine Zeile je Maschine mit ihrem Beitrag und einer Kennzeichnung für Übersprungene. "Fertig" ruft `reset()` und verlässt den Wizard.
-- **Lokalisierungs-Sweep über das gesamte Modul**: `grep -rn 'Text("' ui/refill/` und `grep -rn 'contentDescription = "' ui/refill/` müssen leer sein. Mengen über `<plurals>`, Währung über `NumberFormat.getCurrencyInstance`, Datum locale-abhängig.
+- **Lokalisierungs-Sweep über das gesamte Modul**: `grep -rn 'Text("' ui/refill/` und `grep -rn 'contentDescription = "' ui/refill/` müssen leer sein. **Zusätzlich** (aus dem Task-9-Review): Task 9 hat bewusst einen nicht lokalisierten Fehlertext im ViewModel hinterlassen — die Meldung nach drei fehlgeschlagenen Buchungsversuchen. Sie gehört ebenfalls in beide `strings.xml`; das ViewModel darf dafür keinen Text mehr selbst formulieren (Muster: das ViewModel setzt einen Fehlercode/Schlüssel oder die UI übersetzt beim Anzeigen).
+- **`reset()` hinterlässt `isLoading = true`** (der `RefillUiState()`-Default) bei zurückgesetztem Einstiegs-Gate. Das ist richtig, wenn der Screen verlassen und neu betreten wird — genau so muss „Fertig" also verdrahtet werden (erst `reset()`, dann raus). Bleibt die Zusammenfassung stattdessen stehen, zeigt sie einen dauerhaften Spinner. Mengen über `<plurals>`, Währung über `NumberFormat.getCurrencyInstance`, Datum locale-abhängig.
 - **Schlüssel-Paritätsprüfung** beider Locale-Dateien: Differenz darf nur aus den bekannten nicht-übersetzbaren technischen Schlüsseln bestehen (`app_name`, `supabase_anon_key`, `supabase_url`).
 
 - [ ] **Step 1:** `RefillSummaryView.swift` lesen, Zusammenfassung bauen.

@@ -892,11 +892,18 @@ class RefillViewModel : ViewModel() {
     fun confirmRefill(machineId: String) {
         val snapshot = _uiState.value
         val machine = snapshot.machines.find { it.machine.id == machineId } ?: return
-        // Re-entrancy guards. Not in iOS (which relies on its button's
-        // `isSaving` binding), but a second tap here writes a second tour
-        // log entry and a second audit row for one visit — and the
-        // empty-tray path below never sets `isSaving`, so the UI cannot
-        // block it on its own.
+        // Re-entrancy guards. iOS disables only its *Confirm* button on
+        // `isSaving` (`RefillStepView.swift:447`); a second tap here would
+        // write a second tour-log entry and a second audit row for one
+        // visit, and the empty-tray path below never sets `isSaving` at all,
+        // so the UI cannot block it on its own.
+        //
+        // These guards depend on `viewModelScope` dispatching through
+        // `Dispatchers.Main.immediate`: the first state write inside the
+        // launched block runs synchronously, before this function returns,
+        // so a second tap in the same frame already sees it. Inserting a
+        // suspending call ahead of that first write reopens the window —
+        // and no test would catch it.
         if (snapshot.isSaving) return
         if (machine.isRefilled || machine.isSkipped) return
 
@@ -904,6 +911,10 @@ class RefillViewModel : ViewModel() {
 
         viewModelScope.launch {
             if (traysToRefill.isEmpty()) {
+                // Clear a stale error from a previous machine — a visit that
+                // needed no stock write is still a success, and leaving the
+                // old message up makes it read as a failure.
+                _uiState.update { it.copy(error = null) }
                 recordRefillSuccess(
                     machineId = machineId,
                     traysSnapshot = emptyList(),
@@ -937,7 +948,7 @@ class RefillViewModel : ViewModel() {
                 // is what was *requested*, `new_stock` is what the machine
                 // actually holds now (a concurrent sale, a clamp, or a
                 // deduped replay all make the two differ).
-                _uiState.update { it.withMirroredStock(machineId, rows).withPackingList() }
+                _uiState.update { it.withMirroredStock(machineId, rows) }
                 val itemsAdded = rows.sumOf { (it.newStock - it.oldStock).coerceAtLeast(0) }
 
                 recordRefillSuccess(
@@ -973,6 +984,13 @@ class RefillViewModel : ViewModel() {
     fun skipMachine(machineId: String) {
         val snapshot = _uiState.value
         val machine = snapshot.machines.find { it.machine.id == machineId } ?: return
+        // Same guards as `confirmRefill`, and `isSaving` matters most here:
+        // neither iOS nor this app's UI disables Skip while a confirm sits in
+        // its 1s/3s retry window (`RefillStepView.swift:416-425` has no
+        // `.disabled`), so a Skip landing mid-retry would mark the machine
+        // skipped, log it, advance — and then the succeeding RPC would log the
+        // same visit a second time as refilled. One machine, counted as both.
+        if (snapshot.isSaving) return
         if (machine.isRefilled || machine.isSkipped) return
 
         viewModelScope.launch {
@@ -1231,7 +1249,7 @@ class RefillViewModel : ViewModel() {
                 }
             )
         }
-        return copy(machines = newMachines)
+        return copy(machines = newMachines).withPackingList()
     }
 
     private companion object {
