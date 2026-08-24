@@ -4,7 +4,74 @@
     <string name="nav_dashboard">Übersicht</string>
     <string name="nav_machines">Automaten</string>
     <string name="nav_refill">Befüllen</string>
+    <string name="nav_warehouse">Lager</string>
     <string name="action_back">Zurück</string>
+
+    <!-- Lager-Screen -->
+    <string name="warehouse_screen_title">Lager</string>
+    <string name="warehouse_picker_label">Lager</string>
+    <string name="warehouse_tab_stock">Bestand</string>
+    <string name="warehouse_tab_incoming">Wareneingang</string>
+    <string name="warehouse_empty_state">Noch kein Lager angelegt</string>
+
+    <!-- Bestand-Tab -->
+    <string name="warehouse_stock_search_hint">Produkte suchen</string>
+    <string name="warehouse_stock_search_clear">Suche leeren</string>
+    <string name="warehouse_stock_out_of_stock">Nicht auf Lager</string>
+    <string name="warehouse_stock_filter_archived">Archiviert</string>
+    <string name="warehouse_stock_filter_expiring_soon">Läuft bald ab</string>
+    <string name="warehouse_stock_filter_critical">Kritisch</string>
+    <string name="warehouse_stock_low">Niedrig</string>
+    <string name="warehouse_stock_empty_no_stock">Kein Bestand in diesem Lager</string>
+    <string name="warehouse_stock_empty_search">Keine Produkte für „%1$s“</string>
+    <string name="warehouse_stock_empty_filtered">Keine Produkte entsprechen den aktuellen Filtern</string>
+    <plurals name="warehouse_batch_count">
+        <item quantity="one">%1$d Charge</item>
+        <item quantity="other">%1$d Chargen</item>
+    </plurals>
+
+    <!-- Wareneingang-Tab -->
+    <string name="warehouse_intake_form_header">Wareneingang buchen</string>
+    <string name="warehouse_intake_product_label">Produkt</string>
+    <string name="warehouse_intake_product_empty">Keine passenden Produkte</string>
+    <string name="warehouse_intake_product_change">Produkt ändern</string>
+    <string name="warehouse_intake_scan_button">Barcode scannen</string>
+    <string name="warehouse_intake_scan_title">Barcode scannen</string>
+    <string name="warehouse_intake_scan_hint">Richte die Kamera auf den Barcode des Produkts</string>
+    <string name="warehouse_intake_scan_not_found">Kein Produkt für diesen Barcode gefunden</string>
+    <string name="warehouse_intake_quantity_label">Menge</string>
+    <string name="warehouse_intake_quantity_hint">z. B. 2*12</string>
+    <string name="warehouse_intake_quantity_preview">= %1$d</string>
+    <string name="warehouse_intake_batch_label">Chargennummer</string>
+    <string name="warehouse_intake_optional_hint">Optional</string>
+    <string name="warehouse_intake_expiration_label">Mindesthaltbarkeit</string>
+    <string name="warehouse_intake_expiration_clear">Ablaufdatum entfernen</string>
+    <string name="warehouse_intake_supplier_label">Lieferant</string>
+    <string name="warehouse_intake_submit">Wareneingang buchen</string>
+    <string name="warehouse_intake_recent_header">Letzte Wareneingänge</string>
+    <string name="warehouse_intake_recent_empty">Noch keine Wareneingänge</string>
+
+    <!-- Warehouse batch drilldown sheet -->
+    <string name="warehouse_batch_drilldown_loading">Chargen werden geladen…</string>
+    <string name="warehouse_batch_drilldown_empty">Kein Bestand für dieses Produkt</string>
+    <string name="warehouse_batch_no_number">Keine Charge</string>
+
+    <!-- Warehouse batch adjust sheet -->
+    <string name="warehouse_adjust_title">Bestand korrigieren</string>
+    <string name="warehouse_adjust_current_stock_label">Aktueller Bestand</string>
+    <string name="warehouse_adjust_direction_remove">Entnehmen</string>
+    <string name="warehouse_adjust_direction_add">Hinzufügen</string>
+    <string name="warehouse_adjust_quantity_remove_label">Zu entnehmende Menge</string>
+    <string name="warehouse_adjust_quantity_add_label">Hinzuzufügende Menge</string>
+    <string name="warehouse_adjust_exceeds_stock">Nur %1$d verfügbar</string>
+    <string name="warehouse_adjust_reason_label">Grund</string>
+    <string name="warehouse_adjust_reason_damage">Beschädigt</string>
+    <string name="warehouse_adjust_reason_expired">Abgelaufen</string>
+    <string name="warehouse_adjust_reason_correction">Bestandskorrektur</string>
+    <string name="warehouse_adjust_reason_refill_return">Rückgabe nach Befüllung</string>
+    <string name="warehouse_adjust_notes_label">Notizen</string>
+    <string name="warehouse_adjust_submit_remove">Bestand entnehmen</string>
+    <string name="warehouse_adjust_submit_add">Bestand hinzufügen</string>
 
     <!-- StockBar accessibility -->
     <string name="stock_bar_description">Bestand %1$d von %2$d</string>

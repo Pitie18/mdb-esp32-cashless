@@ -8,7 +8,74 @@
     <string name="nav_dashboard">Dashboard</string>
     <string name="nav_machines">Machines</string>
     <string name="nav_refill">Refill</string>
+    <string name="nav_warehouse">Warehouse</string>
     <string name="action_back">Back</string>
+
+    <!-- Warehouse screen -->
+    <string name="warehouse_screen_title">Warehouse</string>
+    <string name="warehouse_picker_label">Warehouse</string>
+    <string name="warehouse_tab_stock">Stock</string>
+    <string name="warehouse_tab_incoming">Incoming</string>
+    <string name="warehouse_empty_state">No warehouses yet</string>
+
+    <!-- Warehouse stock tab -->
+    <string name="warehouse_stock_search_hint">Search products</string>
+    <string name="warehouse_stock_search_clear">Clear search</string>
+    <string name="warehouse_stock_out_of_stock">Out of Stock</string>
+    <string name="warehouse_stock_filter_archived">Archived</string>
+    <string name="warehouse_stock_filter_expiring_soon">Expiring soon</string>
+    <string name="warehouse_stock_filter_critical">Critical</string>
+    <string name="warehouse_stock_low">Low</string>
+    <string name="warehouse_stock_empty_no_stock">No stock in this warehouse</string>
+    <string name="warehouse_stock_empty_search">No products matching \"%1$s\"</string>
+    <string name="warehouse_stock_empty_filtered">No products match the current filters</string>
+    <plurals name="warehouse_batch_count">
+        <item quantity="one">%1$d batch</item>
+        <item quantity="other">%1$d batches</item>
+    </plurals>
+
+    <!-- Warehouse incoming (intake) tab -->
+    <string name="warehouse_intake_form_header">Book Intake</string>
+    <string name="warehouse_intake_product_label">Product</string>
+    <string name="warehouse_intake_product_empty">No matching products</string>
+    <string name="warehouse_intake_product_change">Change product</string>
+    <string name="warehouse_intake_scan_button">Scan Barcode</string>
+    <string name="warehouse_intake_scan_title">Scan Barcode</string>
+    <string name="warehouse_intake_scan_hint">Point the camera at the product\'s barcode</string>
+    <string name="warehouse_intake_scan_not_found">No product found for this barcode</string>
+    <string name="warehouse_intake_quantity_label">Quantity</string>
+    <string name="warehouse_intake_quantity_hint">e.g. 2*12</string>
+    <string name="warehouse_intake_quantity_preview">= %1$d</string>
+    <string name="warehouse_intake_batch_label">Batch No.</string>
+    <string name="warehouse_intake_optional_hint">Optional</string>
+    <string name="warehouse_intake_expiration_label">Best before</string>
+    <string name="warehouse_intake_expiration_clear">Clear expiration date</string>
+    <string name="warehouse_intake_supplier_label">Supplier</string>
+    <string name="warehouse_intake_submit">Book Intake</string>
+    <string name="warehouse_intake_recent_header">Recent Intakes</string>
+    <string name="warehouse_intake_recent_empty">No recent intakes yet</string>
+
+    <!-- Warehouse batch drilldown sheet -->
+    <string name="warehouse_batch_drilldown_loading">Loading batches…</string>
+    <string name="warehouse_batch_drilldown_empty">No batches in stock</string>
+    <string name="warehouse_batch_no_number">No batch</string>
+
+    <!-- Warehouse batch adjust sheet -->
+    <string name="warehouse_adjust_title">Adjust Stock</string>
+    <string name="warehouse_adjust_current_stock_label">Current stock</string>
+    <string name="warehouse_adjust_direction_remove">Remove</string>
+    <string name="warehouse_adjust_direction_add">Add</string>
+    <string name="warehouse_adjust_quantity_remove_label">Quantity to remove</string>
+    <string name="warehouse_adjust_quantity_add_label">Quantity to add</string>
+    <string name="warehouse_adjust_exceeds_stock">Only %1$d available</string>
+    <string name="warehouse_adjust_reason_label">Reason</string>
+    <string name="warehouse_adjust_reason_damage">Damaged</string>
+    <string name="warehouse_adjust_reason_expired">Expired</string>
+    <string name="warehouse_adjust_reason_correction">Inventory correction</string>
+    <string name="warehouse_adjust_reason_refill_return">Refill return</string>
+    <string name="warehouse_adjust_notes_label">Notes</string>
+    <string name="warehouse_adjust_submit_remove">Remove stock</string>
+    <string name="warehouse_adjust_submit_add">Add stock</string>
 
     <!-- StockBar accessibility -->
     <string name="stock_bar_description">Stock %1$d of %2$d</string>
