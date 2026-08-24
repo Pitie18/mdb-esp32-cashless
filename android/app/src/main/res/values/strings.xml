@@ -346,4 +346,46 @@
     <string name="machine_settings_public_footer">Anyone with this link can see this machine\'s live status, without signing in.</string>
     <string name="machine_settings_qr_content_description">QR code for the public status page</string>
     <string name="machine_settings_save_error">Failed to save settings.</string>
+    <!-- Refill wizard — pack step (Phase 5 Task 10) -->
+    <string name="refill_pack_unknown_product">Unknown product</string>
+    <string name="refill_pack_stock_unavailable_title">Warehouse stock not loaded</string>
+    <string name="refill_pack_stock_unavailable_body">Packing quantities are not capped by stock right now.</string>
+    <string name="refill_pack_stock_retry">Reload</string>
+    <string name="refill_pack_chip_all">All</string>
+    <string name="refill_pack_chip_label">%1$s · %2$d</string>
+    <string name="refill_pack_header_all">All machines</string>
+    <string name="refill_pack_status_complete">Box complete</string>
+    <string name="refill_pack_status_partial">Box partial</string>
+    <string name="refill_pack_status_pending">Nothing packed yet</string>
+    <plurals name="refill_pack_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="refill_pack_short">
+        <item quantity="one">%1$d short</item>
+        <item quantity="other">%1$d short</item>
+    </plurals>
+    <plurals name="refill_pack_machines_packed">
+        <item quantity="one">%1$d of %2$d machine packed</item>
+        <item quantity="other">%1$d of %2$d machines packed</item>
+    </plurals>
+    <string name="refill_pack_toggle_all_machines">Pack %1$s for all machines</string>
+    <string name="refill_pack_toggle_machine">Pack for %1$s</string>
+    <string name="refill_pack_total_quantity">%1$d×</string>
+    <string name="refill_pack_stock_none">Not in warehouse</string>
+    <string name="refill_pack_stock_out">Out of stock</string>
+    <string name="refill_pack_stock_committed">%1$d of %2$d committed</string>
+    <string name="refill_pack_stock_left">%1$d in stock · %2$d left</string>
+    <string name="refill_pack_stock_in">%1$d in stock</string>
+    <string name="refill_pack_need">needs %1$d of %2$d</string>
+    <string name="refill_pack_badge_no_stock">No stock</string>
+    <string name="refill_pack_badge_partial">Partial</string>
+    <string name="refill_pack_decrement">Decrease quantity for %1$s</string>
+    <string name="refill_pack_increment">Increase quantity for %1$s</string>
+    <string name="refill_pack_pack_all">Pack everything</string>
+    <string name="refill_pack_pack_all_for">Pack all for %1$s</string>
+    <string name="refill_pack_start_tour">Start tour</string>
+    <string name="refill_pack_empty_title">All stocked!</string>
+    <string name="refill_pack_empty_body">No machine needs a refill right now.</string>
+    <string name="refill_pack_empty_machine">Nothing to pack for this machine.</string>
 </resources>

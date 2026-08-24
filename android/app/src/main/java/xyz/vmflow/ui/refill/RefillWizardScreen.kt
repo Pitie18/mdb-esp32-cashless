@@ -84,12 +84,28 @@ fun RefillWizardScreen(
             } else {
                 when (uiState.step) {
                     RefillStep.PACKING -> PackingStep(
-                        machines = uiState.machines,
-                        packedMachineIds = packedMachines.map { it.machine.id }.toSet(),
-                        // TODO(Task 7/10): togglePackedForMachine — no pack action exists yet.
-                        onTogglePacked = { },
-                        // TODO(Task 8/10): startTour.
-                        onStartTour = { }
+                        uiState = uiState,
+                        visiblePackingList = viewModel.visiblePackingList(),
+                        displayQuantity = viewModel::displayQuantity,
+                        maxPackingQuantity = viewModel::maxPackingQuantity,
+                        isPacked = viewModel::isPacked,
+                        isOutOfStockForMachine = viewModel::isOutOfStockForMachine,
+                        chipItemCount = viewModel::chipItemCount,
+                        chipIsFullyPacked = viewModel::chipIsFullyPacked,
+                        onSelectWarehouse = viewModel::selectWarehouse,
+                        // Retry path for a failed stock fetch: `selectWarehouse`
+                        // early-returns for the already-selected warehouse, so
+                        // the picker cannot re-trigger the load. `loadData()`
+                        // can — it no-ops only once a tour is in memory, which
+                        // the pack step by definition isn't.
+                        onReloadWarehouseStock = viewModel::loadData,
+                        onSelectChip = viewModel::selectChip,
+                        onTogglePackedAll = viewModel::togglePackedAll,
+                        onTogglePackedForMachine = viewModel::togglePackedForMachine,
+                        onSetPackingQuantity = viewModel::setPackingQuantity,
+                        onPackEverything = viewModel::packEverything,
+                        onPackAllForMachine = viewModel::packAllForMachine,
+                        onStartTour = viewModel::startTour
                     )
                     RefillStep.REFILL -> {
                         val currentMachine = uiState.machines
