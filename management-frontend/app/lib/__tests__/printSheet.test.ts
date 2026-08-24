@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildPrintSheetBase,
-  distributeStickers,
+  distributeTiles,
   inherit,
   isPublicOrigin,
   normalizeCustomUrl,
@@ -10,8 +10,8 @@ import {
   isStickerFormat,
   qrErrorLevel,
   readableUrl,
-  stickerLayout,
-  stickersPerSheet,
+  tileLayout,
+  tilesPerSheet,
   toWaNumber,
 } from '../printSheet'
 import type {
@@ -515,21 +515,21 @@ describe('posterFingerprint', () => {
   })
 })
 
-describe('distributeStickers', () => {
+describe('distributeTiles', () => {
   it('packs continuously across sheets', () => {
     const items = Array.from({ length: 11 }, (_, i) => i)
-    const sheets = distributeStickers(items)
+    const sheets = distributeTiles(items)
     expect(sheets).toHaveLength(2)
     expect(sheets[0]).toHaveLength(8)
     expect(sheets[1]).toEqual([8, 9, 10])
   })
 
   it('wastes no sheet on a short run', () => {
-    expect(distributeStickers([1, 2, 3])).toEqual([[1, 2, 3]])
+    expect(distributeTiles([1, 2, 3])).toEqual([[1, 2, 3]])
   })
 
   it('returns nothing for an empty run', () => {
-    expect(distributeStickers([])).toEqual([])
+    expect(distributeTiles([])).toEqual([])
   })
 })
 
@@ -552,15 +552,15 @@ describe('qrErrorLevel', () => {
 
 describe('sticker sheet geometry', () => {
   it('knows how many labels a sheet holds per format', () => {
-    expect(stickersPerSheet('sticker-sheet')).toBe(8)
-    expect(stickersPerSheet('sticker-sheet-small')).toBe(24)
+    expect(tilesPerSheet('sticker-sheet')).toBe(8)
+    expect(tilesPerSheet('sticker-sheet-small')).toBe(24)
     // Two 148 mm strips do not fit side by side on a 210 mm page.
-    expect(stickersPerSheet('sticker-sheet-strip')).toBe(6)
+    expect(tilesPerSheet('sticker-sheet-strip')).toBe(6)
   })
 
   it('keeps both grids inside an A4 page', () => {
     for (const format of ['sticker-sheet', 'sticker-sheet-small', 'sticker-sheet-strip'] as const) {
-      const { w, h, gap, cols, rows } = stickerLayout(format)
+      const { w, h, gap, cols, rows } = tileLayout(format)
       expect(cols * w + (cols - 1) * gap).toBeLessThanOrEqual(210)
       expect(rows * h + (rows - 1) * gap).toBeLessThanOrEqual(297)
     }
@@ -568,7 +568,7 @@ describe('sticker sheet geometry', () => {
 
   it('packs the small format 24 to a sheet', () => {
     const items = Array.from({ length: 25 }, (_, i) => i)
-    const sheets = distributeStickers(items, stickersPerSheet('sticker-sheet-small'))
+    const sheets = distributeTiles(items, tilesPerSheet('sticker-sheet-small'))
     expect(sheets).toHaveLength(2)
     expect(sheets[0]).toHaveLength(24)
     expect(sheets[1]).toEqual([24])

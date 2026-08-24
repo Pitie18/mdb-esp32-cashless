@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import type { Component } from 'vue'
 import type { PrintFormat, PrintSheet } from '@/lib/printSheet'
-import { stickerLayout } from '@/lib/printSheet'
+import { tileLayout } from '@/lib/printSheet'
 import type { PosterT } from '@/lib/printMotifs'
 
 const props = defineProps<{
@@ -15,7 +15,7 @@ const props = defineProps<{
 const PAGE = { w: 210, h: 297 }
 
 const grid = computed(() => {
-  const { w, h, gap, cols, rows } = stickerLayout(props.format)
+  const { w, h, gap, cols, rows } = tileLayout(props.format)
   const totalW = cols * w + (cols - 1) * gap
   const totalH = rows * h + (rows - 1) * gap
   return {

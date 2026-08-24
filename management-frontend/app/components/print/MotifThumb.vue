@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FORMAT_MM, isStickerFormat, stickerLayout } from '@/lib/printSheet'
+import { FORMAT_MM, isStickerFormat, tileLayout } from '@/lib/printSheet'
 import type { PosterT, PrintSheet } from '@/lib/printSheet'
 import type { PrintMotif } from '@/lib/printMotifs'
 
@@ -21,7 +21,7 @@ const PX_PER_MM = 96 / 25.4
  */
 const mm = computed(() =>
   isStickerFormat(props.motif.formats[0]!)
-    ? { w: stickerLayout(props.motif.formats[0]!).w, h: stickerLayout(props.motif.formats[0]!).h }
+    ? { w: tileLayout(props.motif.formats[0]!).w, h: tileLayout(props.motif.formats[0]!).h }
     : FORMAT_MM[props.motif.formats[0]!],
 )
 

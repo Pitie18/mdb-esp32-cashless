@@ -176,23 +176,35 @@ export const MIN_QR_MM: Record<PrintFormat, number> = {
 
 export type StickerFormat = Extract<PrintFormat, 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'>
 
-export interface StickerLayout {
+export interface TileLayout {
   w: number
   h: number
   gap: number
   cols: number
   rows: number
+  /**
+   * The tile sits rotated 90 degrees on the sheet and occupies h x w there.
+   * Eight portrait A7s otherwise don't fit on A4 by the numbers.
+   */
+  rotate: boolean
+  /**
+   * Poster motifs scale everything in `em` against the sheet width; inside a
+   * tile the base has to come from the tile instead, or A4-sized text
+   * overruns an A6 card. Sticker motifs are trimmed to the sheet base and
+   * keep it.
+   */
+  scaleToTile: boolean
 }
 
 /** Label geometry per sticker format, laid out on A4 portrait. */
-export const STICKER_LAYOUT: Record<StickerFormat, StickerLayout> = {
-  'sticker-sheet': { w: 90, h: 50, gap: 3, cols: 2, rows: 4 },
+export const TILE_LAYOUT: Record<StickerFormat, TileLayout> = {
+  'sticker-sheet': { w: 90, h: 50, gap: 3, cols: 2, rows: 4, rotate: false, scaleToTile: false },
   // For the coin return and the flap edge, where 90 x 50 simply does not fit.
-  'sticker-sheet-small': { w: 50, h: 30, gap: 3, cols: 3, rows: 8 },
+  'sticker-sheet-small': { w: 50, h: 30, gap: 3, cols: 3, rows: 8, rotate: false, scaleToTile: false },
   // The long band that runs across a machine front, above or below the
   // product window. Two of these do not fit side by side on A4, so it is one
   // per row and six to a sheet.
-  'sticker-sheet-strip': { w: 148, h: 40, gap: 3, cols: 1, rows: 6 },
+  'sticker-sheet-strip': { w: 148, h: 40, gap: 3, cols: 1, rows: 6, rotate: false, scaleToTile: false },
 }
 
 export function isStickerFormat(format: PrintFormat): format is StickerFormat {
@@ -201,12 +213,12 @@ export function isStickerFormat(format: PrintFormat): format is StickerFormat {
     || format === 'sticker-sheet-strip'
 }
 
-export function stickerLayout(format: PrintFormat): StickerLayout {
-  return STICKER_LAYOUT[isStickerFormat(format) ? format : 'sticker-sheet']
+export function tileLayout(format: PrintFormat): TileLayout {
+  return TILE_LAYOUT[isStickerFormat(format) ? format : 'sticker-sheet']
 }
 
-export function stickersPerSheet(format: PrintFormat): number {
-  const l = stickerLayout(format)
+export function tilesPerSheet(format: PrintFormat): number {
+  const l = tileLayout(format)
   return l.cols * l.rows
 }
 
@@ -605,10 +617,10 @@ export function readableUrl(target: string | null | undefined): string | null {
 }
 
 /**
- * Packs stickers continuously across A4 sheets rather than one sheet per
+ * Packs tiles continuously across A4 sheets rather than one sheet per
  * machine — printing three machines should waste zero labels, not 21.
  */
-export function distributeStickers<T>(items: T[], perSheet = 8): T[][] {
+export function distributeTiles<T>(items: T[], perSheet = 8): T[][] {
   if (perSheet <= 0) return items.length ? [items] : []
   const sheets: T[][] = []
   for (let i = 0; i < items.length; i += perSheet) {

@@ -6,7 +6,7 @@ import MotifThumb from '@/components/print/MotifThumb.vue'
 import { useMachinePrint } from '@/composables/useMachinePrint'
 import { PRINT_MOTIFS, defaultLayout, isStickerFormat, motifById } from '@/lib/printMotifs'
 import type { MotifId } from '@/lib/printMotifs'
-import { FORMAT_MM, SLOT_SOURCES, distributeStickers, stickersPerSheet } from '@/lib/printSheet'
+import { FORMAT_MM, SLOT_SOURCES, distributeTiles, tilesPerSheet } from '@/lib/printSheet'
 import type { PosterLayout, PosterT, PrintBlock, PrintFormat, PrintSheet, SlotSource } from '@/lib/printSheet'
 
 definePageMeta({ middleware: 'auth', layout: false })
@@ -229,7 +229,7 @@ async function resetToDefaults() {
 // ── Rendering ───────────────────────────────────────────────────────────────
 const pages = computed<PrintSheet[][]>(() =>
   isSticker.value
-    ? distributeStickers(sheets.value, stickersPerSheet(format.value))
+    ? distributeTiles(sheets.value, tilesPerSheet(format.value))
     : sheets.value.map(s => [s]),
 )
 
