@@ -105,31 +105,6 @@ data class RefillUiState(
     val refillFailedAttempts: Int? = null,
 )
 
-// ─────────────────────────────────────────────────────────────────────────
-// Tour summary. Derived from [RefillUiState.tourLog] rather than counted
-// into separate fields as the tour runs: the log is what gets persisted and
-// restored, so counters kept beside it would survive an app kill only if
-// they were persisted too — and could then disagree with the log they
-// summarize. Mirrors iOS `machinesVisited`/`traysRefilled`/`totalItemsAdded`/
-// `machinesSkipped` (`RefillWizardViewModel.swift:434-437`).
-// ─────────────────────────────────────────────────────────────────────────
-
-/** Machines actually refilled on this tour (skips excluded). */
-val RefillUiState.machinesVisited: Int
-    get() = tourLog.count { !it.skipped }
-
-/** Trays the server confirmed a stock write for, across the whole tour. */
-val RefillUiState.traysRefilled: Int
-    get() = tourLog.sumOf { it.traysRefilled }
-
-/** Units added across the whole tour, as reported by the server. */
-val RefillUiState.totalItemsAdded: Int
-    get() = tourLog.sumOf { it.totalAdded }
-
-/** Machines the driver skipped. */
-val RefillUiState.machinesSkipped: Int
-    get() = tourLog.count { it.skipped }
-
 /**
  * Derived rather than stored: a genuinely empty warehouse and a warehouse
  * whose stock hasn't loaded yet are otherwise indistinguishable from a
