@@ -386,7 +386,20 @@ object RefillRepository {
 
     /**
      * Writes one `activity_log` row for a review-step product replacement,
-     * action `refill_review_swap`.
+     * action `product_swapped` with `source = "refill_review"` in the
+     * metadata — NOT a bespoke action.
+     *
+     * The plan originally called for a new `refill_review_swap` action so a
+     * review swap would stay distinguishable from the analysis screen's.
+     * Looking one level further showed that a new action renders NOWHERE:
+     * `MachineAnalysisRepository.logProductSwap` writes `product_swapped`
+     * with `source = "analysis_swap"`, and the shared PWA renderer
+     * (`management-frontend/app/lib/activityDescriptor.ts`) keys its cases
+     * off the ACTION and merely labels the source. Reusing the action gets
+     * these rows rendered on the web today and keeps the origin
+     * distinguishable — the property the plan actually wanted. The PWA has
+     * no label for this source value yet, so it renders the row without a
+     * source chip rather than breaking.
      *
      * iOS writes no audit row for this operation. Android's own analysis
      * screen writes one for the identical `machine_trays` update
@@ -450,6 +463,9 @@ object RefillRepository {
                 put("new_product_id", newProductId)
                 put("new_product_name", newProductName)
                 tourId?.let { put("tour_id", it) }
+                // Same action as the analysis screen's swap, distinguished by
+                // `source` — see the action choice documented on this function.
+                put("source", "refill_review")
                 put("_user_email", user.email)
                 put("_user_display", userDisplay)
             }
@@ -460,7 +476,7 @@ object RefillRepository {
                     put("user_id", user.id)
                     put("entity_type", "stock")
                     put("entity_id", trayId)
-                    put("action", "refill_review_swap")
+                    put("action", "product_swapped")
                     put("metadata", metadata)
                 }
             )
