@@ -33,11 +33,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import xyz.vmflow.models.RefillSummary
+import xyz.vmflow.models.LegacyRefillSummary
 
 @Composable
 fun RefillSummaryStep(
-    summary: RefillSummary,
+    summary: LegacyRefillSummary,
     onDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {

@@ -1,5 +1,6 @@
 package xyz.vmflow.models
 
+import kotlin.math.roundToInt
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import xyz.vmflow.data.ExpirationStatus
@@ -352,7 +353,17 @@ data class MachineWithStats(
         get() = trays.count { it.isLow || it.isCritical }
 }
 
-data class RefillItem(
+/**
+ * Pre-"Phase 5" refill rump models. `RefillItem`/`RefillMachine`/
+ * `RefillSummary` are the names the Phase 5 plan (`.superpowers/sdd/`)
+ * hands to the new tour models below — `ui/refill/RefillViewModel.kt` and
+ * its Compose steps plus `data/RefillRepository.kt` are the only remaining
+ * consumers of this shape, and they are rewritten wholesale in Task 6-9 of
+ * that plan. Renamed (not deleted) here purely so the still-wired old
+ * wizard screens keep compiling in the meantime — delete this block
+ * alongside that rewrite.
+ */
+data class LegacyRefillItem(
     val tray: Tray,
     val targetStock: Int,
     val fillAmount: Int = 0
@@ -361,16 +372,161 @@ data class RefillItem(
     val maxFillAmount: Int get() = tray.capacity - tray.currentStock
 }
 
-data class RefillMachine(
+data class LegacyRefillMachine(
     val machine: VendingMachineWithEmbedded,
-    val items: List<RefillItem>,
+    val items: List<LegacyRefillItem>,
     val isCompleted: Boolean = false
 )
 
-data class RefillSummary(
+data class LegacyRefillSummary(
     val machinesVisited: Int,
     val traysRefilled: Int,
     val totalItemsAdded: Int
+)
+
+// ─────────────────────────────────────────────────────────────────────────
+// Refill tour models (Phase 5). Ported from the model structs at the top of
+// `ios/VMflow/ViewModels/RefillWizardViewModel.swift` (L7-166), plus
+// `WarehousePositionGroup`/`WarehouseProductPosition` from
+// `ios/VMflow/Models/Warehouse.swift` (L150-186). `@Serializable` only
+// where tour persistence or a Supabase wire format needs it — pure
+// UI/derived-value models stay plain data classes, matching the
+// `WarehouseProductSummary`/`TrayDeficit` precedent above.
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * One tray in the refill tour: how much to add, and whether it's in scope
+ * for the currently active tour. Mirrors iOS `RefillTray`
+ * (`RefillWizardViewModel.swift` L73-119).
+ */
+@Serializable
+data class RefillTray(
+    val tray: Tray,
+    val fillAmount: Int,
+    val isInTour: Boolean = true
+) {
+    val deficit: Int get() = tray.deficit
+    val maxFill: Int get() = tray.capacity - tray.currentStock
+    val targetStock: Int get() = tray.currentStock + fillAmount
+}
+
+/**
+ * A machine in the refill tour with its trays and pack/refill/skip state.
+ * Mirrors iOS `RefillMachine` (`RefillWizardViewModel.swift` L7-70).
+ */
+@Serializable
+data class RefillMachine(
+    val machine: VendingMachineWithEmbedded,
+    val trays: List<RefillTray>,
+    val isPacked: Boolean = false,
+    val isRefilled: Boolean = false,
+    val isSkipped: Boolean = false
+) {
+    val totalDeficit: Int get() = trays.sumOf { it.deficit }
+    val traysNeedingRefill: Int get() = trays.count { it.deficit > 0 }
+    val totalCurrentStock: Int get() = trays.sumOf { it.tray.currentStock }
+    val totalCapacity: Int get() = trays.sumOf { it.tray.capacity }
+    val stockPercent: Int
+        get() = if (totalCapacity > 0) {
+            (totalCurrentStock.toDouble() / totalCapacity.toDouble() * 100).roundToInt()
+        } else {
+            0
+        }
+}
+
+/** One machine's need for a specific product. Mirrors iOS `MachineNeed`. */
+data class MachineNeed(
+    val machineId: String,
+    val machineName: String,
+    val quantity: Int,
+    val capacity: Int
+)
+
+/**
+ * A product grouped across all machines that need it — one row of the
+ * combined packing list. Mirrors iOS `CombinedPackingItem`.
+ */
+data class CombinedPackingItem(
+    val productId: String,
+    val productName: String,
+    val imagePath: String?,
+    val sellprice: Double?,
+    val totalQuantity: Int,
+    val machineNeeds: List<MachineNeed>
+)
+
+/** Per-machine result entry for the tour log; source of the tour summary. Mirrors iOS `TourLogEntry`. */
+@Serializable
+data class TourLogEntry(
+    val machineId: String,
+    val machineName: String,
+    val traysRefilled: Int,
+    val totalAdded: Int,
+    val skipped: Boolean
+)
+
+/**
+ * Folder-like group of warehouse positions; groups can nest via [parentId].
+ * Maps to `warehouse_position_groups` (`Docker/supabase/migrations/20260318200000_warehouse_position_groups.sql`).
+ */
+@Serializable
+data class WarehousePositionGroup(
+    val id: String,
+    @SerialName("parent_id") val parentId: String?,
+    @SerialName("sort_order") val sortOrder: Int
+)
+
+/**
+ * Physical warehouse slot for a product. Maps to `warehouse_product_positions`
+ * (`Docker/supabase/migrations/20260318100000_warehouse_product_positions.sql`).
+ */
+@Serializable
+data class WarehouseProductPosition(
+    @SerialName("product_id") val productId: String,
+    @SerialName("sort_order") val sortOrder: Int,
+    @SerialName("group_id") val groupId: String?
+)
+
+/**
+ * RPC input row for `refill_machine_trays`
+ * (`Docker/supabase/migrations/20260511120000_refill_machine_trays_rpc.sql`,
+ * `p_trays` param: `[{"tray_id": "<uuid>", "fill_amount": <int>}, ...]`).
+ */
+@Serializable
+data class RefillTrayPayload(
+    @SerialName("tray_id") val trayId: String,
+    @SerialName("fill_amount") val fillAmount: Int
+)
+
+/**
+ * RPC return row from `refill_machine_trays`
+ * (`Docker/supabase/migrations/20260511120000_refill_machine_trays_rpc.sql`
+ * `RETURNS TABLE` block).
+ */
+@Serializable
+data class TrayApplicationResult(
+    @SerialName("tray_id") val trayId: String,
+    @SerialName("old_stock") val oldStock: Int,
+    @SerialName("new_stock") val newStock: Int,
+    @SerialName("fill_amount") val fillAmount: Int,
+    @SerialName("was_already_applied") val wasAlreadyApplied: Boolean
+)
+
+/**
+ * Resume-state snapshot for an in-progress tour, persisted across app
+ * restarts. [savedAt] is deliberately an ISO-8601 string (not a date type)
+ * so it round-trips through JSON without a custom serializer module — a
+ * later task writes and reads it.
+ */
+@Serializable
+data class PersistedTourState(
+    val step: String,
+    val machines: List<RefillMachine>,
+    val currentMachineIndex: Int,
+    val selectedWarehouseId: String?,
+    val tourId: String,
+    val tourLog: List<TourLogEntry>,
+    val savedAt: String
 )
 
 /**

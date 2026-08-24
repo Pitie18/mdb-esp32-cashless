@@ -9,9 +9,9 @@ import kotlinx.coroutines.launch
 import xyz.vmflow.data.MachineRepository
 import xyz.vmflow.data.RefillRepository
 import xyz.vmflow.models.MachineWithStats
-import xyz.vmflow.models.RefillItem
-import xyz.vmflow.models.RefillMachine
-import xyz.vmflow.models.RefillSummary
+import xyz.vmflow.models.LegacyRefillItem
+import xyz.vmflow.models.LegacyRefillMachine
+import xyz.vmflow.models.LegacyRefillSummary
 
 enum class RefillStep {
     PACKING, REFILL, SUMMARY
@@ -21,14 +21,14 @@ data class RefillUiState(
     val isLoading: Boolean = true,
     val step: RefillStep = RefillStep.PACKING,
     val machines: List<MachineWithStats> = emptyList(),
-    val refillMachines: List<RefillMachine> = emptyList(),
+    val refillMachines: List<LegacyRefillMachine> = emptyList(),
     val currentMachineIndex: Int = 0,
     val packedMachineIds: Set<String> = emptySet(),
     val isSaving: Boolean = false,
-    val summary: RefillSummary? = null,
+    val summary: LegacyRefillSummary? = null,
     val error: String? = null
 ) {
-    val currentRefillMachine: RefillMachine?
+    val currentRefillMachine: LegacyRefillMachine?
         get() = refillMachines.getOrNull(currentMachineIndex)
 
     val machineProgress: String
@@ -169,7 +169,7 @@ class RefillViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(
             step = RefillStep.SUMMARY,
             isSaving = false,
-            summary = RefillSummary(
+            summary = LegacyRefillSummary(
                 machinesVisited = machines.size,
                 traysRefilled = totalTrays,
                 totalItemsAdded = totalItems

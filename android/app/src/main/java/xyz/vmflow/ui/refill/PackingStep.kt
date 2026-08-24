@@ -39,13 +39,13 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import xyz.vmflow.models.RefillMachine
+import xyz.vmflow.models.LegacyRefillMachine
 import xyz.vmflow.ui.components.ProductImage
 import xyz.vmflow.ui.theme.StockRed
 
 @Composable
 fun PackingStep(
-    refillMachines: List<RefillMachine>,
+    refillMachines: List<LegacyRefillMachine>,
     packedMachineIds: Set<String>,
     onTogglePacked: (String) -> Unit,
     onStartTour: () -> Unit,
@@ -140,7 +140,7 @@ fun PackingStep(
 
 @Composable
 private fun PackingMachineCard(
-    refillMachine: RefillMachine,
+    refillMachine: LegacyRefillMachine,
     isPacked: Boolean,
     onToggle: () -> Unit
 ) {

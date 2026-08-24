@@ -48,8 +48,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import xyz.vmflow.models.RefillItem
-import xyz.vmflow.models.RefillMachine
+import xyz.vmflow.models.LegacyRefillItem
+import xyz.vmflow.models.LegacyRefillMachine
 import xyz.vmflow.ui.components.ProductImage
 import xyz.vmflow.ui.theme.StockGreen
 import xyz.vmflow.ui.theme.StockOrange
@@ -58,7 +58,7 @@ import xyz.vmflow.ui.theme.StockYellow
 
 @Composable
 fun RefillStepContent(
-    refillMachine: RefillMachine,
+    refillMachine: LegacyRefillMachine,
     machineProgress: String,
     progressFraction: Float,
     isSaving: Boolean,
@@ -196,7 +196,7 @@ fun RefillStepContent(
 
 @Composable
 private fun RefillTrayCard(
-    item: RefillItem,
+    item: LegacyRefillItem,
     onUpdateAmount: (Int) -> Unit,
     onFillFull: () -> Unit
 ) {

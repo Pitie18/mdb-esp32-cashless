@@ -2,13 +2,13 @@ package xyz.vmflow.data
 
 import io.github.jan.supabase.postgrest.postgrest
 import xyz.vmflow.models.MachineWithStats
-import xyz.vmflow.models.RefillItem
-import xyz.vmflow.models.RefillMachine
+import xyz.vmflow.models.LegacyRefillItem
+import xyz.vmflow.models.LegacyRefillMachine
 
 object RefillRepository {
     private val postgrest get() = SupabaseService.client.postgrest
 
-    fun buildRefillPlan(machines: List<MachineWithStats>): List<RefillMachine> {
+    fun buildRefillPlan(machines: List<MachineWithStats>): List<LegacyRefillMachine> {
         return machines
             .filter { machineStats ->
                 machineStats.trays.any { it.isLow || it.isCritical }
@@ -18,13 +18,13 @@ object RefillRepository {
                     .thenByDescending { it.lowTrayCount }
             )
             .map { machineStats ->
-                RefillMachine(
+                LegacyRefillMachine(
                     machine = machineStats.machine,
                     items = machineStats.trays
                         .filter { it.isLow || it.isCritical }
                         .sortedBy { it.itemNumber }
                         .map { tray ->
-                            RefillItem(
+                            LegacyRefillItem(
                                 tray = tray,
                                 targetStock = tray.capacity,
                                 fillAmount = tray.deficit
@@ -34,7 +34,7 @@ object RefillRepository {
             }
     }
 
-    suspend fun applyRefill(machineItems: List<RefillItem>): Result<Unit> {
+    suspend fun applyRefill(machineItems: List<LegacyRefillItem>): Result<Unit> {
         return try {
             machineItems.filter { it.fillAmount > 0 }.forEach { item ->
                 val newStock = item.tray.currentStock + item.fillAmount
