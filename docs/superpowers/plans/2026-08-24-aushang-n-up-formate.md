@@ -978,8 +978,8 @@ Motive, deren Inhalt in A7 überläuft, hier notieren und im Anschluss melden �
 
 - [ ] **Step 7: Volle Testsuite, Typecheck, Lint**
 
-Run: `npx vitest run && npx nuxi typecheck && npm run lint`
-Expected: Tests und Lint PASS, keine *neuen* Typfehler.
+Run: `npx vitest run && npx nuxi typecheck`
+Expected: Tests PASS, keine *neuen* Typfehler. (Kein Lint-Schritt: das Repo hat weder eine ESLint-Konfiguration noch ein `lint`-Script.)
 
 - [ ] **Step 8: Commit**
 
