@@ -57,6 +57,58 @@ class RefillReviewLogicTest {
     // ─── buildReplacementSuggestions: priority order ──────────────────────
 
     @Test
+    fun `expired beats no-stock when the tray is empty and the warehouse has none`() {
+        // The discriminating case for rule (b) over rule (c): every input that
+        // rule (c) needs is also true here, so this test fails if the two
+        // branches are swapped. Without it, the branch order is unpinned.
+        val p = product("p1")
+        val trays = mapOf("m1" to listOf(tray("t1", productId = "p1", currentStock = 0, product = p)))
+
+        val result = RefillReviewLogic.buildReplacementSuggestions(
+            machines = listOf(vm("m1")),
+            traysByMachine = trays,
+            stockedProductIds = emptySet(),
+            expiredProductIds = setOf("p1"),
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(ReplacementReason.EXPIRED, result.first().reason)
+    }
+
+    @Test
+    fun `a batch with an empty-string date is not treated as expired`() {
+        val result = RefillReviewLogic.expiredProductIds(
+            batches = listOf(
+                batch("p1", quantity = 5, expirationDate = "2020-01-01"),
+                batch("p1", quantity = 5, expirationDate = ""),
+            ),
+            today = "2026-08-24",
+        )
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `a tray whose product row is missing still yields a suggestion by id`() {
+        // `products` is null (a narrower select, or a deleted product row) while
+        // productId is set: the id-based rules must still fire, and the name and
+        // image come through as null for the UI to resolve.
+        val trays = mapOf(
+            "m1" to listOf(tray("t1", productId = "p1", currentStock = 0, product = null))
+        )
+
+        val result = RefillReviewLogic.buildReplacementSuggestions(
+            machines = listOf(vm("m1")),
+            traysByMachine = trays,
+            stockedProductIds = emptySet(),
+            expiredProductIds = emptySet(),
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(ReplacementReason.NO_STOCK, result.first().reason)
+        assertEquals(null, result.first().currentProductName)
+    }
+
+    @Test
     fun `discontinued product with zero tray stock is DISCONTINUED`() {
         val machines = listOf(vm("m1"))
         val trays = mapOf(

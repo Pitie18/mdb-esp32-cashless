@@ -132,6 +132,13 @@ object RefillReviewLogic {
             }
         }
 
-        return suggestions.sortedWith(compareBy({ it.machineName }, { it.slotNumber }))
+        // trayId is the final tiebreaker so this is a TOTAL order. Machine
+        // names are not unique in the schema, and two same-named machines
+        // each contributing the same slot number would otherwise tie — and a
+        // stable sort resolves ties by input order, which is the fetch order
+        // this deterministic sort exists to stop depending on.
+        return suggestions.sortedWith(
+            compareBy({ it.machineName }, { it.slotNumber }, { it.trayId })
+        )
     }
 }
