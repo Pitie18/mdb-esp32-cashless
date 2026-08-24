@@ -69,6 +69,7 @@ class RefillReviewLogicTest {
             traysByMachine = trays,
             stockedProductIds = emptySet(),
             expiredProductIds = setOf("p1"),
+            stockLoaded = true,
         )
 
         assertEquals(1, result.size)
@@ -101,6 +102,7 @@ class RefillReviewLogicTest {
             traysByMachine = trays,
             stockedProductIds = emptySet(),
             expiredProductIds = emptySet(),
+            stockLoaded = true,
         )
 
         assertEquals(1, result.size)
@@ -114,7 +116,7 @@ class RefillReviewLogicTest {
         val trays = mapOf(
             "m1" to listOf(tray("t1", productId = "p1", currentStock = 0, product = product("p1", discontinued = true)))
         )
-        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet())
+        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet(), stockLoaded = true)
         assertEquals(1, result.size)
         assertEquals(ReplacementReason.DISCONTINUED, result[0].reason)
     }
@@ -125,7 +127,7 @@ class RefillReviewLogicTest {
         val trays = mapOf(
             "m1" to listOf(tray("t1", productId = "p1", currentStock = 3, product = product("p1", discontinued = true)))
         )
-        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet())
+        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet(), stockLoaded = true)
         assertTrue(result.isEmpty())
     }
 
@@ -137,7 +139,7 @@ class RefillReviewLogicTest {
                 tray("t1", productId = "p1", capacity = 10, currentStock = 10, product = product("p1"))
             )
         )
-        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), setOf("p1"))
+        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), setOf("p1"), stockLoaded = true)
         assertEquals(1, result.size)
         assertEquals(ReplacementReason.EXPIRED, result[0].reason)
     }
@@ -151,7 +153,7 @@ class RefillReviewLogicTest {
             )
         )
         // Product is both discontinued+empty AND expired: rule (a) must win over rule (b).
-        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), setOf("p1"))
+        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), setOf("p1"), stockLoaded = true)
         assertEquals(1, result.size)
         assertEquals(ReplacementReason.DISCONTINUED, result[0].reason)
     }
@@ -162,7 +164,7 @@ class RefillReviewLogicTest {
         val trays = mapOf(
             "m1" to listOf(tray("t1", productId = "p1", currentStock = 0, product = product("p1")))
         )
-        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet())
+        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet(), stockLoaded = true)
         assertEquals(1, result.size)
         assertEquals(ReplacementReason.NO_STOCK, result[0].reason)
     }
@@ -173,7 +175,7 @@ class RefillReviewLogicTest {
         val trays = mapOf(
             "m1" to listOf(tray("t1", productId = "p1", currentStock = 0, product = product("p1")))
         )
-        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, setOf("p1"), emptySet())
+        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, setOf("p1"), emptySet(), stockLoaded = true)
         assertTrue(result.isEmpty())
     }
 
@@ -183,7 +185,7 @@ class RefillReviewLogicTest {
         val trays = mapOf(
             "m1" to listOf(tray("t1", productId = null, currentStock = 0))
         )
-        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet())
+        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet(), stockLoaded = true)
         assertEquals(1, result.size)
         assertEquals(ReplacementReason.UNASSIGNED, result[0].reason)
     }
@@ -196,7 +198,7 @@ class RefillReviewLogicTest {
         )
         // stockedProductIds/expiredProductIds are irrelevant once productId is null: this
         // must never fall through to NO_STOCK.
-        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet())
+        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet(), stockLoaded = true)
         assertEquals(ReplacementReason.UNASSIGNED, result[0].reason)
     }
 
@@ -204,7 +206,7 @@ class RefillReviewLogicTest {
     fun `machine with no trays produces nothing`() {
         val machines = listOf(vm("m1"))
         val trays = emptyMap<String, List<Tray>>()
-        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet())
+        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), emptySet(), stockLoaded = true)
         assertTrue(result.isEmpty())
     }
 
@@ -217,8 +219,68 @@ class RefillReviewLogicTest {
                 tray("t1", productId = "p1", currentStock = 0, product = product("p1", discontinued = true))
             )
         )
-        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), setOf("p1"))
+        val result = RefillReviewLogic.buildReplacementSuggestions(machines, trays, emptySet(), setOf("p1"), stockLoaded = true)
         assertEquals(1, result.size)
+    }
+
+    // ─── buildReplacementSuggestions: stockLoaded ──────────────────────────
+
+    @Test
+    fun `empty slot produces no suggestion when stock has not loaded`() {
+        // A failed or not-yet-run warehouse-stock query leaves stockedProductIds
+        // empty — indistinguishable from "the warehouse stocks nothing" unless
+        // stockLoaded says which. Without the suppression this fires NO_STOCK
+        // for every empty slot in the fleet on one transient failure; this test
+        // fails if the `stockLoaded &&` guard on rule 3 is removed.
+        val machines = listOf(vm("m1"))
+        val trays = mapOf(
+            "m1" to listOf(tray("t1", productId = "p1", currentStock = 0, product = product("p1")))
+        )
+        val result = RefillReviewLogic.buildReplacementSuggestions(
+            machines, trays, emptySet(), emptySet(), stockLoaded = false
+        )
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `discontinued and empty still suggests when stock has not loaded`() {
+        val machines = listOf(vm("m1"))
+        val trays = mapOf(
+            "m1" to listOf(
+                tray("t1", productId = "p1", currentStock = 0, product = product("p1", discontinued = true))
+            )
+        )
+        val result = RefillReviewLogic.buildReplacementSuggestions(
+            machines, trays, emptySet(), emptySet(), stockLoaded = false
+        )
+        assertEquals(1, result.size)
+        assertEquals(ReplacementReason.DISCONTINUED, result[0].reason)
+    }
+
+    @Test
+    fun `expired product still suggests when stock has not loaded`() {
+        val machines = listOf(vm("m1"))
+        val trays = mapOf(
+            "m1" to listOf(tray("t1", productId = "p1", currentStock = 0, product = product("p1")))
+        )
+        val result = RefillReviewLogic.buildReplacementSuggestions(
+            machines, trays, emptySet(), setOf("p1"), stockLoaded = false
+        )
+        assertEquals(1, result.size)
+        assertEquals(ReplacementReason.EXPIRED, result[0].reason)
+    }
+
+    @Test
+    fun `unassigned slot still suggests when stock has not loaded`() {
+        val machines = listOf(vm("m1"))
+        val trays = mapOf(
+            "m1" to listOf(tray("t1", productId = null, currentStock = 0))
+        )
+        val result = RefillReviewLogic.buildReplacementSuggestions(
+            machines, trays, emptySet(), emptySet(), stockLoaded = false
+        )
+        assertEquals(1, result.size)
+        assertEquals(ReplacementReason.UNASSIGNED, result[0].reason)
     }
 
     // ─── buildReplacementSuggestions: deterministic order ─────────────────
@@ -240,12 +302,14 @@ class RefillReviewLogicTest {
             mapOf("mA" to traysA, "mZ" to traysZ),
             emptySet(),
             emptySet(),
+            stockLoaded = true,
         )
         val reversed = RefillReviewLogic.buildReplacementSuggestions(
             listOf(machineZ, machineA),
             mapOf("mZ" to traysZ, "mA" to traysA.reversed()),
             emptySet(),
             emptySet(),
+            stockLoaded = true,
         )
 
         val expectedOrder = listOf("t-a-1", "t-a-2", "t-z-1")

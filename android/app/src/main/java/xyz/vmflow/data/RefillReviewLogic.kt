@@ -28,6 +28,21 @@ data class ReplacementSuggestion(
     val reason: ReplacementReason,
     val replacementProductId: String? = null,
     val isSkipped: Boolean = false,
+    /**
+     * Set once [xyz.vmflow.data.RefillRepository.applyReplacement] has
+     * actually committed this slot's write. Lets a retry after a partial
+     * failure (see `RefillViewModel.applyReplacementsAndContinue`) resume
+     * rather than restart: without it, a retry would recompute the same
+     * to-apply set and re-run the write *and the audit log call* for slots
+     * that already succeeded — `applyReplacement` is idempotent on the tray
+     * (it just re-sets the same product), but the audit row is not: it is
+     * built from this suggestion's original `currentProductId`/
+     * `currentProductName`, so a duplicate row would assert "slot N: X → Y"
+     * at a moment when the slot already holds Y. Never true for a freshly
+     * detected suggestion; only ever set locally after a successful write,
+     * never persisted or re-derived from the server.
+     */
+    val isApplied: Boolean = false,
 )
 
 /**
@@ -83,18 +98,30 @@ object RefillReviewLogic {
      *   2. Product id is in [expiredProductIds] -> [ReplacementReason.EXPIRED],
      *      regardless of tray stock (even a full tray).
      *   3. Tray stock is 0 **and** the product has no warehouse stock
-     *      ([stockedProductIds]) -> [ReplacementReason.NO_STOCK].
+     *      ([stockedProductIds]) -> [ReplacementReason.NO_STOCK]. Suppressed
+     *      entirely when [stockLoaded] is false — see its doc.
      *   4. Tray has no product assigned -> [ReplacementReason.UNASSIGNED].
      * Each tray yields at most one suggestion (the `if`/`else if` chain
      * below can only ever pick one reason). Result order is deterministic
      * (machine name, then slot number) — see class doc for why that departs
      * from iOS.
+     *
+     * `stockLoaded == false` means only rules 1, 2 and 4 apply — they don't
+     * depend on warehouse stock. An empty [stockedProductIds] is otherwise
+     * ambiguous: it means both "the warehouse stock query failed" and "the
+     * warehouse genuinely stocks nothing", and treating the former as the
+     * latter would fire rule 3 for every empty slot in the fleet on one
+     * transient failure. Mirrors the `stockLoaded` parameter on
+     * `RefillTourLogic`'s capping functions (`maxPackingQuantity`,
+     * `isOutOfStockForMachine`), same "empty means unknown, not zero"
+     * distinction.
      */
     fun buildReplacementSuggestions(
         machines: List<VendingMachineWithEmbedded>,
         traysByMachine: Map<String, List<Tray>>,
         stockedProductIds: Set<String>,
         expiredProductIds: Set<String>,
+        stockLoaded: Boolean,
     ): List<ReplacementSuggestion> {
         val suggestions = mutableListOf<ReplacementSuggestion>()
 
@@ -107,7 +134,8 @@ object RefillReviewLogic {
                     when {
                         isDiscontinued && tray.currentStock == 0 -> ReplacementReason.DISCONTINUED
                         expiredProductIds.contains(productId) -> ReplacementReason.EXPIRED
-                        tray.currentStock == 0 && !stockedProductIds.contains(productId) -> ReplacementReason.NO_STOCK
+                        stockLoaded && tray.currentStock == 0 && !stockedProductIds.contains(productId) ->
+                            ReplacementReason.NO_STOCK
                         else -> null
                     }
                 } else {
