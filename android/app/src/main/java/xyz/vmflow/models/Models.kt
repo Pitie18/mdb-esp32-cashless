@@ -524,6 +524,16 @@ data class TrayApplicationResult(
 )
 
 /**
+ * Step of the refill wizard's flow (pack → refill → summary). Lives here
+ * rather than in `ui/refill/` so the data layer (`TourStore`) can share it
+ * with the UI layer without a `data` → `ui` dependency.
+ */
+@Serializable
+enum class RefillStep {
+    PACKING, REFILL, SUMMARY
+}
+
+/**
  * Resume-state snapshot for an in-progress tour, persisted across app
  * restarts. [savedAt] is deliberately an ISO-8601 string (not a date type)
  * so it round-trips through JSON without a custom serializer module — a
@@ -531,7 +541,7 @@ data class TrayApplicationResult(
  */
 @Serializable
 data class PersistedTourState(
-    val step: String,
+    val step: RefillStep,
     val machines: List<RefillMachine>,
     val currentMachineIndex: Int,
     val selectedWarehouseId: String?,

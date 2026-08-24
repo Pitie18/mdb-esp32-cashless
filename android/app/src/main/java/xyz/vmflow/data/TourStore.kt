@@ -5,6 +5,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import xyz.vmflow.models.PersistedTourState
+import xyz.vmflow.models.RefillStep
 
 /**
  * Persists and resumes an in-progress refill tour so an app kill mid-tour
@@ -19,8 +20,9 @@ import xyz.vmflow.models.PersistedTourState
  * from the caller, so there is no "build" step here to guard. The brief
  * still attributes this guard to the persistence layer's contract, so
  * [save] enforces it itself: it is a no-op unless [PersistedTourState.step]
- * is [STEP_REFILL] or [STEP_SUMMARY]. Callers should build `step` from
- * those constants so the contract can't silently drift out of sync.
+ * is [RefillStep.REFILL] or [RefillStep.SUMMARY]. Because `step` is typed
+ * as [RefillStep] rather than a free-form string, there is no longer a way
+ * for a caller to pass a value the guard doesn't recognize.
  *
  * [clock] is an injected seam for "now" (used for the 24h expiry check
  * below) so tests can pin a fixed instant instead of sleeping or freezing
@@ -32,9 +34,13 @@ class TourStore(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** No-op unless [PersistedTourState.step] is [STEP_REFILL] or [STEP_SUMMARY]. */
+    /** No-op unless [PersistedTourState.step] is [RefillStep.REFILL] or [RefillStep.SUMMARY]. */
     fun save(state: PersistedTourState) {
-        if (state.step != STEP_REFILL && state.step != STEP_SUMMARY) return
+        val isResumable = when (state.step) {
+            RefillStep.PACKING -> false
+            RefillStep.REFILL, RefillStep.SUMMARY -> true
+        }
+        if (!isResumable) return
         storage.putString(STORAGE_KEY, json.encodeToString(state))
     }
 
@@ -65,15 +71,19 @@ class TourStore(
         storage.putString(STORAGE_KEY, null)
     }
 
-    /** Whether a valid, non-expired saved tour exists. */
+    /**
+     * Whether a valid, non-expired saved tour exists.
+     *
+     * Reading this property can *write*: it calls [load], which clears the
+     * stored blob when it turns out to be expired or corrupt. A debugger
+     * watch or a UI binding that re-reads this repeatedly will re-attempt
+     * that clear on every read — harmless, but worth knowing before you
+     * treat this as a pure getter.
+     */
     val hasSavedTour: Boolean
         get() = load() != null
 
     companion object {
-        /** Canonical `step` values a saved state must carry to be resumable. */
-        const val STEP_REFILL = "REFILL"
-        const val STEP_SUMMARY = "SUMMARY"
-
         private const val STORAGE_KEY = "refill-tour-state"
         private val MAX_AGE = 24.hours
     }

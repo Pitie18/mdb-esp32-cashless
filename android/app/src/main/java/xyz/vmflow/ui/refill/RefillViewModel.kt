@@ -12,10 +12,7 @@ import xyz.vmflow.models.MachineWithStats
 import xyz.vmflow.models.LegacyRefillItem
 import xyz.vmflow.models.LegacyRefillMachine
 import xyz.vmflow.models.LegacyRefillSummary
-
-enum class RefillStep {
-    PACKING, REFILL, SUMMARY
-}
+import xyz.vmflow.models.RefillStep
 
 data class RefillUiState(
     val isLoading: Boolean = true,

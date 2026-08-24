@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import xyz.vmflow.models.RefillStep
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

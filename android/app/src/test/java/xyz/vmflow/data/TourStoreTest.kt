@@ -11,6 +11,7 @@ import org.junit.Before
 import org.junit.Test
 import xyz.vmflow.models.PersistedTourState
 import xyz.vmflow.models.RefillMachine
+import xyz.vmflow.models.RefillStep
 import xyz.vmflow.models.RefillTray
 import xyz.vmflow.models.Tray
 import xyz.vmflow.models.TourLogEntry
@@ -58,7 +59,7 @@ class TourStoreTest {
     )
 
     private fun state(
-        step: String = TourStore.STEP_REFILL,
+        step: RefillStep = RefillStep.REFILL,
         savedAt: Instant = fixedNow,
         tourId: String = "tour-1"
     ) = PersistedTourState(
@@ -102,6 +103,27 @@ class TourStoreTest {
         assertNull(storage.getString("refill-tour-state"))
     }
 
+    @Test
+    fun `load returns null for valid json with an unparseable savedAt`() {
+        val json = """
+            {"step":"REFILL","machines":[],"currentMachineIndex":0,"selectedWarehouseId":null,
+             "tourId":"tour-1","tourLog":[],"savedAt":"not-an-instant"}
+        """.trimIndent()
+        storage.putString("refill-tour-state", json)
+        assertNull(store.load())
+    }
+
+    @Test
+    fun `load clears the stored key for valid json with an unparseable savedAt`() {
+        val json = """
+            {"step":"REFILL","machines":[],"currentMachineIndex":0,"selectedWarehouseId":null,
+             "tourId":"tour-1","tourLog":[],"savedAt":"not-an-instant"}
+        """.trimIndent()
+        storage.putString("refill-tour-state", json)
+        store.load()
+        assertNull(storage.getString("refill-tour-state"))
+    }
+
     // ─── expiry ─────────────────────────────────────────────────────────
 
     @Test
@@ -126,6 +148,13 @@ class TourStoreTest {
         assertEquals(fresh, store.load())
     }
 
+    @Test
+    fun `a state saved exactly 24h ago is still loaded`() {
+        val boundary = state(savedAt = fixedNow - 24.hours)
+        store.save(boundary)
+        assertEquals(boundary, store.load())
+    }
+
     // ─── forward compatibility ──────────────────────────────────────────
 
     @Test
@@ -137,27 +166,27 @@ class TourStoreTest {
         storage.putString("refill-tour-state", json)
         val loaded = store.load()
         assertEquals("tour-1", loaded?.tourId)
-        assertEquals(TourStore.STEP_REFILL, loaded?.step)
+        assertEquals(RefillStep.REFILL, loaded?.step)
     }
 
     // ─── the pack-step guard ────────────────────────────────────────────
 
     @Test
     fun `save is a no-op while the tour is still in the pack step`() {
-        store.save(state(step = "PACKING"))
+        store.save(state(step = RefillStep.PACKING))
         assertNull(store.load())
     }
 
     @Test
     fun `save persists during the refill step`() {
-        store.save(state(step = TourStore.STEP_REFILL))
-        assertEquals(TourStore.STEP_REFILL, store.load()?.step)
+        store.save(state(step = RefillStep.REFILL))
+        assertEquals(RefillStep.REFILL, store.load()?.step)
     }
 
     @Test
     fun `save persists during the summary step`() {
-        store.save(state(step = TourStore.STEP_SUMMARY))
-        assertEquals(TourStore.STEP_SUMMARY, store.load()?.step)
+        store.save(state(step = RefillStep.SUMMARY))
+        assertEquals(RefillStep.SUMMARY, store.load()?.step)
     }
 
     // ─── hasSavedTour ───────────────────────────────────────────────────
