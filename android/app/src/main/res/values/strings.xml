@@ -387,4 +387,45 @@
     <string name="refill_pack_empty_title">All stocked!</string>
     <string name="refill_pack_empty_body">No machine needs a refill right now.</string>
     <string name="refill_pack_empty_machine">Nothing to pack for this machine.</string>
+    <!-- Refill wizard — refill step + wizard shell (Phase 5 Task 11) -->
+    <string name="refill_wizard_title">Refill Tour</string>
+    <string name="refill_step_title_packing">Pack</string>
+    <string name="refill_step_title_refill">Refill</string>
+    <string name="refill_step_title_summary">Summary</string>
+    <string name="refill_step_completed">Completed</string>
+    <string name="refill_loading_machines">Loading machines…</string>
+    <string name="refill_finishing_up">Finishing up…</string>
+    <string name="refill_resume_title">Resume tour?</string>
+    <string name="refill_resume_message">You have an unfinished refill tour. Would you like to continue where you left off?</string>
+    <string name="refill_resume_confirm">Resume</string>
+    <string name="refill_resume_discard">New tour</string>
+    <string name="refill_step_machine_progress">Machine %1$d of %2$d</string>
+    <plurals name="refill_step_trays_to_refill">
+        <item quantity="one">%1$d tray to refill</item>
+        <item quantity="other">%1$d trays to refill</item>
+    </plurals>
+    <string name="refill_step_change_machine">Change machine</string>
+    <string name="refill_step_picker_title">Select machine</string>
+    <string name="refill_step_picker_summary">%1$d trays · %2$d items</string>
+    <string name="refill_step_picker_current">Current machine</string>
+    <string name="refill_step_fill_all">Fill all to capacity</string>
+    <string name="refill_step_fill_max">Max</string>
+    <string name="refill_step_fill_amount">+%1$d</string>
+    <plurals name="refill_step_fill_unit">
+        <item quantity="one">item</item>
+        <item quantity="other">items</item>
+    </plurals>
+    <string name="refill_step_of_capacity">/ %1$d</string>
+    <string name="refill_step_decrement">Fill one less into %1$s</string>
+    <string name="refill_step_increment">Fill one more into %1$s</string>
+    <plurals name="refill_step_full_trays">
+        <item quantity="one">%1$d tray already full</item>
+        <item quantity="other">%1$d trays already full</item>
+    </plurals>
+    <string name="refill_step_full_trays_expand">Show full trays</string>
+    <string name="refill_step_full_trays_collapse">Hide full trays</string>
+    <string name="refill_step_no_trays">Nothing to fill at this machine.</string>
+    <string name="refill_step_skip">Skip</string>
+    <string name="refill_step_confirm">Confirm refill</string>
+    <string name="refill_step_saving">Saving…</string>
 </resources>

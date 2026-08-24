@@ -383,4 +383,45 @@
     <string name="refill_pack_empty_title">Alles aufgefüllt!</string>
     <string name="refill_pack_empty_body">Gerade braucht kein Automat Nachschub.</string>
     <string name="refill_pack_empty_machine">Für diesen Automaten ist nichts zu packen.</string>
+    <!-- Nachfüll-Assistent — Befüllen-Schritt + Assistenten-Hülle (Phase 5, Task 11) -->
+    <string name="refill_wizard_title">Befüllungstour</string>
+    <string name="refill_step_title_packing">Packen</string>
+    <string name="refill_step_title_refill">Befüllen</string>
+    <string name="refill_step_title_summary">Zusammenfassung</string>
+    <string name="refill_step_completed">Erledigt</string>
+    <string name="refill_loading_machines">Lade Automaten…</string>
+    <string name="refill_finishing_up">Wird abgeschlossen…</string>
+    <string name="refill_resume_title">Tour fortsetzen?</string>
+    <string name="refill_resume_message">Du hast eine unvollständige Befüllungstour. Möchtest du dort weitermachen, wo du aufgehört hast?</string>
+    <string name="refill_resume_confirm">Fortsetzen</string>
+    <string name="refill_resume_discard">Neue Tour</string>
+    <string name="refill_step_machine_progress">Automat %1$d von %2$d</string>
+    <plurals name="refill_step_trays_to_refill">
+        <item quantity="one">%1$d Fach auffüllen</item>
+        <item quantity="other">%1$d Fächer auffüllen</item>
+    </plurals>
+    <string name="refill_step_change_machine">Automat wechseln</string>
+    <string name="refill_step_picker_title">Automat auswählen</string>
+    <string name="refill_step_picker_summary">%1$d Fächer · %2$d Artikel</string>
+    <string name="refill_step_picker_current">Aktueller Automat</string>
+    <string name="refill_step_fill_all">Alle auf Kapazität füllen</string>
+    <string name="refill_step_fill_max">Max</string>
+    <string name="refill_step_fill_amount">+%1$d</string>
+    <plurals name="refill_step_fill_unit">
+        <item quantity="one">Artikel</item>
+        <item quantity="other">Artikel</item>
+    </plurals>
+    <string name="refill_step_of_capacity">/ %1$d</string>
+    <string name="refill_step_decrement">Einen Artikel weniger in %1$s füllen</string>
+    <string name="refill_step_increment">Einen Artikel mehr in %1$s füllen</string>
+    <plurals name="refill_step_full_trays">
+        <item quantity="one">%1$d Fach bereits voll</item>
+        <item quantity="other">%1$d Fächer bereits voll</item>
+    </plurals>
+    <string name="refill_step_full_trays_expand">Volle Fächer anzeigen</string>
+    <string name="refill_step_full_trays_collapse">Volle Fächer ausblenden</string>
+    <string name="refill_step_no_trays">An diesem Automaten ist nichts zu füllen.</string>
+    <string name="refill_step_skip">Überspringen</string>
+    <string name="refill_step_confirm">Befüllung bestätigen</string>
+    <string name="refill_step_saving">Wird gespeichert…</string>
 </resources>
