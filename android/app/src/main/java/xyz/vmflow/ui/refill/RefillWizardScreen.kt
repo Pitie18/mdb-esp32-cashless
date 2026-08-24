@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -152,6 +153,13 @@ fun RefillWizardScreen(
                 LoadingState()
             } else {
                 when (uiState.step) {
+                    // The review screen and its replacement picker are a
+                    // later task in this phase; the ViewModel's review state
+                    // and actions landed first. Renders nothing until then —
+                    // and this branch of the wizard is unusable until it does,
+                    // so the review UI has to land before this work merges.
+                    RefillStep.REVIEW -> Unit
+
                     RefillStep.PACKING -> PackingStep(
                         uiState = uiState,
                         visiblePackingList = viewModel.visiblePackingList(),
@@ -375,15 +383,16 @@ private fun FinishingUpState() {
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * Pack → Refill → Summary, with the completed steps ticked and the connector
- * to a completed step filled in. Ported from iOS `RefillWizardView.swift:112`.
+ * Review → Pack → Refill → Summary, with the completed steps ticked and the
+ * connector to a completed step filled in. Ported from iOS
+ * `RefillWizardView.swift:112`.
  *
  * **Deliberately not tappable.** iOS's `canNavigateTo` allows exactly one
- * backward jump in the three steps this app has — refill → packing — and this
- * ViewModel has no action to express it (there is no step setter, and adding
- * one is out of scope for this task). Nor would it be safe if it did:
- * `startTour` latches on `isTourInMemory` (`step != PACKING || tourId
- * != ""`), so a driver sent back to the pack step after the tour had started
+ * backward jump — refill → packing — and this ViewModel has no action to
+ * express it (there is no step setter, and adding one is out of scope for this
+ * task). Nor would it be safe if it did: `startTour` latches on
+ * `isTourInMemory` (`step == REFILL || step == SUMMARY || tourId != ""`), so a
+ * driver sent back to the pack step after the tour had started
  * would find "Start tour" silently doing nothing, with no way forward and a
  * warehouse already charged. A progress read-out that cannot mislead beats a
  * navigation control that strands the driver; a real backward jump needs a
@@ -487,6 +496,7 @@ private fun StepBubble(
 /** Step label. iOS `RefillStep.title`. */
 private val RefillStep.titleRes: Int
     get() = when (this) {
+        RefillStep.REVIEW -> R.string.refill_step_title_review
         RefillStep.PACKING -> R.string.refill_step_title_packing
         RefillStep.REFILL -> R.string.refill_step_title_refill
         RefillStep.SUMMARY -> R.string.refill_step_title_summary
@@ -495,6 +505,8 @@ private val RefillStep.titleRes: Int
 /** Step glyph. iOS `RefillStep.icon`. */
 private val RefillStep.icon: ImageVector
     get() = when (this) {
+        // iOS `exclamationmark.triangle` (`RefillWizardViewModel.swift:208`).
+        RefillStep.REVIEW -> Icons.Default.Warning
         RefillStep.PACKING -> Icons.Default.Inventory2
         RefillStep.REFILL -> Icons.Default.LocalShipping
         RefillStep.SUMMARY -> Icons.AutoMirrored.Filled.ListAlt

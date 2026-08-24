@@ -389,6 +389,7 @@
     <string name="refill_pack_empty_machine">Nothing to pack for this machine.</string>
     <!-- Refill wizard — refill step + wizard shell (Phase 5 Task 11) -->
     <string name="refill_wizard_title">Refill Tour</string>
+    <string name="refill_step_title_review">Review</string>
     <string name="refill_step_title_packing">Pack</string>
     <string name="refill_step_title_refill">Refill</string>
     <string name="refill_step_title_summary">Summary</string>

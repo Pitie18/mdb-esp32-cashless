@@ -14,8 +14,9 @@ import xyz.vmflow.models.RefillStep
  * doesn't lose it. Mirrors iOS `RefillWizardViewModel` L305-437
  * (`PersistedTourState`, `checkForSavedTour`, `resumeTour`, `saveTourState`).
  *
- * Saving is only meaningful once a tour is actually running: the pack step
- * has nothing worth rescuing (no `tourId` yet, nothing booked). iOS enforces
+ * Saving is only meaningful once a tour is actually running: the review and
+ * pack steps have nothing worth rescuing (no `tourId` yet, nothing booked).
+ * iOS enforces
  * that with a guard at the top of `saveTourState()` — the function that
  * *builds* the snapshot from live view-model properties before saving it.
  * This Kotlin API instead receives an already-built [PersistedTourState]
@@ -48,7 +49,13 @@ class TourStore(
      */
     fun save(state: PersistedTourState) {
         val isResumable = when (state.step) {
-            RefillStep.PACKING -> false
+            // Neither pre-tour step is worth rescuing: no `tourId` has been
+            // minted, nothing has been booked or charged, and the review's
+            // suggestion list is derived from live data (warehouse stock,
+            // batch expiry, discontinued flags) that may well have moved on
+            // by the time the app comes back — restoring a stale list would
+            // be worse than recomputing it, which the next load does anyway.
+            RefillStep.REVIEW, RefillStep.PACKING -> false
             RefillStep.REFILL, RefillStep.SUMMARY -> true
         }
         if (!isResumable) return

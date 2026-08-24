@@ -385,6 +385,7 @@
     <string name="refill_pack_empty_machine">Für diesen Automaten ist nichts zu packen.</string>
     <!-- Nachfüll-Assistent — Befüllen-Schritt + Assistenten-Hülle (Phase 5, Task 11) -->
     <string name="refill_wizard_title">Befüllungstour</string>
+    <string name="refill_step_title_review">Prüfen</string>
     <string name="refill_step_title_packing">Packen</string>
     <string name="refill_step_title_refill">Befüllen</string>
     <string name="refill_step_title_summary">Zusammenfassung</string>
