@@ -88,9 +88,18 @@ data class RefillUiState(
  * up in a later task belongs in `RefillTourLogic`, not in a mock harness
  * around this ViewModel.
  */
-class RefillViewModel(
-    private val tourStore: TourStore = RefillTourStoreHolder.instance,
-) : ViewModel() {
+class RefillViewModel : ViewModel() {
+
+    /**
+     * Not a constructor parameter: `viewModel()` instantiates through the
+     * no-arg constructor, and Kotlin does **not** emit one for a class whose
+     * only parameter has a default value (verified with `javap` — the
+     * compiled class carries `(TourStore)` and the synthetic
+     * `(TourStore, int, DefaultConstructorMarker)` only), so an injected
+     * seam here would crash on entering the refill tab. No DI framework in
+     * this app, and no ViewModel unit tests that would need to swap it.
+     */
+    private val tourStore: TourStore = RefillTourStoreHolder.instance
 
     private val _uiState = MutableStateFlow(RefillUiState())
     val uiState: StateFlow<RefillUiState> = _uiState.asStateFlow()
