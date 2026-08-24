@@ -251,6 +251,16 @@ object RefillRepository {
      *
      * Non-critical: any failure is logged and swallowed — the caller
      * always gets [Result.success], matching iOS's silent catch-and-print.
+     *
+     * @param companyId pre-resolved `company_id`. Optional: without it this
+     *   function resolves it itself through the `get-my-organization` edge
+     *   function, which is one edge-function round trip **per row**. Over an
+     *   N-machine tour that is N calls, each one *after* the tray write it
+     *   documents has already committed — so an edge-runtime hiccup while
+     *   PostgREST is healthy drops audit rows silently. Tour callers
+     *   therefore resolve it once at tour start and pass it down
+     *   (`RefillViewModel`); every other caller keeps today's behaviour by
+     *   omitting it.
      */
     suspend fun writeTourActivity(
         action: String,
@@ -258,12 +268,14 @@ object RefillRepository {
         machineName: String?,
         tourId: String,
         warehouseId: String?,
-        extra: Map<String, JsonElement>
+        extra: Map<String, JsonElement>,
+        companyId: String? = null
     ): Result<Unit> {
         return try {
             val user = auth.currentUserOrNull()
                 ?: throw IllegalStateException("No authenticated user")
-            val companyId = AuthRepository.fetchOrganization().getOrThrow().organization?.id
+            val resolvedCompanyId = companyId
+                ?: AuthRepository.fetchOrganization().getOrThrow().organization?.id
                 ?: throw IllegalStateException("Could not determine company")
 
             // `JsonNull` is itself a JsonPrimitive whose `content` is the
@@ -287,7 +299,7 @@ object RefillRepository {
 
             postgrest.from("activity_log").insert(
                 buildJsonObject {
-                    put("company_id", companyId)
+                    put("company_id", resolvedCompanyId)
                     put("user_id", user.id)
                     put("entity_type", "stock")
                     put("entity_id", machineId ?: tourId)

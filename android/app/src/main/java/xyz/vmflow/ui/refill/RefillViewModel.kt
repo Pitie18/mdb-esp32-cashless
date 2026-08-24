@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import java.util.UUID
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +13,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import xyz.vmflow.data.AuthRepository
 import xyz.vmflow.data.RefillRepository
 import xyz.vmflow.data.RefillTourLogic
 import xyz.vmflow.data.RefillTourStoreHolder
@@ -22,7 +26,10 @@ import xyz.vmflow.models.CombinedPackingItem
 import xyz.vmflow.models.PersistedTourState
 import xyz.vmflow.models.RefillMachine
 import xyz.vmflow.models.RefillStep
+import xyz.vmflow.models.RefillTray
+import xyz.vmflow.models.RefillTrayPayload
 import xyz.vmflow.models.TourLogEntry
+import xyz.vmflow.models.TrayApplicationResult
 import xyz.vmflow.models.Warehouse
 
 /**
@@ -55,6 +62,14 @@ import xyz.vmflow.models.Warehouse
  * @property activeChip `null` = the "all machines" chip, otherwise a machineId.
  * @property currentMachineId the machine being refilled during
  *   [RefillStep.REFILL].
+ * @property tourCompanyId the `company_id` for this tour's `activity_log`
+ *   rows, resolved **once** when the tour starts (or resumes) rather than
+ *   once per written row: [RefillRepository.writeTourActivity] otherwise
+ *   resolves it through the `get-my-organization` edge function on every
+ *   call, i.e. once per machine, each time *after* that machine's tray
+ *   write has already committed. `null` means the resolution failed — the
+ *   repository then falls back to resolving it itself, so a null here costs
+ *   round trips, never audit rows.
  */
 data class RefillUiState(
     val isLoading: Boolean = true,
@@ -71,10 +86,36 @@ data class RefillUiState(
     val packingList: List<CombinedPackingItem> = emptyList(),
     val currentMachineId: String? = null,
     val tourId: String = "",
+    val tourCompanyId: String? = null,
     val tourLog: List<TourLogEntry> = emptyList(),
     val hasSavedTour: Boolean = false,
     val error: String? = null,
 )
+
+// ─────────────────────────────────────────────────────────────────────────
+// Tour summary. Derived from [RefillUiState.tourLog] rather than counted
+// into separate fields as the tour runs: the log is what gets persisted and
+// restored, so counters kept beside it would survive an app kill only if
+// they were persisted too — and could then disagree with the log they
+// summarize. Mirrors iOS `machinesVisited`/`traysRefilled`/`totalItemsAdded`/
+// `machinesSkipped` (`RefillWizardViewModel.swift:434-437`).
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Machines actually refilled on this tour (skips excluded). */
+val RefillUiState.machinesVisited: Int
+    get() = tourLog.count { !it.skipped }
+
+/** Trays the server confirmed a stock write for, across the whole tour. */
+val RefillUiState.traysRefilled: Int
+    get() = tourLog.sumOf { it.traysRefilled }
+
+/** Units added across the whole tour, as reported by the server. */
+val RefillUiState.totalItemsAdded: Int
+    get() = tourLog.sumOf { it.totalAdded }
+
+/** Machines the driver skipped. */
+val RefillUiState.machinesSkipped: Int
+    get() = tourLog.count { it.skipped }
 
 /**
  * Derived rather than stored: a genuinely empty warehouse and a warehouse
@@ -677,6 +718,13 @@ class RefillViewModel : ViewModel() {
                 )
             }
 
+            // Resolved once here and carried in the state for every later
+            // row this tour writes (refills, skips) — see
+            // [RefillUiState.tourCompanyId]. Deliberately after the
+            // deductions so the "charge before you announce" ordering above
+            // is untouched.
+            val companyId = resolveTourCompanyId()
+
             // `activity_log.metadata` is a typed cross-client contract
             // (PWA/iOS/Android). These four keys and their types are what
             // this app's own dashboard reads back in
@@ -697,7 +745,8 @@ class RefillViewModel : ViewModel() {
                     put("machine_ids", JsonArray(tourMachines.map { JsonPrimitive(it.machine.id) }))
                     put("machine_names", JsonArray(tourMachines.map { JsonPrimitive(it.machine.displayName) }))
                     warehouseName?.let { put("warehouse_name", JsonPrimitive(it)) }
-                }
+                },
+                companyId = companyId
             )
 
             val next = _uiState.updateAndGet { state ->
@@ -706,6 +755,7 @@ class RefillViewModel : ViewModel() {
                     machines = ordered,
                     step = RefillStep.REFILL,
                     currentMachineId = ordered.firstOrNull { it.isUnfinishedTourStop }?.machine?.id,
+                    tourCompanyId = companyId,
                     isSaving = false
                 ).withPackingList()
             }
@@ -758,4 +808,447 @@ class RefillViewModel : ViewModel() {
         }
         return copy(machines = newMachines).withPackingList()
     }
+
+    // ---------------------------------------------------------------------
+    // Refill step, skip, summary and resume (Task 9). Ported from iOS
+    // `adjustFillAmount`/`fillTrayToCapacity`/`fillAllTrays`
+    // (`RefillWizardViewModel.swift:1801-1828`), `applyRefillRPC` (L1848-1868),
+    // `confirmRefill` (L1875-1950), `recordRefillSuccess` (L1952-1990),
+    // `skipMachine` (L1991-2015), `advanceToNextMachine` (L2016-2024) and the
+    // persistence block (L305-437).
+    // ---------------------------------------------------------------------
+
+    /**
+     * Sets one tray's fill amount, clamped to what still fits
+     * (`capacity - currentStock`). Ported from iOS `adjustFillAmount`.
+     *
+     * The clamp is written as `coerceAtMost(...).coerceAtLeast(0)` rather
+     * than `coerceIn(0, maxFill)`: an over-stocked tray has a negative
+     * `maxFill`, and `coerceIn` throws on an inverted range where iOS's
+     * `max(0, min(maxFill, amount))` quietly yields 0.
+     */
+    fun adjustFillAmount(machineId: String, trayId: String, amount: Int) {
+        _uiState.update { state ->
+            state.withTrayFills(machineId, trayIds = setOf(trayId)) { tray ->
+                amount.coerceAtMost(tray.maxFill).coerceAtLeast(0)
+            }
+        }
+    }
+
+    /** Fills one tray to capacity. Ported from iOS `fillTrayToCapacity`. */
+    fun fillTrayToCapacity(machineId: String, trayId: String) {
+        _uiState.update { state ->
+            state.withTrayFills(machineId, trayIds = setOf(trayId)) { tray ->
+                tray.maxFill.coerceAtLeast(0)
+            }
+        }
+    }
+
+    /** Fills every tray of a machine to capacity. Ported from iOS `fillAllTrays`. */
+    fun fillAllTrays(machineId: String) {
+        _uiState.update { state ->
+            state.withTrayFills(machineId, trayIds = null) { tray -> tray.maxFill.coerceAtLeast(0) }
+        }
+    }
+
+    /**
+     * Makes [machineId] the machine the refill step shows. Ignores machines
+     * the tour has already finished with (refilled or skipped) and machines
+     * that were never packed — jumping to one would show the driver a stop
+     * that [advanceToNextMachine] is not going to come back to. Persisted,
+     * because the resume snapshot carries the current stop.
+     */
+    fun selectMachine(machineId: String) {
+        val state = _uiState.value
+        val target = state.machines.find { it.machine.id == machineId } ?: return
+        if (!target.isUnfinishedTourStop) return
+        if (state.currentMachineId == machineId) return
+        val next = _uiState.updateAndGet { it.copy(currentMachineId = machineId) }
+        tourStore.save(next.toPersistedTourState())
+    }
+
+    /**
+     * Books one machine's fills through the atomic `refill_machine_trays`
+     * RPC, then records the visit and moves on.
+     *
+     * Three attempts, sleeping 1 s before the second and 3 s before the
+     * third. The retry is deliberately **blind** — no error classification:
+     * the RPC dedupes per `(tour_id, tray_id)` (see the header comment of
+     * `20260511120000_refill_machine_trays_rpc.sql`), so a retry of a call
+     * that in fact committed is a no-op rather than a double booking. That
+     * safety net is exactly why [RefillUiState.tourId] has to survive a
+     * resume unchanged.
+     *
+     * After three failures the machine is **not** marked refilled, no tour
+     * log entry and no audit row are written and the step does not change —
+     * only [RefillUiState.error] is set, so the driver can confirm the same
+     * machine again cleanly. (The pre-Task-9 Android code discarded the
+     * write result and advanced regardless; that is the bug this removes.)
+     *
+     * A machine where no tray needs a write still records the visit — tour
+     * log entry with 0/0 plus an `activity_log` row — so the history shows
+     * the machine was opened. Ported from iOS `confirmRefill`.
+     */
+    fun confirmRefill(machineId: String) {
+        val snapshot = _uiState.value
+        val machine = snapshot.machines.find { it.machine.id == machineId } ?: return
+        // Re-entrancy guards. Not in iOS (which relies on its button's
+        // `isSaving` binding), but a second tap here writes a second tour
+        // log entry and a second audit row for one visit — and the
+        // empty-tray path below never sets `isSaving`, so the UI cannot
+        // block it on its own.
+        if (snapshot.isSaving) return
+        if (machine.isRefilled || machine.isSkipped) return
+
+        val traysToRefill = machine.trays.filter { it.fillAmount > 0 }
+
+        viewModelScope.launch {
+            if (traysToRefill.isEmpty()) {
+                recordRefillSuccess(
+                    machineId = machineId,
+                    traysSnapshot = emptyList(),
+                    traysCount = 0,
+                    itemsAdded = 0
+                )
+                return@launch
+            }
+
+            _uiState.update { it.copy(isSaving = true, error = null) }
+
+            val payload = traysToRefill.map {
+                RefillTrayPayload(trayId = it.tray.id, fillAmount = it.fillAmount)
+            }
+            var lastError: Throwable? = null
+
+            for (attempt in 1..MAX_REFILL_ATTEMPTS) {
+                if (attempt > 1) delay(REFILL_BACKOFF_MS[attempt - 2])
+
+                val result = RefillRepository.refillMachineTrays(
+                    machineId = machineId,
+                    tourId = snapshot.tourId,
+                    trays = payload
+                )
+                val rows = result.getOrElse { e ->
+                    lastError = e
+                    null
+                } ?: continue
+
+                // Server-authoritative numbers only: the local `fillAmount`
+                // is what was *requested*, `new_stock` is what the machine
+                // actually holds now (a concurrent sale, a clamp, or a
+                // deduped replay all make the two differ).
+                _uiState.update { it.withMirroredStock(machineId, rows).withPackingList() }
+                val itemsAdded = rows.sumOf { (it.newStock - it.oldStock).coerceAtLeast(0) }
+
+                recordRefillSuccess(
+                    machineId = machineId,
+                    traysSnapshot = traysToRefill,
+                    traysCount = rows.size,
+                    itemsAdded = itemsAdded
+                )
+                _uiState.update { it.copy(isSaving = false) }
+                return@launch
+            }
+
+            // All attempts failed: the machine stays an unfinished tour stop
+            // and the step stays put, so the same machine can be confirmed
+            // again. Non-localized on purpose — the whole module's strings
+            // are swept in Task 12, and every other error this ViewModel
+            // surfaces is a raw exception message too.
+            _uiState.update {
+                it.copy(
+                    isSaving = false,
+                    error = "Refill could not be saved after $MAX_REFILL_ATTEMPTS attempts: " +
+                        "${lastError?.message ?: "unknown error"}. Please try again."
+                )
+            }
+        }
+    }
+
+    /**
+     * Marks [machineId] skipped, logs the skip and moves on. The
+     * `stock_refill_tour_skip` activity row carries **no** extra metadata,
+     * matching iOS and the PWA. Ported from iOS `skipMachine`.
+     */
+    fun skipMachine(machineId: String) {
+        val snapshot = _uiState.value
+        val machine = snapshot.machines.find { it.machine.id == machineId } ?: return
+        if (machine.isRefilled || machine.isSkipped) return
+
+        viewModelScope.launch {
+            val state = _uiState.updateAndGet { current ->
+                current.copy(
+                    machines = current.machines.map {
+                        if (it.machine.id == machineId) it.copy(isSkipped = true) else it
+                    },
+                    tourLog = current.tourLog + TourLogEntry(
+                        machineId = machineId,
+                        machineName = machine.machine.displayName,
+                        traysRefilled = 0,
+                        totalAdded = 0,
+                        skipped = true
+                    )
+                ).withPackingList()
+            }
+
+            RefillRepository.writeTourActivity(
+                action = "stock_refill_tour_skip",
+                machineId = machineId,
+                machineName = machine.machine.displayName,
+                tourId = state.tourId,
+                warehouseId = state.selectedWarehouseId,
+                extra = emptyMap(),
+                companyId = state.tourCompanyId
+            )
+
+            advanceToNextMachine()
+        }
+    }
+
+    /**
+     * Restores a tour the app was killed in the middle of. Everything the
+     * running tour needs comes back, **including [RefillUiState.tourId]** —
+     * without it a post-resume retry of a call that had in fact committed
+     * would book a second time, because the RPC dedupes on
+     * `(tour_id, tray_id)`.
+     *
+     * The persisted `currentMachineIndex` indexes the *remaining* stops of
+     * the **urgency-sorted** tour list (the order [startTour] establishes via
+     * [RefillTourLogic.sortByVisitOrder]), not the repository's fetch order —
+     * so the machines are sorted first and only then indexed, or the driver
+     * is sent to the wrong machine. An out-of-range index (the tour ended up
+     * with fewer remaining stops than when it was saved) falls back to the
+     * first remaining stop rather than leaving the refill step blank.
+     *
+     * Ported from iOS `resumeTour` (`RefillWizardViewModel.swift:369-403`).
+     */
+    fun resumeTour() {
+        val saved = tourStore.load()
+        if (saved == null) {
+            _uiState.update { it.copy(hasSavedTour = false) }
+            return
+        }
+
+        // A resumed tour is state worth protecting: closing the entry gate
+        // stops a later tab re-entry from calling loadData() over it.
+        didRunInitialLoad = true
+
+        val ordered = RefillTourLogic.sortByVisitOrder(saved.machines)
+        val remaining = ordered.filter { it.isUnfinishedTourStop }
+        val current = remaining.getOrNull(saved.currentMachineIndex) ?: remaining.firstOrNull()
+
+        _uiState.update { state ->
+            state.copy(
+                isLoading = false,
+                isSaving = false,
+                step = saved.step,
+                machines = ordered,
+                selectedWarehouseId = saved.selectedWarehouseId,
+                tourId = saved.tourId,
+                tourLog = saved.tourLog,
+                currentMachineId = current?.machine?.id,
+                hasSavedTour = false,
+                error = null
+            ).withPackingList()
+        }
+
+        // The rest of this tour still writes audit rows, so its company id is
+        // resolved once here too — same reason as at tour start.
+        viewModelScope.launch {
+            val companyId = resolveTourCompanyId()
+            _uiState.update { it.copy(tourCompanyId = companyId) }
+        }
+    }
+
+    /** Throws away the saved tour without resuming it. Ported from iOS `clearSavedTour`. */
+    fun discardSavedTour() {
+        tourStore.clear()
+        _uiState.update { it.copy(hasSavedTour = false) }
+    }
+
+    /**
+     * Drops the whole wizard back to a clean slate: no tour in memory, no
+     * saved tour on disk, entry gate re-armed so the next visit loads fresh.
+     *
+     * Both inputs of [isTourInMemory] — `step` and `tourId` — must come back
+     * to their defaults here, which is why the state is replaced wholesale
+     * rather than patched field by field: leaving either one set latches
+     * [startTour]'s re-entrancy guard shut and it would silently never start
+     * a tour again. Ported from iOS `reset`.
+     */
+    fun reset() {
+        tourStore.clear()
+        didRunInitialLoad = false
+        _uiState.value = RefillUiState()
+    }
+
+    /**
+     * Shared post-success bookkeeping: mark refilled, append the tour log
+     * entry, write the audit row, advance (which persists). Ported from iOS
+     * `recordRefillSuccess`.
+     *
+     * [traysCount] and [itemsAdded] are the server's numbers (row count and
+     * `new_stock - old_stock`), passed in by [confirmRefill]; [traysSnapshot]
+     * is the local request, used only for the human-readable `products`
+     * breakdown, exactly as on iOS.
+     */
+    private suspend fun recordRefillSuccess(
+        machineId: String,
+        traysSnapshot: List<RefillTray>,
+        traysCount: Int,
+        itemsAdded: Int
+    ) {
+        val machineName = _uiState.value.machines
+            .find { it.machine.id == machineId }?.machine?.displayName.orEmpty()
+
+        val state = _uiState.updateAndGet { current ->
+            current.copy(
+                machines = current.machines.map {
+                    if (it.machine.id == machineId) it.copy(isRefilled = true) else it
+                },
+                tourLog = current.tourLog + TourLogEntry(
+                    machineId = machineId,
+                    machineName = machineName,
+                    traysRefilled = traysCount,
+                    totalAdded = itemsAdded,
+                    skipped = false
+                )
+            ).withPackingList()
+        }
+
+        // `activity_log.metadata` is a typed cross-client contract
+        // (PWA/iOS/Android). These keys and their types are what this app's
+        // own dashboard reads back for a `stock_refill_tour` row:
+        // `trays_refilled` and `total_added` as Int and `products` as an
+        // array of `{product_name, quantity}` objects — see
+        // `models/ActivityFeed.kt:37-38` and `:59-63`, consumed in
+        // `data/ActivityFeedBuilder.kt:86-100`. `product_id` is written for
+        // the PWA/iOS readers; this app's decoder ignores it. A misspelling
+        // here renders as an empty refill card.
+        RefillRepository.writeTourActivity(
+            action = "stock_refill_tour",
+            machineId = machineId,
+            machineName = machineName,
+            tourId = state.tourId,
+            warehouseId = state.selectedWarehouseId,
+            extra = buildMap {
+                put("trays_refilled", JsonPrimitive(traysCount))
+                put("total_added", JsonPrimitive(itemsAdded))
+                put(
+                    "products",
+                    JsonArray(
+                        traysSnapshot.map { refillTray ->
+                            buildJsonObject {
+                                put(
+                                    "product_id",
+                                    refillTray.tray.productId
+                                        ?.let { JsonPrimitive(it) } ?: JsonNull
+                                )
+                                put("product_name", JsonPrimitive(refillTray.productLabel))
+                                put("quantity", JsonPrimitive(refillTray.fillAmount))
+                            }
+                        }
+                    )
+                )
+            },
+            companyId = state.tourCompanyId
+        )
+
+        advanceToNextMachine()
+    }
+
+    /**
+     * Moves to the first remaining stop of the tour, or to
+     * [RefillStep.SUMMARY] when none is left, then persists.
+     *
+     * "First remaining" is meaningful because [RefillUiState.machines] is
+     * already in visit order by the time the refill step runs — [startTour]
+     * sorts it, and [resumeTour] re-sorts what it restores. iOS expresses
+     * the same thing as `currentMachineIndex = 0`.
+     */
+    private fun advanceToNextMachine() {
+        val next = _uiState.updateAndGet { state ->
+            val remaining = state.machines.filter { it.isUnfinishedTourStop }
+            state.copy(
+                step = if (remaining.isEmpty()) RefillStep.SUMMARY else state.step,
+                currentMachineId = remaining.firstOrNull()?.machine?.id
+            )
+        }
+        tourStore.save(next.toPersistedTourState())
+    }
+
+    /**
+     * The tour's `company_id`, resolved once per tour. `null` on failure —
+     * [RefillRepository.writeTourActivity] then falls back to resolving it
+     * per row, so a failure here costs edge-function round trips, not audit
+     * rows.
+     */
+    private suspend fun resolveTourCompanyId(): String? =
+        AuthRepository.fetchOrganization().getOrNull()?.organization?.id
+
+    /**
+     * Applies [fill] to one machine's trays — either the trays in [trayIds]
+     * or, when it is `null`, all of them. Shared by the three fill actions
+     * so the "find machine, find tray, rebuild the list" plumbing exists
+     * once. Refreshes the packing list because it changes `machines`.
+     */
+    private fun RefillUiState.withTrayFills(
+        machineId: String,
+        trayIds: Set<String>?,
+        fill: (RefillTray) -> Int
+    ): RefillUiState {
+        if (machines.none { it.machine.id == machineId }) return this
+        val newMachines = machines.map { machine ->
+            if (machine.machine.id != machineId) return@map machine
+            machine.copy(
+                trays = machine.trays.map { tray ->
+                    if (trayIds != null && tray.tray.id !in trayIds) tray
+                    else tray.copy(fillAmount = fill(tray))
+                }
+            )
+        }
+        return copy(machines = newMachines).withPackingList()
+    }
+
+    /**
+     * Writes the RPC's returned `new_stock` into the machine's local trays.
+     * Trays the server did not report back (nothing to apply, or already
+     * applied under this tour id) are left untouched.
+     */
+    private fun RefillUiState.withMirroredStock(
+        machineId: String,
+        rows: List<TrayApplicationResult>
+    ): RefillUiState {
+        if (rows.isEmpty()) return this
+        val byTrayId = rows.associateBy { it.trayId }
+        val newMachines = machines.map { machine ->
+            if (machine.machine.id != machineId) return@map machine
+            machine.copy(
+                trays = machine.trays.map { tray ->
+                    val row = byTrayId[tray.tray.id]
+                    if (row == null) tray
+                    else tray.copy(tray = tray.tray.copy(currentStock = row.newStock))
+                }
+            )
+        }
+        return copy(machines = newMachines)
+    }
+
+    private companion object {
+        /** Attempts per `refill_machine_trays` call — iOS `for attempt in 1...3`. */
+        const val MAX_REFILL_ATTEMPTS = 3
+
+        /** Sleep before attempt 2 and attempt 3 — iOS `backoffSeconds = [1.0, 3.0]`. */
+        val REFILL_BACKOFF_MS = longArrayOf(1_000L, 3_000L)
+    }
 }
+
+/**
+ * Product name for a tray's audit-log line, falling back to the slot number
+ * for an unassigned slot — the same value iOS writes (`Tray.productName`,
+ * `ios/VMflow/Models/Tray.swift:43-45`). Deliberately **not** localized: it
+ * is persisted metadata read back by three clients in whatever language the
+ * reader is running, not UI text.
+ */
+private val RefillTray.productLabel: String
+    get() = tray.products?.name ?: "Slot ${tray.itemNumber}"
