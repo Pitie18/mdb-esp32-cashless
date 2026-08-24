@@ -51,6 +51,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -104,9 +105,10 @@ import xyz.vmflow.ui.theme.StockRed
  *   with no warehouse stock left and nothing packed are already dropped
  *   there, so an unavailable product is **hidden**, not greyed out (unless
  *   something is packed for it, in which case it stays adjustable).
- * @param onReloadWarehouseStock forces a fresh load of the selected
- *   warehouse — the retry path for a failed stock fetch. See
- *   [StockCapWarningCard].
+ * @param onReloadWarehouseStock re-fetches the warehouse's stock and pick
+ *   order (and the warehouse list itself when there is no selection) — the
+ *   retry path for a failed stock fetch, and deliberately *not* a reload of
+ *   the machine list. See [StockCapWarningCard].
  */
 @Composable
 fun PackingStep(
@@ -147,6 +149,53 @@ fun PackingStep(
     val activeMachineName = chipMachines
         .firstOrNull { it.machine.id == activeChip }?.machine?.displayName
 
+    // …and the correction is written back, or the dead id stays selected in
+    // the ViewModel and the filter silently snaps back to it the moment that
+    // machine regains a need. iOS writes the snap-back too
+    // (`RefillWizardViewModel.swift:1084`).
+    val chipSelectionIsStale = uiState.activeChip != null && activeChip == null
+    LaunchedEffect(chipSelectionIsStale) {
+        if (chipSelectionIsStale) onSelectChip(null)
+    }
+
+    // The "All" chip's tick, derived here rather than read from
+    // `chipIsFullyPacked(null)`: that folds over the ViewModel's *unfiltered*
+    // machine list, and a machine with no need at all never counts as packed
+    // (its `hadAnyNeed` stays false). Android's list contains every machine
+    // with any tray — unlike iOS's, which is pre-filtered to machines needing
+    // a refill — so the tick could never light, and via `isPartial` the header
+    // stayed orange on a fully packed van forever.
+    val allChipFullyPacked = chipMachines.isNotEmpty() &&
+        chipMachines.all { chipIsFullyPacked(it.machine.id) }
+    val isActiveChipFullyPacked =
+        if (activeChip == null) allChipFullyPacked else chipIsFullyPacked(activeChip)
+
+    // Chip label state resolved here, next to the row states and for the same
+    // reason (see the note below `PackingStep`): a leaf composable that called
+    // the ViewModel read-helpers itself would freeze its count and tick the
+    // moment anything made it skippable.
+    val chipStates = buildList {
+        add(
+            ChipState(
+                machineId = null,
+                name = stringResource(R.string.refill_pack_chip_all),
+                count = chipItemCount(null),
+                isFullyPacked = allChipFullyPacked
+            )
+        )
+        chipMachines.forEach { machine ->
+            val id = machine.machine.id
+            add(
+                ChipState(
+                    machineId = id,
+                    name = machine.machine.displayName,
+                    count = chipItemCount(id),
+                    isFullyPacked = chipIsFullyPacked(id)
+                )
+            )
+        }
+    }
+
     val rows = packRows(
         uiState = uiState,
         visiblePackingList = visiblePackingList,
@@ -173,10 +222,14 @@ fun PackingStep(
                 }
             }
 
-            // Stock either failed to load or the warehouse is empty. Both
-            // read as "no stock loaded" to the capping logic, so both need
-            // the same warning and the same way out.
-            if (uiState.selectedWarehouseId != null && !uiState.stockLoaded) {
+            // Not gated on a selected warehouse: the stock fetch failing, the
+            // *warehouses* fetch failing (which leaves no selection at all)
+            // and a company with zero warehouses all read as "no stock
+            // loaded" to the capping logic, so all of them need the same
+            // warning and the same way out. No flash during the initial load
+            // — the wizard shell replaces this whole step with a spinner
+            // while `isLoading`.
+            if (!uiState.stockLoaded) {
                 item(key = "stock-warning") {
                     StockCapWarningCard(onReload = onReloadWarehouseStock)
                 }
@@ -185,10 +238,8 @@ fun PackingStep(
             if (chipMachines.isNotEmpty()) {
                 item(key = "chip-row") {
                     PackChipRow(
-                        machines = chipMachines,
+                        chips = chipStates,
                         activeChip = activeChip,
-                        chipItemCount = chipItemCount,
-                        chipIsFullyPacked = chipIsFullyPacked,
                         onSelectChip = { id ->
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             onSelectChip(id)
@@ -202,7 +253,7 @@ fun PackingStep(
                     activeChip = activeChip,
                     activeMachineName = activeMachineName,
                     itemCount = chipItemCount(activeChip),
-                    isFullyPacked = chipIsFullyPacked(activeChip),
+                    isFullyPacked = isActiveChipFullyPacked,
                     anyPacked = rows.any { it.anyPacked }
                 )
             }
@@ -236,6 +287,10 @@ fun PackingStep(
             packedMachineCount = uiState.machines.count { it.isPacked },
             totalMachineCount = chipMachines.size,
             activeMachineName = activeMachineName,
+            // Nothing on the list means nothing to pack: an enabled "pack
+            // everything" under the "all stocked" empty state is a button
+            // that can only do nothing.
+            showPackAll = rows.isNotEmpty(),
             isSaving = uiState.isSaving,
             onPackAll = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -282,6 +337,13 @@ private data class PackRowState(
     val totalQuantity: Int,
     /** Sum of [NeedRowState.needQuantity] — what the machines actually ask for. */
     val neededQuantity: Int,
+    /**
+     * What the **whole fleet** asks for (`CombinedPackingItem.totalQuantity`),
+     * unaffected by the active chip. [neededQuantity] is chip-filtered, so
+     * only this number can decide whether the warehouse is short — iOS
+     * compares against `item.totalQuantity` too (`PackingStepView.swift:432`).
+     */
+    val fleetNeededQuantity: Int,
     /** Units the card is short of what the machines ask for, 0 when met. */
     val shortfall: Int,
     /** Total units in the selected warehouse, `null` while stock isn't loaded. */
@@ -377,6 +439,7 @@ private fun packRows(
             imagePath = item.imagePath,
             totalQuantity = needStates.sumOf { it.quantity },
             neededQuantity = needed,
+            fleetNeededQuantity = item.totalQuantity,
             shortfall = (needed - packedUnits).coerceAtLeast(0),
             stockTotal = if (stockLoaded) (uiState.warehouseStock[item.productId] ?: 0) else null,
             remainingStock = remaining,
@@ -453,7 +516,8 @@ private fun WarehousePickerField(
 /**
  * Warning + retry for "no warehouse stock loaded".
  *
- * A failed stock fetch leaves `warehouseStock` empty, and empty is
+ * A failed stock fetch — or a failed *warehouses* fetch, or a company with no
+ * warehouse at all — leaves `warehouseStock` empty, and empty is
  * indistinguishable from "not loaded" for the capping logic: the caps lift
  * and the driver is told to pack more than the warehouse holds. The error
  * itself is transient (a snackbar) and `selectWarehouse` early-returns for
@@ -514,6 +578,15 @@ private fun StockCapWarningCard(
 // Chip bar + header strip
 // ─────────────────────────────────────────────────────────────────────────
 
+/** One chip's resolved label state. [machineId] `null` is the "All" chip. */
+private data class ChipState(
+    val machineId: String?,
+    val name: String,
+    /** Outstanding units for this chip, from `RefillViewModel.chipItemCount`. */
+    val count: Int,
+    val isFullyPacked: Boolean
+)
+
 /**
  * "All" plus one chip per machine with a need, each carrying its outstanding
  * count and a tick once fully packed.
@@ -523,10 +596,8 @@ private fun StockCapWarningCard(
  */
 @Composable
 private fun PackChipRow(
-    machines: List<RefillMachine>,
+    chips: List<ChipState>,
     activeChip: String?,
-    chipItemCount: (machineId: String?) -> Int,
-    chipIsFullyPacked: (machineId: String?) -> Boolean,
     onSelectChip: (machineId: String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -535,21 +606,13 @@ private fun PackChipRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        PackChip(
-            name = stringResource(R.string.refill_pack_chip_all),
-            count = chipItemCount(null),
-            isSelected = activeChip == null,
-            isFullyPacked = chipIsFullyPacked(null),
-            onClick = { onSelectChip(null) }
-        )
-        machines.forEach { machine ->
-            val id = machine.machine.id
+        chips.forEach { chip ->
             PackChip(
-                name = machine.machine.displayName,
-                count = chipItemCount(id),
-                isSelected = activeChip == id,
-                isFullyPacked = chipIsFullyPacked(id),
-                onClick = { onSelectChip(id) }
+                name = chip.name,
+                count = chip.count,
+                isSelected = activeChip == chip.machineId,
+                isFullyPacked = chip.isFullyPacked,
+                onClick = { onSelectChip(chip.machineId) }
             )
         }
     }
@@ -567,11 +630,26 @@ private fun PackChip(
         selected = isSelected,
         onClick = onClick,
         label = {
-            Text(
-                text = stringResource(R.string.refill_pack_chip_label, name, count),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            // Two Texts, not one formatted string: [FlowRow] constrains the
+            // chip to the container width, so a single ellipsised Text eats
+            // the count — the actionable number — on a long German machine
+            // name at 360 dp. Only the name may shrink and ellipsise
+            // (`fill = false` so a short name doesn't stretch the chip); the
+            // count always survives. iOS keeps them as two Texts in an
+            // HStack (`PackingStepView.swift:513-520`).
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = name,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = stringResource(R.string.refill_pack_chip_count, count),
+                    maxLines = 1
+                )
+            }
         },
         leadingIcon = if (isFullyPacked) {
             {
@@ -776,12 +854,19 @@ private fun WarehouseStockBadge(row: PackRowState) {
     val remaining = row.remainingStock ?: return
     val committed = row.committedStock ?: 0
 
+    // No `remaining <= 0` branch of its own: `remaining` is `total - committed`
+    // and the totals map only aggregates batches with `quantity > 0`, so
+    // `remaining <= 0` with nothing committed implies `total <= 0` — the first
+    // branch already has it.
+    //
+    // The shortfall threshold is the **fleet-wide** ask, not the active chip's
+    // slice of it: otherwise a product the warehouse cannot cover across all
+    // machines still reads green while a single machine's chip is selected.
     val (text, color) = when {
         total <= 0 -> stringResource(R.string.refill_pack_stock_none) to StockRed
         remaining <= 0 && committed > 0 ->
             stringResource(R.string.refill_pack_stock_committed, committed, total) to StockOrange
-        remaining <= 0 -> stringResource(R.string.refill_pack_stock_out) to StockRed
-        remaining < row.neededQuantity ->
+        remaining < row.fleetNeededQuantity ->
             stringResource(R.string.refill_pack_stock_left, total, remaining) to StockOrange
         else -> stringResource(R.string.refill_pack_stock_in, total) to StockGreen
     }
@@ -1008,6 +1093,7 @@ private fun PackBottomBar(
     packedMachineCount: Int,
     totalMachineCount: Int,
     activeMachineName: String?,
+    showPackAll: Boolean,
     isSaving: Boolean,
     onPackAll: () -> Unit,
     onStartTour: () -> Unit,
@@ -1016,26 +1102,28 @@ private fun PackBottomBar(
     Column(modifier = modifier.fillMaxWidth()) {
         HorizontalDivider()
         Column(modifier = Modifier.padding(16.dp)) {
-            OutlinedButton(
-                onClick = onPackAll,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 48.dp),
-                enabled = !isSaving
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Inventory2,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = activeMachineName
-                        ?.let { stringResource(R.string.refill_pack_pack_all_for, it) }
-                        ?: stringResource(R.string.refill_pack_pack_all)
-                )
+            if (showPackAll) {
+                OutlinedButton(
+                    onClick = onPackAll,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 48.dp),
+                    enabled = !isSaving
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Inventory2,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = activeMachineName
+                            ?.let { stringResource(R.string.refill_pack_pack_all_for, it) }
+                            ?: stringResource(R.string.refill_pack_pack_all)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
             }
-            Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = pluralStringResource(

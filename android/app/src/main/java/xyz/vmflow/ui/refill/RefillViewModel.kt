@@ -197,7 +197,16 @@ class RefillViewModel : ViewModel() {
 
             RefillRepository.fetchRefillMachines().fold(
                 onSuccess = { machines ->
-                    _uiState.update { it.copy(machines = machines).withPackingList() }
+                    // `withSyncedPackedState()` rather than `withPackingList()`:
+                    // `isPacked` is *derived* from `packedItems`, and replacing
+                    // `machines` wholesale drops it. `packedItems` survives a
+                    // reload, so without the re-derivation every tick and
+                    // quantity still renders as packed while the header counts
+                    // zero packed machines and `startTour()` hard-returns.
+                    // Defensive: nothing reaches this branch with a non-empty
+                    // `packedItems` today, and no future caller should be able
+                    // to break the invariant either.
+                    _uiState.update { it.copy(machines = machines).withSyncedPackedState() }
                 },
                 onFailure = { e ->
                     _uiState.update { it.copy(isLoading = false, error = e.message) }
@@ -242,6 +251,44 @@ class RefillViewModel : ViewModel() {
         if (_uiState.value.selectedWarehouseId == id) return
         _uiState.update { it.copy(selectedWarehouseId = id) }
         viewModelScope.launch { loadWarehouseData(id) }
+    }
+
+    /**
+     * Retry path for the pack step's "no warehouse stock" banner. Re-fetches
+     * the selected warehouse's stock totals and pick order — and nothing
+     * else.
+     *
+     * Deliberately **not** [loadData]: that replaces [RefillUiState.machines]
+     * wholesale, which is where `isPacked` lives, and reloading the machine
+     * list is neither what failed nor what the driver needs. [selectWarehouse]
+     * can't serve as the retry either — it early-returns for the
+     * already-selected id — hence this separate entry point. The stale-
+     * response guard lives in [loadWarehouseData] and still applies.
+     *
+     * With no warehouse selected — the *warehouses* fetch is what failed, or
+     * the company has none — the warehouse list is fetched first, since there
+     * would otherwise be nothing to load stock for. `machines` is never
+     * touched on either path.
+     */
+    fun reloadWarehouseStock() {
+        viewModelScope.launch {
+            if (_uiState.value.selectedWarehouseId == null) {
+                WarehouseRepository.fetchWarehouses().fold(
+                    onSuccess = { warehouses ->
+                        _uiState.update { state ->
+                            state.copy(
+                                warehouses = warehouses,
+                                selectedWarehouseId = state.selectedWarehouseId
+                                    ?: warehouses.firstOrNull()?.id
+                            )
+                        }
+                    },
+                    onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+                )
+            }
+            val warehouseId = _uiState.value.selectedWarehouseId ?: return@launch
+            loadWarehouseData(warehouseId)
+        }
     }
 
     /** Clears a surfaced error after the UI has shown it (e.g. via a snackbar). */

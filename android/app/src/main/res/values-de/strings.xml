@@ -344,14 +344,14 @@
     <string name="machine_settings_save_error">Einstellungen konnten nicht gespeichert werden.</string>
     <!-- Nachfüll-Assistent — Pack-Schritt (Phase 5, Task 10) -->
     <string name="refill_pack_unknown_product">Unbekanntes Produkt</string>
-    <string name="refill_pack_stock_unavailable_title">Lagerbestand nicht geladen</string>
+    <string name="refill_pack_stock_unavailable_title">Lagerbestand nicht verfügbar</string>
     <string name="refill_pack_stock_unavailable_body">Die Packmengen sind gerade nicht durch den Bestand begrenzt.</string>
     <string name="refill_pack_stock_retry">Neu laden</string>
     <string name="refill_pack_chip_all">Alle</string>
-    <string name="refill_pack_chip_label">%1$s · %2$d</string>
+    <string name="refill_pack_chip_count">· %1$d</string>
     <string name="refill_pack_header_all">Alle Automaten</string>
-    <string name="refill_pack_status_complete">Kiste vollständig</string>
-    <string name="refill_pack_status_partial">Kiste unvollständig</string>
+    <string name="refill_pack_status_complete">Box komplett</string>
+    <string name="refill_pack_status_partial">Box teilweise</string>
     <string name="refill_pack_status_pending">Noch nichts gepackt</string>
     <plurals name="refill_pack_items">
         <item quantity="one">%1$d Artikel</item>
@@ -369,11 +369,10 @@
     <string name="refill_pack_toggle_machine">Für %1$s packen</string>
     <string name="refill_pack_total_quantity">%1$d×</string>
     <string name="refill_pack_stock_none">Nicht im Lager</string>
-    <string name="refill_pack_stock_out">Kein Bestand mehr</string>
     <string name="refill_pack_stock_committed">%1$d von %2$d verplant</string>
     <string name="refill_pack_stock_left">%1$d im Lager · %2$d frei</string>
     <string name="refill_pack_stock_in">%1$d im Lager</string>
-    <string name="refill_pack_need">braucht %1$d von %2$d</string>
+    <string name="refill_pack_need">benötigt %1$d / %2$d</string>
     <string name="refill_pack_badge_no_stock">Kein Bestand</string>
     <string name="refill_pack_badge_partial">Teilweise</string>
     <string name="refill_pack_decrement">Menge für %1$s verringern</string>

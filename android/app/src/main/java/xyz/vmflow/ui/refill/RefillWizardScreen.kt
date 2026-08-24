@@ -95,10 +95,11 @@ fun RefillWizardScreen(
                         onSelectWarehouse = viewModel::selectWarehouse,
                         // Retry path for a failed stock fetch: `selectWarehouse`
                         // early-returns for the already-selected warehouse, so
-                        // the picker cannot re-trigger the load. `loadData()`
-                        // can — it no-ops only once a tour is in memory, which
-                        // the pack step by definition isn't.
-                        onReloadWarehouseStock = viewModel::loadData,
+                        // the picker cannot re-trigger the load. Narrow on
+                        // purpose — `loadData()` would also replace `machines`
+                        // and wipe every machine's derived `isPacked`, leaving
+                        // Start Tour disabled under a screen full of ticks.
+                        onReloadWarehouseStock = viewModel::reloadWarehouseStock,
                         onSelectChip = viewModel::selectChip,
                         onTogglePackedAll = viewModel::togglePackedAll,
                         onTogglePackedForMachine = viewModel::togglePackedForMachine,
