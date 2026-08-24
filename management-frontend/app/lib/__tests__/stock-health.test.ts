@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { classifyTrayStock, computeStockHealthPerMachine } from '../stock-health'
+import { classifyTrayStock, computeStockHealthPerMachine, countMachineStockBuckets } from '../stock-health'
+import type { MachineStockSummary } from '../stock-health'
 
 describe('classifyTrayStock', () => {
   it('is critical when current_stock is 0, even with no min_stock set', () => {
@@ -85,5 +86,55 @@ describe('computeStockHealthPerMachine', () => {
     const result = computeStockHealthPerMachine(rows, emptyWarehouse, true)
     expect(result.get('m1')?.health).toBe('ok')
     expect(result.get('m1')?.noStockCount).toBe(1)
+  })
+})
+
+describe('countMachineStockBuckets', () => {
+  function summary(over: Partial<MachineStockSummary>): MachineStockSummary {
+    return {
+      refillableEmpty: 0, refillableLow: 0, refillableFill: 0,
+      noStockCount: 0, noStockEmptyCount: 0,
+      totalStock: 0, totalCapacity: 0,
+      health: 'ok', percent: 100,
+      ...over,
+    }
+  }
+
+  it('puts each machine in exactly one bucket', () => {
+    const buckets = countMachineStockBuckets([
+      summary({ health: 'critical' }),
+      summary({ health: 'low' }),
+      summary({ health: 'fill' }),
+      summary({ health: 'ok', noStockEmptyCount: 1 }),
+      summary({ health: 'ok' }),
+    ])
+    expect(buckets).toEqual({ critical: 1, low: 1, fill: 1, swap: 1, needingAttention: 4 })
+  })
+
+  it('counts a fill machine with a non-refillable empty tray only once (regression: banner claimed more machines than exist)', () => {
+    const buckets = countMachineStockBuckets([
+      summary({ health: 'fill', noStockEmptyCount: 1 }),
+      summary({ health: 'ok' }),
+      summary({ health: 'ok' }),
+    ])
+    expect(buckets.fill).toBe(1)
+    expect(buckets.swap).toBe(0)
+    expect(buckets.needingAttention).toBe(1)
+  })
+
+  it('never reports more machines than it was given', () => {
+    const machines = [
+      summary({ health: 'critical', noStockEmptyCount: 2 }),
+      summary({ health: 'low', noStockEmptyCount: 1 }),
+      summary({ health: 'fill', noStockEmptyCount: 3 }),
+    ]
+    const buckets = countMachineStockBuckets(machines)
+    expect(buckets.needingAttention).toBe(machines.length)
+    expect(buckets.critical + buckets.low + buckets.fill + buckets.swap).toBe(buckets.needingAttention)
+  })
+
+  it('counts nothing for a healthy fleet', () => {
+    const buckets = countMachineStockBuckets([summary({}), summary({})])
+    expect(buckets).toEqual({ critical: 0, low: 0, fill: 0, swap: 0, needingAttention: 0 })
   })
 })
