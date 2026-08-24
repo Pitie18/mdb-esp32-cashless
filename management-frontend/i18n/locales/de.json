@@ -2052,7 +2052,7 @@
     "moreMachinesHint": "Alle ausgewählten Automaten laufen in einem Druckauftrag.",
     "print": "Seite drucken | {count} Seiten drucken",
     "browserHint": "Im Druckdialog Kopf- und Fußzeilen abschalten und Hintergrundgrafiken aktivieren.",
-    "tiledHint": "Eine Kachel je ausgewähltem Automaten. Die gestrichelten Linien sind die Schnitthilfe.",
+    "tiledHint": "Eine Kachel je ausgewähltem Automaten (nach dem Schnitt etwas kleiner als das eigenständige Format). Die gestrichelten Linien sind die Schnitthilfe.",
     "originWarnTitle": "QR-Codes zeigen auf eine interne Adresse",
     "originWarnBody": "{origin} ist von außen nicht erreichbar — gedruckte Codes funktionieren auf Kundenhandys nicht. SITE_URL in der Server-Konfiguration setzen.",
     "missingTitle": "Für diesen Aushang fehlen Daten",

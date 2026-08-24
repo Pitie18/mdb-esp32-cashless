@@ -285,8 +285,6 @@ export function motifById(id: string): PrintMotif | undefined {
   return PRINT_MOTIFS.find(m => m.id === id)
 }
 
-export { isStickerFormat } from '@/lib/printSheet'
-
 /** The configuration a motif starts from before anything is saved or edited. */
 export function defaultLayout(motif: PrintMotif): PosterLayout {
   return {

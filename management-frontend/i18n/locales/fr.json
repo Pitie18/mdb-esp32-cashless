@@ -1853,6 +1853,7 @@
     "moreMachinesHint": "Tous les distributeurs sélectionnés partent dans une seule impression.",
     "print": "Imprimer la page | Imprimer {count} pages",
     "browserHint": "Dans la boîte de dialogue d'impression, désactivez les en-têtes et pieds de page et activez les graphiques d'arrière-plan.",
+    "tiledHint": "Une tuile par distributeur sélectionné (légèrement plus petite après découpe que le format autonome). Les lignes pointillées indiquent où découper.",
     "originWarnTitle": "Les QR codes pointent vers une adresse interne",
     "originWarnBody": "{origin} n'est pas accessible depuis l'extérieur — les codes imprimés ne fonctionneront pas sur le téléphone d'un client. Définissez SITE_URL dans la configuration du serveur.",
     "missingTitle": "Des données manquent pour cette affiche",
@@ -1863,6 +1864,9 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
+      "a5-2up": "2 × A5 sur A4",
+      "a6-4up": "4 × A6 sur A4",
+      "a7-8up": "8 × A7 sur A4",
       "sticker-sheet": "Étiquettes 90 × 50 mm",
       "sticker-sheet-small": "Étiquettes 50 × 30 mm",
       "sticker-sheet-strip": "Bandeau 148 × 40 mm"

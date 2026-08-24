@@ -1853,6 +1853,7 @@
     "moreMachinesHint": "Alle geselecteerde automaten gaan in één afdruktaak.",
     "print": "Pagina afdrukken | {count} pagina's afdrukken",
     "browserHint": "Zet in het afdrukvenster kop- en voetteksten uit en schakel achtergrondafbeeldingen in.",
+    "tiledHint": "Eén tegel per geselecteerde automaat (na het snijden iets kleiner dan het losse formaat). De gestippelde lijnen geven aan waar u moet snijden.",
     "originWarnTitle": "QR-codes wijzen naar een intern adres",
     "originWarnBody": "{origin} is van buitenaf niet bereikbaar — afgedrukte codes werken niet op de telefoon van een klant. Stel SITE_URL in de serverconfiguratie in.",
     "missingTitle": "Er ontbreken gegevens voor dit biljet",
@@ -1863,6 +1864,9 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
+      "a5-2up": "2 × A5 op A4",
+      "a6-4up": "4 × A6 op A4",
+      "a7-8up": "8 × A7 op A4",
       "sticker-sheet": "Stickers 90 × 50 mm",
       "sticker-sheet-small": "Stickers 50 × 30 mm",
       "sticker-sheet-strip": "Strook 148 × 40 mm"

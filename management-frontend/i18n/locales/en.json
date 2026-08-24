@@ -2052,7 +2052,7 @@
     "moreMachinesHint": "All selected machines go into one print job.",
     "print": "Print sheet | Print {count} sheets",
     "browserHint": "In the print dialog, turn off headers and footers and enable background graphics.",
-    "tiledHint": "One tile per selected machine. The dashed lines show where to cut.",
+    "tiledHint": "One tile per selected machine (slightly smaller after cutting than the standalone format). The dashed lines show where to cut.",
     "originWarnTitle": "QR codes point at an internal address",
     "originWarnBody": "{origin} is not reachable from outside — printed codes will not work on a customer's phone. Set SITE_URL in the server configuration.",
     "missingTitle": "This sign is missing data",
