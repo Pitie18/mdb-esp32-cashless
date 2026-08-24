@@ -37,7 +37,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -67,6 +70,11 @@ fun RefillWizardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // The review card whose replacement picker is open, or `null` for none.
+    // `rememberSaveable`, not `remember`: a rotation with the sheet open
+    // must not silently drop the driver back to the card list.
+    var pickerTrayId by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Entry gate: the ViewModel decides whether this actually loads (once
     // per ViewModel lifetime), so a tab re-selection that re-runs this
@@ -156,22 +164,13 @@ fun RefillWizardScreen(
                     RefillStep.REVIEW -> ReviewStep(
                         uiState = uiState,
                         // ── Picker seam ─────────────────────────────────
-                        // The one thing [ReviewStep] cannot do itself. The
-                        // replacement picker is the next task in this phase
-                        // and lands *here*: hold the tapped tray id in a
-                        // `rememberSaveable` state, render the picker (a
-                        // `ModalBottomSheet`, taking
-                        // `uiState.availableProducts`,
-                        // `uiState.productCategories` and
-                        // `viewModel.categoryIdOfCurrentProduct(trayId)`)
-                        // while it is non-null, and have its selection call
-                        // `viewModel.setReplacement(trayId, productId)` and
-                        // then clear the state. Until it does, this is a
-                        // deliberate no-op and the only thing the driver
-                        // cannot do on the review screen: every other
-                        // control — per-card skip, skip rest, continue — is
-                        // wired to the ViewModel below.
-                        onOpenPicker = { /* replacement picker: next task */ },
+                        // The one thing [ReviewStep] cannot do itself:
+                        // opening [ReplacementPickerSheet]. Only the tapped
+                        // tray id is held here; everything the sheet shows
+                        // it derives from `uiState` itself, and its
+                        // selection goes straight back to
+                        // `setReplacement` (see below the `Scaffold`).
+                        onOpenPicker = { trayId -> pickerTrayId = trayId },
                         onSkipReplacement = viewModel::skipReplacement,
                         onSkipAll = viewModel::skipReview,
                         onContinue = viewModel::applyReplacementsAndContinue
@@ -274,6 +273,37 @@ fun RefillWizardScreen(
                 }
             }
         }
+    }
+
+    // ── Replacement picker ───────────────────────────────────────────────
+    // The other half of the seam above. Gated on three things rather than
+    // just a non-null id: the wizard still being on the review step, the
+    // review's write not being in flight (`ReviewStep` locks every control
+    // while it is, and a sheet floating above that lock could change a
+    // decision underneath a commit), and the tray still being one of the
+    // suggestions — `applyReplacementsAndContinue` reloads, so a stale id
+    // must open nothing rather than an empty sheet.
+    val pickerTray = pickerTrayId?.takeIf { trayId ->
+        uiState.step == RefillStep.REVIEW &&
+            !uiState.isApplyingReplacements &&
+            uiState.replacements.any { it.trayId == trayId }
+    }
+    pickerTray?.let { trayId ->
+        ReplacementPickerSheet(
+            uiState = uiState,
+            trayId = trayId,
+            // Reads the ViewModel's current snapshot rather than `uiState`.
+            // Safe here: both derive from the same `StateFlow`, and the two
+            // fields this depends on (`replacements[].currentProductId` and
+            // `availableProducts`) are only ever written by a load — never
+            // while the sheet is open.
+            currentCategoryId = viewModel.categoryIdOfCurrentProduct(trayId),
+            onSelect = { productId ->
+                viewModel.setReplacement(trayId, productId)
+                pickerTrayId = null
+            },
+            onDismiss = { pickerTrayId = null }
+        )
     }
 
     // ── Resume prompt ────────────────────────────────────────────────────

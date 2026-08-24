@@ -475,4 +475,32 @@
     <string name="refill_review_skip_all">Rest überspringen</string>
     <string name="refill_review_continue">Weiter</string>
     <string name="refill_review_apply_continue">Anwenden &amp; weiter</string>
+    <!-- Refill wizard — replacement product picker (Phase 5b Task 6) -->
+    <string name="refill_picker_title">Ersatz auswählen</string>
+    <string name="refill_picker_for_slot">Fach %1$d · %2$s</string>
+    <string name="refill_picker_search_hint">Produkte suchen</string>
+    <string name="refill_picker_search_clear">Suche löschen</string>
+    <string name="refill_picker_bucket_in_stock">Auf Lager</string>
+    <string name="refill_picker_bucket_out_of_stock">Nicht auf Lager</string>
+    <string name="refill_picker_uncategorized">Ohne Kategorie</string>
+    <string name="refill_picker_category_current">%1$s · aktuell</string>
+    <plurals name="refill_picker_stock">
+        <item quantity="one">%1$d auf Lager</item>
+        <item quantity="other">%1$d auf Lager</item>
+    </plurals>
+    <plurals name="refill_picker_product_count">
+        <item quantity="one">%1$d Produkt</item>
+        <item quantity="other">%1$d Produkte</item>
+    </plurals>
+    <string name="refill_picker_slot_badge">Fach %1$s</string>
+    <string name="refill_picker_slot_badge_overflow">Fach %1$s +%2$d</string>
+    <plurals name="refill_picker_slot_badge_a11y">
+        <item quantity="one">Liegt schon in Fach %1$s</item>
+        <item quantity="other">Liegt schon in Fächern %1$s</item>
+    </plurals>
+    <string name="refill_picker_expand_group">Gruppe ausklappen</string>
+    <string name="refill_picker_collapse_group">Gruppe einklappen</string>
+    <string name="refill_picker_selected">Ausgewählt</string>
+    <string name="refill_picker_no_matches">Keine Produkte passen zu „%1$s“</string>
+    <string name="refill_picker_empty">Keine Produkte verfügbar</string>
 </resources>
