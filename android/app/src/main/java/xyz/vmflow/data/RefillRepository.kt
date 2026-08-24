@@ -355,6 +355,124 @@ object RefillRepository {
             Result.success(Unit)
         }
     }
+
+    /**
+     * Reassigns a review-step slot's product and resets its stock to 0 in
+     * one update — mirrors iOS `applyReplacementsAndContinue`
+     * (`RefillWizardViewModel.swift:1569-1602`) and the identical write in
+     * [MachineAnalysisRepository.updateTrayProduct]. The zero is not
+     * cosmetic: the old product's stock is meaningless for the new one, and
+     * without it the slot shows no deficit in the pack step, so the driver
+     * never refills it.
+     *
+     * Blocking, unlike [logReviewSwap]: a later task keeps the driver in the
+     * review step when this fails, and can only do that if this [Result]
+     * faithfully reports failure.
+     */
+    suspend fun applyReplacement(trayId: String, productId: String): Result<Unit> {
+        return try {
+            postgrest.from("machine_trays")
+                .update({
+                    set("product_id", productId)
+                    set("current_stock", 0)
+                }) {
+                    filter { eq("id", trayId) }
+                }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Writes one `activity_log` row for a review-step product replacement,
+     * action `refill_review_swap`.
+     *
+     * iOS writes no audit row for this operation. Android's own analysis
+     * screen writes one for the identical `machine_trays` update
+     * ([MachineAnalysisRepository.logProductSwap]), and a product swap with
+     * no audit trail is a gap in a multi-user operation — so this writes
+     * one too, under a distinct action so its origin (review step vs.
+     * analysis screen) stays distinguishable from `product_swapped` /
+     * `analysis_swap` in the feed. `ActivityFeedBuilder` ignores unknown
+     * actions (`mapNotNull`), so an unrendered row here breaks nothing.
+     *
+     * `activity_log.metadata` is a typed cross-client contract — the keys
+     * below reuse the names the existing writers already use for the same
+     * facts rather than inventing new ones: `machine_id` / `item_number` /
+     * `old_product_id` / `old_product_name` / `new_product_id` come from
+     * [MachineAnalysisRepository.logProductSwap]
+     * (`MachineAnalysisRepository.kt:198-224`); `machine_name` / `tour_id` /
+     * `_user_email` / `_user_display` come from [writeTourActivity] above.
+     * `new_product_name` has no existing writer, but it is already an
+     * established contract key: the PWA's shared renderer pairs it with
+     * `old_product_name` for `product_swapped`
+     * (`management-frontend/app/lib/activityDescriptor.ts:357`, exercised by
+     * `activityDescriptor.test.ts:240`).
+     *
+     * Auth is resolved before the insert — the only write in this function.
+     * Non-critical like [writeTourActivity]: any failure, including an
+     * expired session, is swallowed into [Result.success] — the
+     * [applyReplacement] write this documents has already committed by the
+     * time a caller invokes this, so a lost audit row must never surface as
+     * a failure of the replacement itself.
+     */
+    suspend fun logReviewSwap(
+        machineId: String,
+        machineName: String,
+        trayId: String,
+        slotNumber: Int,
+        oldProductId: String?,
+        oldProductName: String?,
+        newProductId: String,
+        newProductName: String,
+        tourId: String?,
+        companyId: String?
+    ): Result<Unit> {
+        return try {
+            val user = auth.currentUserOrNull()
+                ?: throw IllegalStateException("No authenticated user")
+            val resolvedCompanyId = companyId
+                ?: AuthRepository.fetchOrganization().getOrThrow().organization?.id
+                ?: throw IllegalStateException("Could not determine company")
+
+            val firstName = user.userMetadata?.get("first_name").asNonNullString()
+            val lastName = user.userMetadata?.get("last_name").asNonNullString()
+            val fullName = listOfNotNull(firstName, lastName).joinToString(" ").trim()
+            val userDisplay = fullName.ifEmpty { user.email }
+
+            val metadata = buildJsonObject {
+                put("machine_id", machineId)
+                put("machine_name", machineName)
+                put("item_number", slotNumber)
+                oldProductId?.let { put("old_product_id", it) }
+                oldProductName?.let { put("old_product_name", it) }
+                put("new_product_id", newProductId)
+                put("new_product_name", newProductName)
+                tourId?.let { put("tour_id", it) }
+                put("_user_email", user.email)
+                put("_user_display", userDisplay)
+            }
+
+            postgrest.from("activity_log").insert(
+                buildJsonObject {
+                    put("company_id", resolvedCompanyId)
+                    put("user_id", user.id)
+                    put("entity_type", "stock")
+                    put("entity_id", trayId)
+                    put("action", "refill_review_swap")
+                    put("metadata", metadata)
+                }
+            )
+            Result.success(Unit)
+        } catch (_: Exception) {
+            // Non-critical, same rationale as `writeTourActivity` above: a
+            // lost audit row must never fail a replacement that already
+            // committed, and `android.util.Log` is unmocked on the JVM test
+            // path so logging inside this catch is not an option.
+            Result.success(Unit)
+        }
+    }
 }
 
 /**
