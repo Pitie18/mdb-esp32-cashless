@@ -11,7 +11,10 @@
  * locale state while still producing finished strings.
  */
 
-export type PrintFormat = 'a4' | 'a5' | 'a6' | 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'
+export type PrintFormat =
+  | 'a4' | 'a5' | 'a6'
+  | 'a5-2up' | 'a6-4up' | 'a7-8up'
+  | 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'
 
 /**
  * Non-QR content a motif may render. QR content is not a block — it is a slot
@@ -150,6 +153,11 @@ export const FORMAT_MM: Record<PrintFormat, { w: number; h: number }> = {
   a4: { w: 210, h: 297 },
   a5: { w: 148, h: 210 },
   a6: { w: 105, h: 148 },
+  // Printed on A4 — the n-up layout is what actually places multiple tiles
+  // on that one sheet.
+  'a5-2up': { w: 210, h: 297 },
+  'a6-4up': { w: 210, h: 297 },
+  'a7-8up': { w: 210, h: 297 },
   'sticker-sheet': { w: 210, h: 297 },
   'sticker-sheet-small': { w: 210, h: 297 },
   'sticker-sheet-strip': { w: 210, h: 297 },
@@ -167,6 +175,10 @@ export const MIN_QR_MM: Record<PrintFormat, number> = {
   // documentation and would silently shrink A6 once the switch to --qr-min
   // makes these constants drive the CSS.
   a6: 30,
+  'a5-2up': 30,
+  'a6-4up': 25,
+  // 68 mm tile width: a 25 mm code would eat more than a third of it.
+  'a7-8up': 18,
   'sticker-sheet': 20,
   // 50 x 30 mm leaves no room for more, and below this a phone camera has to
   // be held closer than the machine allows.
@@ -196,8 +208,11 @@ export interface TileLayout {
   scaleToTile: boolean
 }
 
-/** Label geometry per sticker format, laid out on A4 portrait. */
-export const TILE_LAYOUT: Record<StickerFormat, TileLayout> = {
+/** A tiled format is either a sticker sheet or an n-up poster layout. */
+export type TiledFormat = StickerFormat | 'a5-2up' | 'a6-4up' | 'a7-8up'
+
+/** Label geometry per tiled format, laid out on A4 portrait. */
+export const TILE_LAYOUT: Record<TiledFormat, TileLayout> = {
   'sticker-sheet': { w: 90, h: 50, gap: 3, cols: 2, rows: 4, rotate: false, scaleToTile: false },
   // For the coin return and the flap edge, where 90 x 50 simply does not fit.
   'sticker-sheet-small': { w: 50, h: 30, gap: 3, cols: 3, rows: 8, rotate: false, scaleToTile: false },
@@ -205,6 +220,11 @@ export const TILE_LAYOUT: Record<StickerFormat, TileLayout> = {
   // product window. Two of these do not fit side by side on A4, so it is one
   // per row and six to a sheet.
   'sticker-sheet-strip': { w: 148, h: 40, gap: 3, cols: 1, rows: 6, rotate: false, scaleToTile: false },
+  // The A-series halves crosswise: two portrait A5 do not fit side by side
+  // on A4, so the tile lies rotated 90 degrees.
+  'a5-2up': { w: 139, h: 196.5, gap: 4, cols: 1, rows: 2, rotate: true, scaleToTile: true },
+  'a6-4up': { w: 97, h: 137, gap: 4, cols: 2, rows: 2, rotate: false, scaleToTile: true },
+  'a7-8up': { w: 68, h: 96, gap: 4, cols: 2, rows: 4, rotate: true, scaleToTile: true },
 }
 
 export function isStickerFormat(format: PrintFormat): format is StickerFormat {
@@ -213,8 +233,27 @@ export function isStickerFormat(format: PrintFormat): format is StickerFormat {
     || format === 'sticker-sheet-strip'
 }
 
+export function isTiledFormat(format: PrintFormat): format is TiledFormat {
+  return format in TILE_LAYOUT
+}
+
 export function tileLayout(format: PrintFormat): TileLayout {
-  return TILE_LAYOUT[isStickerFormat(format) ? format : 'sticker-sheet']
+  return TILE_LAYOUT[isTiledFormat(format) ? format : 'sticker-sheet']
+}
+
+/**
+ * Footprint of the entire tile block on the A4 sheet. A rotated tile
+ * occupies h x w there instead of w x h — without this distinction every
+ * "does it fit on the page" check measures the wrong axis for A5 and A7.
+ */
+export function tileBlockMm(format: PrintFormat): { w: number; h: number } {
+  const l = tileLayout(format)
+  const cellW = l.rotate ? l.h : l.w
+  const cellH = l.rotate ? l.w : l.h
+  return {
+    w: l.cols * cellW + (l.cols - 1) * l.gap,
+    h: l.rows * cellH + (l.rows - 1) * l.gap,
+  }
 }
 
 export function tilesPerSheet(format: PrintFormat): number {
