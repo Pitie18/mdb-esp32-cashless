@@ -348,6 +348,155 @@ class RefillTourLogicTest {
         assertEquals(4, result[0].trays[0].fillAmount)
     }
 
+    // ─── applyTourInclusion ↔ buildDeductions: the ledger invariant ──────
+
+    /** One distribution shape: a machine's tray deficits for product "A" plus the pinned quantity. */
+    private data class DistributionCase(val label: String, val deficits: List<Int>, val pin: Int)
+
+    /**
+     * A machine whose trays all hold product "A", one tray per entry in
+     * [deficits] with `capacity = deficit` and `currentStock = 0` (so each
+     * tray's deficit *is* its headroom), ids `t1..tN` in list order.
+     */
+    private fun machineWithDeficits(deficits: List<Int>) = refillMachine(
+        "m1",
+        deficits.mapIndexed { index, deficit ->
+            refillTray(
+                tray(
+                    "t${index + 1}",
+                    machineId = "m1",
+                    itemNumber = index + 1,
+                    productId = "A",
+                    capacity = deficit,
+                    currentStock = 0
+                ),
+                fillAmount = deficit
+            )
+        },
+        isPacked = true
+    )
+
+    /**
+     * **The invariant this whole phase exists to protect**, in the one
+     * direction nothing else in this suite checks: for a packed
+     * machine-product pair, the units [RefillTourLogic.applyTourInclusion]
+     * books into the machine's trays must equal the units
+     * [RefillTourLogic.buildDeductions] charges the warehouse for.
+     *
+     * Per-tray rounding breaks it in both directions. Two trays of deficit 5
+     * with a pinned 7 rounded to 4 + 4 — eight units into the machine, seven
+     * off the warehouse, one invented. Three trays of deficit 3 with a pinned
+     * 4 rounded to 1 + 1 + 1 — four charged, three filled. Asserting the
+     * *sum* is the point: the individual amounts can be split several
+     * defensible ways, the total cannot.
+     *
+     * The one legitimate exception is a pin that exceeds the trays' combined
+     * headroom (the last case): no tray may be overfilled, so the fills sum
+     * to the headroom and the machine is credited *less* than the warehouse is
+     * charged. Hence the expectation is `min(charged, headroom)` — never more
+     * than charged, in any shape.
+     */
+    @Test
+    fun `applyTourInclusion books exactly the units buildDeductions charges`() {
+        val cases = listOf(
+            // 5 + 5 with a pinned 7: half-up per tray gave 4 + 4 = 8 for 7 charged.
+            DistributionCase("two equal trays, reduced pin", listOf(5, 5), pin = 7),
+            // 3 + 3 + 3 with a pinned 4: half-up per tray gave 1 + 1 + 1 = 3 for 4 charged.
+            DistributionCase("pin smaller than the tray count", listOf(3, 3, 3), pin = 4),
+            // Exact division — the case the pre-existing test pinned; must not regress.
+            DistributionCase("exact division", listOf(6, 4), pin = 5),
+            DistributionCase("pin equals the full deficit", listOf(6, 4), pin = 10),
+            DistributionCase("pin of 1 across three trays", listOf(4, 4, 4), pin = 1),
+            // Every tray's proportional share exceeds its own headroom.
+            DistributionCase("pin above the combined headroom", listOf(4, 6), pin = 20)
+        )
+
+        for (case in cases) {
+            val machine = machineWithDeficits(case.deficits)
+            val packedItems = mapOf("m1" to setOf("A"))
+            val custom = mapOf("m1" to mapOf("A" to case.pin))
+
+            val charged = RefillTourLogic.buildDeductions(listOf(machine), packedItems, custom)
+                .filter { it.productId == "A" }
+                .sumOf { it.quantity }
+            val booked = RefillTourLogic.applyTourInclusion(listOf(machine), packedItems, custom)[0]
+                .trays
+                .filter { it.tray.productId == "A" }
+                .sumOf { it.fillAmount }
+
+            val headroom = case.deficits.sum()
+            assertEquals(
+                "${case.label}: booked units must equal the charged quantity, capped by headroom",
+                minOf(charged, headroom).toLong(),
+                booked.toLong()
+            )
+            assertTrue(
+                "${case.label}: booked $booked > charged $charged — units invented from nothing",
+                booked <= charged
+            )
+            if (case.pin <= headroom) {
+                assertEquals(
+                    "${case.label}: machine credited exactly what the warehouse is charged",
+                    charged.toLong(),
+                    booked.toLong()
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `applyTourInclusion hands the remainder to the largest fractional shares`() {
+        // Deficits 5 + 5, pinned 7. Proportional shares are 3.5 each; flooring
+        // gives 3 + 3 and one unit is left over, which goes to the larger
+        // fraction — a tie here, broken by tray id, so t1 gets it.
+        val machine = machineWithDeficits(listOf(5, 5))
+        val result = RefillTourLogic.applyTourInclusion(
+            listOf(machine),
+            mapOf("m1" to setOf("A")),
+            mapOf("m1" to mapOf("A" to 7))
+        )
+        val trays = result[0].trays.associateBy { it.tray.id }
+        assertEquals(4, trays.getValue("t1").fillAmount)
+        assertEquals(3, trays.getValue("t2").fillAmount)
+    }
+
+    @Test
+    fun `applyTourInclusion distributes a pin smaller than the tray count`() {
+        // Deficits 3 + 3 + 3, pinned 4: shares of 1.33 each floor to 1 + 1 + 1
+        // and the fourth unit goes to one tray — not to all three (which is
+        // what independent rounding did, losing it entirely).
+        val machine = machineWithDeficits(listOf(3, 3, 3))
+        val result = RefillTourLogic.applyTourInclusion(
+            listOf(machine),
+            mapOf("m1" to setOf("A")),
+            mapOf("m1" to mapOf("A" to 4))
+        )
+        val trays = result[0].trays.associateBy { it.tray.id }
+        assertEquals(2, trays.getValue("t1").fillAmount)
+        assertEquals(1, trays.getValue("t2").fillAmount)
+        assertEquals(1, trays.getValue("t3").fillAmount)
+    }
+
+    @Test
+    fun `applyTourInclusion distribution is deterministic regardless of tray order`() {
+        // Identical deficits mean identical fractional remainders, so only the
+        // tray-id tiebreaker decides who gets the leftover unit. Feeding the
+        // trays in reverse must not move it: a tour that redistributes
+        // differently on a resume would book different numbers for the same
+        // physical box of goods.
+        val forward = machineWithDeficits(listOf(3, 3, 3))
+        val reversed = forward.copy(trays = forward.trays.reversed())
+        val packedItems = mapOf("m1" to setOf("A"))
+        val custom = mapOf("m1" to mapOf("A" to 4))
+
+        fun fills(machine: RefillMachine) =
+            RefillTourLogic.applyTourInclusion(listOf(machine), packedItems, custom)[0]
+                .trays
+                .associate { it.tray.id to it.fillAmount }
+
+        assertEquals(fills(forward), fills(reversed))
+    }
+
     // ─── buildCombinedPackingList ────────────────────────────────────────
 
     @Test

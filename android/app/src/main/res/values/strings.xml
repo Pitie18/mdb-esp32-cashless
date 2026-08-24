@@ -433,6 +433,11 @@
         <item quantity="one">Refill could not be saved after %1$d attempt: %2$s. Please try again.</item>
         <item quantity="other">Refill could not be saved after %1$d attempts: %2$s. Please try again.</item>
     </plurals>
+    <!-- Refill wizard — warehouse deduction that never reached the ledger (final review fix 2) -->
+    <plurals name="refill_deduction_failed">
+        <item quantity="one">%1$d warehouse deduction was not recorded. The goods left the warehouse, so please correct the stock manually.</item>
+        <item quantity="other">%1$d warehouse deductions were not recorded. The goods left the warehouse, so please correct the stock manually.</item>
+    </plurals>
     <!-- Refill wizard — summary step (Phase 5 Task 12) -->
     <string name="refill_summary_title">Tour Complete!</string>
     <string name="refill_summary_subtitle_all_done">All machines have been refilled</string>

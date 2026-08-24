@@ -180,14 +180,26 @@ object RefillRepository {
      * call — the tour must not get stuck because the warehouse ledger had a
      * hiccup, same as iOS. Only something unexpected escaping the loop
      * itself (not a per-deduction RPC error) turns into [Result.failure].
+     *
+     * Non-blocking is not the same as invisible, though: the returned list
+     * names the deductions that did **not** go through (empty = every one was
+     * charged), so the caller can tell somebody. `deduct_warehouse_stock_fifo`
+     * *raises* on insufficient stock
+     * (`Docker/supabase/migrations/20260305000000_warehouse_inventory.sql:249-250`)
+     * and rolls that product's whole deduction back, so a stock level that
+     * moved between packing and tour start silently produces goods that left
+     * the warehouse physically without the ledger recording it — ledger drift
+     * in the opposite direction from the over-charging bug this phase exists
+     * to fix. Swallowing it was the old behaviour and it is exactly what made
+     * that drift unmeasurable.
      */
     suspend fun deductForTour(
         warehouseId: String,
         tourId: String,
         deductions: List<PackedDeduction>
-    ): Result<Unit> {
+    ): Result<List<PackedDeduction>> {
         return try {
-            if (deductions.isEmpty()) return Result.success(Unit)
+            if (deductions.isEmpty()) return Result.success(emptyList())
 
             // Auth resolved once, before the first write — an expired
             // session degrades to an unattributed deduction (matching
@@ -197,6 +209,7 @@ object RefillRepository {
             val userId = user?.id
             val userEmail = user?.email
 
+            val failed = mutableListOf<PackedDeduction>()
             for (deduction in deductions) {
                 try {
                     WarehouseRepository.deductWarehouseStockFifo(
@@ -212,17 +225,21 @@ object RefillRepository {
                         )
                     ).getOrThrow()
                 } catch (_: Exception) {
-                    // Non-critical: continue the tour even if one deduction
-                    // fails, matching iOS. Deliberately silent rather than
-                    // logged: `android.util.Log` is unmocked on the JVM test
-                    // path, so a log call *inside* this catch would throw and
-                    // escape to the outer catch — turning "one deduction may
-                    // fail, the tour continues" into a whole-call failure
-                    // under test. The caller cannot observe a partial failure
-                    // here by design (same as iOS).
+                    // Non-blocking: the tour continues even if one deduction
+                    // fails, matching iOS — but it is *recorded* rather than
+                    // dropped, so the caller can surface it (see the header).
+                    //
+                    // Still no log call in here: `android.util.Log` is
+                    // unmocked on the JVM test path, so logging *inside* this
+                    // catch would throw and escape to the outer catch —
+                    // turning "one deduction may fail, the tour continues"
+                    // into a whole-call failure under test. Collecting the
+                    // failure into the return value is the seam that replaces
+                    // the log.
+                    failed.add(deduction)
                 }
             }
-            Result.success(Unit)
+            Result.success(failed)
         } catch (e: Exception) {
             Result.failure(e)
         }

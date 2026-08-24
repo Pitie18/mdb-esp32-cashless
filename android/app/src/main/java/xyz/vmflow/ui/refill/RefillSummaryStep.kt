@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,11 +63,11 @@ import xyz.vmflow.ui.theme.VMflowBlueDark
  * beside it could disagree with the log they summarize.
  *
  * State and callbacks in, no ViewModel reference — same contract as
- * [PackingStep] and [RefillStepContent]. The four figures below mirror
- * [RefillUiState.machinesVisited]/[traysRefilled]/[totalItemsAdded]/
- * [machinesSkipped], recomputed locally from the same [tourLog] rather than
- * received as separate parameters, so there is exactly one source of truth
- * for "what happened this tour" in this file.
+ * [PackingStep] and [RefillStepContent]. The four figures below — machines
+ * visited, trays refilled, items added, machines skipped — are computed here
+ * from [tourLog] rather than received as separate parameters (and no longer
+ * exist as [RefillUiState] fields at all), so there is exactly one source of
+ * truth for "what happened this tour" in this file.
  *
  * Ported from iOS `RefillSummaryView.swift`: the success animation and the
  * four stat cards (`statCard`) match its wording and colour intent as
@@ -74,6 +75,12 @@ import xyz.vmflow.ui.theme.VMflowBlueDark
  * below them has **no iOS equivalent** — iOS shows only the four aggregates
  * — added here per this task's brief.
  *
+ * @param failedDeductionCount how many of this tour's warehouse deductions
+ *   never reached the ledger (see [RefillUiState.failedDeductions]). Renders a
+ *   notice above the figures when non-zero, because the numbers below it are
+ *   the machine side of the tour and the warehouse side is short by exactly
+ *   those goods — a manual correction only a human can make. Informational:
+ *   nothing here asks the driver to act or acknowledge.
  * @param onDone Fires when the driver taps "Done". The caller — not this
  *   composable — is responsible for calling `RefillViewModel.reset()`
  *   **before** invoking this callback: `reset()` deliberately leaves
@@ -85,7 +92,8 @@ import xyz.vmflow.ui.theme.VMflowBlueDark
 fun RefillSummaryStep(
     tourLog: List<TourLogEntry>,
     onDone: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    failedDeductionCount: Int = 0
 ) {
     val machinesVisited = tourLog.count { !it.skipped }
     val traysRefilled = tourLog.sumOf { it.traysRefilled }
@@ -111,6 +119,12 @@ fun RefillSummaryStep(
                     totalMachines = totalMachines,
                     iconScale = scale.value
                 )
+            }
+
+            if (failedDeductionCount > 0) {
+                item(key = "deduction-warning") {
+                    DeductionWarningCard(count = failedDeductionCount)
+                }
             }
 
             item(key = "stats") {
@@ -234,6 +248,45 @@ private fun SummaryHeader(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+/**
+ * "N warehouse deductions were not recorded" — the goods physically left the
+ * warehouse, the ledger does not know it, and someone has to correct the stock
+ * by hand. Rendered as a plain notice, not a dialog and not an action: the
+ * driver is not the person who fixes this and must not be held up by it.
+ *
+ * [StockOrange] rather than the scheme's `error` role, for the same reason
+ * every other status colour in the refill wizard is a fixed hue: this brand's
+ * scheme roles collapse into near-identical tones in dark mode.
+ */
+@Composable
+private fun DeductionWarningCard(count: Int, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = StockOrange.copy(alpha = 0.12f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(
+                Icons.Default.Warning,
+                // Decorative: the text beside it states the problem in full.
+                contentDescription = null,
+                tint = StockOrange,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = pluralStringResource(R.plurals.refill_deduction_failed, count, count),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 

@@ -816,10 +816,15 @@ private fun ProductPackCard(
                 Column(horizontalAlignment = Alignment.End) {
                     QuantityPill(
                         text = stringResource(R.string.refill_pack_total_quantity, row.totalQuantity),
+                        // Fixed status hues throughout, never scheme roles:
+                        // this brand's primary/secondary/tertiary collapse
+                        // into near-identical tones in dark mode, and
+                        // out-of-stock is StockRed everywhere else in this
+                        // file (the two toggle icons and the stock badge).
                         color = when {
-                            row.isOutOfStock -> MaterialTheme.colorScheme.onSurfaceVariant
+                            row.isOutOfStock -> StockRed
                             row.isUnderpacked -> StockOrange
-                            else -> MaterialTheme.colorScheme.primary
+                            else -> StockGreen
                         }
                     )
                     if (row.isUnderpacked && row.shortfall > 0) {

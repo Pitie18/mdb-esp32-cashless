@@ -145,7 +145,14 @@ fun RefillStepContent(
 
     val rows = trayRows(machine)
     val fullTrays = fullTrayRows(machine)
-    val traysToRefill = machine.trays.count { it.fillAmount > 0 }
+    // `isInTour` as well as `fillAmount > 0`, matching `confirmRefill`'s own
+    // filter (`RefillViewModel.kt`): this is the header count of "trays to
+    // refill" and it must mean the same thing as the trays that actually get
+    // booked. The two agree today only because `applyTourInclusion` zeroes
+    // every excluded tray — the exact transitive reliance `confirmRefill`
+    // refuses to accept for the write itself, so the read-out does not
+    // accept it either.
+    val traysToRefill = machine.trays.count { it.fillAmount > 0 && it.isInTour }
     val canFillMore = rows.any { it.canIncrement }
 
     Column(modifier = modifier.fillMaxSize()) {

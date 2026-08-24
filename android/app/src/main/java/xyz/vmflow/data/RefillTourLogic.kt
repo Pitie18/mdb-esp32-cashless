@@ -1,10 +1,10 @@
 package xyz.vmflow.data
 
 import java.text.Collator
-import kotlin.math.roundToInt
 import xyz.vmflow.models.CombinedPackingItem
 import xyz.vmflow.models.MachineNeed
 import xyz.vmflow.models.RefillMachine
+import xyz.vmflow.models.RefillTray
 import xyz.vmflow.models.WarehousePositionGroup
 import xyz.vmflow.models.WarehouseProductPosition
 
@@ -203,10 +203,10 @@ object RefillTourLogic {
      *    false`, `fillAmount = 0`.
      *  - Packed machine, tray whose product WAS packed: `isInTour = true`;
      *    if a custom quantity is pinned for that product, its `fillAmount`
-     *    is redistributed proportionally across every tray of that product
-     *    with `deficit > 0` (`ratio = customQty / totalDeficit`, each tray's
-     *    `deficit * ratio` rounded and clamped to `0..(capacity -
-     *    currentStock)`); otherwise the tray keeps its existing `fillAmount`.
+     *    comes from [distributeProportionally], which splits the pinned
+     *    quantity across every tray of that product with `deficit > 0` and
+     *    hands out **exactly** that many units — never more; otherwise the
+     *    tray keeps its existing `fillAmount`.
      */
     fun applyTourInclusion(
         machines: List<RefillMachine>,
@@ -231,14 +231,8 @@ object RefillTourLogic {
             for (productId in productsWithCustom) {
                 val customQty = machineCustom.getValue(productId)
                 val productTrays = machine.trays.filter { it.tray.productId == productId && it.deficit > 0 }
-                val totalDeficit = productTrays.sumOf { it.deficit }
-                if (totalDeficit <= 0) continue
-                val ratio = customQty.toDouble() / totalDeficit.toDouble()
-                for (pt in productTrays) {
-                    val newAmount = (pt.deficit * ratio).roundToInt()
-                    val maxFill = pt.tray.capacity - pt.tray.currentStock
-                    overrides[pt.tray.id] = newAmount.coerceIn(0, maxOf(0, maxFill))
-                }
+                if (productTrays.sumOf { it.deficit } <= 0) continue
+                overrides += distributeProportionally(customQty, productTrays)
             }
 
             val newTrays = machine.trays.map { rt ->
@@ -254,6 +248,91 @@ object RefillTourLogic {
             }
             machine.copy(trays = newTrays)
         }
+    }
+
+    /**
+     * Splits [quantity] across [trays] in proportion to each tray's `deficit`,
+     * by **largest remainder** — `trayId -> fillAmount` for every tray in
+     * [trays].
+     *
+     * Every tray first gets `floor(deficit * quantity / totalDeficit)`, then
+     * the units that integer division dropped (`quantity - Σfloor`, always
+     * fewer than there are trays) are handed out one each to the trays with
+     * the largest dropped fraction. The sum is therefore **exactly**
+     * [quantity] whenever the trays can physically hold it.
+     *
+     * This is the whole point of the function, and the reason it is not the
+     * one-liner it looks like: rounding each tray's share on its own —
+     * `(deficit * ratio).roundToInt()`, which is what iOS still does
+     * (`ios/VMflow/ViewModels/RefillWizardViewModel.swift:1705-1709`) — makes
+     * the fills sum to something *other* than the quantity
+     * [buildDeductions] charges the warehouse for. Two trays with deficit 5
+     * and a pinned quantity of 7 round to 4 + 4: eight units booked into the
+     * machine, seven charged to the warehouse, one unit invented out of thin
+     * air. Three trays of deficit 3 with a pinned 4 round to 1 + 1 + 1 and
+     * lose one the other way. The pinned quantity is the number the driver
+     * physically carried and the number the ledger is charged, so the fills
+     * have to add up to it exactly — that invariant is what
+     * `RefillTourLogicTest`'s distribution property test pins down.
+     *
+     * Clamping: no tray is ever given more than it can hold
+     * (`capacity - currentStock`). A [quantity] larger than the trays'
+     * combined headroom therefore cannot be distributed in full — the result
+     * sums to that headroom (`Σ deficit`) instead, and the machine ends up
+     * credited *less* than the warehouse is charged. That is the one case
+     * where the two legitimately disagree, and it is the safe direction:
+     * overfilling a tray is a physical impossibility, so the alternative
+     * would be a fill amount the driver cannot carry out.
+     *
+     * Ties in the dropped fraction are broken by tray id ascending — the same
+     * total-order tiebreaker [sortByVisitOrder] and [buildCombinedPackingList]
+     * use — so the same tour distributes the same way on every run, resume and
+     * recomposition.
+     */
+    private fun distributeProportionally(
+        quantity: Int,
+        trays: List<RefillTray>
+    ): Map<String, Int> {
+        val target = quantity.coerceAtLeast(0)
+        val totalDeficit = trays.sumOf { it.deficit }
+        if (totalDeficit <= 0) return emptyMap()
+
+        // Deterministic base order, so the remainder pass below is reproducible
+        // even before its explicit id tiebreaker kicks in.
+        val ordered = trays.sortedBy { it.tray.id }
+
+        // `headroom` and `deficit` are the same number for every tray reaching
+        // this function (`deficit > 0` is the caller's filter, and
+        // `Tray.deficit` is `capacity - currentStock` clamped at 0), but the
+        // clamp is written against the tray's own headroom rather than its
+        // deficit so an over-pinned quantity can never exceed capacity.
+        val amounts = LinkedHashMap<String, Int>(ordered.size)
+        val remainders = mutableListOf<Pair<RefillTray, Int>>()
+        var distributed = 0
+        for (rt in ordered) {
+            val headroom = maxOf(0, rt.tray.capacity - rt.tray.currentStock)
+            val exact = rt.deficit.toLong() * target.toLong()
+            val floor = (exact / totalDeficit).toInt().coerceAtMost(headroom)
+            amounts[rt.tray.id] = floor
+            distributed += floor
+            remainders.add(rt to (exact % totalDeficit).toInt())
+        }
+
+        // Largest dropped fraction first, ties by tray id ascending.
+        val queue = remainders.sortedWith(
+            compareByDescending<Pair<RefillTray, Int>> { it.second }
+                .thenBy { it.first.tray.id }
+        )
+        var left = target - distributed
+        for ((rt, _) in queue) {
+            if (left <= 0) break
+            val headroom = maxOf(0, rt.tray.capacity - rt.tray.currentStock)
+            val current = amounts.getValue(rt.tray.id)
+            if (current >= headroom) continue
+            amounts[rt.tray.id] = current + 1
+            left--
+        }
+        return amounts
     }
 
     /**

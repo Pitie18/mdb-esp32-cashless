@@ -17,6 +17,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import xyz.vmflow.data.AuthRepository
+import xyz.vmflow.data.PackedDeduction
 import xyz.vmflow.data.RefillRepository
 import xyz.vmflow.data.RefillTourLogic
 import xyz.vmflow.data.RefillTourStoreHolder
@@ -75,6 +76,17 @@ import xyz.vmflow.models.Warehouse
  *   booking that exhausted its retries. Never a sentence this ViewModel
  *   formulated itself: composing the user-facing text is the UI's job (see
  *   [refillFailedAttempts]).
+ * @property failedDeductions the packed (machine, product, quantity) triples
+ *   whose FIFO warehouse deduction did **not** go through at tour start.
+ *   Empty on every healthy tour. Not an [error]: a failed deduction blocks
+ *   nothing and the driver must not be gated on it — the goods are in the van
+ *   either way. But it must not be invisible either, because the ledger now
+ *   under-counts what physically left the warehouse and only a human can
+ *   correct that, so the UI shows it once at tour start and again on the
+ *   summary. Deliberately **not** part of the persisted tour snapshot: the
+ *   deductions run exactly once, at tour start, so a resumed tour has no new
+ *   ones to report and re-announcing the old ones after an app kill would be
+ *   noise.
  * @property refillFailedAttempts set together with [error] when
  *   [confirmRefill] gives up after [MAX_REFILL_ATTEMPTS] failed
  *   `refill_machine_trays` calls; `null` in every other case, including when
@@ -103,6 +115,7 @@ data class RefillUiState(
     val hasSavedTour: Boolean = false,
     val error: String? = null,
     val refillFailedAttempts: Int? = null,
+    val failedDeductions: List<PackedDeduction> = emptyList(),
 )
 
 /**
@@ -171,9 +184,11 @@ class RefillViewModel : ViewModel() {
      * discard the driver's in-progress fills and pack state. It therefore
      * no-ops unless the wizard is still at the pack step with no tour in
      * memory (see [isTourInMemory]) — it deliberately does **not** double as
-     * a mid-tour pull-to-refresh; that needs a step-specific refresh (a
-     * later task adds `refreshDuringPacking`/`refreshDuringRefill`,
-     * mirroring iOS `RefillWizardViewModel.swift:1199-1211`).
+     * a mid-tour pull-to-refresh. This app has no mid-tour refresh at all:
+     * iOS's step-specific `refreshDuringPacking`/`refreshDuringRefill`
+     * (`RefillWizardViewModel.swift:1199-1211`) were not ported, and a
+     * caller that wants one has to add them rather than reach for this
+     * function.
      */
     fun loadData() {
         if (isTourInMemory(_uiState.value)) return
@@ -704,8 +719,10 @@ class RefillViewModel : ViewModel() {
      * row, so a start that dies mid-way never leaves an orphaned feed entry
      * announcing a tour that was never charged. A *failed* deduction, by
      * contrast, does not block anything — [RefillRepository.deductForTour]
-     * swallows per-deduction errors on purpose (the tour must not get stuck
-     * because the warehouse ledger had a hiccup).
+     * keeps going past per-deduction errors on purpose (the tour must not get
+     * stuck because the warehouse ledger had a hiccup) — but the ones that
+     * failed land in [RefillUiState.failedDeductions] for the UI to report,
+     * rather than disappearing.
      *
      * The deduction set comes from [RefillTourLogic.buildDeductions] and
      * from nowhere else. That function charges only the intersection of
@@ -754,13 +771,22 @@ class RefillViewModel : ViewModel() {
                     packedItems = started.packedItems,
                     customQuantities = started.customQuantities
                 )
-                // Result deliberately ignored: a warehouse-ledger failure
-                // must not abort a tour the driver has already packed for.
-                RefillRepository.deductForTour(
+                // Never fails the tour — the driver has already packed the
+                // van — but the deductions that did not go through are kept
+                // so the UI can say so. See [RefillUiState.failedDeductions]:
+                // a swallowed failure means goods left the warehouse and the
+                // ledger never recorded it, which nobody can fix without
+                // being told. A `Result.failure` (something unexpected
+                // escaping the whole loop) is treated as "all of them
+                // failed", because none of them is known to have landed.
+                val failed = RefillRepository.deductForTour(
                     warehouseId = warehouseId,
                     tourId = tourId,
                     deductions = deductions
-                )
+                ).getOrDefault(deductions)
+                if (failed.isNotEmpty()) {
+                    _uiState.update { it.copy(failedDeductions = failed) }
+                }
             }
 
             // Resolved once here and carried in the state for every later

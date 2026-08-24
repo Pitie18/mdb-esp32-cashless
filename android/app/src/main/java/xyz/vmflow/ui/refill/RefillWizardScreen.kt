@@ -97,6 +97,28 @@ fun RefillWizardScreen(
         }
     }
 
+    // Warehouse deductions that did not go through at tour start. Announced,
+    // never gated: the goods are in the van either way, so the driver gets a
+    // snackbar and drives on — but somebody has to know the ledger is now
+    // short, because only a human can correct it. Deliberately **not** routed
+    // through `error`/`clearError`: it is not a failure of anything the driver
+    // did, and it must survive on the summary screen rather than being
+    // consumed by the first snackbar. Fires once, because
+    // `failedDeductions` is written once per tour and only `reset()` clears it.
+    val failedDeductionCount = uiState.failedDeductions.size
+    val deductionWarning = if (failedDeductionCount > 0) {
+        pluralStringResource(
+            R.plurals.refill_deduction_failed,
+            failedDeductionCount,
+            failedDeductionCount
+        )
+    } else {
+        null
+    }
+    LaunchedEffect(deductionWarning) {
+        deductionWarning?.let { snackbarHostState.showSnackbar(it) }
+    }
+
     // A tour is a physical errand: the phone must not sleep while the driver
     // is standing at a machine filling trays. Scoped to the refill step only
     // — see [KeepScreenOn].
@@ -209,6 +231,11 @@ fun RefillWizardScreen(
 
                     RefillStep.SUMMARY -> RefillSummaryStep(
                         tourLog = uiState.tourLog,
+                        // Same information as the tour-start snackbar, which
+                        // the driver may well have missed while standing at a
+                        // machine — the summary is the one screen someone
+                        // reads to the end.
+                        failedDeductionCount = failedDeductionCount,
                         // reset() then leave, in that order: it re-arms the
                         // entry gate and leaves `isLoading = true`, which is
                         // only correct if the screen is actually left and

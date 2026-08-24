@@ -429,6 +429,11 @@
         <item quantity="one">Die Befüllung konnte nach %1$d Versuch nicht gespeichert werden: %2$s. Bitte versuche es erneut.</item>
         <item quantity="other">Die Befüllung konnte nach %1$d Versuchen nicht gespeichert werden: %2$s. Bitte versuche es erneut.</item>
     </plurals>
+    <!-- Nachfüll-Assistent — Lagerabgang, der nicht verbucht wurde (Fix aus dem Abschluss-Review 2) -->
+    <plurals name="refill_deduction_failed">
+        <item quantity="one">%1$d Lagerabgang wurde nicht verbucht. Die Ware hat das Lager verlassen — bitte den Bestand manuell korrigieren.</item>
+        <item quantity="other">%1$d Lagerabgänge wurden nicht verbucht. Die Ware hat das Lager verlassen — bitte den Bestand manuell korrigieren.</item>
+    </plurals>
     <!-- Nachfüll-Assistent — Zusammenfassung (Phase 5, Task 12) -->
     <string name="refill_summary_title">Tour abgeschlossen!</string>
     <string name="refill_summary_subtitle_all_done">Alle Automaten wurden befüllt</string>
