@@ -2,19 +2,25 @@ package xyz.vmflow.ui.refill
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import java.util.UUID
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import xyz.vmflow.data.RefillRepository
 import xyz.vmflow.data.RefillTourLogic
 import xyz.vmflow.data.RefillTourStoreHolder
 import xyz.vmflow.data.TourStore
 import xyz.vmflow.data.WarehouseRepository
 import xyz.vmflow.models.CombinedPackingItem
+import xyz.vmflow.models.PersistedTourState
 import xyz.vmflow.models.RefillMachine
 import xyz.vmflow.models.RefillStep
 import xyz.vmflow.models.TourLogEntry
@@ -594,6 +600,141 @@ class RefillViewModel : ViewModel() {
         } else {
             withPackedIfInStock(machineId, productId)
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Tour start (Task 8). Ported from iOS `startTour`
+    // (`RefillWizardViewModel.swift:1652-1740`) and `deductWarehouseStock`
+    // (L1741-1800).
+    // ---------------------------------------------------------------------
+
+    /**
+     * Starts the tour: mints a tour id, narrows every machine's trays to
+     * what was actually packed, charges the warehouse for exactly those
+     * goods, writes the `tour_started` feed row, orders the machines by
+     * urgency and moves to [RefillStep.REFILL].
+     *
+     * The order of the two writes is deliberate and matches iOS and the
+     * PWA: the FIFO deductions run **before** the `tour_started` activity
+     * row, so a start that dies mid-way never leaves an orphaned feed entry
+     * announcing a tour that was never charged. A *failed* deduction, by
+     * contrast, does not block anything — [RefillRepository.deductForTour]
+     * swallows per-deduction errors on purpose (the tour must not get stuck
+     * because the warehouse ledger had a hiccup).
+     *
+     * The deduction set comes from [RefillTourLogic.buildDeductions] and
+     * from nowhere else. That function charges only the intersection of
+     * `packedItems` and each machine's real tray products — never the tray
+     * deficits — which is the fix for the bug that motivated this phase
+     * (iOS billed the warehouse for goods the driver never packed, ~334
+     * units across 53 tours). Rebuilding that list here, in any form, would
+     * reintroduce it.
+     */
+    fun startTour() {
+        val snapshot = _uiState.value
+        if (snapshot.machines.none { it.isPacked }) return
+        // Re-entrancy guard: a second tap (or a tap on a resumed tour)
+        // would mint a second tour id and charge the warehouse twice for
+        // the same box of goods. Not in iOS, which relies on `isSaving`
+        // disabling its button; double-charging is the exact failure class
+        // this phase exists to prevent, so it is enforced here too.
+        if (isTourInMemory(snapshot)) return
+
+        val tourId = UUID.randomUUID().toString()
+
+        // The id is written into the state *before* anything that records
+        // it runs, so the deductions' `tour_id` metadata, the activity row
+        // and the persisted snapshot can never disagree about which tour
+        // they belong to.
+        val started = _uiState.updateAndGet { state ->
+            state.copy(
+                isSaving = true,
+                tourId = tourId,
+                tourLog = emptyList(),
+                machines = RefillTourLogic.applyTourInclusion(
+                    machines = state.machines,
+                    packedItems = state.packedItems,
+                    customQuantities = state.customQuantities
+                )
+            ).withPackingList()
+        }
+
+        viewModelScope.launch {
+            val warehouseId = started.selectedWarehouseId
+            if (warehouseId != null) {
+                val deductions = RefillTourLogic.buildDeductions(
+                    machines = started.machines,
+                    packedItems = started.packedItems,
+                    customQuantities = started.customQuantities
+                )
+                // Result deliberately ignored: a warehouse-ledger failure
+                // must not abort a tour the driver has already packed for.
+                RefillRepository.deductForTour(
+                    warehouseId = warehouseId,
+                    tourId = tourId,
+                    deductions = deductions
+                )
+            }
+
+            // `activity_log.metadata` is a typed cross-client contract
+            // (PWA/iOS/Android). These four keys and their types are what
+            // this app's own dashboard reads back in
+            // `models/ActivityFeed.kt:40-42` and
+            // `data/ActivityFeedBuilder.kt:101-115` — a misspelling here
+            // renders as an empty tour card. `tour_id` is added by
+            // [RefillRepository.writeTourActivity] itself.
+            val tourMachines = started.machines.filter { it.isPacked }
+            val warehouseName = started.warehouses.find { it.id == warehouseId }?.name
+            RefillRepository.writeTourActivity(
+                action = "tour_started",
+                machineId = null,
+                machineName = null,
+                tourId = tourId,
+                warehouseId = warehouseId,
+                extra = buildMap {
+                    put("machine_count", JsonPrimitive(tourMachines.size))
+                    put("machine_ids", JsonArray(tourMachines.map { JsonPrimitive(it.machine.id) }))
+                    put("machine_names", JsonArray(tourMachines.map { JsonPrimitive(it.machine.displayName) }))
+                    warehouseName?.let { put("warehouse_name", JsonPrimitive(it)) }
+                }
+            )
+
+            val next = _uiState.updateAndGet { state ->
+                val ordered = RefillTourLogic.sortByVisitOrder(state.machines)
+                state.copy(
+                    machines = ordered,
+                    step = RefillStep.REFILL,
+                    currentMachineId = ordered.firstOrNull { it.isUnfinishedTourStop }?.machine?.id,
+                    isSaving = false
+                ).withPackingList()
+            }
+            tourStore.save(next.toPersistedTourState())
+        }
+    }
+
+    /** Packed, and neither refilled nor skipped yet — a stop the tour still owes a visit. */
+    private val RefillMachine.isUnfinishedTourStop: Boolean
+        get() = isPacked && !isRefilled && !isSkipped
+
+    /**
+     * Snapshot for [TourStore]. [PersistedTourState.currentMachineIndex] is
+     * an index into the *remaining* machines (iOS `remainingMachines`), not
+     * into [RefillUiState.machines] — resolved from [RefillUiState.currentMachineId]
+     * so the two can't drift; it is 0 at tour start, as on iOS.
+     */
+    private fun RefillUiState.toPersistedTourState(): PersistedTourState {
+        val remaining = machines.filter { it.isUnfinishedTourStop }
+        return PersistedTourState(
+            step = step,
+            machines = machines,
+            currentMachineIndex = remaining
+                .indexOfFirst { it.machine.id == currentMachineId }
+                .coerceAtLeast(0),
+            selectedWarehouseId = selectedWarehouseId,
+            tourId = tourId,
+            tourLog = tourLog,
+            savedAt = Clock.System.now().toString()
+        )
     }
 
     /**

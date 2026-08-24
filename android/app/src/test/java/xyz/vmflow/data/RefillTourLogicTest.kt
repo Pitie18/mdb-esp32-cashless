@@ -463,6 +463,82 @@ class RefillTourLogicTest {
         assertEquals(listOf("late", "unpositioned"), list.map { it.productId })
     }
 
+    // ─── sortByVisitOrder ────────────────────────────────────────────────
+
+    @Test
+    fun `sortByVisitOrder puts the machine with more empty trays first`() {
+        // "few" has the larger total deficit but only one empty tray, so the
+        // empty-tray count must outrank the deficit — same precedence as iOS.
+        val many = refillMachine(
+            "many",
+            listOf(
+                refillTray(tray("t1", machineId = "many", capacity = 5, currentStock = 0)),
+                refillTray(tray("t2", machineId = "many", capacity = 5, currentStock = 0))
+            )
+        )
+        val few = refillMachine(
+            "few",
+            listOf(
+                refillTray(tray("t3", machineId = "few", capacity = 50, currentStock = 0)),
+                refillTray(tray("t4", machineId = "few", capacity = 50, currentStock = 49))
+            )
+        )
+
+        val result = RefillTourLogic.sortByVisitOrder(listOf(few, many))
+        assertEquals(listOf("many", "few"), result.map { it.machine.id })
+    }
+
+    @Test
+    fun `sortByVisitOrder falls back to total deficit descending at equal empty-tray counts`() {
+        val small = refillMachine(
+            "small",
+            listOf(refillTray(tray("t1", machineId = "small", capacity = 10, currentStock = 8)))
+        )
+        val big = refillMachine(
+            "big",
+            listOf(refillTray(tray("t2", machineId = "big", capacity = 10, currentStock = 2)))
+        )
+
+        val result = RefillTourLogic.sortByVisitOrder(listOf(small, big))
+        assertEquals(listOf("big", "small"), result.map { it.machine.id })
+    }
+
+    @Test
+    fun `sortByVisitOrder breaks ties by machine id so the order never jumps`() {
+        fun equallyUrgent(id: String) = refillMachine(
+            id,
+            listOf(refillTray(tray("t-$id", machineId = id, capacity = 10, currentStock = 4)))
+        )
+        val a = equallyUrgent("aaa")
+        val b = equallyUrgent("bbb")
+        val c = equallyUrgent("ccc")
+
+        assertEquals(
+            listOf("aaa", "bbb", "ccc"),
+            RefillTourLogic.sortByVisitOrder(listOf(c, a, b)).map { it.machine.id }
+        )
+        assertEquals(
+            listOf("aaa", "bbb", "ccc"),
+            RefillTourLogic.sortByVisitOrder(listOf(b, c, a)).map { it.machine.id }
+        )
+    }
+
+    @Test
+    fun `sortByVisitOrder keeps unpacked machines in the list`() {
+        val packed = refillMachine(
+            "packed",
+            listOf(refillTray(tray("t1", machineId = "packed", capacity = 10, currentStock = 9))),
+            isPacked = true
+        )
+        val unpacked = refillMachine(
+            "unpacked",
+            listOf(refillTray(tray("t2", machineId = "unpacked", capacity = 10, currentStock = 0)))
+        )
+
+        val result = RefillTourLogic.sortByVisitOrder(listOf(packed, unpacked))
+        assertEquals(listOf("unpacked", "packed"), result.map { it.machine.id })
+    }
+
     // ─── flattenPickOrder ────────────────────────────────────────────────
 
     @Test

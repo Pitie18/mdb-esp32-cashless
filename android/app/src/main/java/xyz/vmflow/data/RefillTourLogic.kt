@@ -17,6 +17,7 @@ import xyz.vmflow.models.WarehouseProductPosition
  *   - [buildCombinedPackingList] incl. sorting: L498-612
  *   - quantity math ([packingQuantity], [displayQuantity], [maxPackingQuantity]): L780-940
  *   - pick order flatten ([flattenPickOrder], iOS `fetchOrderedProductIds`): L1456-1545
+ *   - tour visit order ([sortByVisitOrder], iOS `buildRefillMachines`' sort): L1017-1022
  *   - `startTour` distribution ([applyTourInclusion]) + `deductWarehouseStock`
  *     ([buildDeductions]): L1652-1800
  *
@@ -254,6 +255,34 @@ object RefillTourLogic {
             machine.copy(trays = newTrays)
         }
     }
+
+    /**
+     * The tour's visit order, most urgent machine first: machines with the
+     * most empty trays (`currentStock == 0`) first, then by [RefillMachine.totalDeficit]
+     * descending, then by machine id ascending.
+     *
+     * Ported from iOS `buildRefillMachines`' final sort
+     * (`RefillWizardViewModel.swift:1017-1022`) — a step
+     * [RefillRepository.fetchRefillMachines] deliberately bypasses, which is
+     * why the tour has to establish its own order. iOS compares the *count*
+     * of empty trays (not a boolean "has empty trays"), and so does this.
+     *
+     * The machine-id tiebreaker is the reason this is a total order: iOS's
+     * two-key comparison leaves machines with identical urgency in whatever
+     * order the fetch produced, so the same tour could list them differently
+     * on a resume or a recomposition. Same rationale as
+     * [buildCombinedPackingList]'s `productId` tiebreaker.
+     *
+     * Sorts the whole list, packed and unpacked alike, so `machines` stays
+     * the single ordered source the refill step walks; unpacked machines are
+     * filtered out by the caller, not by this sort.
+     */
+    fun sortByVisitOrder(machines: List<RefillMachine>): List<RefillMachine> =
+        machines.sortedWith(
+            compareByDescending<RefillMachine> { m -> m.trays.count { it.tray.currentStock == 0 } }
+                .thenByDescending { it.totalDeficit }
+                .thenBy { it.machine.id }
+        )
 
     /**
      * Products needed across ALL machines (independent of `isPacked`),
