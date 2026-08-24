@@ -4,7 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import xyz.vmflow.models.CombinedPackingItem
 import xyz.vmflow.models.Product
 import xyz.vmflow.models.RefillMachine
 import xyz.vmflow.models.RefillTray
@@ -368,6 +367,30 @@ class RefillTourLogicTest {
         assertEquals("A", item.productId)
         assertEquals(6 + 6, item.totalQuantity) // deficits: 10-4=6, 8-2=6
         assertEquals(2, item.machineNeeds.size)
+    }
+
+    @Test
+    fun `buildCombinedPackingList sorts machineNeeds within a product by machine name`() {
+        val zeta = refillMachine("m1", listOf(refillTray(tray("t1", machineId = "m1", productId = "A", capacity = 5, currentStock = 0))), machineName = "Zeta")
+        val alpha = refillMachine("m2", listOf(refillTray(tray("t2", machineId = "m2", productId = "A", capacity = 5, currentStock = 0))), machineName = "Alpha")
+        // Machines added in "Zeta, then Alpha" order; the packing list groups
+        // by product across machines regardless of insertion order, so the
+        // per-product machineNeeds list must itself be sorted by name rather
+        // than reflecting whatever order machines happened to be iterated in.
+        val list = RefillTourLogic.buildCombinedPackingList(listOf(zeta, alpha), emptyMap())
+
+        assertEquals(listOf("Alpha", "Zeta"), list[0].machineNeeds.map { it.machineName })
+    }
+
+    @Test
+    fun `buildCombinedPackingList falls back to a slot label when the tray has no product name`() {
+        val m1 = refillMachine(
+            "m1",
+            listOf(refillTray(tray("t1", machineId = "m1", itemNumber = 7, productId = "A", capacity = 10, currentStock = 0, product = null)))
+        )
+        val list = RefillTourLogic.buildCombinedPackingList(listOf(m1), emptyMap())
+
+        assertEquals("Slot 7", list[0].productName)
     }
 
     @Test
