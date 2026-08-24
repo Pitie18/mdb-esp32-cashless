@@ -218,7 +218,14 @@ echo
 
 SUPABASE_HOST=$(prompt_with_default "Supabase API hostname" "supabase.vmflow.xyz")
 APP_HOST=$(prompt_with_default "Frontend app hostname" "app.vmflow.xyz")
-MQTT_HOST=$(prompt_with_default "MQTT broker hostname (reachable by ESP32 devices)" "mqtt.vmflow.xyz")
+# The broker address the ESP32s dial. claim-device hands this value to every
+# device at claim time and it is stored in the device's NVS, so it has to
+# resolve from out in the field -- not from inside the Docker network. The
+# server-side name is a different question and is never asked: the forwarder
+# and the edge functions always reach the broker as the compose service
+# `broker`, over the internal Docker network.
+MQTT_PUBLIC_HOST=$(prompt_with_default "MQTT broker hostname (reachable by ESP32 devices)" "mqtt.vmflow.xyz")
+MQTT_PUBLIC_PORT=$(prompt_with_default "MQTT broker port (published on this host, handed to devices)" "1883")
 
 SUPABASE_PUBLIC_URL="https://${SUPABASE_HOST}"
 API_EXTERNAL_URL="https://${SUPABASE_HOST}"
@@ -230,7 +237,9 @@ echo -e "  Supabase API:  ${GREEN}${SUPABASE_PUBLIC_URL}${NC}"
 echo -e "  Frontend:      ${GREEN}${SITE_URL}${NC}"
 info "The frontend URL is encoded into the QR codes on printed machine signs,"
 info "so it must be the address customers can reach from outside."
-echo -e "  MQTT broker:   ${GREEN}${MQTT_HOST}${NC}"
+echo -e "  MQTT broker:   ${GREEN}${MQTT_PUBLIC_HOST}:${MQTT_PUBLIC_PORT}${NC}"
+info "This is the address baked into every device at claim time, so it must be"
+info "reachable from wherever the machines stand."
 
 # ─── SMTP (optional) ──────────────────────────────────────────────────────────
 echo -e "\n${BOLD}Email / SMTP${NC}"
@@ -486,10 +495,23 @@ GOOGLE_PROJECT_NUMBER=GOOGLE_PROJECT_NUMBER
 # MQTT
 #########
 
-MQTT_HOST=${MQTT_HOST}
+# How the SERVER reaches the broker: the compose service name, resolved over
+# the internal Docker network. Never a public hostname -- that would send the
+# traffic out to the reverse proxy and back in for no reason, and would break
+# outright wherever public DNS does not resolve inside a container.
+# docker-compose.yml pins this per service anyway; the line is kept so the
+# file documents the split and so tooling reading .env sees the real value.
+MQTT_HOST=broker
+MQTT_WS_PORT=9001
 MQTT_WEBHOOK_SECRET=${MQTT_WEBHOOK_SECRET}
 MQTT_ADMIN_USER=admin
 MQTT_ADMIN_PASS=${MQTT_ADMIN_PASS}
+
+# How the DEVICES reach the broker: handed out by claim-device and written to
+# the ESP32's NVS. Must resolve from the field. MQTT_PUBLIC_PORT doubles as
+# the port the broker is published on by docker-compose.
+MQTT_PUBLIC_HOST=${MQTT_PUBLIC_HOST}
+MQTT_PUBLIC_PORT=${MQTT_PUBLIC_PORT}
 
 ##########
 # Push Notifications (VAPID)
@@ -686,7 +708,7 @@ echo -e "${BOLD}╠════════════════════�
 echo -e "${BOLD}║${NC}"
 echo -e "${BOLD}║${NC}  Supabase API:  ${GREEN}${SUPABASE_PUBLIC_URL}${NC}"
 echo -e "${BOLD}║${NC}  Frontend:      ${GREEN}${SITE_URL}${NC}"
-echo -e "${BOLD}║${NC}  MQTT broker:   ${GREEN}${MQTT_HOST}:1883${NC}"
+echo -e "${BOLD}║${NC}  MQTT broker:   ${GREEN}${MQTT_PUBLIC_HOST}:${MQTT_PUBLIC_PORT}${NC}"
 echo -e "${BOLD}║${NC}"
 echo -e "${BOLD}║${NC}  Studio:        ${CYAN}${DASHBOARD_USERNAME}${NC} / ${CYAN}${DASHBOARD_PASSWORD}${NC}"
 if [ "$CONFIGURE_SMTP" = true ]; then
