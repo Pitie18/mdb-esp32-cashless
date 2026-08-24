@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
+import xyz.vmflow.models.ProductCategory
 import xyz.vmflow.models.RefillMachine
 import xyz.vmflow.models.RefillTray
 import xyz.vmflow.models.RefillTrayPayload
@@ -77,6 +78,28 @@ object RefillRepository {
                 )
             }
             Result.success(refillMachines)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Fetches every `product_category` row, alphabetically — mirrors iOS
+     * `loadData`'s category fetch (`RefillWizardViewModel.swift:1272-1288`,
+     * itself mirroring `ProductsViewModel.loadCategories()`). Feeds the
+     * replacement-product picker's grouping UI (a later task). Explicit
+     * column list rather than `*` so the decoder stays safe against future
+     * schema additions to `product_category`; see [ProductCategory]'s doc
+     * comment for the migration those columns were verified against.
+     */
+    suspend fun fetchProductCategories(): Result<List<ProductCategory>> {
+        return try {
+            val categories = postgrest.from("product_category")
+                .select(Columns.raw("id, name, company")) {
+                    order("name", Order.ASCENDING)
+                }
+                .decodeList<ProductCategory>()
+            Result.success(categories)
         } catch (e: Exception) {
             Result.failure(e)
         }
