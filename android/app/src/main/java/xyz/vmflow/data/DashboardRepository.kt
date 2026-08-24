@@ -20,7 +20,8 @@ import xyz.vmflow.models.VendingMachineWithEmbedded
 /**
  * Per-machine (not per-tray) stock health, mirrors `loadMachineStats()` in
  * `ios/VMflow/ViewModels/DashboardViewModel.swift`. A machine is counted at
- * most once, in the worse of its two buckets.
+ * most once — the buckets come from [StockHealth.buckets], which is disjoint
+ * by construction.
  */
 data class MachineStockHealth(
     val total: Int,
@@ -131,10 +132,12 @@ object DashboardRepository : DashboardDataSource {
 
     /**
      * Stock-semantics reminder (spec, not obvious from the column names):
-     * a machine counts as CRITICAL if it has at least one empty tray, else
-     * LOW if it has at least one tray at/under `min_stock` — these are
-     * MACHINE counts, not tray counts, and a machine is never counted in
-     * both buckets.
+     * these are MACHINE counts, not tray counts. The classification itself
+     * lives in [StockHealth] and is shared with the PWA's
+     * `app/lib/stock-health.ts`: an empty tray only makes a machine CRITICAL
+     * when it holds a product the warehouse can actually refill — an
+     * unassigned slot, or one whose product is out of stock everywhere, is a
+     * swap candidate rather than a refill alert.
      */
     override suspend fun fetchMachineStockHealth(): MachineStockHealth {
         val machines = postgrest.from("vendingMachine")
@@ -145,28 +148,29 @@ object DashboardRepository : DashboardDataSource {
             .select(Columns.raw(TRAY_COLUMNS))
             .decodeList<Tray>()
 
-        val traysByMachine = trays.groupBy { it.machineId }
+        // A warehouse-fetch failure degrades to "no warehouse data", which
+        // treats every product as refillable (the pre-warehouse behaviour),
+        // rather than failing the dashboard: this is enrichment, not core
+        // data. Same call and same fallback as the machine list's
+        // [MachineRepository.fetchMachinesWithStats].
+        val warehouseProductIds = MachineRepository.fetchWarehouseStockProductIds()
+            .getOrDefault(emptySet())
 
-        var critical = 0
-        var low = 0
-        for (machine in machines) {
-            val machineTrays = traysByMachine[machine.id].orEmpty()
-            val hasEmpty = machineTrays.any { it.currentStock == 0 }
-            val hasBelowMinStock = machineTrays.any { tray ->
-                val minStock = tray.minStock ?: 0
-                minStock > 0 && tray.currentStock <= minStock
-            }
-            when {
-                hasEmpty -> critical++
-                hasBelowMinStock -> low++
-            }
-        }
+        // Machines without a single tray row never reach `summaries` — they
+        // have nothing to refill, which is exactly the OK bucket.
+        val buckets = StockHealth.buckets(
+            StockHealth.summaries(
+                trays = trays,
+                warehouseProductIds = warehouseProductIds,
+                hasWarehouses = warehouseProductIds.isNotEmpty(),
+            ).values
+        )
 
         return MachineStockHealth(
             total = machines.size,
             online = machines.count { it.isOnline },
-            criticalMachines = critical,
-            lowMachines = low,
+            criticalMachines = buckets.critical,
+            lowMachines = buckets.low,
         )
     }
 
