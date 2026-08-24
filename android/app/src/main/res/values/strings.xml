@@ -426,6 +426,17 @@
     <string name="refill_step_full_trays_expand">Show full trays</string>
     <string name="refill_step_full_trays_collapse">Hide full trays</string>
     <string name="refill_step_no_trays">Nothing to fill at this machine.</string>
+    <!-- Refill step — machine layout grid (Phase 5b Task 7) -->
+    <string name="refill_step_layout_title">Machine layout</string>
+    <string name="refill_step_layout_hint">Tap a slot to jump to its card.</string>
+    <string name="refill_step_layout_slot">Slot %1$d, %2$s, %3$s</string>
+    <string name="refill_step_layout_slot_empty">Slot %1$d, no product, %2$s</string>
+    <string name="refill_step_layout_slot_selected">%1$s, selected</string>
+    <string name="refill_step_layout_state_not_in_tour">not on this tour</string>
+    <string name="refill_step_layout_state_filling">%1$d to fill</string>
+    <string name="refill_step_layout_state_empty">empty</string>
+    <string name="refill_step_layout_state_low">low</string>
+    <string name="refill_step_layout_state_full">stocked</string>
     <string name="refill_step_skip">Skip</string>
     <string name="refill_step_confirm">Confirm refill</string>
     <string name="refill_step_saving">Saving…</string>

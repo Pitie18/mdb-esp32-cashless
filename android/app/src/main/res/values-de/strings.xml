@@ -422,6 +422,17 @@
     <string name="refill_step_full_trays_expand">Volle Fächer anzeigen</string>
     <string name="refill_step_full_trays_collapse">Volle Fächer ausblenden</string>
     <string name="refill_step_no_trays">An diesem Automaten ist nichts zu füllen.</string>
+    <!-- Befüllen-Schritt — Automaten-Layout (Phase 5b, Task 7) -->
+    <string name="refill_step_layout_title">Automaten-Layout</string>
+    <string name="refill_step_layout_hint">Tippe ein Fach an, um zu seiner Karte zu springen.</string>
+    <string name="refill_step_layout_slot">Fach %1$d, %2$s, %3$s</string>
+    <string name="refill_step_layout_slot_empty">Fach %1$d, kein Produkt, %2$s</string>
+    <string name="refill_step_layout_slot_selected">%1$s, ausgewählt</string>
+    <string name="refill_step_layout_state_not_in_tour">nicht in dieser Tour</string>
+    <string name="refill_step_layout_state_filling">%1$d einfüllen</string>
+    <string name="refill_step_layout_state_empty">leer</string>
+    <string name="refill_step_layout_state_low">wenig</string>
+    <string name="refill_step_layout_state_full">gefüllt</string>
     <string name="refill_step_skip">Überspringen</string>
     <string name="refill_step_confirm">Befüllung bestätigen</string>
     <string name="refill_step_saving">Wird gespeichert…</string>
