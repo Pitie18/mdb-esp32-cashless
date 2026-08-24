@@ -1,12 +1,12 @@
 # Übergabe: Android-Parität zur iOS-App
 
-**Stand:** 2026-08-24 · alles bis einschließlich Phase 4 ist in `main` gemerged (lokal, noch nicht gepusht) · 231 Tests grün
+**Stand:** 2026-08-24 · alles bis einschließlich Phase 5a ist in `main` gemerged (lokal, noch nicht gepusht) · 300 Tests grün
 
 ## Wo anfangen
 
 1. Diese Datei lesen.
 2. `.superpowers/sdd/progress.md` lesen — das Ledger mit allen Task-Ergebnissen, Reviews und Befunden. Phase 3 ist darin vollständig protokolliert (Tasks 23–30), inklusive der vier offenen Nachfolgepunkte, die absichtlich nicht in dieser Phase erledigt wurden (siehe unten).
-3. Phase 5a (Refill-Tour) hat einen fertigen Plan: [`plans/2026-08-24-android-phase-5-refill.md`](plans/2026-08-24-android-phase-5-refill.md), 12 Tasks, noch nicht begonnen. Wie bisher mit `superpowers:subagent-driven-development` umsetzen.
+3. Phase 5b (Review-Schritt, Ersatzprodukt-Picker, Maschinen-Layout-Grid) braucht noch einen Plan. Phase 5a ist fertig und gemerged; ihr Plan [`plans/2026-08-24-android-phase-5-refill.md`](plans/2026-08-24-android-phase-5-refill.md) enthält am Ende zwei Abschnitte, die man vor 5b liest: die bekannten Abweichungen von iOS und die neun Restrisiken.
 
 Vorgehen wie bisher: `superpowers:subagent-driven-development` — ein frischer Umsetzer je Task, unabhängiges Review, und der Orchestrator verifiziert Build, Tests und Bildschirm **selbst** nach. Bei kleinen, rein visuellen Fixes (Layout-Feintuning, das iterative Bildschirmzugriff braucht) hat es sich diese Sitzung bewährt, dass der Orchestrator sie direkt selbst macht statt einen Umsetzer zu beauftragen — ein Subagent kann den Bildschirm nicht sehen.
 
@@ -18,10 +18,10 @@ Vorgehen wie bisher: `superpowers:subagent-driven-development` — ein frischer 
 | 2 | Dashboard: Vergleichszeiträume, 30-Tage-Chart, Aktivitäts-Feed mit Nachladen, Barkassen-Karte, Deals-Banner | fertig, am S10 verifiziert |
 | 3 | Maschinen-Tab: Analyse-Ansicht, unterdrückte Verkäufe, 3 Sheets (Guthaben/Einstellungen/Gerätegesundheit), Lagerverfügbarkeit, Lokalisierungs-Sweep (Tasks 23–30) | **fertig**, am S10 verifiziert |
 | 4 | Lager: Bestand, Wareneingang (Barcode), FIFO-Chargen-Drilldown + Korrektur, Lokalisierung (Tasks 1–12) | **fertig**, am S10 verifiziert, in `main` gemerged |
-| 5a | Refill-Tour auf iOS-Stand: lagerbewusstes Packen, FIFO-Abbuchung nur für gepackte Ware, atomare `refill_machine_trays`-Buchung mit Retry, `activity_log`, Tour fortsetzen | Plan fertig (12 Tasks), **nicht begonnen** |
+| 5a | Refill-Tour auf iOS-Stand: lagerbewusstes Packen, FIFO-Abbuchung nur für gepackte Ware, atomare `refill_machine_trays`-Buchung mit Retry, `activity_log`, Tour fortsetzen, Lokalisierung | **fertig**, am S10 gegen den Testserver verifiziert, in `main` gemerged |
 | 5b | Review-Schritt, Ersatzprodukt-Picker, Maschinen-Layout-Grid | kein Plan — hängt an 5a |
 
-Tests: **231**, alle grün. Toolchain: AGP 9.3.1 / Gradle 9.5 / Kotlin 2.4.10 / compileSdk 36 — Debug, Tests und `assembleRelease` (R8) verifiziert.
+Tests: **300**, alle grün. Toolchain: AGP 9.3.1 / Gradle 9.5 / Kotlin 2.4.10 / compileSdk 36 — Debug, Tests und `assembleRelease` (R8) verifiziert.
 
 ## Offene Nachfolgepunkte aus Phase 3 (bewusst nicht erledigt)
 
