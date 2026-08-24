@@ -466,6 +466,21 @@ private const val SLOT_FILL_ALPHA = 0.35f
 private const val SLOT_FILL_ALPHA_NOT_IN_TOUR = 0.12f
 
 /**
+ * Alpha of the foreground scrim drawn over a slot's product photo
+ * ([MachineLayoutCell.foreground]). [background] alone is invisible on any
+ * slot with a photo — the photo fills the whole cell and paints on top of it
+ * — so this scrim has to carry the state colour on its own. It is deliberately
+ * uniform across every state, [RefillSlotState.NOT_IN_TOUR] included: at the
+ * same strength, [OfflineGray]'s neutral, desaturated tone already reads as
+ * "dimmed" next to the four vivid state colours, so a second, lower alpha
+ * tier is not needed to keep it distinguishable. Strong enough to name the
+ * state at a glance; translucent enough that the photo underneath — which
+ * still matters, it is how the driver recognises the product — stays visible
+ * through it.
+ */
+private const val SLOT_SCRIM_ALPHA = 0.55f
+
+/**
  * Fill-state colour for a layout cell. Fixed tokens, same argument as
  * [stockColor] — and the red/orange/green run is deliberately *the same* ramp
  * the tray cards' bars use, so the grid and the card under it never disagree
@@ -474,11 +489,14 @@ private const val SLOT_FILL_ALPHA_NOT_IN_TOUR = 0.12f
  * [RefillSlotState.JUST_FILLED] gets the brand blue rather than a fifth point on
  * that ramp: "the driver has dialled stock in here" is not a stock level, and
  * blue is already what this screen uses for a non-zero fill amount.
+ *
+ * Plain function, not `@Composable`: [machineLayout] resolves [isDark] once,
+ * outside its `remember` block, and this is called from inside that block —
+ * `remember`'s calculation lambda cannot itself call a composable.
  */
-@Composable
-private fun RefillSlotState.slotColor(): Color = when (this) {
+private fun RefillSlotState.slotColor(isDark: Boolean): Color = when (this) {
     RefillSlotState.NOT_IN_TOUR -> OfflineGray
-    RefillSlotState.JUST_FILLED -> if (isSystemInDarkTheme()) VMflowBlueLight else VMflowBlue
+    RefillSlotState.JUST_FILLED -> if (isDark) VMflowBlueLight else VMflowBlue
     RefillSlotState.EMPTY -> StockRed
     RefillSlotState.LOW -> StockOrange
     RefillSlotState.FULL -> StockGreen
@@ -489,9 +507,11 @@ private fun RefillSlotState.slotColor(): Color = when (this) {
  * drawn over five state colours and, where a product has a photo, over the photo
  * — any hue there would read as a sixth state. Black on light and white on dark
  * are the only two that separate from all of them.
+ *
+ * Plain function for the same reason as [slotColor]: called from inside
+ * [machineLayout]'s `remember` block.
  */
-@Composable
-private fun slotSelectionColor(): Color = if (isSystemInDarkTheme()) Color.White else Color.Black
+private fun slotSelectionColor(isDark: Boolean): Color = if (isDark) Color.White else Color.Black
 
 /** The machine's physical layout, ready for [MachineLayoutGrid]. */
 private data class MachineLayoutState(
@@ -509,69 +529,103 @@ private data class MachineLayoutState(
  * the same unit-tested math the analysis tab's grid uses, not a second copy.
  * The state bucket comes from [RefillLayout.classify]. This function only
  * resolves colours and the spoken description on top of them.
+ *
+ * Wrapped in `remember`: this runs on every recomposition of [RefillStepContent]
+ * — including every +/− stepper press — and without memoisation it would map
+ * every tray and resolve one or two strings per tray each time, for output the
+ * grid's own internal `remember` (`buildGridEntries`) would then discard as
+ * unchanged. Keyed on [machine], [selectedTrayId], the dark-theme flag, and
+ * every string template the cells are built from — `remember`'s calculation
+ * lambda cannot itself call a composable (no `stringResource`, no
+ * `isSystemInDarkTheme`), so all of those are read here, outside the lambda,
+ * and passed in as both inputs to the computation and keys that invalidate it
+ * on an in-place configuration change.
  */
 @Composable
 private fun machineLayout(machine: RefillMachine, selectedTrayId: String?): MachineLayoutState {
-    val context = LocalContext.current
-    val selectionColor = slotSelectionColor()
-    val widths = MachineAnalysis.computeSlotWidths(machine.trays.map { it.tray.itemNumber })
+    val isDark = isSystemInDarkTheme()
+    val notInTourLabel = stringResource(R.string.refill_step_layout_state_not_in_tour)
+    val fillingTemplate = stringResource(R.string.refill_step_layout_state_filling)
+    val emptyLabel = stringResource(R.string.refill_step_layout_state_empty)
+    val lowLabel = stringResource(R.string.refill_step_layout_state_low)
+    val fullLabel = stringResource(R.string.refill_step_layout_state_full)
+    val slotTemplate = stringResource(R.string.refill_step_layout_slot)
+    val slotEmptyTemplate = stringResource(R.string.refill_step_layout_slot_empty)
+    val slotSelectedTemplate = stringResource(R.string.refill_step_layout_slot_selected)
 
-    val cells = machine.trays.map { refillTray ->
-        val itemNumber = refillTray.tray.itemNumber
-        val position = MachineAnalysis.slotRowCol(itemNumber)
-        val state = RefillLayout.classify(
-            isInTour = refillTray.isInTour,
-            fillAmount = refillTray.fillAmount,
-            currentStock = refillTray.tray.currentStock,
-            capacity = refillTray.tray.capacity
-        )
-        val isSelected = refillTray.tray.id == selectedTrayId
+    return remember(
+        machine,
+        selectedTrayId,
+        isDark,
+        notInTourLabel,
+        fillingTemplate,
+        emptyLabel,
+        lowLabel,
+        fullLabel,
+        slotTemplate,
+        slotEmptyTemplate,
+        slotSelectedTemplate,
+    ) {
+        val selectionColor = slotSelectionColor(isDark)
+        val widths = MachineAnalysis.computeSlotWidths(machine.trays.map { it.tray.itemNumber })
 
-        // Never colour alone: the state is spoken with the slot number and the
-        // product, and so is the selection.
-        val stateLabel = when (state) {
-            RefillSlotState.NOT_IN_TOUR ->
-                context.getString(R.string.refill_step_layout_state_not_in_tour)
-            RefillSlotState.JUST_FILLED ->
-                context.getString(R.string.refill_step_layout_state_filling, refillTray.fillAmount)
-            RefillSlotState.EMPTY -> context.getString(R.string.refill_step_layout_state_empty)
-            RefillSlotState.LOW -> context.getString(R.string.refill_step_layout_state_low)
-            RefillSlotState.FULL -> context.getString(R.string.refill_step_layout_state_full)
-        }
-        val productName = refillTray.tray.products?.name?.takeIf { it.isNotBlank() }
-        val described = if (productName != null) {
-            context.getString(R.string.refill_step_layout_slot, itemNumber, productName, stateLabel)
-        } else {
-            context.getString(R.string.refill_step_layout_slot_empty, itemNumber, stateLabel)
-        }
+        val cells = machine.trays.map { refillTray ->
+            val itemNumber = refillTray.tray.itemNumber
+            val position = MachineAnalysis.slotRowCol(itemNumber)
+            val state = RefillLayout.classify(
+                isInTour = refillTray.isInTour,
+                fillAmount = refillTray.fillAmount,
+                currentStock = refillTray.tray.currentStock,
+                capacity = refillTray.tray.capacity
+            )
+            val isSelected = refillTray.tray.id == selectedTrayId
+            val stateColor = state.slotColor(isDark)
 
-        MachineLayoutCell(
-            id = refillTray.tray.id,
-            itemNumber = itemNumber,
-            row = position.row,
-            column = position.column,
-            width = widths[itemNumber] ?: 1,
-            imagePath = refillTray.tray.products?.imagePath,
-            background = state.slotColor().copy(
-                alpha = if (state == RefillSlotState.NOT_IN_TOUR) {
-                    SLOT_FILL_ALPHA_NOT_IN_TOUR
-                } else {
-                    SLOT_FILL_ALPHA
-                }
-            ),
-            outline = selectionColor.takeIf { isSelected },
-            contentDescription = if (isSelected) {
-                context.getString(R.string.refill_step_layout_slot_selected, described)
-            } else {
-                described
+            // Never colour alone: the state is spoken with the slot number and
+            // the product, and so is the selection.
+            val stateLabel = when (state) {
+                RefillSlotState.NOT_IN_TOUR -> notInTourLabel
+                RefillSlotState.JUST_FILLED -> String.format(fillingTemplate, refillTray.fillAmount)
+                RefillSlotState.EMPTY -> emptyLabel
+                RefillSlotState.LOW -> lowLabel
+                RefillSlotState.FULL -> fullLabel
             }
+            val productName = refillTray.tray.products?.name?.takeIf { it.isNotBlank() }
+            val described = if (productName != null) {
+                String.format(slotTemplate, itemNumber, productName, stateLabel)
+            } else {
+                String.format(slotEmptyTemplate, itemNumber, stateLabel)
+            }
+
+            MachineLayoutCell(
+                id = refillTray.tray.id,
+                itemNumber = itemNumber,
+                row = position.row,
+                column = position.column,
+                width = widths[itemNumber] ?: 1,
+                imagePath = refillTray.tray.products?.imagePath,
+                background = stateColor.copy(
+                    alpha = if (state == RefillSlotState.NOT_IN_TOUR) {
+                        SLOT_FILL_ALPHA_NOT_IN_TOUR
+                    } else {
+                        SLOT_FILL_ALPHA
+                    }
+                ),
+                outline = selectionColor.takeIf { isSelected },
+                foreground = stateColor.copy(alpha = SLOT_SCRIM_ALPHA),
+                contentDescription = if (isSelected) {
+                    String.format(slotSelectedTemplate, described)
+                } else {
+                    described
+                }
+            )
+        }
+
+        MachineLayoutState(
+            rowCount = cells.maxOfOrNull { it.row }?.plus(1) ?: 0,
+            cells = cells
         )
     }
-
-    return MachineLayoutState(
-        rowCount = cells.maxOfOrNull { it.row }?.plus(1) ?: 0,
-        cells = cells
-    )
 }
 
 /**

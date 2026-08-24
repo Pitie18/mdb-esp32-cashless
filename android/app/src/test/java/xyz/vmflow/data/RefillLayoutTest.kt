@@ -118,6 +118,18 @@ class RefillLayoutTest {
     }
 
     @Test
+    fun `negative capacity with stock is full, not low from a negative fraction`() {
+        // `capacity <= 0` is the guard under test here, not the zero case above:
+        // 3 / 0 is Infinity (`Infinity < LOW_FRACTION` is false, so the zero case
+        // passes even without the guard). 3 / -5 = -0.6, and -0.6 < 0.5 is true —
+        // without the guard this would misclassify as LOW.
+        assertEquals(
+            RefillSlotState.FULL,
+            RefillLayout.classify(isInTour = true, fillAmount = 0, currentStock = 3, capacity = -5),
+        )
+    }
+
+    @Test
     fun `negative stock is empty`() {
         assertEquals(
             RefillSlotState.EMPTY,

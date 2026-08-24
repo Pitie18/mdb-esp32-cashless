@@ -75,6 +75,14 @@ private val CELL_SHAPE = RoundedCornerShape(6.dp)
  *   refill step's "this is the slot you are working on" marker. The analysis tab
  *   passes null, which makes the modifier chain identical to the pre-extraction
  *   one.
+ * @param foreground an optional translucent scrim drawn as a trailing child of
+ *   the cell — after the product photo, so it paints over it. [background]
+ *   alone is invisible on any slot with a photo (the photo fills the whole
+ *   cell and paints on top of it), which is fine for the analysis tab's tier
+ *   colouring — it always had that limitation — but not for the refill grid,
+ *   whose entire purpose is fill-state colour. The analysis tab passes null,
+ *   which emits no extra child at all, keeping its cell composition identical
+ *   to the pre-extraction one.
  * @param contentDescription spoken for the cell. Never null: every cell is
  *   tappable, and colour alone must not carry the state.
  */
@@ -87,6 +95,7 @@ data class MachineLayoutCell(
     val imagePath: String?,
     val background: Color,
     val outline: Color? = null,
+    val foreground: Color? = null,
     val contentDescription: String,
 )
 
@@ -208,6 +217,12 @@ private fun MachineLayoutGridCell(cell: MachineLayoutCell, onClick: () -> Unit) 
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
+        }
+        // Trailing child, emitted only when the caller asked for one — the
+        // analysis tab passes `foreground = null` and this `if` adds nothing
+        // to its tree, so its cell composition is untouched.
+        if (cell.foreground != null) {
+            Box(modifier = Modifier.fillMaxSize().background(cell.foreground))
         }
         Text(
             text = cell.itemNumber.toString(),
