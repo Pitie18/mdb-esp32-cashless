@@ -163,7 +163,7 @@ Dazu: `applyTourInclusion` verteilt eine `customQuantity` proportional über zwe
 **Files:**
 - Modify: `android/app/src/main/java/xyz/vmflow/models/Models.kt`
 
-Die bestehenden `RefillItem`/`RefillMachine`/`RefillSummary` (Z. 355-374) werden **ersetzt**, nicht ergänzt — der alte `RefillViewModel` ist ihr einziger Nutzer und wird in Task 6-9 ohnehin neu geschrieben. `RefillSummary` fällt weg (die Zusammenfassung wird in Task 9 aus dem `tourLog` berechnet, wie auf iOS).
+Die bestehenden `RefillItem`/`RefillMachine`/`RefillSummary` werden ersetzt. **Korrektur gegenüber der ersten Planfassung:** sie haben nicht einen, sondern **sechs** Nutzer (`RefillRepository`, `RefillViewModel`, `PackingStep`, `RefillStep`, `RefillSummaryStep`, `Models` selbst) und hängen an einer *live* Navigationsroute — ein Löschen in Task 2 hätte den Baum gebrochen. Umgesetzt wurde deshalb ein rein mechanisches Umbenennen in `LegacyRefillItem`/`LegacyRefillMachine`/`LegacyRefillSummary` (verhaltensneutral, unabhängig verifiziert). **Task 6 löscht diesen `Legacy*`-Block ersatzlos**, sobald das neue ViewModel steht. `RefillSummary` fällt dabei ganz weg (die Zusammenfassung wird in Task 9 aus dem `tourLog` berechnet, wie auf iOS).
 
 Neu bzw. ersetzt, `@Serializable` nur wo Persistenz oder Wire-Format es braucht:
 
@@ -268,6 +268,7 @@ Regeln (Referenz iOS Z. 305-437):
 **Files:**
 - Modify: `android/app/src/main/java/xyz/vmflow/ui/refill/RefillViewModel.kt` (Vollersatz)
 - Modify: `android/app/src/main/java/xyz/vmflow/data/RefillRepository.kt` (nur: `buildRefillPlan` und `applyRefill` entfernen — ab hier unbenutzt)
+- Modify: `android/app/src/main/java/xyz/vmflow/models/Models.kt` (den `LegacyRefillItem`/`LegacyRefillMachine`/`LegacyRefillSummary`-Block **ersatzlos löschen** — er existiert nur als Kompilier-Brücke aus Task 2 und hat nach diesem Task keinen Nutzer mehr; er trägt einen entsprechenden Kommentar)
 
 **Interfaces:**
 - Produces: `RefillUiState` und `RefillViewModel` mit den in Task 7-9 ergänzten Aktionen. Das `UiState` ist ab hier der Vertrag für die UI-Tasks 10-12:
@@ -391,7 +392,7 @@ Aufbau von oben nach unten (Referenz `PackingStepView.swift`):
 
 1. **Lager-Picker** — nur wenn mehr als ein Lager existiert (gleiches Gating wie `WarehouseScreen.kt` aus Phase 4).
 2. **Chip-Leiste** — "Alle" plus ein Chip je Maschine mit Bedarf; je Chip die offene Stückzahl und ein Häkchen, wenn vollständig gepackt. Bei mehr als drei Chips **umbrechen** (`FlowRow`) — die 4-Chip-Zeile im Lager-Modul lief auf ~360 dp und in Deutsch aus dem Bild, das war ein Review-Befund in Phase 4 und muss hier nicht wiederholt werden.
-3. **Produktkarte** je Zeile der sichtbaren Packliste: Bild (Platzhalter bei fehlendem Pfad), Name, Gesamtmenge, Lagerbestands-Badge (verbleibender Bestand; rot bei 0, orange bei "weniger als gefordert"), und je Maschine eine **Bedarfszeile** mit Häkchen, Maschinenname, Mengen-Stepper (−/Wert/+) und der Kapazität als Kontext. Steppergrenzen kommen aus `maxPackingQuantity`, der Anzeigewert aus `displayQuantity`.
+3. **Produktkarte** je Zeile der sichtbaren Packliste: Bild (Platzhalter bei fehlendem Pfad), Name — `CombinedPackingItem.productName` ist **nullable**, ein fehlender Name wird hier über `R.string.machine_card_unassigned_slot` mit der Slot-Nummer aufgelöst (die reine Logik synthetisiert bewusst keinen Text, gleiche Konvention wie `IntakeEntry.productName`) —, Gesamtmenge, Lagerbestands-Badge (verbleibender Bestand; rot bei 0, orange bei "weniger als gefordert"), und je Maschine eine **Bedarfszeile** mit Häkchen, Maschinenname, Mengen-Stepper (−/Wert/+) und der Kapazität als Kontext. Steppergrenzen kommen aus `maxPackingQuantity`, der Anzeigewert aus `displayQuantity`.
 4. **Untere Aktionsleiste** — "Alles packen" bzw. bei aktivem Maschinen-Chip "Alles für <Maschine> packen", und "Tour starten" (deaktiviert, solange keine Maschine gepackt ist), mit der Anzahl gepackter Maschinen.
 
 Fehler erscheinen als Snackbar über `uiState.error` + `clearError()` (Muster aus `LoginScreen.kt`/`WarehouseScreen.kt`), nicht als stiller Zustand.

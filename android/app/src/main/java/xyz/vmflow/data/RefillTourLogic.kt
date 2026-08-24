@@ -350,8 +350,9 @@ object RefillTourLogic {
 
     /**
      * Locale-aware, case-insensitive comparator for the packing-list name
-     * tiebreaker: a [Collator] at [Collator.SECONDARY] strength treats case
-     * and most accent differences as equal, matching iOS's
+     * tiebreaker: a [Collator] at [Collator.SECONDARY] strength ignores case
+     * but keeps accents significant ("o" and "ö" stay distinct, while "Ö"
+     * sorts right next to "o" instead of far behind "z"), matching iOS's
      * `localizedCaseInsensitiveCompare` (`RefillWizardViewModel.swift` L624)
      * far more closely than ordinal `String.CASE_INSENSITIVE_ORDER`, which
      * sorts an umlaut like "Ö" after every plain ASCII letter instead of
