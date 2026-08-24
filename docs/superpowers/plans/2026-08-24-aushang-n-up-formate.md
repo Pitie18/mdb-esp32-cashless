@@ -664,10 +664,13 @@ Der optische Abgleich steht unter „Abnahme durch den Bediener". Rechnerisch: `
 Zusätzlich belegen, dass die Ersetzung nichts anderes angefasst hat:
 
 ```bash
-git diff --unified=0 -- app/components/print/Poster*.vue | grep '^[+-]' | grep -v '^[+-][+-]' | grep -cv 'qr-min\|pad-min'
+git diff --unified=0 -- app/components/print/Poster*.vue | grep '^[+-]' | grep -v '^[+-][+-]' \
+  | grep -cvE 'qr-min|pad-min|max\(5mm|max\(30mm|max\(20mm'
 ```
 
-Expected: `0` — jede geänderte Zeile trägt eine der beiden Variablen; es gibt keine Änderung, die nicht Teil der Ersetzung ist.
+Expected: `0` — jede geänderte Zeile ist entweder eine entfernte harte mm-Grenze oder eine hinzugefügte Variable. Es gibt keine dritte Sorte Änderung.
+
+Das Filtermuster muss beide Seiten abdecken: `git diff --unified=0` gibt zu jeder geänderten Zeile die alte **und** die neue aus, und die alte trägt die Variable naturgemäß nicht.
 
 - [ ] **Step 9: Tests, Typecheck, Commit**
 
