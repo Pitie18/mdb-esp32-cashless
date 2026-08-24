@@ -428,4 +428,27 @@
     <string name="refill_step_skip">Skip</string>
     <string name="refill_step_confirm">Confirm refill</string>
     <string name="refill_step_saving">Saving…</string>
+    <string name="refill_error_unknown">unknown error</string>
+    <plurals name="refill_error_max_attempts">
+        <item quantity="one">Refill could not be saved after %1$d attempt: %2$s. Please try again.</item>
+        <item quantity="other">Refill could not be saved after %1$d attempts: %2$s. Please try again.</item>
+    </plurals>
+    <!-- Refill wizard — summary step (Phase 5 Task 12) -->
+    <string name="refill_summary_title">Tour Complete!</string>
+    <string name="refill_summary_subtitle_all_done">All machines have been refilled</string>
+    <plurals name="refill_summary_subtitle_partial">
+        <item quantity="one">%1$d of %2$d machine refilled</item>
+        <item quantity="other">%1$d of %2$d machines refilled</item>
+    </plurals>
+    <string name="refill_summary_stat_machines_visited">Machines Visited</string>
+    <string name="refill_summary_stat_trays_refilled">Trays Refilled</string>
+    <string name="refill_summary_stat_items_added">Total Items Added</string>
+    <string name="refill_summary_stat_machines_skipped">Machines Skipped</string>
+    <string name="refill_summary_machines_header">Machines</string>
+    <plurals name="refill_summary_row_trays">
+        <item quantity="one">%1$d tray</item>
+        <item quantity="other">%1$d trays</item>
+    </plurals>
+    <string name="refill_summary_row_contribution">%1$s · %2$s</string>
+    <string name="refill_summary_row_skipped">Skipped</string>
 </resources>

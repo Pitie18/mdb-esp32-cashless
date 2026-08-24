@@ -424,4 +424,27 @@
     <string name="refill_step_skip">Überspringen</string>
     <string name="refill_step_confirm">Befüllung bestätigen</string>
     <string name="refill_step_saving">Wird gespeichert…</string>
+    <string name="refill_error_unknown">unbekannter Fehler</string>
+    <plurals name="refill_error_max_attempts">
+        <item quantity="one">Die Befüllung konnte nach %1$d Versuch nicht gespeichert werden: %2$s. Bitte versuche es erneut.</item>
+        <item quantity="other">Die Befüllung konnte nach %1$d Versuchen nicht gespeichert werden: %2$s. Bitte versuche es erneut.</item>
+    </plurals>
+    <!-- Nachfüll-Assistent — Zusammenfassung (Phase 5, Task 12) -->
+    <string name="refill_summary_title">Tour abgeschlossen!</string>
+    <string name="refill_summary_subtitle_all_done">Alle Automaten wurden befüllt</string>
+    <plurals name="refill_summary_subtitle_partial">
+        <item quantity="one">%1$d von %2$d Automat befüllt</item>
+        <item quantity="other">%1$d von %2$d Automaten befüllt</item>
+    </plurals>
+    <string name="refill_summary_stat_machines_visited">Besuchte Automaten</string>
+    <string name="refill_summary_stat_trays_refilled">Befüllte Fächer</string>
+    <string name="refill_summary_stat_items_added">Hinzugefügte Artikel</string>
+    <string name="refill_summary_stat_machines_skipped">Übersprungene Automaten</string>
+    <string name="refill_summary_machines_header">Automaten</string>
+    <plurals name="refill_summary_row_trays">
+        <item quantity="one">%1$d Fach</item>
+        <item quantity="other">%1$d Fächer</item>
+    </plurals>
+    <string name="refill_summary_row_contribution">%1$s · %2$s</string>
+    <string name="refill_summary_row_skipped">Übersprungen</string>
 </resources>

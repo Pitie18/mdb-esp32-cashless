@@ -70,6 +70,18 @@ import xyz.vmflow.models.Warehouse
  *   write has already committed. `null` means the resolution failed — the
  *   repository then falls back to resolving it itself, so a null here costs
  *   round trips, never audit rows.
+ * @property error a raw, non-localized message — either an exception's own
+ *   text, or (paired with [refillFailedAttempts]) the underlying cause of a
+ *   booking that exhausted its retries. Never a sentence this ViewModel
+ *   formulated itself: composing the user-facing text is the UI's job (see
+ *   [refillFailedAttempts]).
+ * @property refillFailedAttempts set together with [error] when
+ *   [confirmRefill] gives up after [MAX_REFILL_ATTEMPTS] failed
+ *   `refill_machine_trays` calls; `null` in every other case, including when
+ *   [error] carries a plain exception message. The UI (not this ViewModel)
+ *   composes the localized "could not be saved after N attempts: …" sentence
+ *   from this count plus [error] — this class must not format user-facing
+ *   text itself, since it has no access to localized resources.
  */
 data class RefillUiState(
     val isLoading: Boolean = true,
@@ -90,6 +102,7 @@ data class RefillUiState(
     val tourLog: List<TourLogEntry> = emptyList(),
     val hasSavedTour: Boolean = false,
     val error: String? = null,
+    val refillFailedAttempts: Int? = null,
 )
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -197,7 +210,12 @@ class RefillViewModel : ViewModel() {
             // relies on that pairing to never fire mid-load, while `machines`
             // is about to be overwritten below.
             _uiState.update {
-                it.copy(isLoading = true, error = null, hasSavedTour = hasSavedTour)
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    refillFailedAttempts = null,
+                    hasSavedTour = hasSavedTour
+                )
             }
 
             RefillRepository.fetchRefillMachines().fold(
@@ -298,7 +316,7 @@ class RefillViewModel : ViewModel() {
 
     /** Clears a surfaced error after the UI has shown it (e.g. via a snackbar). */
     fun clearError() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, refillFailedAttempts = null) }
     }
 
     /**
@@ -985,8 +1003,10 @@ class RefillViewModel : ViewModel() {
             if (traysToRefill.isEmpty()) {
                 // Clear a stale error from a previous machine — a visit that
                 // needed no stock write is still a success, and leaving the
-                // old message up makes it read as a failure.
-                _uiState.update { it.copy(error = null) }
+                // old message (or a stale [RefillUiState.refillFailedAttempts]
+                // from an earlier failed confirm on this same machine) up
+                // makes it read as a failure.
+                _uiState.update { it.copy(error = null, refillFailedAttempts = null) }
                 recordRefillSuccess(
                     machineId = machineId,
                     traysSnapshot = emptyList(),
@@ -996,7 +1016,10 @@ class RefillViewModel : ViewModel() {
                 return@launch
             }
 
-            _uiState.update { it.copy(isSaving = true, error = null) }
+            // Clears any [RefillUiState.refillFailedAttempts] left by a
+            // previous failed confirm on this same machine — this is a fresh
+            // attempt, not a continuation of that failure.
+            _uiState.update { it.copy(isSaving = true, error = null, refillFailedAttempts = null) }
 
             val payload = traysToRefill.map {
                 RefillTrayPayload(trayId = it.tray.id, fillAmount = it.fillAmount)
@@ -1035,14 +1058,16 @@ class RefillViewModel : ViewModel() {
 
             // All attempts failed: the machine stays an unfinished tour stop
             // and the step stays put, so the same machine can be confirmed
-            // again. Non-localized on purpose — the whole module's strings
-            // are swept in Task 12, and every other error this ViewModel
-            // surfaces is a raw exception message too.
+            // again. `error` carries only the raw cause (or null — the UI
+            // supplies its own "unknown error" fallback text);
+            // `refillFailedAttempts` is the signal that tells the UI to wrap
+            // it in the localized "could not be saved after N attempts"
+            // sentence rather than showing it as a bare exception message.
             _uiState.update {
                 it.copy(
                     isSaving = false,
-                    error = "Refill could not be saved after $MAX_REFILL_ATTEMPTS attempts: " +
-                        "${lastError?.message ?: "unknown error"}. Please try again."
+                    error = lastError?.message,
+                    refillFailedAttempts = MAX_REFILL_ATTEMPTS
                 )
             }
         }
@@ -1138,7 +1163,8 @@ class RefillViewModel : ViewModel() {
                 tourLog = saved.tourLog,
                 currentMachineId = current?.machine?.id,
                 hasSavedTour = false,
-                error = null
+                error = null,
+                refillFailedAttempts = null
             ).withPackingList()
         }
 

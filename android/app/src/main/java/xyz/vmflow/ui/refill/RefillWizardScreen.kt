@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -71,8 +72,26 @@ fun RefillWizardScreen(
     // effect can't reset an in-progress tour.
     LaunchedEffect(Unit) { viewModel.loadDataIfNeeded() }
 
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
+    // `RefillUiState.error` is a raw, non-localized message — this screen is
+    // where it becomes user-facing text. Two shapes: a plain exception
+    // message (shown as-is, same as every other error surfaced by this
+    // ViewModel), or — when `refillFailedAttempts` is set — the cause of a
+    // booking that exhausted its retries, which this composes into the
+    // localized "could not be saved after N attempts" sentence. The
+    // ViewModel deliberately does not formulate that sentence itself: it has
+    // no access to localized string resources.
+    val unknownRefillError = stringResource(R.string.refill_error_unknown)
+    val displayedError = uiState.refillFailedAttempts?.let { attempts ->
+        pluralStringResource(
+            R.plurals.refill_error_max_attempts,
+            attempts,
+            attempts,
+            uiState.error ?: unknownRefillError
+        )
+    } ?: uiState.error
+
+    LaunchedEffect(displayedError) {
+        displayedError?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
         }
@@ -189,9 +208,7 @@ fun RefillWizardScreen(
                     }
 
                     RefillStep.SUMMARY -> RefillSummaryStep(
-                        machinesVisited = uiState.machinesVisited,
-                        traysRefilled = uiState.traysRefilled,
-                        totalItemsAdded = uiState.totalItemsAdded,
+                        tourLog = uiState.tourLog,
                         // reset() then leave, in that order: it re-arms the
                         // entry gate and leaves `isLoading = true`, which is
                         // only correct if the screen is actually left and
