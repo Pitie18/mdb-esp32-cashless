@@ -1,6 +1,5 @@
 package xyz.vmflow.ui.refill
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
@@ -10,10 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import xyz.vmflow.VMflowApp
-import xyz.vmflow.data.KeyValueStore
 import xyz.vmflow.data.RefillRepository
 import xyz.vmflow.data.RefillTourLogic
+import xyz.vmflow.data.RefillTourStoreHolder
 import xyz.vmflow.data.TourStore
 import xyz.vmflow.data.WarehouseRepository
 import xyz.vmflow.models.CombinedPackingItem
@@ -42,7 +40,8 @@ import xyz.vmflow.models.Warehouse
  *   takes a `stockLoaded` argument short-circuits on
  *   `!stockLoaded || warehouseStock.isEmpty()`, so an empty map already
  *   behaves exactly like "not loaded" — callers pass
- *   `stockLoaded = warehouseStock.isNotEmpty()`.
+ *   `stockLoaded = warehouseStock.isNotEmpty()`. Use [RefillUiState.stockLoaded]
+ *   rather than re-deriving that expression at each call site.
  * @property pickOrder `productId -> index` in warehouse walk order. Empty
  *   when the warehouse has no configured layout *or* when reading it failed;
  *   either way the packing list falls back to quantity-descending sorting.
@@ -73,6 +72,15 @@ data class RefillUiState(
 )
 
 /**
+ * Derived rather than stored: a genuinely empty warehouse and a warehouse
+ * whose stock hasn't loaded yet are otherwise indistinguishable from a
+ * plain boolean field, so it is computed from [RefillUiState.warehouseStock]
+ * instead — matching iOS's guard `selectedWarehouseId != nil && !warehouseStock.isEmpty`.
+ */
+val RefillUiState.stockLoaded: Boolean
+    get() = warehouseStock.isNotEmpty()
+
+/**
  * Drives the refill wizard. This half of it loads machines/trays,
  * warehouses, the selected warehouse's stock and its physical pick order,
  * and owns the state contract above. Ported from iOS
@@ -90,15 +98,7 @@ data class RefillUiState(
  */
 class RefillViewModel : ViewModel() {
 
-    /**
-     * Not a constructor parameter: `viewModel()` instantiates through the
-     * no-arg constructor, and Kotlin does **not** emit one for a class whose
-     * only parameter has a default value (verified with `javap` — the
-     * compiled class carries `(TourStore)` and the synthetic
-     * `(TourStore, int, DefaultConstructorMarker)` only), so an injected
-     * seam here would crash on entering the refill tab. No DI framework in
-     * this app, and no ViewModel unit tests that would need to swap it.
-     */
+    /** Held as a plain field rather than a constructor parameter. */
     private val tourStore: TourStore = RefillTourStoreHolder.instance
 
     private val _uiState = MutableStateFlow(RefillUiState())
@@ -130,13 +130,23 @@ class RefillViewModel : ViewModel() {
     /**
      * Machines + trays, warehouses, then the **first** warehouse's stock and
      * pick order (iOS auto-selects the first warehouse the same way).
-     * Deliberately public so a later pull-to-refresh can force a reload
-     * without going through the entry gate.
+     *
+     * This is the *initial* load only — it overwrites [RefillUiState.machines]
+     * wholesale, which is also where `isPacked`/`isRefilled`/`isSkipped` and
+     * every tray's `fillAmount` live. Calling it mid-tour would silently
+     * discard the driver's in-progress fills and pack state. It therefore
+     * no-ops unless the wizard is still at the pack step with no tour in
+     * memory (see [isTourInMemory]) — it deliberately does **not** double as
+     * a mid-tour pull-to-refresh; that needs a step-specific refresh (a
+     * later task adds `refreshDuringPacking`/`refreshDuringRefill`,
+     * mirroring iOS `RefillWizardViewModel.swift:1199-1211`).
      */
     fun loadData() {
+        if (isTourInMemory(_uiState.value)) return
         viewModelScope.launch {
+            val hasSavedTour = tourStore.hasSavedTour
             _uiState.update {
-                it.copy(isLoading = true, error = null, hasSavedTour = tourStore.hasSavedTour)
+                it.copy(isLoading = true, error = null, hasSavedTour = hasSavedTour)
             }
 
             RefillRepository.fetchRefillMachines().fold(
@@ -249,32 +259,18 @@ class RefillViewModel : ViewModel() {
     /**
      * Re-opens the entry gate after a failed load, unless a tour is already
      * in memory — a running tour must never be reloaded out from under the
-     * driver. "In memory" means the wizard has left the pack step or has a
-     * tour id.
+     * driver.
      */
     private fun rearmEntryGateUnlessTourInMemory() {
-        val state = _uiState.value
-        val tourInMemory = state.step != RefillStep.PACKING || state.tourId.isNotEmpty()
-        if (!tourInMemory) didRunInitialLoad = false
+        if (!isTourInMemory(_uiState.value)) didRunInitialLoad = false
     }
-}
 
-/**
- * App-wide [TourStore], backed by SharedPreferences — same shape as
- * [xyz.vmflow.data.ServerStoreHolder], kept next to its only consumer.
- */
-object RefillTourStoreHolder {
-    private const val PREFS = "vmflow_refill_tour"
-
-    val instance: TourStore by lazy {
-        val prefs = VMflowApp.instance.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        TourStore(
-            storage = object : KeyValueStore {
-                override fun getString(key: String): String? = prefs.getString(key, null)
-                override fun putString(key: String, value: String?) {
-                    prefs.edit().putString(key, value).apply()
-                }
-            }
-        )
-    }
+    /**
+     * Whether the wizard holds state worth protecting from a wholesale
+     * reload: the driver has left the pack step, or a tour id has already
+     * been assigned. Shared by [loadData]'s mid-tour guard and
+     * [rearmEntryGateUnlessTourInMemory] so the two can't drift apart.
+     */
+    private fun isTourInMemory(state: RefillUiState): Boolean =
+        state.step != RefillStep.PACKING || state.tourId.isNotEmpty()
 }

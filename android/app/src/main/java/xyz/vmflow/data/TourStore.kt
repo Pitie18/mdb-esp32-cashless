@@ -1,9 +1,11 @@
 package xyz.vmflow.data
 
+import android.content.Context
 import kotlin.time.Duration.Companion.hours
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
+import xyz.vmflow.VMflowApp
 import xyz.vmflow.models.PersistedTourState
 import xyz.vmflow.models.RefillStep
 
@@ -86,5 +88,25 @@ class TourStore(
     companion object {
         private const val STORAGE_KEY = "refill-tour-state"
         private val MAX_AGE = 24.hours
+    }
+}
+
+/**
+ * App-wide [TourStore], backed by SharedPreferences — same shape as
+ * [ServerStoreHolder], kept next to the class it holds.
+ */
+object RefillTourStoreHolder {
+    private const val PREFS = "vmflow_refill_tour"
+
+    val instance: TourStore by lazy {
+        val prefs = VMflowApp.instance.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        TourStore(
+            storage = object : KeyValueStore {
+                override fun getString(key: String): String? = prefs.getString(key, null)
+                override fun putString(key: String, value: String?) {
+                    prefs.edit().putString(key, value).apply()
+                }
+            }
+        )
     }
 }
