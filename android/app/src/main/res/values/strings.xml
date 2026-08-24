@@ -516,6 +516,6 @@
     <string name="refill_picker_expand_group">Expand group</string>
     <string name="refill_picker_collapse_group">Collapse group</string>
     <string name="refill_picker_selected">Selected</string>
-    <string name="refill_picker_no_matches">No products match “%1$s”</string>
+    <string name="refill_picker_no_matches">No products matching \"%1$s\"</string>
     <string name="refill_picker_empty">No products available</string>
 </resources>

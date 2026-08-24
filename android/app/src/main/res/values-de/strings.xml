@@ -431,7 +431,7 @@
     <string name="refill_step_layout_state_not_in_tour">nicht in dieser Tour</string>
     <string name="refill_step_layout_state_filling">%1$d einfüllen</string>
     <string name="refill_step_layout_state_empty">leer</string>
-    <string name="refill_step_layout_state_low">wenig</string>
+    <string name="refill_step_layout_state_low">niedrig</string>
     <string name="refill_step_layout_state_full">gefüllt</string>
     <string name="refill_step_skip">Überspringen</string>
     <string name="refill_step_confirm">Befüllung bestätigen</string>
@@ -512,6 +512,6 @@
     <string name="refill_picker_expand_group">Gruppe ausklappen</string>
     <string name="refill_picker_collapse_group">Gruppe einklappen</string>
     <string name="refill_picker_selected">Ausgewählt</string>
-    <string name="refill_picker_no_matches">Keine Produkte passen zu „%1$s“</string>
+    <string name="refill_picker_no_matches">Keine Produkte für „%1$s“</string>
     <string name="refill_picker_empty">Keine Produkte verfügbar</string>
 </resources>
