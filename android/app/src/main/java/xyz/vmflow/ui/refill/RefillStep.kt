@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,14 +85,20 @@ import xyz.vmflow.ui.theme.StockYellow
  *
  * **Touch targets are deliberately larger than the rest of the app.** The
  * driver is standing at a machine, often one-handed, sometimes in gloves —
- * the steppers are 64 dp circles (iOS uses 52 pt), "Max" and the bottom bar
- * buttons have a 56/60 dp minimum height. `defaultMinSize` throughout, never
- * a fixed height, so a long German label or a large font scale grows the row
- * instead of clipping it.
+ * the steppers are 64 dp circles (iOS uses 52 pt). Those, and [SlotBadge]
+ * before this fix, are a fixed `Modifier.size` — a real trade-off, not an
+ * oversight: a touch target that grows with font scale would drift out from
+ * under a thumb that has already found it. Everything that is *not* a touch
+ * target — "Max", the bottom bar buttons, [SlotBadge] — uses
+ * `defaultMinSize` instead, so a long German label or a large font scale
+ * grows the row instead of clipping it.
  *
  * No ViewModel reference, same contract as [PackingStep]: immutable state in,
- * bound callbacks out. Per-row state is resolved once in this body (see
- * [trayRows]) rather than inside the `LazyColumn` item bodies.
+ * bound callbacks out. Per-row aggregates are resolved once in this body —
+ * [trayRows], [fullTrayRows], [machinePickerRows] — rather than inside a
+ * `LazyColumn` item body; the leaf composables still resolve their own
+ * formatted display strings from those values, same as [RefillTrayCard] does
+ * today and same split as `PackingStep.packRows`.
  *
  * **The whole screen is inert while [isSaving].** `RefillViewModel.confirmRefill`
  * and `skipMachine` both drop a call that arrives while a write is in flight,
@@ -133,7 +139,9 @@ fun RefillStepContent(
     // list. `machine` is a value type, so keying on the id (not the object)
     // keeps the state across a stock update of the same machine.
     var showPicker by remember(machine.machine.id) { mutableStateOf(false) }
-    var fullTraysExpanded by remember(machine.machine.id) { mutableStateOf(false) }
+    // `rememberSaveable`, not `remember`: a rotation must not silently
+    // re-collapse a section the driver just opened to check something.
+    var fullTraysExpanded by rememberSaveable(machine.machine.id) { mutableStateOf(false) }
 
     val rows = trayRows(machine)
     val fullTrays = fullTrayRows(machine)
@@ -232,8 +240,7 @@ fun RefillStepContent(
 
     if (showPicker) {
         MachinePickerSheet(
-            machines = remainingMachines,
-            currentMachineId = machine.machine.id,
+            rows = machinePickerRows(remainingMachines, machine.machine.id),
             onSelect = { id ->
                 onSelectMachine(id)
                 showPicker = false
@@ -273,6 +280,15 @@ private data class FullTrayRowState(
     val trayId: String,
     val itemNumber: Int,
     val label: String
+)
+
+/** One candidate row of the machine picker sheet. */
+private data class MachinePickerRowState(
+    val machineId: String,
+    val displayName: String,
+    val isCurrent: Boolean,
+    val trayCount: Int,
+    val unitCount: Int
 )
 
 /**
@@ -330,6 +346,26 @@ private fun fullTrayRows(machine: RefillMachine): List<FullTrayRowState> {
                     )
             )
         }
+}
+
+/**
+ * The machine picker's rows: one per unfinished stop, with the two
+ * aggregates ("N trays / M units") the summary line needs pre-summed. No
+ * string resolution here — the summary and title text stay in
+ * [MachinePickerSheet], same split as [trayRows] leaving a tray's formatted
+ * labels to [RefillTrayCard].
+ */
+private fun machinePickerRows(
+    machines: List<RefillMachine>,
+    currentMachineId: String
+): List<MachinePickerRowState> = machines.map { candidate ->
+    MachinePickerRowState(
+        machineId = candidate.machine.id,
+        displayName = candidate.machine.displayName,
+        isCurrent = candidate.machine.id == currentMachineId,
+        trayCount = candidate.trays.count { it.fillAmount > 0 },
+        unitCount = candidate.trays.sumOf { it.fillAmount }
+    )
 }
 
 /**
@@ -457,8 +493,7 @@ private fun MachineHeader(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MachinePickerSheet(
-    machines: List<RefillMachine>,
-    currentMachineId: String,
+    rows: List<MachinePickerRowState>,
     onSelect: (machineId: String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -479,13 +514,9 @@ private fun MachinePickerSheet(
                 )
             }
 
-            items(items = machines, key = { it.machine.id }) { candidate ->
-                val isCurrent = candidate.machine.id == currentMachineId
-                val trays = candidate.trays.count { it.fillAmount > 0 }
-                val units = candidate.trays.sumOf { it.fillAmount }
-
+            items(items = rows, key = { it.machineId }) { row ->
                 Surface(
-                    onClick = { onSelect(candidate.machine.id) },
+                    onClick = { onSelect(row.machineId) },
                     color = Color.Transparent,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -498,21 +529,21 @@ private fun MachinePickerSheet(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = candidate.machine.displayName,
+                                text = row.displayName,
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
+                                fontWeight = if (row.isCurrent) FontWeight.Bold else FontWeight.Normal
                             )
                             Text(
                                 text = stringResource(
                                     R.string.refill_step_picker_summary,
-                                    trays,
-                                    units
+                                    row.trayCount,
+                                    row.unitCount
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        if (isCurrent) {
+                        if (row.isCurrent) {
                             Spacer(modifier = Modifier.width(12.dp))
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
@@ -715,11 +746,17 @@ private fun RefillTrayCard(
     }
 }
 
-/** Slot number, the machine's own label for the tray. */
+/**
+ * Slot number, the machine's own label for the tray.
+ *
+ * `defaultMinSize`, not a fixed `size(32.dp)`: a two-digit slot number at a
+ * large system font scale needs more than 32 dp to avoid clipping, and this
+ * badge is not a touch target — nothing is lost by letting it grow.
+ */
 @Composable
 private fun SlotBadge(itemNumber: Int, color: Color, modifier: Modifier = Modifier) {
     Surface(
-        modifier = modifier.size(32.dp),
+        modifier = modifier.defaultMinSize(minWidth = 32.dp, minHeight = 32.dp),
         shape = RoundedCornerShape(percent = 50),
         color = color
     ) {
@@ -937,19 +974,26 @@ private fun RefillBottomBar(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // No icon and tighter horizontal content padding, unlike Confirm:
+            // at 360 dp (the most common Android width, and the test
+            // device's) this button gets 1/3 of (328 dp row − 12 dp gap) ≈
+            // 105 dp. The default OutlinedButton content padding (24 dp each
+            // side = 48 dp) plus a 20 dp icon and a 6 dp spacer left only
+            // ~31 dp for text — enough for "Skip" but not for "Überspringen"
+            // (~85-90 dp at 14 sp), which rendered mid-word-clipped. Dropping
+            // the icon and both spacer and reducing content padding to 8 dp
+            // a side (16 dp total) frees the full ~89 dp of the button for
+            // text. Confirm keeps its icon: at weight 2f it has roughly
+            // double the width and headroom to wrap to a second line inside
+            // its 60 dp minimum height, which it already does for German.
             OutlinedButton(
                 onClick = onSkip,
                 enabled = !isSaving,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 modifier = Modifier
                     .weight(1f)
                     .defaultMinSize(minHeight = 60.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.SkipNext,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = stringResource(R.string.refill_step_skip),
                     style = MaterialTheme.typography.titleSmall,

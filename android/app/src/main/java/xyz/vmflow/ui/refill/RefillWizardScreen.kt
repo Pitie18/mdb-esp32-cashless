@@ -225,7 +225,19 @@ fun RefillWizardScreen(
     if (!uiState.isLoading && uiState.hasSavedTour) {
         ResumeTourDialog(
             onResume = viewModel::resumeTour,
-            onDiscard = viewModel::discardSavedTour
+            onDiscard = {
+                viewModel.discardSavedTour()
+                // Both failure branches of `loadData` (RefillViewModel.kt
+                // ~212, ~232) can leave `isLoading = false` with
+                // `hasSavedTour` still true and `machines` empty — the
+                // initial load that would have populated the pack step never
+                // finished. Discarding alone would leave "New tour" looking
+                // like a dead tap; retry the load so the pack step actually
+                // has something to show. A no-op when machines already
+                // loaded (the success-path reasoning this used to rely on
+                // exclusively still holds there).
+                if (uiState.machines.isEmpty()) viewModel.loadData()
+            }
         )
     }
 }

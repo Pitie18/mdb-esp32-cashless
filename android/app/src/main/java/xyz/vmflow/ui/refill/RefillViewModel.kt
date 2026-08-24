@@ -191,6 +191,11 @@ class RefillViewModel : ViewModel() {
         if (isTourInMemory(_uiState.value)) return
         viewModelScope.launch {
             val hasSavedTour = tourStore.hasSavedTour
+            // `hasSavedTour = true` must only ever be written in the same
+            // update as `isLoading = true`, never on its own — the resume
+            // prompt in RefillWizardScreen is gated on `!isLoading` and
+            // relies on that pairing to never fire mid-load, while `machines`
+            // is about to be overwritten below.
             _uiState.update {
                 it.copy(isLoading = true, error = null, hasSavedTour = hasSavedTour)
             }
@@ -891,10 +896,22 @@ class RefillViewModel : ViewModel() {
         }
     }
 
-    /** Fills every tray of a machine to capacity. Ported from iOS `fillAllTrays`. */
+    /**
+     * Fills every *packed* tray of a machine to capacity. Ported from iOS
+     * `fillAllTrays`.
+     *
+     * Restricted to `isInTour` trays: `RefillTourLogic.applyTourInclusion`
+     * sets `isInTour = false, fillAmount = 0` for a tray whose product the
+     * driver did not pack, and such a tray can still have `deficit > 0` /
+     * `maxFill > 0`. Passing `trayIds = null` to [withTrayFills] would fill
+     * those too — booking stock into trays that were never physically
+     * loaded, and that the refill step does not even render a card for.
+     */
     fun fillAllTrays(machineId: String) {
         _uiState.update { state ->
-            state.withTrayFills(machineId, trayIds = null) { tray -> tray.maxFill.coerceAtLeast(0) }
+            val machine = state.machines.find { it.machine.id == machineId } ?: return@update state
+            val inTourTrayIds = machine.trays.filter { it.isInTour }.map { it.tray.id }.toSet()
+            state.withTrayFills(machineId, trayIds = inTourTrayIds) { tray -> tray.maxFill.coerceAtLeast(0) }
         }
     }
 
@@ -954,7 +971,15 @@ class RefillViewModel : ViewModel() {
         if (snapshot.isSaving) return
         if (machine.isRefilled || machine.isSkipped) return
 
-        val traysToRefill = machine.trays.filter { it.fillAmount > 0 }
+        // `isInTour` is defensive here, not load-bearing today: the fill
+        // actions above no longer set `fillAmount > 0` on a not-packed tray.
+        // But this is the single place that books stock, so it must not
+        // trust that invariant transitively — a future fill-setting caller
+        // that forgets the `isInTour` filter must not be able to book stock
+        // into a tray the driver never packed (see `fillAllTrays` and
+        // `RefillTourLogic.applyTourInclusion`, which is what makes a
+        // not-packed tray `isInTour = false` in the first place).
+        val traysToRefill = machine.trays.filter { it.fillAmount > 0 && it.isInTour }
 
         viewModelScope.launch {
             if (traysToRefill.isEmpty()) {
