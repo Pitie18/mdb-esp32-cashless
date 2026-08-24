@@ -19,6 +19,7 @@ Spec: `docs/superpowers/specs/2026-08-24-aushang-n-up-formate-design.md`
 - Arbeitsverzeichnis für alle Kommandos: `management-frontend/`.
 - Tests laufen mit `npx vitest run app/lib/__tests__/printSheet.test.ts`.
 - Alle neuen i18n-Schlüssel immer in **beiden** Dateien (`i18n/locales/de.json`, `i18n/locales/en.json`).
+- **Keine Browser-Abnahme in diesem Durchlauf.** `/machines/[id]/print` liegt hinter dem Login, und diese Session hat keine Zugangsdaten. Alles, was sich rechnerisch prüfen lässt, wird als Test geprüft; was Augen braucht, steht gesammelt unter „Abnahme durch den Bediener" am Ende dieses Plans. Kein Task gilt als erledigt, weil ein optischer Schritt übersprungen wurde — er wird dort eingetragen.
 - **Code-Kommentare auf Englisch.** Alle berührten Dateien sind durchgehend englisch kommentiert. Die Kommentare in den Codeblöcken dieses Plans sind deutsche Entwürfe — beim Umsetzen ins Englische übertragen, Aussage unverändert. Das gilt nicht für Prosa, Commit-Messages und i18n-Werte.
 - **`npx nuxi typecheck` ist kein grünes Gate.** Das Repo trägt rund 192 vorbestehende Typfehler (fehlende `database.types.ts`, siehe CLAUDE.md). Die Bedingung lautet: keine *neuen* Fehler in den berührten Dateien. Zählstand vorher und nachher vergleichen, z. B. über `git stash`.
 
@@ -201,11 +202,15 @@ Duo links    0.634 mm/Modul
 Mini         0.488 mm/Modul
 ```
 
-- [ ] **Step 4: Optisch prüfen**
+- [ ] **Step 4: Platzbedarf rechnerisch prüfen**
 
-Dev-Server starten und `/machines/<beliebige-id>/print` öffnen, Motiv „Duo (Aufkleber)" wählen, auf 100 % zoomen. Prüfen: der rechte Code überlappt den Text nicht, `side-title` und `side-hint` bleiben lesbar, die Telefonzeile wird nicht abgeschnitten. Dasselbe für „Mini (Aufkleber)".
+Der optische Abgleich geht in diesem Durchlauf nicht (siehe Global Constraints) und steht unter „Abnahme durch den Bediener". Rechnerisch nachweisen, dass der größere Code passt:
 
-Falls `side-hint` neben dem größeren Code auf mehr als zwei Zeilen umbricht und die Telefonzeile aus dem Aufkleber drückt: in `StickerDuo.vue` `.side-hint` von `font-size: 0.9em` auf `0.8em` setzen. Nur dann, nicht vorsorglich.
+Duo, Breite: 90 − 2 × 3 (Padding) = 84 mm nutzbar. Belegt: 26 (linker QR) + 2,5 (Lücke) + 0,2 (Trennlinie) + 2,5 (Lücke) + 22 (rechter QR) + 1,8 (Lücke) = 55 mm. Für `side-text` bleiben **29 mm**.
+Duo, Höhe: 50 − 2 × 3 = 44 mm nutzbar; der rechte Block braucht 22 (QR) + ~1 + ~2,3 (Telefonzeile) ≈ **25,3 mm**.
+Mini, Breite: 50 − 2 × 2 = 46 mm nutzbar. Belegt: 20 (QR) + 2 (Lücke) = 22 mm, für `.text` bleiben **24 mm**. Höhe: 30 − 4 = 26 mm nutzbar, QR braucht 20 mm.
+
+Beide Zahlen im Report festhalten. Keine `font-size` prophylaktisch anpassen — ob `side-hint` umbricht, entscheidet die Abnahme.
 
 - [ ] **Step 5: Commit**
 
@@ -652,9 +657,17 @@ const innerStyle = computed(() => ({
 
 Import dort ergänzen: `sheetCssVars` in den bestehenden `import { FORMAT_MM, isStickerFormat, tileLayout } from '@/lib/printSheet'`.
 
-- [ ] **Step 8: Optisch gegen den Stand davor prüfen**
+- [ ] **Step 8: No-op für A4/A5/A6 rechnerisch nachweisen**
 
-Dev-Server starten, `/machines/<id>/print` öffnen, jedes der sieben Poster-Motive in A4 und in A5 durchklicken. Erwartet: **keine sichtbare Änderung** gegenüber vorher. Wenn ein QR-Code oder ein Innenrand springt, ist einer der Werte in `MIN_QR_MM` oder `PAD_MIN_MM` falsch — nicht das CSS.
+Der optische Abgleich steht unter „Abnahme durch den Bediener". Rechnerisch: `sheetCssVars('a4' | 'a5' | 'a6')` liefert `--qr-min: 30mm` und `--pad-min: 5mm`, und genau diese Werte standen vorher fest im CSS (`max(30mm, …)`, `max(5mm, …)`). Der Test aus Step 1 deckt das ab.
+
+Zusätzlich belegen, dass die Ersetzung nichts anderes angefasst hat:
+
+```bash
+git diff --unified=0 -- app/components/print/Poster*.vue | grep '^[+-]' | grep -v '^[+-][+-]' | grep -cv 'qr-min\|pad-min'
+```
+
+Expected: `0` — jede geänderte Zeile trägt eine der beiden Variablen; es gibt keine Änderung, die nicht Teil der Ersetzung ist.
 
 - [ ] **Step 9: Tests, Typecheck, Commit**
 
@@ -679,7 +692,115 @@ git commit -m "refactor(print): drive the motifs' mm floors from the format inst
 - Consumes: `tileLayout`, `tileBlockMm` (Task 4), `sheetCssVars` (Task 5).
 - Produces: Komponente `TiledSheet` mit den Props `{ sheets: PrintSheet[]; motif: Component; t: PosterT; format: PrintFormat }` — identisch zu `StickerSheet`, damit Task 7 nur den Namen tauschen muss.
 
-- [ ] **Step 1: `TiledSheet.vue` anlegen**
+- [ ] **Step 1: Den fehlschlagenden Geometrie-Test schreiben**
+
+Die Kachel-Geometrie ist der riskante Teil dieser Änderung und rechnerisch vollständig prüfbar — Positionen, Drehung, Schnittlinien und em-Basis stehen als Inline-Styles im DOM. Das Repo hat bereits Komponententests mit `@vue/test-utils` und `happy-dom` (`app/components/__tests__/CellularHealthBadge.test.ts` als Muster; Setup in `vitest.config.ts`).
+
+Create `app/components/__tests__/TiledSheet.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { mount } from '@vue/test-utils'
+import { defineComponent, h } from 'vue'
+import TiledSheet from '../print/TiledSheet.vue'
+import type { PrintFormat, PrintSheet } from '@/lib/printSheet'
+
+/** Motifs are irrelevant to geometry — this one just marks its slot. */
+const Stub = defineComponent({ props: ['sheet', 't'], setup: () => () => h('div', 'x') })
+
+function sheets(n: number): PrintSheet[] {
+  return Array.from({ length: n }, (_, i) => ({ machineId: `m${i}` }) as PrintSheet)
+}
+
+function mountSheet(format: PrintFormat, n: number) {
+  return mount(TiledSheet, {
+    props: { sheets: sheets(n), motif: Stub, t: (k: string) => k, format },
+  })
+}
+
+/** Inline styles, read back as the browser stores them. */
+const styleOf = (w: ReturnType<typeof mountSheet>, sel: string, i = 0) =>
+  (w.findAll(sel)[i]!.element as HTMLElement).style
+
+describe('TiledSheet geometry', () => {
+  it('lays four A6 tiles on a centred 2 x 2 grid', () => {
+    const w = mountSheet('a6-4up', 4)
+    const cells = w.findAll('.cell')
+    expect(cells).toHaveLength(4)
+    // Block is 198 x 278 mm on A4, so 6 mm left and 9.5 mm top.
+    expect(styleOf(w, '.cell', 0).left).toBe('6mm')
+    expect(styleOf(w, '.cell', 0).top).toBe('9.5mm')
+    expect(styleOf(w, '.cell', 1).left).toBe('107mm')
+    expect(styleOf(w, '.cell', 2).top).toBe('150.5mm')
+    expect(styleOf(w, '.cell', 0).width).toBe('97mm')
+    expect(styleOf(w, '.cell', 0).height).toBe('137mm')
+  })
+
+  it('never renders more tiles than the grid holds', () => {
+    expect(mountSheet('a6-4up', 9).findAll('.cell')).toHaveLength(4)
+    expect(mountSheet('a7-8up', 20).findAll('.cell')).toHaveLength(8)
+  })
+
+  it('lays a rotated tile on its side and pushes it back into its cell', () => {
+    const w = mountSheet('a7-8up', 1)
+    // The cell is the rotated footprint: 96 wide, 68 tall.
+    expect(styleOf(w, '.cell', 0).width).toBe('96mm')
+    expect(styleOf(w, '.cell', 0).height).toBe('68mm')
+    // The tile itself stays portrait and is rotated into place.
+    const tile = styleOf(w, '.tile', 0)
+    expect(tile.width).toBe('68mm')
+    expect(tile.height).toBe('96mm')
+    expect(tile.transform).toBe('translateX(96mm) rotate(90deg)')
+    expect(tile.transformOrigin).toBe('top left')
+  })
+
+  it('leaves an unrotated tile untransformed', () => {
+    expect(styleOf(mountSheet('a6-4up', 1), '.tile', 0).transform).toBe('')
+  })
+
+  it('rescales the em base for poster tiles only', () => {
+    // A poster motif sizes everything in em against the sheet width; in a
+    // 97 mm tile that base has to shrink or A4 text runs off an A6 card.
+    expect(styleOf(mountSheet('a6-4up', 1), '.tile', 0).fontSize).toBe(`${(4 * 97) / 210}mm`)
+    // Sticker motifs are tuned to the page base and must keep it.
+    expect(styleOf(mountSheet('sticker-sheet', 1), '.tile', 0).fontSize).toBe('')
+  })
+
+  it('cuts once per gutter, plus the block edges', () => {
+    const w = mountSheet('a6-4up', 4)
+    // Two columns: left edge, gutter centre, right edge.
+    expect(w.findAll('.cut-v').map((c) => (c.element as HTMLElement).style.left))
+      .toEqual(['6mm', '105mm', '204mm'])
+    expect(w.findAll('.cut-h').map((c) => (c.element as HTMLElement).style.top))
+      .toEqual(['9.5mm', '148.5mm', '287.5mm'])
+  })
+
+  it('cuts a rotated grid on its own gutters', () => {
+    const w = mountSheet('a7-8up', 8)
+    expect(w.findAll('.cut-v').map((c) => (c.element as HTMLElement).style.left))
+      .toEqual(['7mm', '105mm', '203mm'])
+    expect(w.findAll('.cut-h').map((c) => (c.element as HTMLElement).style.top))
+      .toEqual(['6.5mm', '76.5mm', '148.5mm', '220.5mm', '290.5mm'])
+  })
+
+  it('passes the format QR floor down to the tile', () => {
+    const style = styleOf(mountSheet('a7-8up', 1), '.tile', 0)
+    expect(style.getPropertyValue('--qr-min')).toBe('18mm')
+    expect(style.getPropertyValue('--pad-min')).toBe('3mm')
+  })
+})
+```
+
+Sollte `happy-dom` Custom Properties nicht über `style.getPropertyValue` herausgeben, im letzten Test stattdessen gegen das gerenderte Attribut prüfen: `expect(w.findAll('.tile')[0]!.attributes('style')).toContain('--qr-min: 18mm')`. Nur dann umstellen, und im Report vermerken.
+
+Die erwarteten Zahlen stammen aus `TILE_LAYOUT` (Task 4) und sind hier bewusst als konkrete mm-Werte ausgeschrieben statt aus der Implementierung nachgerechnet — ein Test, der die Formel der Implementierung wiederholt, kann sie nicht widerlegen.
+
+- [ ] **Step 2: Test laufen lassen und Fehlschlag bestätigen**
+
+Run: `npx vitest run app/components/__tests__/TiledSheet.test.ts`
+Expected: FAIL — die Komponente `../print/TiledSheet.vue` existiert noch nicht.
+
+- [ ] **Step 3: `TiledSheet.vue` anlegen**
 
 Create `app/components/print/TiledSheet.vue`:
 
@@ -823,7 +944,12 @@ const tileStyle = computed(() => {
 </style>
 ```
 
-- [ ] **Step 2: Alte Komponente entfernen und Import umhängen**
+- [ ] **Step 4: Test laufen lassen und Erfolg bestätigen**
+
+Run: `npx vitest run app/components/__tests__/TiledSheet.test.ts`
+Expected: PASS, 8/8.
+
+- [ ] **Step 5: Alte Komponente entfernen und Import umhängen**
 
 ```bash
 git rm app/components/print/StickerSheet.vue
@@ -837,19 +963,36 @@ import TiledSheet from '@/components/print/TiledSheet.vue'
 
 und im Template `<StickerSheet` → `<TiledSheet` (öffnendes Tag; es ist selbstschliessend, also nur eine Stelle).
 
-- [ ] **Step 3: Aufkleber-Bogen auf Unverändertheit prüfen**
+- [ ] **Step 6: Aufkleber-Bogen auf Unverändertheit prüfen**
 
-Dev-Server starten, `/machines/<id>/print` öffnen, Motiv „Problem (Aufkleber)" wählen und mehrere Maschinen ankreuzen, bis das Blatt voll ist. Erwartet: dieselbe 2 × 4-Anordnung wie vorher, dieselbe Textgröße auf den Aufklebern — nur statt der kurzen Eckstriche laufen jetzt gestrichelte Linien durch. Dasselbe für „Mini (Aufkleber)" (3 × 8) und „Streifen (Aufkleber)" (1 × 6).
+Der Test aus Step 1 deckt den gefährlichsten Fall bereits ab (`sticker-sheet` behält die Blatt-em-Basis). Ergänzend die Anordnung nachweisen, damit die Umstellung von `StickerSheet` auf `TiledSheet` die drei Aufkleber-Raster nicht verschiebt — in `app/components/__tests__/TiledSheet.test.ts` anfügen:
 
-Wenn die Aufkleber-Texte plötzlich kleiner sind, ist `scaleToTile` bei einem Aufkleber-Format versehentlich `true`.
+```ts
+  it('keeps the three sticker grids where they were', () => {
+    // 90 x 50 with a 3 mm gutter: 183 x 209 mm, centred on A4.
+    const w = mountSheet('sticker-sheet', 8)
+    expect(w.findAll('.cell')).toHaveLength(8)
+    expect(styleOf(w, '.cell', 0).left).toBe('13.5mm')
+    expect(styleOf(w, '.cell', 0).top).toBe('44mm')
+    expect(styleOf(w, '.cell', 1).left).toBe('106.5mm')
+    expect(styleOf(w, '.cell', 2).top).toBe('97mm')
+    expect(mountSheet('sticker-sheet-small', 24).findAll('.cell')).toHaveLength(24)
+    expect(mountSheet('sticker-sheet-strip', 6).findAll('.cell')).toHaveLength(6)
+  })
+```
 
-- [ ] **Step 4: Typecheck und Commit**
+Run: `npx vitest run app/components/__tests__/TiledSheet.test.ts`
+Expected: PASS, 9/9.
+
+Falls eine der Positionen abweicht: `offX`/`offY` in `TiledSheet` weichen von der Zentrierung in `StickerSheet` ab — dort liegt der Fehler, nicht im Test. Die optische Abnahme der Aufkleber steht unter „Abnahme durch den Bediener".
+
+- [ ] **Step 7: Typecheck und Commit**
 
 Run: `npx nuxi typecheck`
 Expected: keine *neuen* Fehler in den berührten Dateien.
 
 ```bash
-git add app/components/print/TiledSheet.vue "app/pages/machines/[id]/print.vue"
+git add app/components/print/TiledSheet.vue app/components/__tests__/TiledSheet.test.ts "app/pages/machines/[id]/print.vue"
 git commit -m "feat(print): tiled sheets gain rotation, per-tile em base and dashed cut lines"
 ```
 
@@ -963,18 +1106,18 @@ Im Template direkt nach dem `</div>` des Format-Button-Containers (innerhalb der
         </p>
 ```
 
-- [ ] **Step 6: Durchklicken**
+- [ ] **Step 6: Verdrahtung statisch nachweisen**
 
-Dev-Server starten, `/machines/<id>/print` öffnen und prüfen:
+Das Durchklicken steht unter „Abnahme durch den Bediener". Was ohne Browser belegbar ist:
 
-1. Motiv „Klar", Format „4 × A6 auf A4": eine Kachel oben links, gestrichelte Linien im Kreuz, Rest weiß. Der Hinweistext steht unter der Formatleiste.
-2. Vier Maschinen ankreuzen: alle vier Kacheln belegt, ein Blatt, Druck-Button sagt „1 Blatt".
-3. Format „8 × A7 auf A4": Kacheln liegen quer, das Motiv steht darin hochkant. Alle sieben Poster-Motive einmal durchklicken — QR-Codes dürfen nicht über den Kachelrand laufen und der Innenrand muss sichtbar schmaler sein als in A4.
-4. Format „2 × A5 auf A4": zwei quer liegende Kacheln übereinander.
-5. Format „A4": unverändert, kein Hinweistext, keine Schnittlinien.
-6. Druckvorschau des Browsers (`Cmd+P`) bei „4 × A6 auf A4": Seitengröße A4, ein Blatt, Schnittlinien sichtbar (Hintergrundgrafiken müssen im Dialog aktiv sein).
+```bash
+grep -n "isTiled\|distributeTiles\|tilesPerSheet\|tiledHint" "app/pages/machines/[id]/print.vue"
+grep -c "isSticker\b" "app/pages/machines/[id]/print.vue"
+```
 
-Motive, deren Inhalt in A7 überläuft, hier notieren und im Anschluss melden — laut Spec sind alle sieben in A7 wählbar, die Vorschau ist die Entscheidungshilfe des Bedieners.
+Expected: der erste Aufruf zeigt `isTiled` in `computed`, `v-if` und dem Hinweis-`<p>`, dazu `distributeTiles` und `tilesPerSheet` in `pages`; der zweite gibt `0` aus (kein `isSticker` mehr in dieser Datei).
+
+Dass `pageSizeCss` für die neuen Formate auf A4 fällt, hängt an exakter Gleichheit gegen `'a5'`/`'a6'` — `'a5-2up'` trifft nicht zu. Diese Stelle einmal lesen und im Report bestätigen, dass sie unverändert korrekt ist.
 
 - [ ] **Step 7: Volle Testsuite, Typecheck, Lint**
 
@@ -989,6 +1132,20 @@ git commit -m "feat(print): offer 2-up A5, 4-up A6 and 8-up A7 poster sheets"
 ```
 
 ---
+
+## Abnahme durch den Bediener
+
+Diese Schritte brauchen Augen und einen Login und sind in diesem Durchlauf **nicht** erledigt. `/machines/<id>/print` öffnen und der Reihe nach:
+
+1. **Duo-Aufkleber** (Task 2): der rechte QR-Code überlappt den Text nicht, `side-title` und `side-hint` bleiben lesbar, die Telefonzeile wird nicht abgeschnitten. Falls `side-hint` auf mehr als zwei Zeilen umbricht: `.side-hint` in `StickerDuo.vue` von `0.9em` auf `0.8em`.
+2. **Mini-Aufkleber** (Task 2): Titel und Telefonnummer stehen neben dem 20-mm-Code noch vollständig.
+3. **Beide Aufkleber real ausdrucken und scannen** — das ist die einzige Prüfung, die die Ausgangsfrage wirklich beantwortet.
+4. **A4 und A5, alle sieben Poster-Motive** (Task 5): keine sichtbare Änderung gegenüber vorher. Springt ein QR-Code oder ein Innenrand, ist ein Wert in `MIN_QR_MM` oder `PAD_MIN_MM` falsch, nicht das CSS.
+5. **Aufkleber-Bogen** (Task 6): dieselbe Anordnung wie vorher, dieselbe Textgröße — statt der kurzen Eckstriche laufen jetzt gestrichelte Linien durch.
+6. **„4 × A6 auf A4"** (Task 7): eine Kachel oben links, gestrichelte Linien im Kreuz, Rest weiß, Hinweistext unter der Formatleiste. Vier Maschinen ankreuzen → alle vier Kacheln belegt, ein Blatt.
+7. **„8 × A7 auf A4"** (Task 7): Kacheln liegen quer, das Motiv steht darin hochkant. Alle sieben Motive durchklicken — welche in A7 überlaufen, ist eine Entscheidung, kein Bug: laut Spec sind alle sieben wählbar, die Vorschau ist die Entscheidungshilfe.
+8. **„2 × A5 auf A4"** (Task 7): zwei quer liegende Kacheln übereinander.
+9. **Druckvorschau (`Cmd+P`) bei „4 × A6 auf A4"**: Seitengröße A4, ein Blatt, Schnittlinien sichtbar — Hintergrundgrafiken müssen im Dialog aktiv sein.
 
 ## Abschluss
 
