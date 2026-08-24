@@ -26,6 +26,12 @@ object RefillRepository {
      * combined packing list, not here (see [RefillTourLogic.buildCombinedPackingList]).
      *
      * `fillAmount` on every [RefillTray] starts at the tray's `deficit`.
+     *
+     * The returned machine order carries **no meaning** — it is whatever
+     * order the `vendingMachine` fetch happened to yield. iOS sorts by
+     * urgency inside the `buildRefillMachines` step this function
+     * deliberately bypasses, so the caller that establishes a tour's visit
+     * order has to sort for itself.
      */
     suspend fun fetchRefillMachines(): Result<List<RefillMachine>> {
         return try {

@@ -349,7 +349,8 @@ Reihenfolge — **exakt diese**, sie ist auf iOS bewusst so und in einem Memory 
 3. `RefillTourLogic.applyTourInclusion(...)` → neue `machines`-Liste mit `isInTour`/`fillAmount`.
 4. Falls ein Lager gewählt ist: `RefillTourLogic.buildDeductions(...)` → `RefillRepository.deductForTour(...)`. Fehler blockieren nicht.
 5. `writeTourActivity("tour_started", machineId = null, …)` mit `machine_count` (Int), `machine_ids` (Array), `machine_names` (Array) und — falls vorhanden — `warehouse_name`. Feldnamen gegen `models/ActivityFeed.kt:37-42` prüfen: der **Android-Dashboard-Feed liest diese Zeile selbst**, ein Tippfehler zeigt sich sofort als leere Tour-Karte.
-6. `step = REFILL`, `currentMachineId` = erste gepackte, nicht erledigte Maschine, `TourStore.save(...)`.
+6. **Besuchsreihenfolge festlegen** (Nachtrag aus dem Task-3-Review): `fetchRefillMachines` liefert die Maschinen in bedeutungsloser Reihenfolge — iOS sortiert nach Dringlichkeit in dem `buildRefillMachines`-Schritt, den dieser Plan absichtlich umgeht. Die Tour sortiert ihre gepackten Maschinen deshalb hier selbst, wie iOS (`RefillWizardViewModel.swift:1017-1022`): Maschinen mit leeren Trays zuerst, dann nach `totalDeficit` absteigend, mit einem stabilen letzten Tiebreaker (Maschinen-ID), damit die Reihenfolge zwischen zwei Aufrufen nicht springt.
+7. `step = REFILL`, `currentMachineId` = erste gepackte, nicht erledigte Maschine dieser Sortierung, `TourStore.save(...)`.
 
 - [ ] **Step 1:** iOS `startTour` (Z. 1652-1740) und `deductWarehouseStock` (Z. 1741-1800) lesen — inklusive des Kommentars, der den Abbuchungs-Bug beschreibt.
 - [ ] **Step 2:** `startTour()` implementieren.
