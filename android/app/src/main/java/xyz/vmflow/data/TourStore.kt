@@ -58,9 +58,10 @@ class TourStore(
 
     /**
      * Returns the saved state, or `null` if there is none, it can't be
-     * parsed, or it is older than [MAX_AGE] (24h — a deliberate deviation
-     * from iOS, which offers a saved tour indefinitely; on a work phone,
-     * resuming last week's tour is not a sensible offer). A corrupt or
+     * parsed, or it is older than [MAX_AGE] (24h — the same window iOS and
+     * the PWA use, `RefillWizardViewModel.swift:314-315` "matches web" and
+     * `useRefillWizard.ts`'s `MAX_AGE_MS`; this is parity, NOT an Android
+     * deviation, whatever the plan's Task 5 prose claimed). A corrupt or
      * expired payload is cleared so the app doesn't trip over it again on
      * the next launch.
      */
