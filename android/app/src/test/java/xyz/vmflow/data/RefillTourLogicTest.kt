@@ -383,14 +383,17 @@ class RefillTourLogicTest {
     }
 
     @Test
-    fun `buildCombinedPackingList falls back to a slot label when the tray has no product name`() {
+    fun `buildCombinedPackingList leaves productName null when the tray has no product name`() {
+        // No synthesized "Slot N" fallback here — that's a user-visible string, and pure
+        // logic must not bake one in. The model field is nullable; the UI layer resolves
+        // it to the localized R.string.machine_card_unassigned_slot fallback instead.
         val m1 = refillMachine(
             "m1",
             listOf(refillTray(tray("t1", machineId = "m1", itemNumber = 7, productId = "A", capacity = 10, currentStock = 0, product = null)))
         )
         val list = RefillTourLogic.buildCombinedPackingList(listOf(m1), emptyMap())
 
-        assertEquals("Slot 7", list[0].productName)
+        assertEquals(null, list[0].productName)
     }
 
     @Test
@@ -413,17 +416,38 @@ class RefillTourLogicTest {
     }
 
     @Test
-    fun `buildCombinedPackingList sorting is a total order — repeated calls produce identical output`() {
+    fun `buildCombinedPackingList sorting is a total order — reversed input yields the same order`() {
+        // Grouping uses a LinkedHashMap, so feeding the same machines twice in the same
+        // order would pass even without any tiebreaker (insertion order alone would do it).
+        // Reversing the input list is what actually exercises the comparator: if the
+        // productId tiebreaker were missing, insertion order would leak through and the
+        // reversed run would come back reversed too.
         val m1 = refillMachine("m1", listOf(refillTray(tray("t1", machineId = "m1", productId = "A", capacity = 10, currentStock = 0, product = Product(id = "A", name = "Same")))))
         val m2 = refillMachine("m2", listOf(refillTray(tray("t2", machineId = "m2", productId = "B", capacity = 10, currentStock = 0, product = Product(id = "B", name = "Same")))))
         val m3 = refillMachine("m3", listOf(refillTray(tray("t3", machineId = "m3", productId = "C", capacity = 10, currentStock = 0, product = Product(id = "C", name = "Same")))))
-        val machines = listOf(m1, m2, m3)
 
-        val first = RefillTourLogic.buildCombinedPackingList(machines, emptyMap()).map { it.productId }
-        val second = RefillTourLogic.buildCombinedPackingList(machines, emptyMap()).map { it.productId }
+        val forward = RefillTourLogic.buildCombinedPackingList(listOf(m1, m2, m3), emptyMap()).map { it.productId }
+        val reversed = RefillTourLogic.buildCombinedPackingList(listOf(m3, m2, m1), emptyMap()).map { it.productId }
 
-        assertEquals(first, second)
-        assertEquals(listOf("A", "B", "C"), first)
+        assertEquals(forward, reversed)
+        assertEquals(listOf("A", "B", "C"), forward)
+    }
+
+    @Test
+    fun `buildCombinedPackingList name tiebreaker uses locale-aware collation, matching iOS`() {
+        // Ordinal String.CASE_INSENSITIVE_ORDER sorts "Ö" (U+00D6) after every plain ASCII
+        // letter, so "Öl" would land after "Zucker". A German collator treats "Ö" as a
+        // variant near "O", sorting "Öl" before "Zucker" — matching iOS's
+        // localizedCaseInsensitiveCompare. Equal totalQuantity (5) on both forces the name
+        // comparator to decide, so this pins the collation choice, not the quantity sort.
+        val oel = refillMachine("m1", listOf(refillTray(tray("t1", machineId = "m1", productId = "A", capacity = 5, currentStock = 0, product = Product(id = "A", name = "Öl")))))
+        val zucker = refillMachine("m2", listOf(refillTray(tray("t2", machineId = "m2", productId = "B", capacity = 5, currentStock = 0, product = Product(id = "B", name = "Zucker")))))
+        val germanCollator = java.text.Collator.getInstance(java.util.Locale.GERMANY).apply { strength = java.text.Collator.SECONDARY }
+        val nameComparator: Comparator<String?> = nullsLast(Comparator(germanCollator::compare))
+
+        val list = RefillTourLogic.buildCombinedPackingList(listOf(oel, zucker), emptyMap(), nameComparator)
+
+        assertEquals(listOf("A", "B"), list.map { it.productId })
     }
 
     @Test

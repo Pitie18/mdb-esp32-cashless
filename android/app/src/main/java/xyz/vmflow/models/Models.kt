@@ -448,7 +448,18 @@ data class MachineNeed(
  */
 data class CombinedPackingItem(
     val productId: String,
-    val productName: String,
+    /**
+     * Null when the tray's `products` relation is missing (unassigned slot,
+     * or the join wasn't populated) — passed through as-is rather than
+     * synthesized here to keep [xyz.vmflow.data.RefillTourLogic] pure. The
+     * UI resolves a missing name to the localized
+     * `R.string.machine_card_unassigned_slot`, same fallback as the machine
+     * card list; that string needs a slot number, which this item doesn't
+     * carry (it's grouped by product across every tray/machine that needs
+     * it), so the UI reads the slot number from the item's `machineNeeds`/
+     * tray context instead.
+     */
+    val productName: String?,
     val imagePath: String?,
     val sellprice: Double?,
     val totalQuantity: Int,
@@ -472,7 +483,7 @@ data class TourLogEntry(
 @Serializable
 data class WarehousePositionGroup(
     val id: String,
-    @SerialName("parent_id") val parentId: String?,
+    @SerialName("parent_id") val parentId: String? = null,
     @SerialName("sort_order") val sortOrder: Int
 )
 
@@ -484,7 +495,7 @@ data class WarehousePositionGroup(
 data class WarehouseProductPosition(
     @SerialName("product_id") val productId: String,
     @SerialName("sort_order") val sortOrder: Int,
-    @SerialName("group_id") val groupId: String?
+    @SerialName("group_id") val groupId: String? = null
 )
 
 /**

@@ -1,5 +1,6 @@
 package xyz.vmflow.data
 
+import java.text.Collator
 import kotlin.math.roundToInt
 import xyz.vmflow.models.CombinedPackingItem
 import xyz.vmflow.models.MachineNeed
@@ -261,17 +262,27 @@ object RefillTourLogic {
      *
      * Sorting is a total order so re-renders never swap row positions
      * (`Map`/`Set` iteration order isn't guaranteed):
-     *  - No [pickOrder]: `totalQuantity` descending, then product name
-     *    case-insensitively, then `productId` as the final tiebreaker.
+     *  - No [pickOrder]: `totalQuantity` descending, then product name via
+     *    [nameComparator] (locale-aware, case-insensitive; a missing name
+     *    sorts last), then `productId` as the final tiebreaker.
      *  - With [pickOrder]: positioned products first in position order,
      *    unpositioned products after, then the same name/id tiebreakers.
+     *
+     * @param nameComparator comparator for the product-name tiebreaker.
+     *   Defaults to a [Collator]-backed comparator resolved fresh on every
+     *   call that omits it (never cached in a top-level `val`, so it always
+     *   reflects the JVM's current default locale rather than a value
+     *   frozen at class-load time) — still ambient state, but the default
+     *   can be overridden with an explicit comparator, which is how the
+     *   tests pin a specific locale's ordering deterministically.
      */
     fun buildCombinedPackingList(
         machines: List<RefillMachine>,
-        pickOrder: Map<String, Int>
+        pickOrder: Map<String, Int>,
+        nameComparator: Comparator<String?> = defaultProductNameComparator()
     ): List<CombinedPackingItem> {
         data class Accumulator(
-            var productName: String,
+            var productName: String?,
             var imagePath: String?,
             var sellprice: Double?,
             var totalQuantity: Int,
@@ -285,7 +296,7 @@ object RefillTourLogic {
                 val productId = rt.tray.productId ?: continue
                 val acc = grouped.getOrPut(productId) {
                     Accumulator(
-                        productName = rt.tray.products?.name ?: "Slot ${rt.tray.itemNumber}",
+                        productName = rt.tray.products?.name,
                         imagePath = rt.tray.products?.imagePath,
                         sellprice = rt.tray.products?.sellprice,
                         totalQuantity = 0,
@@ -325,16 +336,34 @@ object RefillTourLogic {
         return if (pickOrder.isEmpty()) {
             items.sortedWith(
                 compareByDescending<CombinedPackingItem> { it.totalQuantity }
-                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.productName }
+                    .thenBy(nameComparator) { it.productName }
                     .thenBy { it.productId }
             )
         } else {
             items.sortedWith(
                 compareBy<CombinedPackingItem> { pickOrder[it.productId] ?: Int.MAX_VALUE }
-                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.productName }
+                    .thenBy(nameComparator) { it.productName }
                     .thenBy { it.productId }
             )
         }
+    }
+
+    /**
+     * Locale-aware, case-insensitive comparator for the packing-list name
+     * tiebreaker: a [Collator] at [Collator.SECONDARY] strength treats case
+     * and most accent differences as equal, matching iOS's
+     * `localizedCaseInsensitiveCompare` (`RefillWizardViewModel.swift` L624)
+     * far more closely than ordinal `String.CASE_INSENSITIVE_ORDER`, which
+     * sorts an umlaut like "Ö" after every plain ASCII letter instead of
+     * near "O". Null names sort last (`nullsLast`) — an unresolved/unnamed
+     * product is deprioritized under a real product name rather than
+     * interleaved with them — and a [Collator] can return 0 for two
+     * genuinely different strings, so callers must keep running the
+     * `productId` tiebreaker after this one to stay a total order.
+     */
+    private fun defaultProductNameComparator(): Comparator<String?> {
+        val collator = Collator.getInstance().apply { strength = Collator.SECONDARY }
+        return nullsLast(Comparator(collator::compare))
     }
 
     /**
