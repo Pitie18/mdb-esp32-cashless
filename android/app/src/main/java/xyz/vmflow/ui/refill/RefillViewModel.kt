@@ -273,4 +273,341 @@ class RefillViewModel : ViewModel() {
      */
     private fun isTourInMemory(state: RefillUiState): Boolean =
         state.step != RefillStep.PACKING || state.tourId.isNotEmpty()
+
+    // ---------------------------------------------------------------------
+    // Pack step (Task 7). All quantity/capping/commitment math lives in
+    // [RefillTourLogic] and is called with named arguments throughout this
+    // section — several of its functions take multiple consecutive
+    // same-typed map parameters, and a transposition compiles silently.
+    // Ported from iOS `RefillWizardViewModel.swift` L613-945.
+    // ---------------------------------------------------------------------
+
+    /**
+     * Quantity to show in the Pack UI for a machine-product pair. Delegates
+     * to [RefillTourLogic.displayQuantity]. Ported from iOS `displayQuantity`.
+     */
+    fun displayQuantity(machineId: String, productId: String): Int {
+        val state = _uiState.value
+        return RefillTourLogic.displayQuantity(
+            machines = state.machines,
+            machineId = machineId,
+            productId = productId,
+            packedItems = state.packedItems,
+            customQuantities = state.customQuantities,
+            warehouseStock = state.warehouseStock,
+            stockLoaded = state.stockLoaded
+        )
+    }
+
+    /**
+     * Max quantity a machine could pack for a product, capped by tray
+     * capacity and remaining warehouse stock. Delegates to
+     * [RefillTourLogic.maxPackingQuantity]. Ported from iOS `maxPackingQuantity`.
+     */
+    fun maxPackingQuantity(machineId: String, productId: String): Int {
+        val state = _uiState.value
+        return RefillTourLogic.maxPackingQuantity(
+            machines = state.machines,
+            machineId = machineId,
+            productId = productId,
+            packedItems = state.packedItems,
+            customQuantities = state.customQuantities,
+            warehouseStock = state.warehouseStock,
+            stockLoaded = state.stockLoaded
+        )
+    }
+
+    /** Whether a specific machine-product pair has been packed. Ported from iOS `isMachinePacked`. */
+    fun isPacked(machineId: String, productId: String): Boolean =
+        _uiState.value.packedItems[machineId]?.contains(productId) == true
+
+    /**
+     * Whether a machine-product pair is out of remaining warehouse stock.
+     * Delegates to [RefillTourLogic.isOutOfStockForMachine]. Ported from iOS
+     * `isOutOfStockForMachine`.
+     */
+    fun isOutOfStockForMachine(machineId: String, productId: String): Boolean {
+        val state = _uiState.value
+        return RefillTourLogic.isOutOfStockForMachine(
+            machines = state.machines,
+            machineId = machineId,
+            productId = productId,
+            packedItems = state.packedItems,
+            customQuantities = state.customQuantities,
+            warehouseStock = state.warehouseStock,
+            stockLoaded = state.stockLoaded
+        )
+    }
+
+    /**
+     * Product-level (not machine-scoped) out-of-stock check used only to
+     * decide whether a picklist row is worth showing at all. Ported from iOS
+     * `isOutOfWarehouseStock(productId:)` (distinct from the machine-scoped
+     * [isOutOfStockForMachine] above, which also short-circuits `false` for
+     * a machine that already packed its allocation).
+     */
+    private fun isOutOfWarehouseStock(state: RefillUiState, productId: String): Boolean {
+        if (!state.stockLoaded) return false
+        return RefillTourLogic.remainingWarehouseStock(
+            machines = state.machines,
+            productId = productId,
+            packedItems = state.packedItems,
+            customQuantities = state.customQuantities,
+            warehouseStock = state.warehouseStock
+        ) <= 0
+    }
+
+    /**
+     * [RefillUiState.packingList], with rows hidden that have no warehouse
+     * stock left **and** nothing packed yet — they'd just waste screen
+     * space. A partially-packed row (or a row with any machine need already
+     * packed) stays visible so the driver can still correct it. Ported from
+     * iOS `visibleCombinedPackingList`.
+     */
+    fun visiblePackingList(): List<CombinedPackingItem> {
+        val state = _uiState.value
+        return state.packingList.filter { item ->
+            val anyPacked = item.machineNeeds.any { need -> isPacked(need.machineId, item.productId) }
+            anyPacked || !isOutOfWarehouseStock(state, item.productId)
+        }
+    }
+
+    /**
+     * Sets which chip filters the Pack step's list: `null` is the "all
+     * machines" chip, otherwise one machine's chip. Ported from iOS
+     * `activeChip` assignment (`ChipFilter.all` / `.machine(id)`).
+     */
+    fun selectChip(machineId: String?) {
+        _uiState.update { it.copy(activeChip = machineId) }
+    }
+
+    /**
+     * Potential box size for a chip: sum of [displayQuantity] over every
+     * `(machine, product)` pair the chip covers, skipping pairs that are
+     * out-of-stock and not yet packed (they don't render in the picklist
+     * either). `null` sums across every machine. Ported from iOS
+     * `chipItemCount`.
+     */
+    fun chipItemCount(machineId: String?): Int {
+        val state = _uiState.value
+        val scope = if (machineId == null) state.machines.map { it.machine.id }.toSet() else setOf(machineId)
+        var total = 0
+        for (item in state.packingList) {
+            for (need in item.machineNeeds) {
+                if (need.machineId !in scope) continue
+                val packed = isPacked(need.machineId, item.productId)
+                val outOfStock = isOutOfStockForMachine(need.machineId, item.productId)
+                if (outOfStock && !packed) continue
+                total += displayQuantity(need.machineId, item.productId)
+            }
+        }
+        return total
+    }
+
+    /**
+     * True once every needed `(machine, product)` pair for a chip is both
+     * packed and packed at the highest quantity currently possible (a
+     * warehouse-capped pack still counts as "done" — the driver has done all
+     * they can). `null` requires every machine chip to be fully packed.
+     * Ported from iOS `chipIsFullyPacked`.
+     */
+    fun chipIsFullyPacked(machineId: String?): Boolean {
+        val state = _uiState.value
+        if (machineId == null) {
+            if (state.machines.isEmpty()) return false
+            return state.machines.all { chipIsFullyPacked(it.machine.id) }
+        }
+        var hadAnyNeed = false
+        for (item in state.packingList) {
+            val need = item.machineNeeds.find { it.machineId == machineId } ?: continue
+            val packed = isPacked(machineId, item.productId)
+            val outOfStock = isOutOfStockForMachine(machineId, item.productId)
+            if (outOfStock && !packed) continue
+            hadAnyNeed = true
+            if (!packed) return false
+            val qty = displayQuantity(machineId, item.productId)
+            val maxQty = maxPackingQuantity(machineId, item.productId)
+            if (qty < minOf(need.quantity, maxQty)) return false
+        }
+        return hadAnyNeed
+    }
+
+    /**
+     * Sets a custom packing quantity for a machine-product pair, clamped to
+     * [RefillTourLogic.maxPackingQuantity]. Does not touch [RefillUiState.machines]
+     * or `packedItems`, so `isPacked` is not re-derived here. Ported from iOS
+     * `setPackingQuantity`.
+     */
+    fun setPackingQuantity(machineId: String, productId: String, quantity: Int) {
+        _uiState.update { it.withPinnedQuantity(machineId, productId, quantity).withPackingList() }
+    }
+
+    /**
+     * Toggles the packed state for one machine-product pair, skipping the
+     * pack (silently) if the warehouse has no remaining stock for it. Pins
+     * the quantity on pack, clears the pinned quantity on unpack. Re-derives
+     * every machine's `isPacked`. Ported from iOS `togglePackedForMachine`.
+     */
+    fun togglePackedForMachine(machineId: String, productId: String) {
+        _uiState.update { it.withTogglePacked(machineId, productId).withSyncedPackedState() }
+    }
+
+    /**
+     * Toggles the packed state for a product across every machine that needs
+     * it: unpacks all if every one of them is already packed, else packs
+     * every one of them that isn't out of stock (stock-aware, in picklist
+     * order — an earlier machine in the loop can exhaust the remaining
+     * warehouse stock for a later one). Ported from iOS `togglePackedAll`.
+     */
+    fun togglePackedAll(productId: String) {
+        _uiState.update { state ->
+            val item = state.packingList.find { it.productId == productId } ?: return@update state
+            val allPacked = item.machineNeeds.all { need ->
+                state.packedItems[need.machineId]?.contains(productId) == true
+            }
+            var next = state
+            for (need in item.machineNeeds) {
+                next = if (allPacked) {
+                    next.withUnpacked(need.machineId, productId)
+                } else {
+                    next.withPackedIfInStock(need.machineId, productId)
+                }
+            }
+            next.withSyncedPackedState()
+        }
+    }
+
+    /**
+     * Packs every needed product for every machine that isn't already
+     * packed, skipping (not aborting on) out-of-stock pairs. Ported from iOS
+     * `packEverything`.
+     */
+    fun packEverything() {
+        _uiState.update { state ->
+            var next = state
+            for (item in state.packingList) {
+                for (need in item.machineNeeds) {
+                    next = next.withPackedIfInStock(need.machineId, item.productId)
+                }
+            }
+            next.withSyncedPackedState()
+        }
+    }
+
+    /**
+     * Packs every needed product for one machine, skipping (not aborting on)
+     * out-of-stock pairs and leaving already-packed pairs untouched. Ported
+     * from iOS `packAllForMachine`.
+     */
+    fun packAllForMachine(machineId: String) {
+        _uiState.update { state ->
+            var next = state
+            for (item in state.packingList) {
+                if (item.machineNeeds.none { it.machineId == machineId }) continue
+                next = next.withPackedIfInStock(machineId, item.productId)
+            }
+            next.withSyncedPackedState()
+        }
+    }
+
+    /**
+     * Writes [quantity] into `customQuantities`, clamped to
+     * [RefillTourLogic.maxPackingQuantity]. Shared by [setPackingQuantity]
+     * and [withPinnedCurrentQuantity] so the clamp lives in exactly one
+     * place. Ported from iOS `setPackingQuantity`'s clamp.
+     */
+    private fun RefillUiState.withPinnedQuantity(machineId: String, productId: String, quantity: Int): RefillUiState {
+        val maxQty = RefillTourLogic.maxPackingQuantity(
+            machines = machines,
+            machineId = machineId,
+            productId = productId,
+            packedItems = packedItems,
+            customQuantities = customQuantities,
+            warehouseStock = warehouseStock,
+            stockLoaded = stockLoaded
+        )
+        val clamped = quantity.coerceIn(0, maxQty)
+        val machineMap = (customQuantities[machineId] ?: emptyMap()) + (productId to clamped)
+        return copy(customQuantities = customQuantities + (machineId to machineMap))
+    }
+
+    /**
+     * Pins [RefillTourLogic.packingQuantity]'s current value (the live tray
+     * deficit, unless already pinned) into `customQuantities` at the moment
+     * of packing. Without this, a sale during the tour widens the deficit,
+     * the displayed "packed" number drifts under the driver's fingers, and a
+     * warehouse that can only partly satisfy the new figure leaves the
+     * driver short. Ported from iOS `pinPackingQuantity`.
+     */
+    private fun RefillUiState.withPinnedCurrentQuantity(machineId: String, productId: String): RefillUiState {
+        val machine = machines.find { it.machine.id == machineId } ?: return this
+        val currentQty = RefillTourLogic.packingQuantity(
+            machine = machine,
+            productId = productId,
+            customQuantities = customQuantities
+        )
+        return withPinnedQuantity(machineId, productId, currentQty)
+    }
+
+    /** Removes a pinned quantity so a later re-pack recalculates from the tray deficit. Ported from iOS `togglePackedForMachine`'s unpack branch. */
+    private fun RefillUiState.withClearedPinnedQuantity(machineId: String, productId: String): RefillUiState {
+        val machineMap = customQuantities[machineId] ?: return this
+        if (productId !in machineMap) return this
+        return copy(customQuantities = customQuantities + (machineId to (machineMap - productId)))
+    }
+
+    /** Adds [productId] to [machineId]'s packed set and pins its quantity, unless out of warehouse stock. */
+    private fun RefillUiState.withPackedIfInStock(machineId: String, productId: String): RefillUiState {
+        val outOfStock = RefillTourLogic.isOutOfStockForMachine(
+            machines = machines,
+            machineId = machineId,
+            productId = productId,
+            packedItems = packedItems,
+            customQuantities = customQuantities,
+            warehouseStock = warehouseStock,
+            stockLoaded = stockLoaded
+        )
+        if (outOfStock) return this
+        val currentSet = packedItems[machineId] ?: emptySet()
+        if (productId in currentSet) return this
+        return copy(packedItems = packedItems + (machineId to (currentSet + productId)))
+            .withPinnedCurrentQuantity(machineId, productId)
+    }
+
+    /** Removes [productId] from [machineId]'s packed set and clears its pinned quantity. */
+    private fun RefillUiState.withUnpacked(machineId: String, productId: String): RefillUiState {
+        val currentSet = packedItems[machineId] ?: emptySet()
+        if (productId !in currentSet) return this
+        return copy(packedItems = packedItems + (machineId to (currentSet - productId)))
+            .withClearedPinnedQuantity(machineId, productId)
+    }
+
+    /**
+     * Toggles one machine-product pair: unpacks (clearing the pin) if
+     * already packed, else packs it unless out of stock (pinning the
+     * quantity). Shared plumbing for [togglePackedForMachine].
+     */
+    private fun RefillUiState.withTogglePacked(machineId: String, productId: String): RefillUiState {
+        val currentSet = packedItems[machineId] ?: emptySet()
+        return if (productId in currentSet) {
+            withUnpacked(machineId, productId)
+        } else {
+            withPackedIfInStock(machineId, productId)
+        }
+    }
+
+    /**
+     * Re-derives every machine's `isPacked`: packed as soon as at least one
+     * of its still-needed products (a product with `deficit > 0` in one of
+     * its trays) is in `packedItems`. Also refreshes [RefillUiState.packingList]
+     * since this changes `machines`. Ported from iOS `syncMachinePackedState`.
+     */
+    private fun RefillUiState.withSyncedPackedState(): RefillUiState {
+        val newMachines = machines.map { rm ->
+            val packedForMachine = packedItems[rm.machine.id] ?: emptySet()
+            val neededProductIds = rm.trays.filter { it.deficit > 0 }.mapNotNull { it.tray.productId }.toSet()
+            rm.copy(isPacked = neededProductIds.any { it in packedForMachine })
+        }
+        return copy(machines = newMachines).withPackingList()
+    }
 }
