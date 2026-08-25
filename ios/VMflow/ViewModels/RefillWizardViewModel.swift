@@ -1881,10 +1881,18 @@ final class RefillWizardViewModel: ObservableObject {
         machines[mi].trays[ti].fillAmount = tray.tray.capacity - tray.tray.currentStock
     }
 
-    /// Fill all trays in the current machine to capacity.
+    /// Fill every tray **of this tour** in the current machine to capacity.
+    ///
+    /// Scoped to `isInTour` deliberately. `startTour` sets `isInTour = false`
+    /// and `fillAmount = 0` on trays whose product the driver did not pack —
+    /// the normal case when one product was out of warehouse stock — and those
+    /// trays still have room. Touching them here credited machine stock, and
+    /// inflated `total_added` in the audit row, for goods that never left the
+    /// warehouse: into trays the refill step does not even render, so the
+    /// driver could neither see it nor undo it.
     func fillAllTrays(machineId: UUID) {
         guard let mi = machines.firstIndex(where: { $0.id == machineId }) else { return }
-        for ti in machines[mi].trays.indices {
+        for ti in machines[mi].trays.indices where machines[mi].trays[ti].isInTour {
             let tray = machines[mi].trays[ti]
             machines[mi].trays[ti].fillAmount = tray.tray.capacity - tray.tray.currentStock
         }
@@ -1940,7 +1948,11 @@ final class RefillWizardViewModel: ObservableObject {
     func confirmRefill(machineId: UUID) async {
         guard let mi = machines.firstIndex(where: { $0.id == machineId }) else { return }
 
-        let traysToRefill = machines[mi].trays.filter { $0.fillAmount > 0 }
+        // `isInTour` as well as a positive amount: defence in depth, so no
+        // future caller that forgets the tour scope can book stock into a tray
+        // the driver never packed (see `fillAllTrays`, and `startTour`, which is
+        // what makes a not-packed tray `isInTour == false` in the first place).
+        let traysToRefill = machines[mi].trays.filter { $0.fillAmount > 0 && $0.isInTour }
 
         // No tray needs a stock write — still record the visit so the tour
         // log and audit trail show this machine was opened.
