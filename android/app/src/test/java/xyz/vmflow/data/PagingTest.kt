@@ -40,7 +40,11 @@ class PagingTest {
     }
 
     @Test
-    fun `a table that is an exact multiple of the page size is not cut short`() = runBlocking {
+    fun `a full last page is followed by one more request, not assumed to be the end`() = runBlocking {
+        // Note this case does NOT discriminate advance-by-returned-rows from
+        // advance-by-requested-size (serverCap == pageSize makes them equal);
+        // the case below does. What it does catch is an early stop after a
+        // full page.
         val table = FakeTable(total = 2000, serverCap = 1000)
         val rows = fetchAllPages(pageSize = 1000) { from, to -> table.page(from, to) }
         assertEquals(2000, rows.size)
@@ -73,7 +77,9 @@ class PagingTest {
         assertEquals(listOf(0L to 99L, 100L to 199L, 200L to 299L, 250L to 349L), table.requests)
     }
 
-    @Test
+    // A timeout, so a regression that removes the guard entirely fails this
+    // test instead of hanging the whole suite on an endless loop.
+    @Test(timeout = 10_000)
     fun `a server that never runs out fails loudly instead of returning a partial list`() {
         try {
             runBlocking {
@@ -87,6 +93,17 @@ class PagingTest {
                 e.message!!.contains("partial"),
             )
         }
+    }
+
+    @Test(timeout = 10_000)
+    fun `a table needing exactly the maximum number of pages still completes`() {
+        // The guard must not throw one page early: 200 full pages is a legal
+        // table, and only the 201st trip is a runaway. Pins the boundary the
+        // first version of this got wrong.
+        val maxPages = 200
+        val table = FakeTable(total = maxPages * 10, serverCap = 10)
+        val rows = runBlocking { fetchAllPages(pageSize = 10) { from, to -> table.page(from, to) } }
+        assertEquals(maxPages * 10, rows.size)
     }
 
     @Test

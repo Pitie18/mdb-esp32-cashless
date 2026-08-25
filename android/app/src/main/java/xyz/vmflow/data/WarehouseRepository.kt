@@ -187,13 +187,25 @@ object WarehouseRepository {
     /** Products currently occupying at least one machine tray slot, across all machines. */
     suspend fun fetchAssignedProductIds(): Result<Set<String>> {
         return try {
-            val rows = postgrest.from("machine_trays")
-                .select(Columns.raw("product_id")) {
-                    filter {
-                        filterNot("product_id", FilterOperator.IS, "null")
+            // Company-wide read of a growing table, so paged for the same
+            // reason as [RefillRepository.fetchRefillMachines]: PostgREST caps
+            // a response at `db.max_rows` silently, and a truncated answer here
+            // under-reports which products are assigned to a slot — which the
+            // warehouse list then treats as "safe to run out of". Ordered by
+            // `id` only to give paging a total order — PostgREST orders by any
+            // column, selected or not, so the decode target stays as narrow as
+            // it was. The result is a Set, so row order is irrelevant.
+            val rows = fetchAllPages { from, to ->
+                postgrest.from("machine_trays")
+                    .select(Columns.raw("product_id")) {
+                        filter {
+                            filterNot("product_id", FilterOperator.IS, "null")
+                        }
+                        order("id", Order.ASCENDING)
+                        range(from, to)
                     }
-                }
-                .decodeList<TrayProductIdRow>()
+                    .decodeList<TrayProductIdRow>()
+            }
             Result.success(rows.mapNotNull { it.productId }.toSet())
         } catch (e: Exception) {
             Result.failure(e)

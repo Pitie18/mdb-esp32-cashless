@@ -12,7 +12,9 @@ internal const val POSTGREST_PAGE_SIZE = 1000L
 /**
  * Guard against a server that keeps handing back rows: at this many pages the
  * fetch fails loudly instead of looping forever or returning a partial answer.
- * 200 pages is 200k rows, far beyond any table this app reads whole.
+ * 200 pages is 200k rows at the default page size, far beyond any table
+ * this app reads whole. The check is `> MAX_PAGES`, so a table that needs
+ * exactly 200 pages still completes; only the 201st trip fails.
  */
 private const val MAX_PAGES = 200
 
@@ -51,7 +53,7 @@ internal suspend fun <T> fetchAllPages(
         all += page
         from += page.size
         pages++
-        if (pages >= MAX_PAGES) {
+        if (pages > MAX_PAGES) {
             error("Paged fetch exceeded $MAX_PAGES pages (${all.size} rows) — refusing to return a partial result")
         }
     }
