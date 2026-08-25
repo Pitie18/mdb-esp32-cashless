@@ -11,7 +11,10 @@
  * locale state while still producing finished strings.
  */
 
-export type PrintFormat = 'a4' | 'a5' | 'a6' | 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'
+export type PrintFormat =
+  | 'a4' | 'a5' | 'a6'
+  | 'a5-2up' | 'a6-4up' | 'a7-8up'
+  | 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'
 
 /**
  * Non-QR content a motif may render. QR content is not a block — it is a slot
@@ -150,20 +153,43 @@ export const FORMAT_MM: Record<PrintFormat, { w: number; h: number }> = {
   a4: { w: 210, h: 297 },
   a5: { w: 148, h: 210 },
   a6: { w: 105, h: 148 },
+  // Printed on A4 — the n-up layout is what actually places multiple tiles
+  // on that one sheet.
+  'a5-2up': { w: 210, h: 297 },
+  'a6-4up': { w: 210, h: 297 },
+  'a7-8up': { w: 210, h: 297 },
   'sticker-sheet': { w: 210, h: 297 },
   'sticker-sheet-small': { w: 210, h: 297 },
   'sticker-sheet-strip': { w: 210, h: 297 },
 }
 
 /**
- * Smallest QR edge that still scans from arm's length. Below these values the
- * poster looks fine on screen and fails at the machine, so motifs treat them
- * as constants rather than as styling.
+ * The millimetre floor a motif's *primary* QR code must not fall below at
+ * this format, supplied to the motifs as `--qr-min`. Not "the smallest QR
+ * edge that still scans" in general — several sticker motifs render their
+ * primary code larger than the number listed here for their format
+ * (`sticker-sheet` says 20 while `StickerImprint` renders 17 and
+ * `StickerDuo`'s main code 26), so these are a CSS floor, not a scan-distance
+ * guarantee.
  */
 export const MIN_QR_MM: Record<PrintFormat, number> = {
   a4: 30,
   a5: 30,
-  a6: 25,
+  // What the motifs already enforce in CSS. The earlier value of 25 was dead
+  // documentation and would silently shrink A6 once the switch to --qr-min
+  // makes these constants drive the CSS.
+  a6: 30,
+  'a5-2up': 30,
+  'a6-4up': 25,
+  // 68 mm tile width: a 25 mm code would eat more than a third of it.
+  // At level L the longest real target URL is 41 modules including the quiet
+  // zone, so 18 mm works out to 0.439 mm/module — under the ~0.5 mm rule
+  // above qrErrorLevel. Accepted anyway: 68 mm of tile width is a physical
+  // limit, the same trade StickerMini takes at 0.488 mm/module, and that
+  // rule assumes arm's-length reading at the machine, while an A7 card is
+  // held closer. Raising the floor is not an option either — at 20.5 mm
+  // PosterKachel's three-tile QR row no longer fits the 68 mm tile.
+  'a7-8up': 18,
   'sticker-sheet': 20,
   // 50 x 30 mm leaves no room for more, and below this a phone camera has to
   // be held closer than the machine allows.
@@ -171,25 +197,96 @@ export const MIN_QR_MM: Record<PrintFormat, number> = {
   'sticker-sheet-strip': 22,
 }
 
+/**
+ * Floor for a motif's *secondary* code — the smaller one some motifs put
+ * beside or below the main code. It cannot simply be a fraction of MIN_QR_MM:
+ * scaled down proportionally on an A7 tile, a secondary code lands at 12 mm,
+ * which is less readable than the sticker code this whole change set out to
+ * fix. 18 mm is the floor, and A7 sits on it.
+ */
+export const QR_MIN_2_MM: Record<PrintFormat, number> = {
+  a4: 20,
+  a5: 20,
+  a6: 20,
+  'a5-2up': 20,
+  'a6-4up': 20,
+  'a7-8up': 18,
+  'sticker-sheet': 20,
+  'sticker-sheet-small': 20,
+  'sticker-sheet-strip': 20,
+}
+
+/**
+ * Smallest inner margin a motif keeps. On a 68 mm A7 tile, 5 mm per side
+ * would cost almost a sixth of the width.
+ */
+export const PAD_MIN_MM: Record<PrintFormat, number> = {
+  a4: 5,
+  a5: 5,
+  a6: 5,
+  'a5-2up': 5,
+  'a6-4up': 5,
+  'a7-8up': 3,
+  'sticker-sheet': 5,
+  'sticker-sheet-small': 5,
+  'sticker-sheet-strip': 5,
+}
+
+/**
+ * The mm floors a motif cannot know on its own, because they depend on the
+ * format. Set as custom properties on the sheet (or tile); motifs read them
+ * with today's values as the fallback, so they render unchanged even without
+ * the variable set.
+ */
+export function sheetCssVars(format: PrintFormat): Record<string, string> {
+  return {
+    '--qr-min': `${MIN_QR_MM[format]}mm`,
+    '--qr-min-2': `${QR_MIN_2_MM[format]}mm`,
+    '--pad-min': `${PAD_MIN_MM[format]}mm`,
+  }
+}
+
 export type StickerFormat = Extract<PrintFormat, 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'>
 
-export interface StickerLayout {
+export interface TileLayout {
   w: number
   h: number
   gap: number
   cols: number
   rows: number
+  /**
+   * The tile sits rotated 90 degrees on the sheet and occupies h x w there.
+   * Eight portrait A7s otherwise don't fit on A4 by the numbers.
+   */
+  rotate: boolean
+  /**
+   * Poster motifs scale everything in `em` against the sheet width; inside a
+   * tile the base has to come from the tile instead, or A4-sized text
+   * overruns an A6 card. Sticker motifs are `false` here, but not because
+   * they inherit and keep the sheet base — every sticker motif sets its own
+   * root `font-size` in absolute mm, so the inherited base never reaches
+   * them in the first place, and this flag is simply moot for them.
+   */
+  scaleToTile: boolean
 }
 
-/** Label geometry per sticker format, laid out on A4 portrait. */
-export const STICKER_LAYOUT: Record<StickerFormat, StickerLayout> = {
-  'sticker-sheet': { w: 90, h: 50, gap: 3, cols: 2, rows: 4 },
+/** A tiled format is either a sticker sheet or an n-up poster layout. */
+export type TiledFormat = StickerFormat | 'a5-2up' | 'a6-4up' | 'a7-8up'
+
+/** Label geometry per tiled format, laid out on A4 portrait. */
+export const TILE_LAYOUT: Record<TiledFormat, TileLayout> = {
+  'sticker-sheet': { w: 90, h: 50, gap: 3, cols: 2, rows: 4, rotate: false, scaleToTile: false },
   // For the coin return and the flap edge, where 90 x 50 simply does not fit.
-  'sticker-sheet-small': { w: 50, h: 30, gap: 3, cols: 3, rows: 8 },
+  'sticker-sheet-small': { w: 50, h: 30, gap: 3, cols: 3, rows: 8, rotate: false, scaleToTile: false },
   // The long band that runs across a machine front, above or below the
   // product window. Two of these do not fit side by side on A4, so it is one
   // per row and six to a sheet.
-  'sticker-sheet-strip': { w: 148, h: 40, gap: 3, cols: 1, rows: 6 },
+  'sticker-sheet-strip': { w: 148, h: 40, gap: 3, cols: 1, rows: 6, rotate: false, scaleToTile: false },
+  // The A-series halves crosswise: two portrait A5 do not fit side by side
+  // on A4, so the tile lies rotated 90 degrees.
+  'a5-2up': { w: 139, h: 196.5, gap: 4, cols: 1, rows: 2, rotate: true, scaleToTile: true },
+  'a6-4up': { w: 97, h: 137, gap: 4, cols: 2, rows: 2, rotate: false, scaleToTile: true },
+  'a7-8up': { w: 68, h: 96, gap: 4, cols: 2, rows: 4, rotate: true, scaleToTile: true },
 }
 
 export function isStickerFormat(format: PrintFormat): format is StickerFormat {
@@ -198,21 +295,46 @@ export function isStickerFormat(format: PrintFormat): format is StickerFormat {
     || format === 'sticker-sheet-strip'
 }
 
-export function stickerLayout(format: PrintFormat): StickerLayout {
-  return STICKER_LAYOUT[isStickerFormat(format) ? format : 'sticker-sheet']
+export function isTiledFormat(format: PrintFormat): format is TiledFormat {
+  return format in TILE_LAYOUT
 }
 
-export function stickersPerSheet(format: PrintFormat): number {
-  const l = stickerLayout(format)
+export function tileLayout(format: PrintFormat): TileLayout {
+  return TILE_LAYOUT[isTiledFormat(format) ? format : 'sticker-sheet']
+}
+
+/**
+ * Footprint of the entire tile block on the A4 sheet. A rotated tile
+ * occupies h x w there instead of w x h — without this distinction every
+ * "does it fit on the page" check measures the wrong axis for A5 and A7.
+ */
+export function tileBlockMm(format: PrintFormat): { w: number; h: number } {
+  const l = tileLayout(format)
+  const cellW = l.rotate ? l.h : l.w
+  const cellH = l.rotate ? l.w : l.h
+  return {
+    w: l.cols * cellW + (l.cols - 1) * l.gap,
+    h: l.rows * cellH + (l.rows - 1) * l.gap,
+  }
+}
+
+export function tilesPerSheet(format: PrintFormat): number {
+  const l = tileLayout(format)
   return l.cols * l.rows
 }
 
 /**
- * QR error correction. Stickers sit next to the coin return and get scratched
- * and dirty, so they carry more redundancy than a poster behind glass.
+ * QR error correction. Not paper versus vinyl but area: more redundancy means
+ * more modules in the same space, and a symbol whose modules fall under
+ * roughly 0.5 mm is unreadable no matter how much redundancy it carries.
+ *
+ * Deliberately not derived from MIN_QR_MM. That constant is a CSS floor for a
+ * motif's primary code, which is a different question from "how small is the
+ * smallest code this format prints" — tying the two together made a routine
+ * correction of one silently change the other.
  */
-export function qrErrorLevel(format: PrintFormat): 'M' | 'Q' {
-  return isStickerFormat(format) ? 'Q' : 'M'
+export function qrErrorLevel(format: PrintFormat): 'L' | 'M' {
+  return isTiledFormat(format) ? 'L' : 'M'
 }
 
 const PRIVATE_IPV4 =
@@ -600,10 +722,10 @@ export function readableUrl(target: string | null | undefined): string | null {
 }
 
 /**
- * Packs stickers continuously across A4 sheets rather than one sheet per
+ * Packs tiles continuously across A4 sheets rather than one sheet per
  * machine — printing three machines should waste zero labels, not 21.
  */
-export function distributeStickers<T>(items: T[], perSheet = 8): T[][] {
+export function distributeTiles<T>(items: T[], perSheet = 8): T[][] {
   if (perSheet <= 0) return items.length ? [items] : []
   const sheets: T[][] = []
   for (let i = 0; i < items.length; i += perSheet) {

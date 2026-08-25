@@ -83,19 +83,13 @@ struct DeviceHealthSheet: View {
     }
 
     private func uptimeString(since: Date) -> String {
-        let interval = max(0, Date().timeIntervalSince(since))
-        let totalHours = Int(interval) / 3600
-        let days = totalHours / 24
-        let hours = totalHours % 24
-        if days > 0 { return "\(days)d \(hours)h" }
-        let minutes = (Int(interval) % 3600) / 60
-        return "\(hours)h \(minutes)m"
+        formatUptime(Int(max(0, Date().timeIntervalSince(since))))
     }
 
     // MARK: - MDB Status (admin)
 
     private var mdbDiagnosticsSection: some View {
-        Section(String(localized: "MDB Status")) {
+        Section {
             if let diag = embedded?.mdbDiagnostics {
                 LabeledContent(String(localized: "State"), value: stateLabel(diag.state))
                 if let addr = diag.addr {
@@ -111,6 +105,15 @@ struct DeviceHealthSheet: View {
                 }
             } else {
                 Text(String(localized: "No MDB diagnostics yet.")).foregroundStyle(.secondary)
+            }
+        } header: {
+            Text(String(localized: "MDB Status"))
+        } footer: {
+            // Same "Updated …" line the web shows under its MDB grid: the
+            // snapshot is a last-known state, so its age is what tells you
+            // whether it still means anything.
+            if let updated = embedded?.mdbDiagnostics?.updatedAt {
+                Text(String(localized: "Updated: \(updated.formatted(.relative(presentation: .named)))"))
             }
         }
     }
@@ -135,7 +138,7 @@ struct DeviceHealthSheet: View {
                         }
                         HStack(spacing: 6) {
                             if let uptime = restart.uptimeSec {
-                                Text(String(localized: "Up \(formatDuration(uptime))"))
+                                Text(String(localized: "Up \(formatUptime(uptime))"))
                             }
                             if let fw = restart.firmwareVersion {
                                 Text("v\(fw)")
@@ -292,7 +295,11 @@ struct DeviceHealthSheet: View {
         case "power_on": return String(localized: "Power On")
         case "panic": return String(localized: "Panic")
         case "brownout": return String(localized: "Brownout")
-        default: return String(localized: "Unknown")
+        case "watchdog": return String(localized: "HW Watchdog")
+        case "unknown": return String(localized: "Unknown")
+        // Show anything the firmware invents verbatim rather than hiding it
+        // behind "Unknown" — same fallback the web uses.
+        default: return reason
         }
     }
 
@@ -300,10 +307,15 @@ struct DeviceHealthSheet: View {
         state?.capitalized ?? String(localized: "Unknown")
     }
 
-    private func formatDuration(_ seconds: Int) -> String {
-        let h = seconds / 3600
-        let m = (seconds % 3600) / 60
-        if h > 0 { return "\(h)h \(m)m" }
-        return "\(m)m"
+    /// Mirrors the web's `formatUptime()` (`useDeviceRestarts.ts`) exactly, so
+    /// the same device never shows two different runtimes across clients.
+    private func formatUptime(_ seconds: Int) -> String {
+        let s = max(0, seconds)
+        if s < 60 { return "\(s)s" }
+        if s < 3600 { return "\(s / 60)m \(s % 60)s" }
+        let hours = s / 3600
+        let minutes = (s % 3600) / 60
+        if hours < 24 { return "\(hours)h \(minutes)m" }
+        return "\(hours / 24)d \(hours % 24)h"
     }
 }

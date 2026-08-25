@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { IconArrowLeft, IconPrinter, IconAlertTriangle, IconLoader2, IconRotate, IconDeviceFloppy, IconPlus, IconMinus, IconArrowAutofitWidth } from '@tabler/icons-vue'
 import { watchDebounced } from '@vueuse/core'
-import StickerSheet from '@/components/print/StickerSheet.vue'
+import TiledSheet from '@/components/print/TiledSheet.vue'
 import MotifThumb from '@/components/print/MotifThumb.vue'
 import { useMachinePrint } from '@/composables/useMachinePrint'
-import { PRINT_MOTIFS, defaultLayout, isStickerFormat, motifById } from '@/lib/printMotifs'
+import { PRINT_MOTIFS, defaultLayout, motifById } from '@/lib/printMotifs'
 import type { MotifId } from '@/lib/printMotifs'
-import { FORMAT_MM, SLOT_SOURCES, distributeStickers, stickersPerSheet } from '@/lib/printSheet'
+import { FORMAT_MM, SLOT_SOURCES, distributeTiles, isTiledFormat, sheetCssVars, tilesPerSheet } from '@/lib/printSheet'
 import type { PosterLayout, PosterT, PrintBlock, PrintFormat, PrintSheet, SlotSource } from '@/lib/printSheet'
 
 definePageMeta({ middleware: 'auth', layout: false })
@@ -24,7 +24,7 @@ const sheetLocale = ref<string>(locale.value)
 const selectedIds = ref<string[]>([machineId])
 
 const motif = computed(() => motifById(motifId.value) ?? PRINT_MOTIFS[0]!)
-const isSticker = computed(() => isStickerFormat(format.value))
+const isTiled = computed(() => isTiledFormat(format.value))
 
 /** The working copy the preview renders; saved rows only seed it. */
 const layout = ref<PosterLayout>(defaultLayout(PRINT_MOTIFS[0]!))
@@ -228,8 +228,8 @@ async function resetToDefaults() {
 
 // ── Rendering ───────────────────────────────────────────────────────────────
 const pages = computed<PrintSheet[][]>(() =>
-  isSticker.value
-    ? distributeStickers(sheets.value, stickersPerSheet(format.value))
+  isTiled.value
+    ? distributeTiles(sheets.value, tilesPerSheet(format.value))
     : sheets.value.map(s => [s]),
 )
 
@@ -240,6 +240,7 @@ const sheetStyle = computed(() => ({
   height: `${sheetMm.value.h}mm`,
   // One layout scales across A4/A5/A6: motifs size everything in em.
   fontSize: `${(4 * sheetMm.value.w) / 210}mm`,
+  ...sheetCssVars(format.value),
 }))
 
 const THUMB_WIDTH = 150
@@ -404,6 +405,9 @@ async function doPrint() {
             {{ t(`print.formats.${f}`) }}
           </button>
         </div>
+        <p v-if="isTiled" class="mt-2 text-xs leading-snug text-muted-foreground">
+          {{ t('print.tiledHint') }}
+        </p>
       </section>
 
       <!-- One picker per QR slot the motif declares, with its label and hint. -->
@@ -683,8 +687,8 @@ async function doPrint() {
       <div class="sheets">
         <div v-for="(page, i) in pages" :key="i" class="preview" :style="previewStyle">
           <div class="sheet" :style="sheetStyle">
-            <StickerSheet
-              v-if="isSticker"
+            <TiledSheet
+              v-if="isTiled"
               :sheets="page"
               :motif="motif.component"
               :t="posterT"

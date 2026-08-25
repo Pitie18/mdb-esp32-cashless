@@ -145,3 +145,38 @@ export function computeStockHealthPerMachine(
 
   return map
 }
+
+// ── Fleet-wide bucket counts (used by the dashboard banner + KPI card) ────────
+
+export interface MachineStockBuckets {
+  critical: number
+  low: number
+  fill: number
+  /** Machines that are otherwise fine but hold an empty tray whose product the warehouse can't refill. */
+  swap: number
+  /** Machines in exactly one of the buckets above — the banner counts machines, not reasons. */
+  needingAttention: number
+}
+
+/**
+ * Fold per-machine summaries into disjoint fleet-wide buckets.
+ *
+ * Each machine lands in at most one bucket, so the buckets sum to the number of
+ * machines needing attention and can never exceed the fleet size.
+ */
+export function countMachineStockBuckets(
+  summaries: Iterable<MachineStockSummary>,
+): MachineStockBuckets {
+  const buckets: MachineStockBuckets = { critical: 0, low: 0, fill: 0, swap: 0, needingAttention: 0 }
+
+  for (const stock of summaries) {
+    if (stock.health === 'critical') buckets.critical++
+    else if (stock.health === 'low') buckets.low++
+    else if (stock.health === 'fill') buckets.fill++
+    else if (stock.noStockEmptyCount > 0) buckets.swap++
+    else continue
+    buckets.needingAttention++
+  }
+
+  return buckets
+}

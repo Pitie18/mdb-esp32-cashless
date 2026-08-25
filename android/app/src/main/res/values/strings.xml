@@ -8,7 +8,74 @@
     <string name="nav_dashboard">Dashboard</string>
     <string name="nav_machines">Machines</string>
     <string name="nav_refill">Refill</string>
+    <string name="nav_warehouse">Warehouse</string>
     <string name="action_back">Back</string>
+
+    <!-- Warehouse screen -->
+    <string name="warehouse_screen_title">Warehouse</string>
+    <string name="warehouse_picker_label">Warehouse</string>
+    <string name="warehouse_tab_stock">Stock</string>
+    <string name="warehouse_tab_incoming">Incoming</string>
+    <string name="warehouse_empty_state">No warehouses yet</string>
+
+    <!-- Warehouse stock tab -->
+    <string name="warehouse_stock_search_hint">Search products</string>
+    <string name="warehouse_stock_search_clear">Clear search</string>
+    <string name="warehouse_stock_out_of_stock">Out of Stock</string>
+    <string name="warehouse_stock_filter_archived">Archived</string>
+    <string name="warehouse_stock_filter_expiring_soon">Expiring soon</string>
+    <string name="warehouse_stock_filter_critical">Critical</string>
+    <string name="warehouse_stock_low">Low</string>
+    <string name="warehouse_stock_empty_no_stock">No stock in this warehouse</string>
+    <string name="warehouse_stock_empty_search">No products matching \"%1$s\"</string>
+    <string name="warehouse_stock_empty_filtered">No products match the current filters</string>
+    <plurals name="warehouse_batch_count">
+        <item quantity="one">%1$d batch</item>
+        <item quantity="other">%1$d batches</item>
+    </plurals>
+
+    <!-- Warehouse incoming (intake) tab -->
+    <string name="warehouse_intake_form_header">Book Intake</string>
+    <string name="warehouse_intake_product_label">Product</string>
+    <string name="warehouse_intake_product_empty">No matching products</string>
+    <string name="warehouse_intake_product_change">Change product</string>
+    <string name="warehouse_intake_scan_button">Scan Barcode</string>
+    <string name="warehouse_intake_scan_title">Scan Barcode</string>
+    <string name="warehouse_intake_scan_hint">Point the camera at the product\'s barcode</string>
+    <string name="warehouse_intake_scan_not_found">No product found for this barcode</string>
+    <string name="warehouse_intake_quantity_label">Quantity</string>
+    <string name="warehouse_intake_quantity_hint">e.g. 2*12</string>
+    <string name="warehouse_intake_quantity_preview">= %1$d</string>
+    <string name="warehouse_intake_batch_label">Batch No.</string>
+    <string name="warehouse_intake_optional_hint">Optional</string>
+    <string name="warehouse_intake_expiration_label">Best before</string>
+    <string name="warehouse_intake_expiration_clear">Clear expiration date</string>
+    <string name="warehouse_intake_supplier_label">Supplier</string>
+    <string name="warehouse_intake_submit">Book Intake</string>
+    <string name="warehouse_intake_recent_header">Recent Intakes</string>
+    <string name="warehouse_intake_recent_empty">No recent intakes yet</string>
+
+    <!-- Warehouse batch drilldown sheet -->
+    <string name="warehouse_batch_drilldown_loading">Loading batches…</string>
+    <string name="warehouse_batch_drilldown_empty">No batches in stock</string>
+    <string name="warehouse_batch_no_number">No batch</string>
+
+    <!-- Warehouse batch adjust sheet -->
+    <string name="warehouse_adjust_title">Adjust Stock</string>
+    <string name="warehouse_adjust_current_stock_label">Current stock</string>
+    <string name="warehouse_adjust_direction_remove">Remove</string>
+    <string name="warehouse_adjust_direction_add">Add</string>
+    <string name="warehouse_adjust_quantity_remove_label">Quantity to remove</string>
+    <string name="warehouse_adjust_quantity_add_label">Quantity to add</string>
+    <string name="warehouse_adjust_exceeds_stock">Only %1$d available</string>
+    <string name="warehouse_adjust_reason_label">Reason</string>
+    <string name="warehouse_adjust_reason_damage">Damaged</string>
+    <string name="warehouse_adjust_reason_expired">Expired</string>
+    <string name="warehouse_adjust_reason_correction">Inventory correction</string>
+    <string name="warehouse_adjust_reason_refill_return">Refill return</string>
+    <string name="warehouse_adjust_notes_label">Notes</string>
+    <string name="warehouse_adjust_submit_remove">Remove stock</string>
+    <string name="warehouse_adjust_submit_add">Add stock</string>
 
     <!-- StockBar accessibility -->
     <string name="stock_bar_description">Stock %1$d of %2$d</string>
@@ -221,6 +288,7 @@
     <string name="device_health_mdb_polls">Polls</string>
     <string name="device_health_mdb_checksum_errors">Checksum Errors</string>
     <string name="device_health_mdb_last_command">Last Command</string>
+    <string name="device_health_mdb_updated">Updated: %1$s</string>
     <string name="device_health_section_restart_history">Restart History</string>
     <string name="device_health_no_restarts">No restarts recorded.</string>
     <string name="device_health_restart_uptime">Up %1$s</string>
@@ -244,6 +312,7 @@
     <string name="device_health_reason_power_on">Power On</string>
     <string name="device_health_reason_panic">Panic</string>
     <string name="device_health_reason_brownout">Brownout</string>
+    <string name="device_health_reason_hw_watchdog">HW Watchdog</string>
     <string name="device_health_unknown">Unknown</string>
     <string name="device_health_just_now">Just now</string>
     <plurals name="device_health_minutes_ago">
@@ -279,4 +348,177 @@
     <string name="machine_settings_public_footer">Anyone with this link can see this machine\'s live status, without signing in.</string>
     <string name="machine_settings_qr_content_description">QR code for the public status page</string>
     <string name="machine_settings_save_error">Failed to save settings.</string>
+    <!-- Refill wizard — pack step (Phase 5 Task 10) -->
+    <string name="refill_pack_unknown_product">Unknown product</string>
+    <string name="refill_pack_stock_unavailable_title">Warehouse stock unavailable</string>
+    <string name="refill_pack_stock_unavailable_body">Packing quantities are not capped by stock right now.</string>
+    <string name="refill_pack_stock_retry">Reload</string>
+    <string name="refill_pack_chip_all">All</string>
+    <string name="refill_pack_chip_count">· %1$d</string>
+    <string name="refill_pack_header_all">All machines</string>
+    <string name="refill_pack_status_complete">Box complete</string>
+    <string name="refill_pack_status_partial">Box partial</string>
+    <string name="refill_pack_status_pending">Nothing packed yet</string>
+    <plurals name="refill_pack_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="refill_pack_short">
+        <item quantity="one">%1$d short</item>
+        <item quantity="other">%1$d short</item>
+    </plurals>
+    <plurals name="refill_pack_machines_packed">
+        <item quantity="one">%1$d of %2$d machine packed</item>
+        <item quantity="other">%1$d of %2$d machines packed</item>
+    </plurals>
+    <string name="refill_pack_toggle_all_machines">Pack %1$s for all machines</string>
+    <string name="refill_pack_toggle_machine">Pack for %1$s</string>
+    <string name="refill_pack_total_quantity">%1$d×</string>
+    <string name="refill_pack_stock_none">Not in warehouse</string>
+    <string name="refill_pack_stock_committed">%1$d of %2$d committed</string>
+    <string name="refill_pack_stock_left">%1$d in stock · %2$d left</string>
+    <string name="refill_pack_stock_in">%1$d in stock</string>
+    <string name="refill_pack_need">needs %1$d / %2$d</string>
+    <string name="refill_pack_badge_no_stock">No stock</string>
+    <string name="refill_pack_badge_partial">Partial</string>
+    <string name="refill_pack_decrement">Decrease quantity for %1$s</string>
+    <string name="refill_pack_increment">Increase quantity for %1$s</string>
+    <string name="refill_pack_pack_all">Pack everything</string>
+    <string name="refill_pack_pack_all_for">Pack all for %1$s</string>
+    <string name="refill_pack_start_tour">Start tour</string>
+    <string name="refill_pack_empty_title">All stocked!</string>
+    <string name="refill_pack_empty_body">No machine needs a refill right now.</string>
+    <string name="refill_pack_empty_machine">Nothing to pack for this machine.</string>
+    <!-- Refill wizard — refill step + wizard shell (Phase 5 Task 11) -->
+    <string name="refill_wizard_title">Refill Tour</string>
+    <string name="refill_step_title_review">Review</string>
+    <string name="refill_step_title_packing">Pack</string>
+    <string name="refill_step_title_refill">Refill</string>
+    <string name="refill_step_title_summary">Summary</string>
+    <string name="refill_step_completed">Completed</string>
+    <string name="refill_loading_machines">Loading machines…</string>
+    <string name="refill_finishing_up">Finishing up…</string>
+    <string name="refill_resume_title">Resume tour?</string>
+    <string name="refill_resume_message">You have an unfinished refill tour. Would you like to continue where you left off?</string>
+    <string name="refill_resume_confirm">Resume</string>
+    <string name="refill_resume_discard">New tour</string>
+    <string name="refill_step_machine_progress">Machine %1$d of %2$d</string>
+    <plurals name="refill_step_trays_to_refill">
+        <item quantity="one">%1$d tray to refill</item>
+        <item quantity="other">%1$d trays to refill</item>
+    </plurals>
+    <string name="refill_step_change_machine">Change machine</string>
+    <string name="refill_step_picker_title">Select machine</string>
+    <string name="refill_step_picker_summary">%1$d trays · %2$d items</string>
+    <string name="refill_step_picker_current">Current machine</string>
+    <string name="refill_step_fill_all">Fill all to capacity</string>
+    <string name="refill_step_fill_max">Max</string>
+    <string name="refill_step_fill_amount">+%1$d</string>
+    <plurals name="refill_step_fill_unit">
+        <item quantity="one">item</item>
+        <item quantity="other">items</item>
+    </plurals>
+    <string name="refill_step_of_capacity">/ %1$d</string>
+    <string name="refill_step_decrement">Fill one less into %1$s</string>
+    <string name="refill_step_increment">Fill one more into %1$s</string>
+    <plurals name="refill_step_full_trays">
+        <item quantity="one">%1$d tray already full</item>
+        <item quantity="other">%1$d trays already full</item>
+    </plurals>
+    <string name="refill_step_full_trays_expand">Show full trays</string>
+    <string name="refill_step_full_trays_collapse">Hide full trays</string>
+    <string name="refill_step_no_trays">Nothing to fill at this machine.</string>
+    <!-- Refill step — machine layout grid (Phase 5b Task 7) -->
+    <string name="refill_step_layout_title">Machine layout</string>
+    <string name="refill_step_layout_hint">Tap a slot to jump to its card.</string>
+    <string name="refill_step_layout_slot">Slot %1$d, %2$s, %3$s</string>
+    <string name="refill_step_layout_slot_empty">Slot %1$d, no product, %2$s</string>
+    <string name="refill_step_layout_slot_selected">%1$s, selected</string>
+    <string name="refill_step_layout_state_not_in_tour">not on this tour</string>
+    <string name="refill_step_layout_state_filling">%1$d to fill</string>
+    <string name="refill_step_layout_state_empty">empty</string>
+    <string name="refill_step_layout_state_low">low</string>
+    <string name="refill_step_layout_state_full">stocked</string>
+    <string name="refill_step_skip">Skip</string>
+    <string name="refill_step_confirm">Confirm refill</string>
+    <string name="refill_step_saving">Saving…</string>
+    <string name="refill_error_unknown">unknown error</string>
+    <plurals name="refill_error_max_attempts">
+        <item quantity="one">Refill could not be saved after %1$d attempt: %2$s. Please try again.</item>
+        <item quantity="other">Refill could not be saved after %1$d attempts: %2$s. Please try again.</item>
+    </plurals>
+    <!-- Refill wizard — warehouse deduction that never reached the ledger (final review fix 2) -->
+    <plurals name="refill_deduction_failed">
+        <item quantity="one">%1$d warehouse deduction was not recorded. The goods left the warehouse, so please correct the stock manually.</item>
+        <item quantity="other">%1$d warehouse deductions were not recorded. The goods left the warehouse, so please correct the stock manually.</item>
+    </plurals>
+    <!-- Refill wizard — summary step (Phase 5 Task 12) -->
+    <string name="refill_summary_title">Tour Complete!</string>
+    <string name="refill_summary_subtitle_all_done">All machines have been refilled</string>
+    <plurals name="refill_summary_subtitle_partial">
+        <item quantity="one">%1$d of %2$d machine refilled</item>
+        <item quantity="other">%1$d of %2$d machines refilled</item>
+    </plurals>
+    <string name="refill_summary_stat_machines_visited">Machines Visited</string>
+    <string name="refill_summary_stat_trays_refilled">Trays Refilled</string>
+    <string name="refill_summary_stat_items_added">Total Items Added</string>
+    <string name="refill_summary_stat_machines_skipped">Machines Skipped</string>
+    <string name="refill_summary_machines_header">Machines</string>
+    <plurals name="refill_summary_row_trays">
+        <item quantity="one">%1$d tray</item>
+        <item quantity="other">%1$d trays</item>
+    </plurals>
+    <string name="refill_summary_row_contribution">%1$s · %2$s</string>
+    <string name="refill_summary_row_skipped">Skipped</string>
+    <!-- Refill wizard — review step (Phase 5b Task 5) -->
+    <string name="refill_review_title">Product Review</string>
+    <string name="refill_review_subtitle">The following trays need attention — discontinued, expired, out-of-stock, or unassigned products. Choose a replacement or skip.</string>
+    <string name="refill_review_reason_discontinued">Discontinued</string>
+    <string name="refill_review_reason_expired">Expired</string>
+    <string name="refill_review_reason_no_stock">No Stock</string>
+    <string name="refill_review_reason_unassigned">Unassigned</string>
+    <plurals name="refill_review_stock_remaining">
+        <item quantity="one">%1$d item still in machine</item>
+        <item quantity="other">%1$d items still in machine</item>
+    </plurals>
+    <string name="refill_review_stock_empty">0 items in machine</string>
+    <string name="refill_review_applied">Replaced — already saved</string>
+    <string name="refill_review_skipped_keeping">Skipped — keeping current product</string>
+    <string name="refill_review_skipped_unassigned">Skipped — slot stays unassigned</string>
+    <string name="refill_review_action_replace">Replace</string>
+    <string name="refill_review_action_assign">Assign</string>
+    <string name="refill_review_action_change">Change</string>
+    <string name="refill_review_action_choose">Choose replacement</string>
+    <string name="refill_review_action_skip">Skip</string>
+    <string name="refill_review_skip_all">Skip rest</string>
+    <string name="refill_review_continue">Continue</string>
+    <string name="refill_review_apply_continue">Apply &amp; continue</string>
+    <!-- Refill wizard — replacement product picker (Phase 5b Task 6) -->
+    <string name="refill_picker_title">Select replacement</string>
+    <string name="refill_picker_for_slot">Slot %1$d · %2$s</string>
+    <string name="refill_picker_search_hint">Search products</string>
+    <string name="refill_picker_search_clear">Clear search</string>
+    <string name="refill_picker_bucket_in_stock">In stock</string>
+    <string name="refill_picker_bucket_out_of_stock">Out of stock</string>
+    <string name="refill_picker_uncategorized">Uncategorized</string>
+    <string name="refill_picker_category_current">%1$s · current</string>
+    <plurals name="refill_picker_stock">
+        <item quantity="one">%1$d in stock</item>
+        <item quantity="other">%1$d in stock</item>
+    </plurals>
+    <plurals name="refill_picker_product_count">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
+    <string name="refill_picker_slot_badge">Slot %1$s</string>
+    <string name="refill_picker_slot_badge_overflow">Slot %1$s +%2$d</string>
+    <plurals name="refill_picker_slot_badge_a11y">
+        <item quantity="one">Already in slot %1$s</item>
+        <item quantity="other">Already in slots %1$s</item>
+    </plurals>
+    <string name="refill_picker_expand_group">Expand group</string>
+    <string name="refill_picker_collapse_group">Collapse group</string>
+    <string name="refill_picker_selected">Selected</string>
+    <string name="refill_picker_no_matches">No products matching \"%1$s\"</string>
+    <string name="refill_picker_empty">No products available</string>
 </resources>

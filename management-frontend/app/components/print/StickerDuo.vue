@@ -52,7 +52,10 @@ const issue = computed(() => props.sheet.slots.issue)
 .rule { width: 0.2mm; align-self: stretch; background: #d6d3d1; flex: none; }
 .side { min-width: 0; flex: 1; }
 .side-row { display: flex; align-items: center; gap: 1.8mm; }
-.qr-side { width: 13mm; height: 13mm; flex: none; }
+/* 22mm, not smaller: the trouble-report URL is the longest this sticker
+   carries, and at level L the symbol is 41 modules including the quiet
+   zone — below roughly 20.5mm the module size drops under 0.5mm. */
+.qr-side { width: 22mm; height: 22mm; flex: none; }
 .side-text { min-width: 0; }
 .side-title { font-size: 1.05em; font-weight: 600; line-height: 1.15; }
 .side-hint { font-size: 0.9em; color: #57534e; margin-top: 0.4mm; line-height: 1.25; }

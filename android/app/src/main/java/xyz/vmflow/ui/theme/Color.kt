@@ -85,3 +85,24 @@ val TierWeakLight = Color(0xFFEF6C00)
 val TierWeakDark = Color(0xFFFFB74D)
 val TierDeadLight = Color(0xFFC62828)
 val TierDeadDark = Color(0xFFEF5350)
+
+// ─── Refill review reasons ──────────────────────────────────────────────────
+// The four reasons a slot lands in the pre-tour review (`ReplacementReason`),
+// each in its own hue so the badges stay tellable apart at a glance — same
+// argument as the tier block above, and the same reason they are fixed tokens
+// rather than `primary`/`secondary`/`tertiary` roles (which collapse into
+// near-identical tones in this brand's dark scheme).
+//
+// The hues match iOS `ReviewStepView.badgeColor(for:)` (red / orange / purple
+// / blue). Deliberately *their own* constants rather than aliases of the tier
+// tokens above: the two palettes mean unrelated things (a product's sales
+// performance vs. why a slot needs attention), and re-tuning one must not
+// silently repaint the other.
+val ReasonDiscontinuedLight = Color(0xFFC62828)
+val ReasonDiscontinuedDark = Color(0xFFEF5350)
+val ReasonExpiredLight = Color(0xFFEF6C00)
+val ReasonExpiredDark = Color(0xFFFFB74D)
+val ReasonNoStockLight = Color(0xFF6A1B9A)
+val ReasonNoStockDark = Color(0xFFBA68C8)
+val ReasonUnassignedLight = Color(0xFF0277BD)
+val ReasonUnassignedDark = Color(0xFF4FC3F7)

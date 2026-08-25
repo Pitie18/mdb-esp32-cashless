@@ -5793,6 +5793,35 @@
         }
       }
     },
+    "HW Watchdog": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HW Watchdog"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hardware-Watchdog"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chien de garde matériel"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hardware-watchdog"
+          }
+        }
+      }
+    },
     "hidden — above your highest cost": {
       "extractionState": "stale",
       "localizations": {
@@ -14469,6 +14498,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apparaatstatus"
+          }
+        }
+      }
+    },
+    "Updated: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updated: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisiert: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mis à jour : %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bijgewerkt: %@"
           }
         }
       }

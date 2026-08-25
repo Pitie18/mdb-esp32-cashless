@@ -1,17 +1,23 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildPrintSheetBase,
-  distributeStickers,
+  distributeTiles,
+  FORMAT_MM,
   inherit,
   isPublicOrigin,
+  isStickerFormat,
+  isTiledFormat,
+  MIN_QR_MM,
   normalizeCustomUrl,
   normalizePhone,
   posterFingerprint,
-  isStickerFormat,
   qrErrorLevel,
   readableUrl,
-  stickerLayout,
-  stickersPerSheet,
+  sheetCssVars,
+  tileBlockMm,
+  TILE_LAYOUT,
+  tileLayout,
+  tilesPerSheet,
   toWaNumber,
 } from '../printSheet'
 import type {
@@ -19,7 +25,9 @@ import type {
   PosterLayout,
   PosterMachine,
   PrintBlock,
+  PrintFormat,
   SlotDeclaration,
+  TiledFormat,
 } from '../printSheet'
 
 // Identity `t`: returns the key so assertions can name which default was used.
@@ -515,44 +523,52 @@ describe('posterFingerprint', () => {
   })
 })
 
-describe('distributeStickers', () => {
+describe('distributeTiles', () => {
   it('packs continuously across sheets', () => {
     const items = Array.from({ length: 11 }, (_, i) => i)
-    const sheets = distributeStickers(items)
+    const sheets = distributeTiles(items)
     expect(sheets).toHaveLength(2)
     expect(sheets[0]).toHaveLength(8)
     expect(sheets[1]).toEqual([8, 9, 10])
   })
 
   it('wastes no sheet on a short run', () => {
-    expect(distributeStickers([1, 2, 3])).toEqual([[1, 2, 3]])
+    expect(distributeTiles([1, 2, 3])).toEqual([[1, 2, 3]])
   })
 
   it('returns nothing for an empty run', () => {
-    expect(distributeStickers([])).toEqual([])
+    expect(distributeTiles([])).toEqual([])
   })
 })
 
 describe('qrErrorLevel', () => {
-  it('raises redundancy for stickers', () => {
-    expect(qrErrorLevel('sticker-sheet')).toBe('Q')
-    expect(qrErrorLevel('sticker-sheet-small')).toBe('Q')
-    expect(qrErrorLevel('sticker-sheet-strip')).toBe('Q')
+  // More error correction means more modules on the same area. Below roughly
+  // 0.5 mm module size a code is unreadable no matter how much redundancy it
+  // carries — small formats therefore need less, not more.
+  it('drops redundancy where the code is small', () => {
+    expect(qrErrorLevel('sticker-sheet')).toBe('L')
+    expect(qrErrorLevel('sticker-sheet-small')).toBe('L')
+    expect(qrErrorLevel('sticker-sheet-strip')).toBe('L')
+  })
+
+  it('keeps the print standard where there is room', () => {
     expect(qrErrorLevel('a4')).toBe('M')
+    expect(qrErrorLevel('a5')).toBe('M')
+    expect(qrErrorLevel('a6')).toBe('M')
   })
 })
 
-describe('sticker sheet geometry', () => {
+describe('tiled sheet geometry', () => {
   it('knows how many labels a sheet holds per format', () => {
-    expect(stickersPerSheet('sticker-sheet')).toBe(8)
-    expect(stickersPerSheet('sticker-sheet-small')).toBe(24)
+    expect(tilesPerSheet('sticker-sheet')).toBe(8)
+    expect(tilesPerSheet('sticker-sheet-small')).toBe(24)
     // Two 148 mm strips do not fit side by side on a 210 mm page.
-    expect(stickersPerSheet('sticker-sheet-strip')).toBe(6)
+    expect(tilesPerSheet('sticker-sheet-strip')).toBe(6)
   })
 
   it('keeps both grids inside an A4 page', () => {
     for (const format of ['sticker-sheet', 'sticker-sheet-small', 'sticker-sheet-strip'] as const) {
-      const { w, h, gap, cols, rows } = stickerLayout(format)
+      const { w, h, gap, cols, rows } = tileLayout(format)
       expect(cols * w + (cols - 1) * gap).toBeLessThanOrEqual(210)
       expect(rows * h + (rows - 1) * gap).toBeLessThanOrEqual(297)
     }
@@ -560,7 +576,7 @@ describe('sticker sheet geometry', () => {
 
   it('packs the small format 24 to a sheet', () => {
     const items = Array.from({ length: 25 }, (_, i) => i)
-    const sheets = distributeStickers(items, stickersPerSheet('sticker-sheet-small'))
+    const sheets = distributeTiles(items, tilesPerSheet('sticker-sheet-small'))
     expect(sheets).toHaveLength(2)
     expect(sheets[0]).toHaveLength(24)
     expect(sheets[1]).toEqual([24])
@@ -571,5 +587,92 @@ describe('sticker sheet geometry', () => {
     expect(isStickerFormat('sticker-sheet-small')).toBe(true)
     expect(isStickerFormat('sticker-sheet-strip')).toBe(true)
     expect(isStickerFormat('a4')).toBe(false)
+  })
+
+  it('holds two A5, four A6 and eight A7 to an A4 sheet', () => {
+    expect(tilesPerSheet('a5-2up')).toBe(2)
+    expect(tilesPerSheet('a6-4up')).toBe(4)
+    expect(tilesPerSheet('a7-8up')).toBe(8)
+  })
+
+  it('leaves at least 6 mm of margin on every tiled format', () => {
+    for (const format of Object.keys(TILE_LAYOUT) as TiledFormat[]) {
+      const block = tileBlockMm(format)
+      expect(block.w).toBeLessThanOrEqual(210 - 12)
+      expect(block.h).toBeLessThanOrEqual(297 - 12)
+    }
+  })
+
+  it('accounts for rotation when measuring the block', () => {
+    // Eight portrait A7 do not fit on A4 — the tile lies rotated, so the
+    // block is as wide as the tile is tall.
+    const l = tileLayout('a7-8up')
+    expect(l.rotate).toBe(true)
+    expect(tileBlockMm('a7-8up').w).toBe(l.cols * l.h + (l.cols - 1) * l.gap)
+    expect(tileBlockMm('a7-8up').h).toBe(l.rows * l.w + (l.rows - 1) * l.gap)
+  })
+
+  it('keeps every tile close to the A-series ratio', () => {
+    for (const format of ['a5-2up', 'a6-4up', 'a7-8up'] as const) {
+      const { w, h } = tileLayout(format)
+      expect(h / w).toBeGreaterThan(1.39)
+      expect(h / w).toBeLessThan(1.44)
+    }
+  })
+
+  it('rescales the em base for poster tiles but not for stickers', () => {
+    expect(tileLayout('a6-4up').scaleToTile).toBe(true)
+    expect(tileLayout('sticker-sheet').scaleToTile).toBe(false)
+  })
+
+  it('prints n-up posters on A4 paper', () => {
+    for (const format of ['a5-2up', 'a6-4up', 'a7-8up'] as const) {
+      expect(FORMAT_MM[format]).toEqual({ w: 210, h: 297 })
+    }
+  })
+
+  it('does not mistake an n-up poster for a sticker', () => {
+    for (const format of ['a5-2up', 'a6-4up', 'a7-8up'] as const) {
+      expect(isStickerFormat(format)).toBe(false)
+      expect(isTiledFormat(format)).toBe(true)
+    }
+    expect(isTiledFormat('a4')).toBe(false)
+    expect(isTiledFormat('sticker-sheet')).toBe(true)
+  })
+
+  it('gives every tiled format the extra module size', () => {
+    // A tile is small by construction, so all three take L — see qrErrorLevel.
+    expect(qrErrorLevel('a5-2up')).toBe('L')
+    expect(qrErrorLevel('a6-4up')).toBe('L')
+    expect(qrErrorLevel('a7-8up')).toBe('L')
+  })
+
+  it('describes every format exactly once', () => {
+    const formats: PrintFormat[] = [
+      'a4', 'a5', 'a6', 'a5-2up', 'a6-4up', 'a7-8up',
+      'sticker-sheet', 'sticker-sheet-small', 'sticker-sheet-strip',
+    ]
+    for (const format of formats) {
+      expect(FORMAT_MM[format]).toBeDefined()
+      expect(MIN_QR_MM[format]).toBeDefined()
+    }
+  })
+})
+
+describe('sheetCssVars', () => {
+  // Switching to variables must not change anything for A4/A5/A6: the values
+  // are exactly what is hardcoded in the motif styles today.
+  it('reproduces the hardcoded values for the existing formats', () => {
+    for (const format of ['a4', 'a5', 'a6'] as const) {
+      expect(sheetCssVars(format)).toEqual({ '--qr-min': '30mm', '--qr-min-2': '20mm', '--pad-min': '5mm' })
+    }
+  })
+
+  it('shrinks both floors for an A7 tile', () => {
+    expect(sheetCssVars('a7-8up')).toEqual({ '--qr-min': '18mm', '--qr-min-2': '18mm', '--pad-min': '3mm' })
+  })
+
+  it('keeps the A6 tile at a scannable floor', () => {
+    expect(sheetCssVars('a6-4up')).toEqual({ '--qr-min': '25mm', '--qr-min-2': '20mm', '--pad-min': '5mm' })
   })
 })

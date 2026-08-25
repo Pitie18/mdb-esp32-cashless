@@ -1698,15 +1698,15 @@ final class RefillWizardViewModel: ObservableObject {
                 let productTrays = machines[mi].trays.enumerated().filter {
                     $0.element.tray.productId == productId && $0.element.deficit > 0
                 }
-                let totalDeficit = productTrays.reduce(0) { $0 + $1.element.deficit }
-                guard totalDeficit > 0 else { continue }
+                guard !productTrays.isEmpty else { continue }
 
-                // Proportional distribution
-                let ratio = Double(customQty) / Double(totalDeficit)
+                let shares = Self.distributeProportionally(
+                    quantity: customQty,
+                    trays: productTrays.map { $0.element }
+                )
                 for (idx, pt) in productTrays {
-                    let newAmount = Int((Double(pt.deficit) * ratio).rounded())
-                    let maxFill = pt.tray.capacity - pt.tray.currentStock
-                    machines[mi].trays[idx].fillAmount = max(0, min(maxFill, newAmount))
+                    guard let share = shares[pt.tray.id] else { continue }
+                    machines[mi].trays[idx].fillAmount = share
                 }
             }
         }
@@ -1735,6 +1735,71 @@ final class RefillWizardViewModel: ObservableObject {
         isSaving = false
         currentStep = .refill
         saveTourState()
+    }
+
+    /// Splits a pinned pack quantity across the trays holding that product,
+    /// handing out **exactly** that many units — never more, never fewer.
+    ///
+    /// Largest-remainder distribution: each tray gets `floor(deficit * qty /
+    /// totalDeficit)`, then the units lost to flooring go one at a time to the
+    /// trays with the largest dropped fraction, each clamped to its own
+    /// headroom. Ties break by tray id so two runs agree.
+    ///
+    /// This replaces an independent `.rounded()` per tray, which did not add
+    /// up to the quantity the warehouse was charged. Two trays needing 5 each
+    /// with a reduced pin of 7 rounded to 4 + 4 = **8 booked against 7
+    /// charged**; three trays needing 3 each with a pin of 1 rounded to 0 + 0
+    /// + 0, so the warehouse paid for a unit the machine never received. The
+    /// mismatch only appears when the pin differs from the total deficit —
+    /// i.e. whenever the warehouse capped the quantity or the driver reduced
+    /// it, which is the ordinary case. Ported from Android's
+    /// `RefillTourLogic.distributeProportionally`, where it is unit-tested.
+    ///
+    /// Only an over-pinned quantity (more than the trays can physically hold)
+    /// cannot balance, and it errs safe: the machine is credited less than the
+    /// warehouse was charged, never more.
+    static func distributeProportionally(quantity: Int, trays: [RefillTray]) -> [UUID: Int] {
+        let target = max(0, quantity)
+        let totalDeficit = trays.reduce(0) { $0 + $1.deficit }
+        guard totalDeficit > 0 else { return [:] }
+
+        // Deterministic base order, so the remainder pass is reproducible
+        // even before its explicit id tiebreaker applies.
+        let ordered = trays.sorted { $0.tray.id.uuidString < $1.tray.id.uuidString }
+
+        var amounts: [UUID: Int] = [:]
+        var remainders: [(tray: RefillTray, remainder: Int)] = []
+        var distributed = 0
+        for pt in ordered {
+            // `headroom` and `deficit` are the same number for every tray that
+            // reaches here (the caller filters on `deficit > 0`, and `deficit`
+            // is `capacity - currentStock` clamped at 0), but the clamp is
+            // written against headroom so an over-pinned quantity can never
+            // push a tray past its capacity.
+            let headroom = max(0, pt.tray.capacity - pt.tray.currentStock)
+            let exact = pt.deficit * target
+            let floor = min(exact / totalDeficit, headroom)
+            amounts[pt.tray.id] = floor
+            distributed += floor
+            remainders.append((pt, exact % totalDeficit))
+        }
+
+        // Largest dropped fraction first, ties by tray id ascending.
+        let queue = remainders.sorted {
+            $0.remainder != $1.remainder
+                ? $0.remainder > $1.remainder
+                : $0.tray.tray.id.uuidString < $1.tray.tray.id.uuidString
+        }
+        var left = target - distributed
+        for entry in queue {
+            guard left > 0 else { break }
+            let headroom = max(0, entry.tray.tray.capacity - entry.tray.tray.currentStock)
+            let current = amounts[entry.tray.tray.id] ?? 0
+            guard current < headroom else { continue }
+            amounts[entry.tray.tray.id] = current + 1
+            left -= 1
+        }
+        return amounts
     }
 
     /// Deduct warehouse stock via the `deduct_warehouse_stock_fifo` RPC for each packed product-machine pair.
@@ -1816,10 +1881,18 @@ final class RefillWizardViewModel: ObservableObject {
         machines[mi].trays[ti].fillAmount = tray.tray.capacity - tray.tray.currentStock
     }
 
-    /// Fill all trays in the current machine to capacity.
+    /// Fill every tray **of this tour** in the current machine to capacity.
+    ///
+    /// Scoped to `isInTour` deliberately. `startTour` sets `isInTour = false`
+    /// and `fillAmount = 0` on trays whose product the driver did not pack —
+    /// the normal case when one product was out of warehouse stock — and those
+    /// trays still have room. Touching them here credited machine stock, and
+    /// inflated `total_added` in the audit row, for goods that never left the
+    /// warehouse: into trays the refill step does not even render, so the
+    /// driver could neither see it nor undo it.
     func fillAllTrays(machineId: UUID) {
         guard let mi = machines.firstIndex(where: { $0.id == machineId }) else { return }
-        for ti in machines[mi].trays.indices {
+        for ti in machines[mi].trays.indices where machines[mi].trays[ti].isInTour {
             let tray = machines[mi].trays[ti]
             machines[mi].trays[ti].fillAmount = tray.tray.capacity - tray.tray.currentStock
         }
@@ -1875,7 +1948,11 @@ final class RefillWizardViewModel: ObservableObject {
     func confirmRefill(machineId: UUID) async {
         guard let mi = machines.firstIndex(where: { $0.id == machineId }) else { return }
 
-        let traysToRefill = machines[mi].trays.filter { $0.fillAmount > 0 }
+        // `isInTour` as well as a positive amount: defence in depth, so no
+        // future caller that forgets the tour scope can book stock into a tray
+        // the driver never packed (see `fillAllTrays`, and `startTour`, which is
+        // what makes a not-packed tray `isInTour == false` in the first place).
+        let traysToRefill = machines[mi].trays.filter { $0.fillAmount > 0 && $0.isInTour }
 
         // No tray needs a stock write — still record the visit so the tour
         // log and audit trail show this machine was opened.

@@ -2052,6 +2052,7 @@
     "moreMachinesHint": "Alle ausgewählten Automaten laufen in einem Druckauftrag.",
     "print": "Seite drucken | {count} Seiten drucken",
     "browserHint": "Im Druckdialog Kopf- und Fußzeilen abschalten und Hintergrundgrafiken aktivieren.",
+    "tiledHint": "Eine Kachel je ausgewähltem Automaten (nach dem Schnitt etwas kleiner als das eigenständige Format). Die gestrichelten Linien sind die Schnitthilfe.",
     "originWarnTitle": "QR-Codes zeigen auf eine interne Adresse",
     "originWarnBody": "{origin} ist von außen nicht erreichbar — gedruckte Codes funktionieren auf Kundenhandys nicht. SITE_URL in der Server-Konfiguration setzen.",
     "missingTitle": "Für diesen Aushang fehlen Daten",
@@ -2062,6 +2063,9 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
+      "a5-2up": "2 × A5 auf A4",
+      "a6-4up": "4 × A6 auf A4",
+      "a7-8up": "8 × A7 auf A4",
       "sticker-sheet": "Aufkleber 90 × 50 mm",
       "sticker-sheet-small": "Aufkleber 50 × 30 mm",
       "sticker-sheet-strip": "Streifen 148 × 40 mm"

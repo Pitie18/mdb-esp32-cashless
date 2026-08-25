@@ -1,4 +1,194 @@
 {
+  "legal": {
+    "common": {
+      "lastUpdated": "Laatst bijgewerkt: juli 2026"
+    },
+    "privacy": {
+      "title": "Privacyverklaring",
+      "intro": "Deze privacyverklaring informeert u over welke persoonsgegevens worden verwerkt bij het gebruik van VMflow (webtoepassing en iOS-app), voor welke doeleinden dat gebeurt en welke rechten u hebt.",
+      "sections": [
+        {
+          "heading": "1. Verwerkingsverantwoordelijke",
+          "paragraphs": [
+            "Kerl Handel GmbH",
+            "Ziegelweg 1, 74676 Niedernhall, Duitsland",
+            "E-mail: info{'@'}kerl-handel.de"
+          ]
+        },
+        {
+          "heading": "2. Wat VMflow is",
+          "paragraphs": [
+            "VMflow is een systeem voor het beheer van verkoopautomaten voor zakelijke exploitanten. Het verwerkt in de eerste plaats de bedrijfsgegevens van uw onderneming: machines, verkopen, voorraden, apparaten en het kasboek. Persoonsgegevens komen vooral voor in het kader van uw gebruikersaccount."
+          ]
+        },
+        {
+          "heading": "3. Account en aanmelden",
+          "paragraphs": [
+            "Voor het gebruik is een gebruikersaccount vereist. Daarbij verwerken wij uw e-mailadres en een wachtwoord (opgeslagen als cryptografische hash, nooit in leesbare vorm). De rechtsgrondslag is art. 6, lid 1, onder b AVG (uitvoering van een overeenkomst).",
+            "Accounts worden doorgaans aangemaakt via een uitnodiging door de beheerder van uw onderneming, of via zelfregistratie."
+          ]
+        },
+        {
+          "heading": "4. Bedrijfsgegevens van uw onderneming",
+          "paragraphs": [
+            "Verkoopgegevens, voorraden, machinetelemetrie en kasboekposten zijn toegewezen aan uw onderneming, niet aan individuele personen. Voor zover posten een gebruikersvermelding dragen (bijvoorbeeld wie een boeking heeft aangemaakt), dient dit de traceerbaarheid binnen uw team. De rechtsgrondslagen zijn art. 6, lid 1, onder b en — voor boekhoudkundige gegevens — onder c AVG."
+          ]
+        },
+        {
+          "heading": "5. Pushmeldingen (Apple)",
+          "paragraphs": [
+            "Als u pushmeldingen inschakelt (bijvoorbeeld waarschuwingen bij lage voorraad), slaan wij het apparaattoken van uw iPhone op. De bezorging verloopt via de Apple Push Notification Service van Apple Inc., One Apple Park Way, Cupertino, VS. Daarbij worden gegevens naar de VS doorgegeven; Apple is gecertificeerd onder het EU-US Data Privacy Framework. De rechtsgrondslag is uw toestemming (art. 6, lid 1, onder a AVG), die u op elk moment kunt intrekken in de iOS-instellingen."
+          ]
+        },
+        {
+          "heading": "6. Camera",
+          "paragraphs": [
+            "De iOS-app gebruikt de camera uitsluitend lokaal op uw apparaat om streepjescodes en QR-codes te scannen. Er worden geen foto's of video's gemaakt, opgeslagen of geüpload."
+          ]
+        },
+        {
+          "heading": "7. Cookies en lokale opslag",
+          "paragraphs": [
+            "VMflow gebruikt uitsluitend technisch noodzakelijke cookies en lokale opslag (§ 25, lid 2 TDDDG, Duitse wetgeving); een toestemmingsbanner is daarom niet vereist. Concreet: een authenticatiecookie voor uw sessie, een cookie waarin uw taalkeuze wordt bewaard en een vermelding in de lokale opslag van uw browser voor het kleurenschema (licht/donker). Er is geen tracking, er zijn geen analysecookies en geen advertentiecookies."
+          ]
+        },
+        {
+          "heading": "8. Hosting en verwerking in opdracht",
+          "paragraphs": [
+            "VMflow wordt in eigen beheer geëxploiteerd. De door ons gehoste instantie draait op servers van Contabo GmbH (serverlocatie: Duitsland). Met de hostingaanbieder is, voor zover vereist, een verwerkersovereenkomst op grond van art. 28 AVG gesloten. Exploitanten die VMflow op eigen infrastructuur installeren, zijn zelf verantwoordelijk voor die verwerking."
+          ]
+        },
+        {
+          "heading": "9. Serverlogboeken",
+          "paragraphs": [
+            "Bij het oproepen van deze website en de interfaces worden om technische redenen toegangsgegevens verwerkt (IP-adres, tijdstip, opgevraagde bron). Deze logboeken dienen de operationele veiligheid en foutanalyse (art. 6, lid 1, onder f AVG) en worden na korte tijd verwijderd."
+          ]
+        },
+        {
+          "heading": "10. Bewaartermijn en accountverwijdering",
+          "paragraphs": [
+            "U kunt uw account op elk moment rechtstreeks in de iOS-app verwijderen (Instellingen → Account verwijderen). Bent u de laatste beheerder van uw onderneming, dan worden na uitdrukkelijke bevestiging ook de bedrijfsgegevens verwijderd.",
+            "Wettelijke bewaarplichten (met name voor boekhoudkundige bescheiden op grond van het Duitse HGB en de AO) kunnen aan onmiddellijke verwijdering van bepaalde gegevens in de weg staan (art. 17, lid 3, onder b AVG); zulke gegevens worden na afloop van de termijnen verwijderd."
+          ]
+        },
+        {
+          "heading": "11. Uw rechten",
+          "paragraphs": [
+            "U hebt recht op inzage (art. 15), rectificatie (art. 16), verwijdering (art. 17), beperking van de verwerking (art. 18), overdraagbaarheid van gegevens (art. 20) en bezwaar tegen verwerkingen op grond van gerechtvaardigde belangen (art. 21 AVG). Verleende toestemming kunt u op elk moment intrekken met werking voor de toekomst.",
+            "Daarnaast hebt u het recht een klacht in te dienen bij een toezichthoudende autoriteit voor gegevensbescherming."
+          ]
+        },
+        {
+          "heading": "12. Geen tracking",
+          "paragraphs": [
+            "VMflow zet geen analyse-, tracking- of advertentiediensten in — noch op deze website, noch in de app."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "title": "Gebruiksvoorwaarden",
+      "intro": "Deze gebruiksvoorwaarden gelden voor het gebruik van VMflow (webtoepassing en iOS-app) door zakelijke exploitanten van verkoopautomaten.",
+      "sections": [
+        {
+          "heading": "1. Toepassingsgebied",
+          "paragraphs": [
+            "VMflow richt zich uitsluitend tot ondernemers in de zin van § 14 BGB (Duits Burgerlijk Wetboek). Aanbieder is Kerl Handel GmbH (zie colofon)."
+          ]
+        },
+        {
+          "heading": "2. Dienstverlening",
+          "paragraphs": [
+            "VMflow biedt functies voor het beheer van verkoopautomaten, in het bijzonder verkoopanalyse, voorraad- en magazijnbeheer, apparaatbeheer en een kasboek. Aard en omvang kunnen in de loop van de doorontwikkeling wijzigen, voor zover dat voor u redelijk is."
+          ]
+        },
+        {
+          "heading": "3. Account en verplichtingen",
+          "paragraphs": [
+            "U bent verplicht uw inloggegevens geheim te houden en het platform niet oneigenlijk te gebruiken. U bent verantwoordelijk voor de inhoud en de gegevens die uw onderneming invoert."
+          ]
+        },
+        {
+          "heading": "4. Beschikbaarheid",
+          "paragraphs": [
+            "Wij streven naar een hoge beschikbaarheid, maar zijn geen bepaald beschikbaarheidspercentage verschuldigd. Onderhoudswerkzaamheden kunnen tot tijdelijke beperkingen leiden."
+          ]
+        },
+        {
+          "heading": "5. Aansprakelijkheid",
+          "paragraphs": [
+            "Wij zijn onbeperkt aansprakelijk bij opzet en grove nalatigheid alsmede op grond van de Duitse Wet productaansprakelijkheid. Bij lichte nalatigheid zijn wij uitsluitend aansprakelijk voor schade uit de schending van wezenlijke contractuele verplichtingen, beperkt tot de voor dit type overeenkomst typisch voorzienbare schade."
+          ]
+        },
+        {
+          "heading": "6. Slotbepalingen",
+          "paragraphs": [
+            "Duits recht is van toepassing. Bevoegde rechtbank is, voor zover toelaatbaar, de vestigingsplaats van de aanbieder. Mochten afzonderlijke bepalingen ongeldig zijn, dan blijft de geldigheid van de overige bepalingen onverlet."
+          ]
+        }
+      ]
+    },
+    "imprint": {
+      "title": "Colofon",
+      "sections": [
+        {
+          "heading": "Gegevens conform § 5 DDG (Duitse wet digitale diensten)",
+          "paragraphs": [
+            "Kerl Handel GmbH\nZiegelweg 1\n74676 Niedernhall, Duitsland"
+          ]
+        },
+        {
+          "heading": "Vertegenwoordigd door",
+          "paragraphs": [
+            "Directie: Lucien Kerl, Steven Kerl"
+          ]
+        },
+        {
+          "heading": "Contact",
+          "paragraphs": [
+            "E-mail: info{'@'}kerl-handel.de"
+          ]
+        },
+        {
+          "heading": "Registerinschrijving en btw",
+          "paragraphs": [
+            "Handelsregister: Amtsgericht Stuttgart (Duitse rechtbank), HRB 795950\nBtw-identificatienummer conform § 27a UStG: DE414918778"
+          ]
+        },
+        {
+          "heading": "Verantwoordelijk voor de inhoud",
+          "paragraphs": [
+            "Lucien Kerl, Ziegelweg 1, 74676 Niedernhall, Duitsland"
+          ]
+        }
+      ]
+    },
+    "support": {
+      "title": "Ondersteuning",
+      "intro": "Hulp bij de VMflow iOS-app en webtoepassing.",
+      "contactHeading": "Contact",
+      "contactText": "Bij vragen of problemen bereikt u ons per e-mail op info{'@'}kerl-handel.de. Wij reageren doorgaans binnen twee werkdagen.",
+      "faqHeading": "Veelgestelde vragen",
+      "faq": [
+        {
+          "q": "Hoe krijg ik een account?",
+          "a": "VMflow is een systeem voor zakelijke automatenexploitanten. U kunt zich in de app registreren; tot een bestaande onderneming treedt u toe via een uitnodiging van de beheerder daarvan."
+        },
+        {
+          "q": "Ik kan niet inloggen — wat nu?",
+          "a": "Controleer eerst of in de app de juiste server is geselecteerd (serverkeuze op het aanmeldscherm). Bent u uw wachtwoord vergeten, neem dan contact op met de beheerder van uw onderneming of met de ondersteuning."
+        },
+        {
+          "q": "Hoe verwijder ik mijn account?",
+          "a": "Rechtstreeks in de iOS-app: Instellingen → Account verwijderen. Behoort u nog niet tot een onderneming, dan vindt u de optie op het scherm dat u na het aanmelden ziet. De verwijdering is definitief."
+        },
+        {
+          "q": "Worden mijn gegevens voor reclame gebruikt?",
+          "a": "Nee. VMflow bevat geen tracking, geen analysediensten en geen reclame. Details staan in de privacyverklaring."
+        }
+      ]
+    }
+  },
   "platformAdmin": {
     "title": "Platformoverzicht",
     "subtitle": "Dashboard voor meerdere ondernemingen",
@@ -140,7 +330,8 @@
     "cashBook": "Kasboek",
     "inbox": "Inbox",
     "mobileApp": "Mobiele app",
-    "deals": "Aanbiedingen"
+    "deals": "Aanbiedingen",
+    "analytics": "Analyse"
   },
   "auth": {
     "signIn": "Aanmelden",
@@ -244,6 +435,7 @@
     "swapNeeded": "{count} product(en) te vervangen",
     "refillNeeded": "{count} bijvulling(en) nodig",
     "noWarehouseStock": "{count} geen voorraad",
+    "topoffRecommended": "{count} bijvullen aanbevolen",
     "inStock": "op voorraad",
     "noStock": "geen voorraad",
     "swap": "vervangen",
@@ -1252,6 +1444,11 @@
     "sourceNayax": "Nayax-afstemming",
     "sourceAnalysisSwap": "Vervanging via analyse",
     "sourceSuppressedRestore": "Onderdrukte verkoop hersteld",
+    "technicalDetails": "Technische details",
+    "showMore": "Meer tonen",
+    "showLess": "Minder tonen",
+    "moreItems": "+{count} meer",
+    "timeUncertainWarning": "Tijdstempel onzeker — mogelijk een dubbele melding na een herstart van het apparaat",
     "actions": {
       "sale_recorded": "Verkoop geregistreerd",
       "sale_deleted": "Verkoop verwijderd",
@@ -1300,6 +1497,8 @@
       "cashBook": "Kasboek",
       "minStock": "Min. voorraad",
       "capacity": "Capaciteit",
+      "saleSeq": "Volgnummer",
+      "timeUncertain": "Status tijdstempel",
       "motif": "Ontwerp",
       "format": "Formaat"
     }
@@ -1853,6 +2052,7 @@
     "moreMachinesHint": "Alle geselecteerde automaten gaan in één afdruktaak.",
     "print": "Pagina afdrukken | {count} pagina's afdrukken",
     "browserHint": "Zet in het afdrukvenster kop- en voetteksten uit en schakel achtergrondafbeeldingen in.",
+    "tiledHint": "Eén tegel per geselecteerde automaat (na het snijden iets kleiner dan het losse formaat). De gestippelde lijnen geven aan waar u moet snijden.",
     "originWarnTitle": "QR-codes wijzen naar een intern adres",
     "originWarnBody": "{origin} is van buitenaf niet bereikbaar — afgedrukte codes werken niet op de telefoon van een klant. Stel SITE_URL in de serverconfiguratie in.",
     "missingTitle": "Er ontbreken gegevens voor dit biljet",
@@ -1863,6 +2063,9 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
+      "a5-2up": "2 × A5 op A4",
+      "a6-4up": "4 × A6 op A4",
+      "a7-8up": "8 × A7 op A4",
       "sticker-sheet": "Stickers 90 × 50 mm",
       "sticker-sheet-small": "Stickers 50 × 30 mm",
       "sticker-sheet-strip": "Strook 148 × 40 mm"
@@ -2046,5 +2249,58 @@
     "zoomIn": "Inzoomen",
     "zoomOut": "Uitzoomen",
     "zoomFit": "Passend"
+  },
+  "analytics": {
+    "title": "Analyse",
+    "subtitle": "Begrijpen wat waar en wanneer verkoopt",
+    "unsupported": "Deze server ondersteunt analyses nog niet. Werk de backend bij.",
+    "revenue": "Omzet",
+    "units": "Stuks",
+    "grossProfit": "Brutowinst",
+    "profit": "Brutowinst",
+    "vsPrevious": "vs. {range}",
+    "costHint": "Brutowinst exclusief btw. {count} product zonder inkoopprijs is niet meegeteld. | Brutowinst exclusief btw. {count} producten zonder inkoopprijs zijn niet meegeteld.",
+    "timeRange": "Periode",
+    "days7": "Laatste 7 dagen",
+    "days30": "Laatste 30 dagen",
+    "days90": "Laatste 90 dagen",
+    "thisMonth": "Deze maand",
+    "lastMonth": "Vorige maand",
+    "custom": "Eigen periode",
+    "from": "Van",
+    "to": "Tot",
+    "apply": "Toepassen",
+    "machines": "Machines",
+    "allMachines": "Alle machines",
+    "nMachines": "{count} machine | {count} machines",
+    "categories": "Categorieën",
+    "allCategories": "Alle categorieën",
+    "nCategories": "{count} categorie | {count} categorieën",
+    "products": "Producten",
+    "breakdown": "Uitsplitsing",
+    "trend": "Verloop",
+    "peakHours": "Piekuren",
+    "paymentMethods": "Betaalmethoden",
+    "cash": "Contant",
+    "cashless": "Cashless",
+    "unknown": "Onbekend",
+    "noSales": "Geen verkopen in deze periode.",
+    "noPurchasePrice": "geen inkoopprijs",
+    "perDay": "{value} /dag",
+    "nPieces": "{count} st | {count} st",
+    "nProducts": "{count} product | {count} producten",
+    "perMachine": "Per machine",
+    "abcClass": "Klasse {class} · {share}% van de omzet",
+    "stock": "Voorraad",
+    "stockOf": "voorraad {current}/{capacity}",
+    "empty": "leeg",
+    "sellThrough": "Doorverkoop {value}%",
+    "daysOfSupply": "Nog ongeveer {days} dagen voldoende",
+    "sortDescending": "Hoogste eerst",
+    "sortAscending": "Laagste eerst",
+    "filtered": "Gefilterd",
+    "thisYear": "Dit jaar",
+    "lastYear": "Vorig jaar",
+    "allTime": "Alle tijd"
   }
 }

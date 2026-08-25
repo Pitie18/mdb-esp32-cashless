@@ -1,12 +1,12 @@
 # Übergabe: Android-Parität zur iOS-App
 
-**Stand:** 2026-08-13 · Branch `claude/android-phase-3-task-26-db2b5d` · 14 Commits vor `main`
+**Stand:** 2026-08-25 · Phasen 1–5b sind in `main` gemerged **und gepusht** · 387 Tests grün · die Refill-Parität zu iOS ist damit vollständig
 
 ## Wo anfangen
 
 1. Diese Datei lesen.
 2. `.superpowers/sdd/progress.md` lesen — das Ledger mit allen Task-Ergebnissen, Reviews und Befunden. Phase 3 ist darin vollständig protokolliert (Tasks 23–30), inklusive der vier offenen Nachfolgepunkte, die absichtlich nicht in dieser Phase erledigt wurden (siehe unten).
-3. Phase 4 (Lager-Schreibpfade) braucht zuerst einen Plan — es gibt noch keine `plans/*.md`-Datei dafür. Mit `superpowers:writing-plans` einen Plan aus der Spec/den Requirements erstellen, dann wie bisher mit `superpowers:subagent-driven-development` umsetzen.
+3. Die geplante Phasenreihe ist abgeschlossen. Was als Nächstes ansteht, steht nicht mehr hier, sondern in zwei Abschnitten der Pläne: die **neun Restrisiken** am Ende von [`plans/2026-08-24-android-phase-5-refill.md`](plans/2026-08-24-android-phase-5-refill.md) (einseitige Lagerbilanz, fehlende Paginierung in `fetchRefillMachines`, zwei Prozesstod-Fenster, der Rundungsfehler, der auf iOS und in der PWA noch lebt) und die drei zurückgestellten Punkte in [`plans/2026-08-24-android-phase-5b-review.md`](plans/2026-08-24-android-phase-5b-review.md). Aus der Spec offen bleiben außerdem Push über FCM sowie Multi-Server/QR-Login-Feinschliff.
 
 Vorgehen wie bisher: `superpowers:subagent-driven-development` — ein frischer Umsetzer je Task, unabhängiges Review, und der Orchestrator verifiziert Build, Tests und Bildschirm **selbst** nach. Bei kleinen, rein visuellen Fixes (Layout-Feintuning, das iterative Bildschirmzugriff braucht) hat es sich diese Sitzung bewährt, dass der Orchestrator sie direkt selbst macht statt einen Umsetzer zu beauftragen — ein Subagent kann den Bildschirm nicht sehen.
 
@@ -17,16 +17,17 @@ Vorgehen wie bisher: `superpowers:subagent-driven-development` — ein frischer 
 | 1 | Toolchain, Navigation, Theming, Serverauswahl mit QR | fertig, in `main` gemerged |
 | 2 | Dashboard: Vergleichszeiträume, 30-Tage-Chart, Aktivitäts-Feed mit Nachladen, Barkassen-Karte, Deals-Banner | fertig, am S10 verifiziert |
 | 3 | Maschinen-Tab: Analyse-Ansicht, unterdrückte Verkäufe, 3 Sheets (Guthaben/Einstellungen/Gerätegesundheit), Lagerverfügbarkeit, Lokalisierungs-Sweep (Tasks 23–30) | **fertig**, am S10 verifiziert |
-| 4 | Lager-Schreibpfade | nicht begonnen — kein Plan vorhanden |
-| 5 | Refill-Wizard | nicht begonnen — Voraussetzung: Phase 4 |
+| 4 | Lager: Bestand, Wareneingang (Barcode), FIFO-Chargen-Drilldown + Korrektur, Lokalisierung (Tasks 1–12) | **fertig**, am S10 verifiziert, in `main` gemerged |
+| 5a | Refill-Tour auf iOS-Stand: lagerbewusstes Packen, FIFO-Abbuchung nur für gepackte Ware, atomare `refill_machine_trays`-Buchung mit Retry, `activity_log`, Tour fortsetzen, Lokalisierung | **fertig**, am S10 gegen den Testserver verifiziert, in `main` gemerged |
+| 5b | Review-Schritt (vier Ersatzgründe), Ersatzprodukt-Picker mit Bestands-Buckets und Kategorien, Maschinen-Layout-Grid (mit der Analyse-Ansicht geteilt) | **fertig**, am S10 verifiziert, in `main` gemerged |
 
-Tests: **214**, alle grün. Toolchain: AGP 9.3.1 / Gradle 9.5 / Kotlin 2.4.10 / compileSdk 36 — Debug, Tests und `assembleRelease` (R8) verifiziert.
+Tests: **387**, alle grün. Toolchain: AGP 9.3.1 / Gradle 9.5 / Kotlin 2.4.10 / compileSdk 36 — Debug, Tests und `assembleRelease` (R8) verifiziert.
 
 ## Offene Nachfolgepunkte aus Phase 3 (bewusst nicht erledigt)
 
 Details und Fundstellen im Ledger (`.superpowers/sdd/progress.md`, Abschnitt "PHASE 3 COMPLETE"):
 
-1. **Dashboard-Absturzrisiko:** `DashboardRepository` wirft irgendwo im Stock-Health-/Kassenbuch-nahen Fetch-Pfad eine `MissingFieldException` (`products(...)`-Select ohne `id`-Spalte). Weil `loadDashboard()` sieben Geschwister-Coroutinen als `launch {}` unter einem gemeinsamen `coroutineScope` startet, reißt dieser eine Fehler alle mit — das ganze Dashboard zeigt dann überall 0/leer statt nur das eine kaputte Widget zu degradieren. Diese Sitzung einmal reproduziert (selbstheilend nach Neustart). Sollte vor Phase 4 gefixt werden: (a) die fehlende `id` in dem betroffenen Select ergänzen, (b) erwägen, jeden Dashboard-Sub-Fetch einzeln try/catch zu kapseln, damit ein kaputter Fetch nicht den ganzen Screen leerräumt.
+1. ~~**Dashboard-Absturzrisiko:** `MissingFieldException` im Stock-Health-Fetch riss über den gemeinsamen `coroutineScope` alle sieben Dashboard-Coroutinen mit.~~ **Behoben und gemerged (`ec21f56`)**, während Phase 4 lief; in Phase 4 mehrfach beiläufig auf dem S10 bestätigt. Der zweite Teil des damaligen Vorschlags — jeden Dashboard-Sub-Fetch einzeln zu kapseln, damit ein künftiger Fetch-Fehler nur sein eigenes Widget leerräumt statt den ganzen Screen — ist **nicht** umgesetzt und bleibt offen.
 2. Device-Health-Sheet: Bei den "Automatisch entfernten Duplikaten" fehlt (anders als bei iOS) eine Wiederherstellen-Aktion — funktional redundant, da der Sales-Tab das bereits kann. Bewusst nicht nachgezogen.
 3. Device-Health-Sheet: Fehler beim Laden von Neustart-/MDB-Log-Historie werden intern gesetzt, aber nie im UI angezeigt — ein Fehlschlag sieht aktuell wie "keine Daten" aus.
 

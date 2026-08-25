@@ -2052,6 +2052,7 @@
     "moreMachinesHint": "All selected machines go into one print job.",
     "print": "Print sheet | Print {count} sheets",
     "browserHint": "In the print dialog, turn off headers and footers and enable background graphics.",
+    "tiledHint": "One tile per selected machine (slightly smaller after cutting than the standalone format). The dashed lines show where to cut.",
     "originWarnTitle": "QR codes point at an internal address",
     "originWarnBody": "{origin} is not reachable from outside — printed codes will not work on a customer's phone. Set SITE_URL in the server configuration.",
     "missingTitle": "This sign is missing data",
@@ -2062,6 +2063,9 @@
       "a4": "A4 (210 × 297 mm)",
       "a5": "A5 (148 × 210 mm)",
       "a6": "A6 (105 × 148 mm)",
+      "a5-2up": "2 × A5 on A4",
+      "a6-4up": "4 × A6 on A4",
+      "a7-8up": "8 × A7 on A4",
       "sticker-sheet": "Labels 90 × 50 mm",
       "sticker-sheet-small": "Labels 50 × 30 mm",
       "sticker-sheet-strip": "Strip 148 × 40 mm"

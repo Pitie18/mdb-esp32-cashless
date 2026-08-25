@@ -90,6 +90,10 @@ struct Tray: Codable, Identifiable, Equatable, Hashable {
     }
 }
 
+/// Lets the fleet-wide stock classification in `MachineStockHealth` work on
+/// real trays without the pure logic depending on this model.
+extension Tray: StockCountableTray {}
+
 /// Payload for creating or updating a tray.
 struct TrayUpsert: Encodable {
     let machineId: UUID
