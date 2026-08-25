@@ -11,6 +11,13 @@ import org.junit.Test
  * The bug this pins: `JsonNull` is itself a `JsonPrimitive`, so reading its
  * `content` yields the literal string `"null"` — which was being written into
  * `activity_log` as the person who performed the action.
+ *
+ * Only the JSON-null case discriminates against that guard being removed
+ * (mutation-checked). The other four are characterization tests: they pin the
+ * neighbouring behaviours a future edit to [asNonNullString] could otherwise
+ * change unnoticed — identity pass-through, an absent value, a non-primitive,
+ * and the empty string, which must stay an empty string here because the
+ * display-name derivation is what turns it into the e-mail fallback.
  */
 class AuditUserTest {
 
