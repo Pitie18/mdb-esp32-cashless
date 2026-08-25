@@ -200,10 +200,7 @@ object MachineAnalysisRepository : MachineAnalysisDataSource {
     override suspend fun logProductSwap(context: SwapLogContext) {
         val user = auth.currentUserOrNull() ?: return
         val companyId = fetchCompanyId()
-        val firstName = user.userMetadata?.get("first_name")?.let { (it as? JsonPrimitive)?.content }
-        val lastName = user.userMetadata?.get("last_name")?.let { (it as? JsonPrimitive)?.content }
-        val fullName = listOfNotNull(firstName, lastName).joinToString(" ").trim()
-        val userDisplay = fullName.ifEmpty { user.email }
+        val userDisplay = user.auditDisplayName()
 
         postgrest.from("activity_log").insert(
             ActivityLogInsert(

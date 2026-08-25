@@ -8,9 +8,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
@@ -322,14 +320,7 @@ object RefillRepository {
                 ?: AuthRepository.fetchOrganization().getOrThrow().organization?.id
                 ?: throw IllegalStateException("Could not determine company")
 
-            // `JsonNull` is itself a JsonPrimitive whose `content` is the
-            // literal string "null", so an explicit `"first_name": null` in
-            // the user metadata would otherwise be written as the author name
-            // "null" and rendered as such in the activity feed.
-            val firstName = user.userMetadata?.get("first_name").asNonNullString()
-            val lastName = user.userMetadata?.get("last_name").asNonNullString()
-            val fullName = listOfNotNull(firstName, lastName).joinToString(" ").trim()
-            val userDisplay = fullName.ifEmpty { user.email }
+            val userDisplay = user.auditDisplayName()
 
             val metadata = buildJsonObject {
                 put("tour_id", tourId)
@@ -470,10 +461,7 @@ object RefillRepository {
                 ?: AuthRepository.fetchOrganization().getOrThrow().organization?.id
                 ?: throw IllegalStateException("Could not determine company")
 
-            val firstName = user.userMetadata?.get("first_name").asNonNullString()
-            val lastName = user.userMetadata?.get("last_name").asNonNullString()
-            val fullName = listOfNotNull(firstName, lastName).joinToString(" ").trim()
-            val userDisplay = fullName.ifEmpty { user.email }
+            val userDisplay = user.auditDisplayName()
 
             val metadata = buildJsonObject {
                 put("machine_id", machineId)
@@ -511,12 +499,3 @@ object RefillRepository {
         }
     }
 }
-
-/**
- * Reads a `user_metadata` value as a real string, treating JSON null as
- * absent. `JsonNull` is a [JsonPrimitive] whose `content` is `"null"`, so a
- * bare `(value as? JsonPrimitive)?.content` turns an explicit null into the
- * four-character string.
- */
-private fun JsonElement?.asNonNullString(): String? =
-    (this as? JsonPrimitive)?.takeIf { it !is JsonNull }?.content
