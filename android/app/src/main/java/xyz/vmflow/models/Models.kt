@@ -125,7 +125,24 @@ data class Product(
     val name: String? = null,
     @SerialName("image_path") val imagePath: String? = null,
     val discontinued: Boolean = false,
-    val sellprice: Double? = null
+    val sellprice: Double? = null,
+    val category: String? = null
+)
+
+/**
+ * `product_category` row — mirrors iOS `ProductCategory`
+ * (`RefillWizardViewModel.swift` decode target). Columns verified against
+ * `Docker/supabase/migrations/20260101000000_initial_schema.sql:88-95`
+ * (`id uuid`, `created_at timestamptz`, `name text`, `company uuid`
+ * references `companies(id)`) — not guessed from the iOS select string.
+ * Used only to group the replacement-product picker; `createdAt` is
+ * intentionally omitted, nothing here needs it.
+ */
+@Serializable
+data class ProductCategory(
+    val id: String,
+    val name: String? = null,
+    val company: String? = null
 )
 
 @Serializable
@@ -493,13 +510,20 @@ data class TrayApplicationResult(
 )
 
 /**
- * Step of the refill wizard's flow (pack → refill → summary). Lives here
- * rather than in `ui/refill/` so the data layer (`TourStore`) can share it
- * with the UI layer without a `data` → `ui` dependency.
+ * Step of the refill wizard's flow (review → pack → refill → summary). Lives
+ * here rather than in `ui/refill/` so the data layer (`TourStore`) can share
+ * it with the UI layer without a `data` → `ui` dependency.
+ *
+ * [REVIEW] is deliberately the **first** constant, matching iOS's
+ * `RefillStep.review = 0` (`RefillWizardViewModel.swift:191-195`): the step
+ * indicator's progress logic compares `ordinal`s, so the declaration order is
+ * the flow order. Reordering is safe for the persisted snapshot because
+ * kotlinx.serialization encodes enums by *name*, not by ordinal — an existing
+ * `PersistedTourState` blob written before [REVIEW] existed still decodes.
  */
 @Serializable
 enum class RefillStep {
-    PACKING, REFILL, SUMMARY
+    REVIEW, PACKING, REFILL, SUMMARY
 }
 
 /**

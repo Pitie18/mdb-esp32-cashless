@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -19,12 +22,17 @@ import kotlinx.serialization.json.buildJsonObject
 import xyz.vmflow.data.AuthRepository
 import xyz.vmflow.data.PackedDeduction
 import xyz.vmflow.data.RefillRepository
+import xyz.vmflow.data.RefillReviewLogic
 import xyz.vmflow.data.RefillTourLogic
 import xyz.vmflow.data.RefillTourStoreHolder
+import xyz.vmflow.data.ReplacementSuggestion
 import xyz.vmflow.data.TourStore
+import xyz.vmflow.data.TrayRepository
 import xyz.vmflow.data.WarehouseRepository
 import xyz.vmflow.models.CombinedPackingItem
 import xyz.vmflow.models.PersistedTourState
+import xyz.vmflow.models.Product
+import xyz.vmflow.models.ProductCategory
 import xyz.vmflow.models.RefillMachine
 import xyz.vmflow.models.RefillStep
 import xyz.vmflow.models.RefillTray
@@ -34,7 +42,7 @@ import xyz.vmflow.models.TrayApplicationResult
 import xyz.vmflow.models.Warehouse
 
 /**
- * Everything the refill wizard's three steps read. One immutable snapshot,
+ * Everything the refill wizard's steps read. One immutable snapshot,
  * same shape as [xyz.vmflow.ui.warehouse.WarehouseUiState].
  *
  * [packingList] is **stored**, not computed in a getter: the pack step reads
@@ -87,6 +95,24 @@ import xyz.vmflow.models.Warehouse
  *   deductions run exactly once, at tour start, so a resumed tour has no new
  *   ones to report and re-announcing the old ones after an app kill would be
  *   noise.
+ * @property replacements the pre-tour review's slots — every tray whose
+ *   product is discontinued and sold out, expired, unavailable in the
+ *   warehouse, or missing entirely, each carrying the driver's decision
+ *   (`replacementProductId` set, or `isSkipped`). Computed once per load by
+ *   [RefillReviewLogic.buildReplacementSuggestions] while the review is still
+ *   pending; left in place afterwards (iOS does the same) so the applied
+ *   decisions stay inspectable.
+ * @property availableProducts active (non-discontinued) products, the
+ *   replacement picker's options. Also the lookup behind
+ *   [RefillViewModel.categoryIdOfCurrentProduct] and the source of the new
+ *   product's name for the swap's audit row.
+ * @property productCategories categories for the picker's grouping UI only.
+ *   Degrades to empty on a failed fetch — grouping is presentation, and an
+ *   ungrouped picker still lets the driver pick.
+ * @property isApplyingReplacements the review's write is in flight.
+ *   Deliberately **not** [isSaving]: that flag gates the tour path's
+ *   re-entrancy guards ([confirmRefill], [skipMachine]), and a review that
+ *   borrowed it would be entangled with a state machine it runs before.
  * @property refillFailedAttempts set together with [error] when
  *   [confirmRefill] gives up after [MAX_REFILL_ATTEMPTS] failed
  *   `refill_machine_trays` calls; `null` in every other case, including when
@@ -98,6 +124,19 @@ import xyz.vmflow.models.Warehouse
 data class RefillUiState(
     val isLoading: Boolean = true,
     val isSaving: Boolean = false,
+    // PACKING, not REVIEW, and that is load-bearing: REVIEW is only ever
+    // correct once `detectReplacements` has actually produced suggestions,
+    // and every *failure* path of `performLoad` returns without ever getting
+    // there. A REVIEW default therefore turned an ordinary offline entry into
+    // a review screen with no cards, whose Continue button was enabled
+    // (`allReplacementsHandled` is vacuously true over an empty list) and
+    // whose one tap latched `reviewCompleted` — switching the review off for
+    // the rest of this ViewModel's life, network or no network.
+    //
+    // This default was briefly REVIEW to stop the step indicator flashing
+    // PACKING as current during the initial load. That is a rendering
+    // problem and it is now solved where it belongs: `RefillWizardScreen`
+    // does not render the step indicator while `isLoading`.
     val step: RefillStep = RefillStep.PACKING,
     val machines: List<RefillMachine> = emptyList(),
     val warehouses: List<Warehouse> = emptyList(),
@@ -108,6 +147,10 @@ data class RefillUiState(
     val customQuantities: Map<String, Map<String, Int>> = emptyMap(),
     val activeChip: String? = null,
     val packingList: List<CombinedPackingItem> = emptyList(),
+    val replacements: List<ReplacementSuggestion> = emptyList(),
+    val availableProducts: List<Product> = emptyList(),
+    val productCategories: List<ProductCategory> = emptyList(),
+    val isApplyingReplacements: Boolean = false,
     val currentMachineId: String? = null,
     val tourId: String = "",
     val tourCompanyId: String? = null,
@@ -126,6 +169,21 @@ data class RefillUiState(
  */
 val RefillUiState.stockLoaded: Boolean
     get() = warehouseStock.isNotEmpty()
+
+/**
+ * Whether every review slot has a decision — a replacement product chosen or
+ * an explicit skip. The gate on [RefillViewModel.applyReplacementsAndContinue].
+ * **Vacuously true for an empty list** — so this must never be the gate on a
+ * review that has no suggestions, or Continue is enabled over nothing. Three
+ * things keep that from happening: [RefillViewModel.detectReplacements] routes
+ * an empty result straight to [RefillStep.PACKING], every failure path of
+ * [RefillViewModel.performLoad] lands on [RefillStep.PACKING] rather than
+ * leaving the wizard wherever it was, and [RefillWizardScreen] renders a
+ * `REVIEW` step with no suggestions as the pack step regardless. Ported from
+ * iOS `allReplacementsHandled` (`RefillWizardViewModel.swift:1566-1568`).
+ */
+val RefillUiState.allReplacementsHandled: Boolean
+    get() = replacements.all { it.replacementProductId != null || it.isSkipped }
 
 /**
  * Drives the refill wizard. This half of it loads machines/trays,
@@ -167,6 +225,28 @@ class RefillViewModel : ViewModel() {
      */
     private var didRunInitialLoad = false
 
+    /**
+     * Whether the pre-tour review has been dealt with in this wizard run.
+     * Flow state, not display state — hence a plain field rather than a
+     * [RefillUiState] property: no UI reads it, it only decides whether
+     * [performLoad] recomputes the review's suggestions. Without it,
+     * [applyReplacementsAndContinue]'s reload would rebuild the very
+     * suggestions it just applied (the swapped-in products sit in empty
+     * slots, i.e. `currentStock == 0`, and a product the warehouse doesn't
+     * stock would come straight back as [xyz.vmflow.data.ReplacementReason.NO_STOCK])
+     * and bounce the driver back into the review, forever.
+     *
+     * Only ever latched by an apply over a **non-empty** suggestion list —
+     * see [applyReplacementsAndContinue]'s empty guard. A review that never
+     * had anything to show has not happened, and must not be able to switch
+     * itself off.
+     *
+     * Cleared by [reset] alongside [didRunInitialLoad] — the next wizard run
+     * is a new tour and must review again. Mirrors iOS `reviewCompleted`
+     * (`RefillWizardViewModel.swift`).
+     */
+    private var reviewCompleted = false
+
     /** Call from the screen on entry. No-op after the first call — see [didRunInitialLoad]. */
     fun loadDataIfNeeded() {
         if (didRunInitialLoad) return
@@ -182,9 +262,11 @@ class RefillViewModel : ViewModel() {
      * wholesale, which is also where `isPacked`/`isRefilled`/`isSkipped` and
      * every tray's `fillAmount` live. Calling it mid-tour would silently
      * discard the driver's in-progress fills and pack state. It therefore
-     * no-ops unless the wizard is still at the pack step with no tour in
-     * memory (see [isTourInMemory]) — it deliberately does **not** double as
-     * a mid-tour pull-to-refresh. This app has no mid-tour refresh at all:
+     * no-ops while a tour is in memory (see [isTourInMemory]) — it
+     * deliberately does **not** double as a mid-tour pull-to-refresh. The
+     * review step is *not* such a state: it holds no tour and its whole
+     * purpose is to be followed by a reload. This app has no mid-tour
+     * refresh at all:
      * iOS's step-specific `refreshDuringPacking`/`refreshDuringRefill`
      * (`RefillWizardViewModel.swift:1199-1211`) were not ported, and a
      * caller that wants one has to add them rather than reach for this
@@ -192,66 +274,108 @@ class RefillViewModel : ViewModel() {
      */
     fun loadData() {
         if (isTourInMemory(_uiState.value)) return
-        viewModelScope.launch {
-            val hasSavedTour = tourStore.hasSavedTour
-            // `hasSavedTour = true` must only ever be written in the same
-            // update as `isLoading = true`, never on its own — the resume
-            // prompt in RefillWizardScreen is gated on `!isLoading` and
-            // relies on that pairing to never fire mid-load, while `machines`
-            // is about to be overwritten below.
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    error = null,
-                    refillFailedAttempts = null,
-                    hasSavedTour = hasSavedTour
-                )
-            }
+        viewModelScope.launch { performLoad() }
+    }
 
-            RefillRepository.fetchRefillMachines().fold(
-                onSuccess = { machines ->
-                    // `withSyncedPackedState()` rather than `withPackingList()`:
-                    // `isPacked` is *derived* from `packedItems`, and replacing
-                    // `machines` wholesale drops it. `packedItems` survives a
-                    // reload, so without the re-derivation every tick and
-                    // quantity still renders as packed while the header counts
-                    // zero packed machines and `startTour()` hard-returns.
-                    // Defensive: nothing reaches this branch with a non-empty
-                    // `packedItems` today, and no future caller should be able
-                    // to break the invariant either.
-                    _uiState.update { it.copy(machines = machines).withSyncedPackedState() }
-                },
-                onFailure = { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.message) }
-                    rearmEntryGateUnlessTourInMemory()
-                    return@launch
-                }
+    /**
+     * [loadData]'s body, as a suspending function so
+     * [applyReplacementsAndContinue] can **await** the reload before it
+     * declares the review finished — iOS `await loadData()`
+     * (`RefillWizardViewModel.swift:1605`). The entry guard stays on
+     * [loadData]: the review's caller has already established that no tour is
+     * running (it cannot be reached from the refill step), and it must not be
+     * able to have its reload silently skipped.
+     *
+     * **Every failure return below lands on [RefillStep.PACKING]** — written
+     * out explicitly rather than left to the default, because "wherever the
+     * step happened to be" is exactly what made a failed load render an empty
+     * review screen. Only [detectReplacements] may route to
+     * [RefillStep.REVIEW], and only once it holds suggestions to show. The
+     * pack step is the right landing place for a failed load: it renders its
+     * own empty/retry affordances, and the re-armed entry gate means the next
+     * visit loads again and can still route into the review.
+     */
+    private suspend fun performLoad() {
+        val hasSavedTour = tourStore.hasSavedTour
+        // `hasSavedTour = true` must only ever be written in the same
+        // update as `isLoading = true`, never on its own — the resume
+        // prompt in RefillWizardScreen is gated on `!isLoading` and
+        // relies on that pairing to never fire mid-load, while `machines`
+        // is about to be overwritten below.
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                error = null,
+                refillFailedAttempts = null,
+                hasSavedTour = hasSavedTour
             )
-
-            WarehouseRepository.fetchWarehouses().fold(
-                onSuccess = { warehouses ->
-                    _uiState.update { state ->
-                        state.copy(
-                            warehouses = warehouses,
-                            selectedWarehouseId = state.selectedWarehouseId ?: warehouses.firstOrNull()?.id
-                        )
-                    }
-                },
-                onFailure = { e ->
-                    // Machines did load, so the pack step can still render —
-                    // but without a warehouse there is no stock cap, so the
-                    // gate is re-armed to retry on the next entry (iOS does
-                    // the same: the whole `loadData` catch re-arms).
-                    _uiState.update { it.copy(isLoading = false, error = e.message) }
-                    rearmEntryGateUnlessTourInMemory()
-                    return@launch
-                }
-            )
-
-            _uiState.value.selectedWarehouseId?.let { loadWarehouseData(it) }
-
-            _uiState.update { it.copy(isLoading = false) }
         }
+
+        val machinesResult = RefillRepository.fetchRefillMachines()
+        machinesResult.fold(
+            onSuccess = { machines ->
+                // `withSyncedPackedState()` rather than `withPackingList()`:
+                // `isPacked` is *derived* from `packedItems`, and replacing
+                // `machines` wholesale drops it. `packedItems` survives a
+                // reload, so without the re-derivation every tick and
+                // quantity still renders as packed while the header counts
+                // zero packed machines and `startTour()` hard-returns.
+                // Defensive: nothing reaches this branch with a non-empty
+                // `packedItems` today, and no future caller should be able
+                // to break the invariant either.
+                _uiState.update { it.copy(machines = machines).withSyncedPackedState() }
+            },
+            onFailure = { e ->
+                _uiState.update {
+                    it.copy(isLoading = false, step = RefillStep.PACKING, error = e.message)
+                }
+                rearmEntryGateUnlessTourInMemory()
+            }
+        )
+        if (machinesResult.isFailure) return
+
+        val warehousesResult = WarehouseRepository.fetchWarehouses()
+        warehousesResult.fold(
+            onSuccess = { warehouses ->
+                _uiState.update { state ->
+                    state.copy(
+                        warehouses = warehouses,
+                        selectedWarehouseId = state.selectedWarehouseId ?: warehouses.firstOrNull()?.id
+                    )
+                }
+            },
+            onFailure = { e ->
+                // Machines did load, so the pack step can still render —
+                // but without a warehouse there is no stock cap, so the
+                // gate is re-armed to retry on the next entry (iOS does
+                // the same: the whole `loadData` catch re-arms).
+                _uiState.update {
+                    it.copy(isLoading = false, step = RefillStep.PACKING, error = e.message)
+                }
+                rearmEntryGateUnlessTourInMemory()
+            }
+        )
+        if (warehousesResult.isFailure) return
+
+        _uiState.value.selectedWarehouseId?.let { loadWarehouseData(it) }
+
+        // The review runs off the data just loaded (trays, warehouse totals)
+        // and is what decides whether this load lands on REVIEW or PACKING —
+        // hence last, and only while the review is still pending. A failure
+        // here lands on PACKING and re-arms the gate, exactly like the
+        // fetches above: iOS's equivalent fetches throw into `loadData`'s
+        // catch, which also leaves the wizard at the pack step with an error.
+        // `step` is set explicitly rather than left alone: a caller can reach
+        // this while the wizard already sits at REVIEW, and the step must
+        // never survive a load that failed to refresh the very suggestions
+        // that step renders.
+        if (!reviewCompleted && !detectReplacements()) {
+            _uiState.update { it.copy(isLoading = false, step = RefillStep.PACKING) }
+            rearmEntryGateUnlessTourInMemory()
+            return
+        }
+
+        _uiState.update { it.copy(isLoading = false) }
     }
 
     /**
@@ -372,13 +496,329 @@ class RefillViewModel : ViewModel() {
     }
 
     /**
-     * Whether the wizard holds state worth protecting from a wholesale
-     * reload: the driver has left the pack step, or a tour id has already
-     * been assigned. Shared by [loadData]'s mid-tour guard and
-     * [rearmEntryGateUnlessTourInMemory] so the two can't drift apart.
+     * Whether a **tour** is in memory, i.e. whether the wizard holds state a
+     * wholesale reload would destroy: the driver is at the refill or summary
+     * step, or a tour id has already been minted. Shared by [loadData]'s
+     * mid-tour guard, [rearmEntryGateUnlessTourInMemory] and [startTour]'s
+     * re-entrancy guard so the three can't drift apart.
+     *
+     * Spelled out as an explicit step list rather than the shorter
+     * `step != PACKING`, which is what it used to say. That form was
+     * equivalent only as long as PACKING was the wizard's first step: with
+     * [RefillStep.REVIEW] in front of it, "not at the pack step" is true
+     * during the review too — and would turn [performLoad] into a no-op
+     * exactly when [applyReplacementsAndContinue] needs it to pick up the
+     * slots' new products. The review holds no tour: no id has been minted,
+     * nothing is booked, and a reload is precisely what it wants.
      */
     private fun isTourInMemory(state: RefillUiState): Boolean =
-        state.step != RefillStep.PACKING || state.tourId.isNotEmpty()
+        state.step == RefillStep.REFILL ||
+            state.step == RefillStep.SUMMARY ||
+            state.tourId.isNotEmpty()
+
+    // ---------------------------------------------------------------------
+    // Review step (Task 4). Detection lives in [RefillReviewLogic] (pure,
+    // unit-tested); this section is orchestration only. Ported from iOS
+    // `RefillWizardViewModel.swift` L1258-1351 (detection inside `loadData`),
+    // L1547-1613 (the actions) and L473-479 (`currentCategoryId`).
+    // ---------------------------------------------------------------------
+
+    /**
+     * Fetches the review's three remaining inputs — the picker's products and
+     * categories, and the selected warehouse's raw batches for the expiry
+     * rule — then publishes the suggestions and routes the wizard.
+     *
+     * Returns `false` when an input the review cannot do without failed, so
+     * [performLoad] can surface the error and re-arm the entry gate. A failed
+     * *category* fetch is not one of those: grouping is presentation, and an
+     * ungrouped picker still lets the driver pick — so it degrades to an empty
+     * list, the same treatment [loadWarehouseData] gives a failed pick order.
+     * (iOS aborts its whole load on it; this is a deliberate divergence.)
+     *
+     * **No suggestions means no review**: the step goes straight to
+     * [RefillStep.PACKING], as on iOS. A driver with nothing to replace must
+     * never be shown an empty intermediate screen.
+     */
+    private suspend fun detectReplacements(): Boolean {
+        val products = TrayRepository.fetchProducts().getOrElse { e ->
+            _uiState.update { it.copy(error = e.message) }
+            return false
+        }
+        val categories = RefillRepository.fetchProductCategories().getOrDefault(emptyList())
+
+        // Batches, not the aggregated totals: the expiry rule needs every
+        // batch's date, which the `productId -> total` map has thrown away.
+        // Only fetched here, on the one load that computes the review.
+        val warehouseId = _uiState.value.selectedWarehouseId
+        val expired = if (warehouseId == null) {
+            // No warehouse at all — iOS skips the expiry pass the same way.
+            // Every other reason still applies.
+            emptySet()
+        } else {
+            val batches = WarehouseRepository.fetchWarehouseStock(warehouseId).getOrElse { e ->
+                _uiState.update { it.copy(error = e.message) }
+                return false
+            }
+            RefillReviewLogic.expiredProductIds(batches = batches, today = todayIsoDate())
+        }
+
+        // Read after the awaits above, not before: `machines` and
+        // `warehouseStock` were written by earlier steps of this same load.
+        val state = _uiState.value
+        val suggestions = RefillReviewLogic.buildReplacementSuggestions(
+            machines = state.machines.map { it.machine },
+            traysByMachine = state.machines.associate { machine ->
+                machine.machine.id to machine.trays.map { it.tray }
+            },
+            stockedProductIds = state.warehouseStock.filterValues { it > 0 }.keys,
+            expiredProductIds = expired,
+            // A failed or missing stock load leaves `warehouseStock` empty —
+            // see [RefillUiState.stockLoaded] — and without this, the NO_STOCK
+            // rule would fire for every empty slot in the fleet on one
+            // transient failure. Use the shared extension rather than
+            // re-deriving `warehouseStock.isNotEmpty()` here.
+            stockLoaded = state.stockLoaded
+        )
+
+        _uiState.update {
+            it.copy(
+                availableProducts = products,
+                productCategories = categories,
+                replacements = suggestions,
+                step = if (suggestions.isEmpty()) RefillStep.PACKING else RefillStep.REVIEW
+            )
+        }
+        return true
+    }
+
+    /**
+     * Chooses a replacement product for one review slot, clearing any earlier
+     * skip — the two decisions are mutually exclusive. Ported from iOS
+     * `setReplacement`.
+     */
+    fun setReplacement(trayId: String, productId: String) {
+        _uiState.update { state ->
+            state.copy(
+                replacements = state.replacements.map {
+                    if (it.trayId == trayId) {
+                        it.copy(replacementProductId = productId, isSkipped = false)
+                    } else {
+                        it
+                    }
+                }
+            )
+        }
+    }
+
+    /**
+     * Leaves one review slot as it is, clearing any chosen replacement — the
+     * opposite of [setReplacement]. Ported from iOS `skipReplacement`.
+     */
+    fun skipReplacement(trayId: String) {
+        _uiState.update { state ->
+            state.copy(
+                replacements = state.replacements.map {
+                    if (it.trayId == trayId) {
+                        it.copy(isSkipped = true, replacementProductId = null)
+                    } else {
+                        it
+                    }
+                }
+            )
+        }
+    }
+
+    /**
+     * Category of the product currently sitting in a review slot, so the
+     * picker can open on it. `null` when the slot is unknown, unassigned, its
+     * product is not among [RefillUiState.availableProducts] (a discontinued
+     * one is not), or it has no category. Ported from iOS `currentCategoryId`.
+     */
+    fun categoryIdOfCurrentProduct(trayId: String): String? {
+        val state = _uiState.value
+        val productId = state.replacements
+            .find { it.trayId == trayId }?.currentProductId ?: return null
+        return state.availableProducts.find { it.id == productId }?.category
+    }
+
+    /**
+     * Writes the chosen replacements, then reloads and moves on to
+     * [RefillStep.PACKING].
+     *
+     * Only slots with a chosen product are written — a skipped slot keeps
+     * what it has — and nothing is written at all until every slot has a
+     * decision ([allReplacementsHandled]), matching iOS.
+     *
+     * **A failed write is blocking.** The loop stops at the first failure,
+     * surfaces it and leaves the wizard at [RefillStep.REVIEW] with the
+     * driver's decisions intact, so they can retry.
+     *
+     * **A retry resumes, it does not restart.** [toApply] excludes anything
+     * already marked [ReplacementSuggestion.isApplied] by an earlier partial
+     * attempt, and each iteration below marks a suggestion applied the
+     * moment its write commits. This matters because, unlike the tray write
+     * itself (`applyReplacement` just re-sets the same product — harmless to
+     * repeat), [RefillRepository.logReviewSwap]'s audit row is built from
+     * this suggestion's *original* `currentProductId`/`currentProductName`:
+     * re-running it for an already-applied slot would assert "slot N: X →
+     * Y" in the `product_swapped` activity stream at a moment when the slot
+     * already holds Y — a record of a transition that never happened, not a
+     * harmless duplicate. Re-filtering [allReplacementsHandled]-eligible
+     * suggestions on every call, rather than tracking a separate "pending"
+     * list, keeps this in sync with [setReplacement]/[skipReplacement]
+     * automatically.
+     *
+     * One suggestion can still fail forever: a tray deleted between
+     * detection and apply makes [RefillRepository.applyReplacement] fail
+     * permanently (its update's returning representation comes back empty),
+     * and because [RefillReviewLogic.buildReplacementSuggestions]'s order is
+     * deterministic, that dead entry sits at the same position in [toApply]
+     * on every retry — blocking every suggestion after it. That is accepted
+     * here; the escape is the driver un-choosing it in the review UI (a
+     * later task), so that UI must let an already-made decision be
+     * *changed*, not only made once.
+     *
+     * The reload afterwards is **awaited** — the swapped slots now hold a
+     * different product at stock 0, and every deficit, packing-list row and
+     * `isPacked` flag downstream is derived from that. A failure of the
+     * *reload* is not blocking (nothing is half-written; the writes are all
+     * committed), so the step advances anyway with the error surfaced — same
+     * as iOS, whose `currentStep = .packing` runs after its `loadData`
+     * swallowed the failure. The pack step can therefore briefly show the
+     * pre-swap products until the next successful reload: iOS has the same
+     * gap, the entry gate re-arms so the next visit retries, and the
+     * swapped-in products are unstocked (`current_stock = 0`), so their
+     * packing rows cap at 0 rather than overstating what's available.
+     *
+     * Ported from iOS `applyReplacementsAndContinue`.
+     */
+    fun applyReplacementsAndContinue() {
+        val snapshot = _uiState.value
+        // Re-entrancy guard: a second tap would re-run the same writes and
+        // append a second audit row per replacement. iOS relies on `isSaving`
+        // disabling its button; this does not depend on the UI.
+        if (snapshot.isApplyingReplacements) return
+        // Nothing to review means no review happened, so there is nothing to
+        // apply and nothing to declare finished. Without this, one tap on the
+        // Continue button of a review that a *failed* load left empty
+        // ([allReplacementsHandled] is vacuously true over an empty list)
+        // would latch [reviewCompleted] and switch the review off for the
+        // rest of this ViewModel's life — including after the network comes
+        // back and the re-armed entry gate loads the data successfully. The
+        // driver would pack the van with no review and nothing would say so.
+        if (snapshot.replacements.isEmpty()) return
+        if (!snapshot.allReplacementsHandled) return
+
+        val toApply = snapshot.replacements.filter {
+            it.replacementProductId != null && !it.isApplied
+        }
+        _uiState.update { it.copy(isApplyingReplacements = true, error = null) }
+
+        viewModelScope.launch {
+            // Resolved at most once for the whole review, and only if there is
+            // anything to log — [RefillRepository.logReviewSwap] otherwise
+            // resolves it through the `get-my-organization` edge function per
+            // row. Same reasoning as [RefillUiState.tourCompanyId]; not stored
+            // there, because no tour exists yet.
+            var companyId: String? = null
+            var didResolveCompanyId = false
+
+            for (suggestion in toApply) {
+                val newProductId = suggestion.replacementProductId ?: continue
+
+                val applied = RefillRepository.applyReplacement(
+                    trayId = suggestion.trayId,
+                    productId = newProductId
+                )
+                val failure = applied.exceptionOrNull()
+                if (failure != null) {
+                    _uiState.update {
+                        it.copy(isApplyingReplacements = false, error = failure.message)
+                    }
+                    return@launch
+                }
+
+                // Marked applied immediately, before the audit log call
+                // below: a retry must never redo this write or re-log this
+                // transition, even if the process dies between here and the
+                // next iteration, or `logReviewSwap` itself is what fails.
+                _uiState.update { state ->
+                    state.copy(
+                        replacements = state.replacements.map {
+                            if (it.trayId == suggestion.trayId) it.copy(isApplied = true) else it
+                        }
+                    )
+                }
+
+                if (!didResolveCompanyId) {
+                    companyId = resolveTourCompanyId()
+                    didResolveCompanyId = true
+                }
+
+                // Never blocks: `logReviewSwap` swallows its own failures —
+                // the slot is already rewritten and a lost audit row must not
+                // undo that.
+                RefillRepository.logReviewSwap(
+                    machineId = suggestion.machineId,
+                    machineName = suggestion.machineName,
+                    trayId = suggestion.trayId,
+                    slotNumber = suggestion.slotNumber,
+                    oldProductId = suggestion.currentProductId,
+                    oldProductName = suggestion.currentProductName,
+                    newProductId = newProductId,
+                    newProductName = snapshot.availableProducts
+                        .find { it.id == newProductId }?.name.orEmpty(),
+                    // No tour yet at review time; `""` would land in the
+                    // metadata as an empty `tour_id`.
+                    tourId = snapshot.tourId.ifEmpty { null },
+                    companyId = companyId
+                )
+            }
+
+            // Before the reload, or it would rebuild the suggestions it just
+            // applied and bounce straight back into the review.
+            reviewCompleted = true
+            performLoad()
+            // Advances regardless of whether the reload above succeeded — see
+            // the function doc's "stale-list window" paragraph: a failed
+            // reload here means the pack step briefly renders with the
+            // pre-swap products until the next successful load.
+            _uiState.update {
+                it.copy(step = RefillStep.PACKING, isApplyingReplacements = false)
+            }
+        }
+    }
+
+    /**
+     * Leaves every slot the driver hasn't decided on as it is, keeping the
+     * replacements they *did* choose, and then runs
+     * [applyReplacementsAndContinue]. Ported from iOS `skipReview`.
+     */
+    fun skipReview() {
+        if (_uiState.value.isApplyingReplacements) return
+        _uiState.update { state ->
+            state.copy(
+                replacements = state.replacements.map {
+                    if (it.replacementProductId == null && !it.isSkipped) {
+                        it.copy(isSkipped = true)
+                    } else {
+                        it
+                    }
+                }
+            )
+        }
+        applyReplacementsAndContinue()
+    }
+
+    /**
+     * Today as `YYYY-MM-DD` in the device's zone, the format
+     * [RefillReviewLogic.expiredProductIds] compares against (and the one
+     * `warehouse_stock_batches.expiration_date` is stored in). Local, not UTC:
+     * "expired" is a shelf-life judgement made where the driver stands, and
+     * iOS's `todayDateString()` is local too.
+     */
+    private fun todayIsoDate(): String =
+        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
 
     // ---------------------------------------------------------------------
     // Pack step (Task 7). All quantity/capping/commitment math lives in
@@ -1192,10 +1632,15 @@ class RefillViewModel : ViewModel() {
      * rather than patched field by field: leaving either one set latches
      * [startTour]'s re-entrancy guard shut and it would silently never start
      * a tour again. Ported from iOS `reset`.
+     *
+     * [reviewCompleted] is cleared for the same reason: the next visit is a
+     * new tour and has to review again, and a latched flag would silently
+     * skip the review for the rest of the ViewModel's life.
      */
     fun reset() {
         tourStore.clear()
         didRunInitialLoad = false
+        reviewCompleted = false
         _uiState.value = RefillUiState()
     }
 

@@ -12,10 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,7 +53,6 @@ import coil.compose.AsyncImage
 import xyz.vmflow.BuildConfig
 import xyz.vmflow.R
 import xyz.vmflow.data.AnalysisGridSlot
-import xyz.vmflow.data.MachineAnalysis
 import androidx.compose.foundation.isSystemInDarkTheme
 import xyz.vmflow.ui.theme.TierStrongLight
 import xyz.vmflow.ui.theme.TierStrongDark
@@ -74,6 +69,8 @@ import xyz.vmflow.data.Suggestion
 import xyz.vmflow.data.SuggestionKind
 import xyz.vmflow.models.Product
 import xyz.vmflow.models.Tray
+import xyz.vmflow.ui.components.MachineLayoutCell
+import xyz.vmflow.ui.components.MachineLayoutGrid
 
 /**
  * Product-centric performance analysis for a machine tab — Android
@@ -253,123 +250,40 @@ private fun GridSection(rowCount: Int, slots: List<AnalysisGridSlot>, onSlotClic
     }
 }
 
-private const val GRID_CELL_HEIGHT_DP = 44
-private const val GRID_SPACING_DP = 4
-
-/** One cell of the flattened row-major grid; `slot == null` is a gap/spacer column. */
-private data class GridCellEntry(val id: String, val span: Int, val slot: AnalysisGridSlot?, val isGap: Boolean)
-
 /**
- * Walks columns 0..9 for every row, same algorithm as iOS's
- * `AnalysisLayoutGrid.columnEntries` / `MachineLayoutGrid.columnContent`: an
- * occupied slot emits one entry spanning its width and advances the column
- * cursor by that width; an unoccupied column between occupied slots emits a
- * visible gap; columns past the last occupied slot in the row emit an
- * invisible spacer. Every row's spans sum to exactly [MachineAnalysis.COLUMNS_PER_ROW],
- * so a plain `GridCells.Fixed` grid renders each machine row as one grid row.
+ * Colours the shared [MachineLayoutGrid] by product tier.
+ *
+ * Nothing but colour resolution and the spoken description lives here — the
+ * geometry is [xyz.vmflow.data.MachineAnalysis]'s, the drawing is
+ * [MachineLayoutGrid]'s, and no outline is passed, so the rendered cell chain is
+ * the same one this file drew before the grid became shared.
  */
-private fun buildGridEntries(rowCount: Int, slots: List<AnalysisGridSlot>): List<GridCellEntry> {
-    val entries = mutableListOf<GridCellEntry>()
-    for (row in 0 until rowCount) {
-        val rowSlots = slots.filter { it.row == row }.sortedBy { it.column }
-        val lastOccupied = rowSlots.lastOrNull()?.let { it.column + it.width - 1 } ?: -1
-        var column = 0
-        var index = 0
-        while (column < MachineAnalysis.COLUMNS_PER_ROW) {
-            if (index < rowSlots.size && rowSlots[index].column == column) {
-                val slot = rowSlots[index]
-                entries += GridCellEntry(id = "slot-${slot.trayId}", span = slot.width, slot = slot, isGap = false)
-                column += slot.width
-                index++
-            } else {
-                entries += GridCellEntry(id = "gap-$row-$column", span = 1, slot = null, isGap = column <= lastOccupied)
-                column++
-            }
-        }
-    }
-    return entries
-}
-
 @Composable
 private fun AnalysisLayoutGrid(rowCount: Int, slots: List<AnalysisGridSlot>, onSlotClick: (AnalysisGridSlot) -> Unit) {
-    val entries = remember(rowCount, slots) { buildGridEntries(rowCount, slots) }
-    val gridHeight = (GRID_CELL_HEIGHT_DP * rowCount + GRID_SPACING_DP * (rowCount - 1).coerceAtLeast(0)).dp
-
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(MachineAnalysis.COLUMNS_PER_ROW),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(gridHeight),
-        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING_DP.dp),
-        verticalArrangement = Arrangement.spacedBy(GRID_SPACING_DP.dp),
-        userScrollEnabled = false,
-    ) {
-        // Every cell is pinned to the same height the container was sized from.
-        // Without this the cells size to their own content, the container stays
-        // at the computed height, and the difference shows up as a large empty
-        // gap between the grid and the legend.
-        items(
-            entries,
-            key = { it.id },
-            span = { GridItemSpan(it.span) },
-        ) { entry ->
-            val slot = entry.slot
-            if (slot != null) {
-                AnalysisGridCell(slot = slot, onClick = { onSlotClick(slot) })
-            } else if (entry.isGap) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(GRID_CELL_HEIGHT_DP.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                )
-            } else {
-                Spacer(modifier = Modifier.fillMaxWidth().height(GRID_CELL_HEIGHT_DP.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun AnalysisGridCell(slot: AnalysisGridSlot, onClick: () -> Unit) {
-    val tierColor = slot.tier.tierColor()
-    // The tier must not be conveyed by colour alone: screen-reader users and
-    // anyone with a colour vision deficiency get it spoken with the product.
-    val description = slot.productName
-        ?.let { "$it — ${slot.tier.tierLabel()}" }
-        ?: stringResource(R.string.analysis_slot_empty, slot.itemNumber)
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(GRID_CELL_HEIGHT_DP.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(tierColor.copy(alpha = if (slot.tier == SlotTier.EMPTY) 0.15f else 0.35f))
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = description },
-    ) {
-        val imagePath = slot.imagePath
-        if (!imagePath.isNullOrEmpty()) {
-            AsyncImage(
-                model = "${BuildConfig.SUPABASE_URL}/storage/v1/object/public/product-images/$imagePath",
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        Text(
-            text = slot.itemNumber.toString(),
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(2.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.55f))
-                .padding(horizontal = 4.dp, vertical = 1.dp),
+    val cells = slots.map { slot ->
+        val tierColor = slot.tier.tierColor()
+        MachineLayoutCell(
+            id = slot.trayId,
+            itemNumber = slot.itemNumber,
+            row = slot.row,
+            column = slot.column,
+            width = slot.width,
+            imagePath = slot.imagePath,
+            background = tierColor.copy(alpha = if (slot.tier == SlotTier.EMPTY) 0.15f else 0.35f),
+            // The tier must not be conveyed by colour alone: screen-reader users
+            // and anyone with a colour vision deficiency get it spoken with the
+            // product.
+            contentDescription = slot.productName
+                ?.let { "$it — ${slot.tier.tierLabel()}" }
+                ?: stringResource(R.string.analysis_slot_empty, slot.itemNumber),
         )
     }
+
+    MachineLayoutGrid(
+        rowCount = rowCount,
+        cells = cells,
+        onCellClick = { trayId -> slots.firstOrNull { it.trayId == trayId }?.let(onSlotClick) },
+    )
 }
 
 // ─── Legend ──────────────────────────────────────────────────────────────

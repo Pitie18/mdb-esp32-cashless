@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,7 +37,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -66,6 +70,11 @@ fun RefillWizardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // The review card whose replacement picker is open, or `null` for none.
+    // `rememberSaveable`, not `remember`: a rotation with the sheet open
+    // must not silently drop the driver back to the card list.
+    var pickerTrayId by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Entry gate: the ViewModel decides whether this actually loads (once
     // per ViewModel lifetime), so a tab re-selection that re-runs this
@@ -119,10 +128,28 @@ fun RefillWizardScreen(
         deductionWarning?.let { snackbarHostState.showSnackbar(it) }
     }
 
+    // ── Belt and braces: a review with nothing to review is not a screen ──
+    // [ReviewStep] renders its header and its bottom bar off `uiState`
+    // regardless of how many cards it has, so a `REVIEW` step that somehow
+    // arrives with an empty [RefillUiState.replacements] would put a
+    // "Product review" heading, no cards and an *enabled* Continue button in
+    // front of the driver ([allReplacementsHandled] is vacuously true over an
+    // empty list). The ViewModel already prevents that on every path it
+    // controls — `detectReplacements` routes an empty result to PACKING and
+    // every failure return of `performLoad` lands on PACKING — and this is
+    // the second lock: whatever the ViewModel says, this screen never renders
+    // the review with nothing on it. Used for the step indicator too, so the
+    // indicator and the content below it can never name different steps.
+    val step = if (uiState.step == RefillStep.REVIEW && uiState.replacements.isEmpty()) {
+        RefillStep.PACKING
+    } else {
+        uiState.step
+    }
+
     // A tour is a physical errand: the phone must not sleep while the driver
     // is standing at a machine filling trays. Scoped to the refill step only
     // — see [KeepScreenOn].
-    if (uiState.step == RefillStep.REFILL) {
+    if (step == RefillStep.REFILL) {
         KeepScreenOn()
     }
 
@@ -146,12 +173,35 @@ fun RefillWizardScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            StepIndicator(currentStep = uiState.step)
+            // Not rendered during the load: until the load lands, `step` is
+            // only a default and the indicator would name a step the wizard
+            // has not decided on yet (it used to flash "Pack" as current
+            // while the review was still being computed). The spinner below
+            // is the whole screen while `isLoading`, so there is nothing for
+            // the indicator to caption anyway.
+            if (!uiState.isLoading) {
+                StepIndicator(currentStep = step)
+            }
 
             if (uiState.isLoading) {
                 LoadingState()
             } else {
-                when (uiState.step) {
+                when (step) {
+                    RefillStep.REVIEW -> ReviewStep(
+                        uiState = uiState,
+                        // ── Picker seam ─────────────────────────────────
+                        // The one thing [ReviewStep] cannot do itself:
+                        // opening [ReplacementPickerSheet]. Only the tapped
+                        // tray id is held here; everything the sheet shows
+                        // it derives from `uiState` itself, and its
+                        // selection goes straight back to
+                        // `setReplacement` (see below the `Scaffold`).
+                        onOpenPicker = { trayId -> pickerTrayId = trayId },
+                        onSkipReplacement = viewModel::skipReplacement,
+                        onSkipAll = viewModel::skipReview,
+                        onContinue = viewModel::applyReplacementsAndContinue
+                    )
+
                     RefillStep.PACKING -> PackingStep(
                         uiState = uiState,
                         visiblePackingList = viewModel.visiblePackingList(),
@@ -249,6 +299,37 @@ fun RefillWizardScreen(
                 }
             }
         }
+    }
+
+    // ── Replacement picker ───────────────────────────────────────────────
+    // The other half of the seam above. Gated on three things rather than
+    // just a non-null id: the wizard still being on the review step, the
+    // review's write not being in flight (`ReviewStep` locks every control
+    // while it is, and a sheet floating above that lock could change a
+    // decision underneath a commit), and the tray still being one of the
+    // suggestions — `applyReplacementsAndContinue` reloads, so a stale id
+    // must open nothing rather than an empty sheet.
+    val pickerTray = pickerTrayId?.takeIf { trayId ->
+        step == RefillStep.REVIEW &&
+            !uiState.isApplyingReplacements &&
+            uiState.replacements.any { it.trayId == trayId }
+    }
+    pickerTray?.let { trayId ->
+        ReplacementPickerSheet(
+            uiState = uiState,
+            trayId = trayId,
+            // Reads the ViewModel's current snapshot rather than `uiState`.
+            // Safe here: both derive from the same `StateFlow`, and the two
+            // fields this depends on (`replacements[].currentProductId` and
+            // `availableProducts`) are only ever written by a load — never
+            // while the sheet is open.
+            currentCategoryId = viewModel.categoryIdOfCurrentProduct(trayId),
+            onSelect = { productId ->
+                viewModel.setReplacement(trayId, productId)
+                pickerTrayId = null
+            },
+            onDismiss = { pickerTrayId = null }
+        )
     }
 
     // ── Resume prompt ────────────────────────────────────────────────────
@@ -375,15 +456,16 @@ private fun FinishingUpState() {
 // ─────────────────────────────────────────────────────────────────────────
 
 /**
- * Pack → Refill → Summary, with the completed steps ticked and the connector
- * to a completed step filled in. Ported from iOS `RefillWizardView.swift:112`.
+ * Review → Pack → Refill → Summary, with the completed steps ticked and the
+ * connector to a completed step filled in. Ported from iOS
+ * `RefillWizardView.swift:112`.
  *
  * **Deliberately not tappable.** iOS's `canNavigateTo` allows exactly one
- * backward jump in the three steps this app has — refill → packing — and this
- * ViewModel has no action to express it (there is no step setter, and adding
- * one is out of scope for this task). Nor would it be safe if it did:
- * `startTour` latches on `isTourInMemory` (`step != PACKING || tourId
- * != ""`), so a driver sent back to the pack step after the tour had started
+ * backward jump — refill → packing — and this ViewModel has no action to
+ * express it (there is no step setter, and adding one is out of scope for this
+ * task). Nor would it be safe if it did: `startTour` latches on
+ * `isTourInMemory` (`step == REFILL || step == SUMMARY || tourId != ""`), so a
+ * driver sent back to the pack step after the tour had started
  * would find "Start tour" silently doing nothing, with no way forward and a
  * warehouse already charged. A progress read-out that cannot mislead beats a
  * navigation control that strands the driver; a real backward jump needs a
@@ -487,6 +569,7 @@ private fun StepBubble(
 /** Step label. iOS `RefillStep.title`. */
 private val RefillStep.titleRes: Int
     get() = when (this) {
+        RefillStep.REVIEW -> R.string.refill_step_title_review
         RefillStep.PACKING -> R.string.refill_step_title_packing
         RefillStep.REFILL -> R.string.refill_step_title_refill
         RefillStep.SUMMARY -> R.string.refill_step_title_summary
@@ -495,6 +578,8 @@ private val RefillStep.titleRes: Int
 /** Step glyph. iOS `RefillStep.icon`. */
 private val RefillStep.icon: ImageVector
     get() = when (this) {
+        // iOS `exclamationmark.triangle` (`RefillWizardViewModel.swift:208`).
+        RefillStep.REVIEW -> Icons.Default.Warning
         RefillStep.PACKING -> Icons.Default.Inventory2
         RefillStep.REFILL -> Icons.Default.LocalShipping
         RefillStep.SUMMARY -> Icons.AutoMirrored.Filled.ListAlt

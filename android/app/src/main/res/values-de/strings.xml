@@ -387,6 +387,7 @@
     <string name="refill_pack_empty_machine">Für diesen Automaten ist nichts zu packen.</string>
     <!-- Nachfüll-Assistent — Befüllen-Schritt + Assistenten-Hülle (Phase 5, Task 11) -->
     <string name="refill_wizard_title">Befüllungstour</string>
+    <string name="refill_step_title_review">Prüfen</string>
     <string name="refill_step_title_packing">Packen</string>
     <string name="refill_step_title_refill">Befüllen</string>
     <string name="refill_step_title_summary">Zusammenfassung</string>
@@ -423,6 +424,17 @@
     <string name="refill_step_full_trays_expand">Volle Fächer anzeigen</string>
     <string name="refill_step_full_trays_collapse">Volle Fächer ausblenden</string>
     <string name="refill_step_no_trays">An diesem Automaten ist nichts zu füllen.</string>
+    <!-- Befüllen-Schritt — Automaten-Layout (Phase 5b, Task 7) -->
+    <string name="refill_step_layout_title">Automaten-Layout</string>
+    <string name="refill_step_layout_hint">Tippe ein Fach an, um zu seiner Karte zu springen.</string>
+    <string name="refill_step_layout_slot">Fach %1$d, %2$s, %3$s</string>
+    <string name="refill_step_layout_slot_empty">Fach %1$d, kein Produkt, %2$s</string>
+    <string name="refill_step_layout_slot_selected">%1$s, ausgewählt</string>
+    <string name="refill_step_layout_state_not_in_tour">nicht in dieser Tour</string>
+    <string name="refill_step_layout_state_filling">%1$d einfüllen</string>
+    <string name="refill_step_layout_state_empty">leer</string>
+    <string name="refill_step_layout_state_low">niedrig</string>
+    <string name="refill_step_layout_state_full">gefüllt</string>
     <string name="refill_step_skip">Überspringen</string>
     <string name="refill_step_confirm">Befüllung bestätigen</string>
     <string name="refill_step_saving">Wird gespeichert…</string>
@@ -454,4 +466,55 @@
     </plurals>
     <string name="refill_summary_row_contribution">%1$s · %2$s</string>
     <string name="refill_summary_row_skipped">Übersprungen</string>
+    <!-- Nachfüll-Assistent — Prüf-Schritt (Phase 5b, Task 5) -->
+    <string name="refill_review_title">Produktprüfung</string>
+    <string name="refill_review_subtitle">Diese Fächer brauchen Aufmerksamkeit — eingestellte, abgelaufene, ausverkaufte oder nicht zugewiesene Produkte. Wähle einen Ersatz oder überspringe.</string>
+    <string name="refill_review_reason_discontinued">Eingestellt</string>
+    <string name="refill_review_reason_expired">Abgelaufen</string>
+    <string name="refill_review_reason_no_stock">Kein Lager</string>
+    <string name="refill_review_reason_unassigned">Nicht zugewiesen</string>
+    <plurals name="refill_review_stock_remaining">
+        <item quantity="one">%1$d Artikel noch im Automaten</item>
+        <item quantity="other">%1$d Artikel noch im Automaten</item>
+    </plurals>
+    <string name="refill_review_stock_empty">0 Artikel im Automaten</string>
+    <string name="refill_review_applied">Ersetzt — bereits gespeichert</string>
+    <string name="refill_review_skipped_keeping">Übersprungen — aktuelles Produkt beibehalten</string>
+    <string name="refill_review_skipped_unassigned">Übersprungen — Fach bleibt nicht zugewiesen</string>
+    <string name="refill_review_action_replace">Ersetzen</string>
+    <string name="refill_review_action_assign">Zuweisen</string>
+    <string name="refill_review_action_change">Ändern</string>
+    <string name="refill_review_action_choose">Ersatz wählen</string>
+    <string name="refill_review_action_skip">Überspringen</string>
+    <string name="refill_review_skip_all">Rest überspringen</string>
+    <string name="refill_review_continue">Weiter</string>
+    <string name="refill_review_apply_continue">Anwenden &amp; weiter</string>
+    <!-- Refill wizard — replacement product picker (Phase 5b Task 6) -->
+    <string name="refill_picker_title">Ersatz auswählen</string>
+    <string name="refill_picker_for_slot">Fach %1$d · %2$s</string>
+    <string name="refill_picker_search_hint">Produkte suchen</string>
+    <string name="refill_picker_search_clear">Suche löschen</string>
+    <string name="refill_picker_bucket_in_stock">Auf Lager</string>
+    <string name="refill_picker_bucket_out_of_stock">Nicht auf Lager</string>
+    <string name="refill_picker_uncategorized">Ohne Kategorie</string>
+    <string name="refill_picker_category_current">%1$s · aktuell</string>
+    <plurals name="refill_picker_stock">
+        <item quantity="one">%1$d auf Lager</item>
+        <item quantity="other">%1$d auf Lager</item>
+    </plurals>
+    <plurals name="refill_picker_product_count">
+        <item quantity="one">%1$d Produkt</item>
+        <item quantity="other">%1$d Produkte</item>
+    </plurals>
+    <string name="refill_picker_slot_badge">Fach %1$s</string>
+    <string name="refill_picker_slot_badge_overflow">Fach %1$s +%2$d</string>
+    <plurals name="refill_picker_slot_badge_a11y">
+        <item quantity="one">Liegt schon in Fach %1$s</item>
+        <item quantity="other">Liegt schon in Fächern %1$s</item>
+    </plurals>
+    <string name="refill_picker_expand_group">Gruppe ausklappen</string>
+    <string name="refill_picker_collapse_group">Gruppe einklappen</string>
+    <string name="refill_picker_selected">Ausgewählt</string>
+    <string name="refill_picker_no_matches">Keine Produkte für „%1$s“</string>
+    <string name="refill_picker_empty">Keine Produkte verfügbar</string>
 </resources>

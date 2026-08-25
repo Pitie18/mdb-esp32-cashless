@@ -2,6 +2,8 @@ package xyz.vmflow.ui.refill
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -47,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,14 +66,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import xyz.vmflow.R
+import xyz.vmflow.data.MachineAnalysis
+import xyz.vmflow.data.RefillLayout
+import xyz.vmflow.data.RefillSlotState
 import xyz.vmflow.models.RefillMachine
 import xyz.vmflow.models.RefillTray
+import xyz.vmflow.ui.components.MachineLayoutCell
+import xyz.vmflow.ui.components.MachineLayoutGrid
 import xyz.vmflow.ui.components.ProductImage
+import xyz.vmflow.ui.theme.OfflineGray
 import xyz.vmflow.ui.theme.StockGreen
 import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
 import xyz.vmflow.ui.theme.StockYellow
+import xyz.vmflow.ui.theme.VMflowBlue
+import xyz.vmflow.ui.theme.VMflowBlueLight
 
 /**
  * Refill step — the screen a driver stands in front of a vending machine
@@ -142,9 +155,17 @@ fun RefillStepContent(
     // `rememberSaveable`, not `remember`: a rotation must not silently
     // re-collapse a section the driver just opened to check something.
     var fullTraysExpanded by rememberSaveable(machine.machine.id) { mutableStateOf(false) }
+    // The slot the driver is working on: set by tapping the layout grid, and
+    // nothing else. It rings that cell and outlines the matching tray card —
+    // it changes no stock, and there is no path from here to a fill amount.
+    var selectedTrayId by rememberSaveable(machine.machine.id) { mutableStateOf<String?>(null) }
+
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     val rows = trayRows(machine)
     val fullTrays = fullTrayRows(machine)
+    val layout = machineLayout(machine, selectedTrayId)
     // `isInTour` as well as `fillAmount > 0`, matching `confirmRefill`'s own
     // filter (`RefillViewModel.kt`): this is the header count of "trays to
     // refill" and it must mean the same thing as the trays that actually get
@@ -154,6 +175,37 @@ fun RefillStepContent(
     // accept it either.
     val traysToRefill = machine.trays.count { it.fillAmount > 0 && it.isInTour }
     val canFillMore = rows.any { it.canIncrement }
+
+    // Scroll targets for a grid tap. Derived from the very same conditions the
+    // `LazyColumn` below emits its items under — kept adjacent so the two
+    // cannot drift apart — because `LazyListState` can only be scrolled by
+    // index, not by item key. Item order is:
+    //   [layout]?  ·  [fill-all | empty]  ·  rows…  ·  [full-trays]?
+    val showLayout = layout.rowCount > 0
+    val headerCount = if (showLayout) 1 else 0
+    val firstCardIndex = headerCount + 1
+    val fullTraysIndex = headerCount + if (rows.isNotEmpty()) 1 + rows.size else 1
+
+    // A grid tap is pure navigation: select the slot, bring its card into view.
+    val onSlotSelected: (String) -> Unit = { trayId ->
+        selectedTrayId = trayId
+        val cardIndex = rows.indexOfFirst { it.trayId == trayId }
+        when {
+            cardIndex >= 0 -> {
+                scope.launch { listState.animateScrollToItem(firstCardIndex + cardIndex) }
+            }
+            // Already full: it has no card of its own, only a line in the
+            // collapsed section — so open that and scroll to it.
+            fullTrays.any { it.trayId == trayId } -> {
+                fullTraysExpanded = true
+                scope.launch { listState.animateScrollToItem(fullTraysIndex) }
+            }
+            // A slot this tour brought nothing for (`isInTour == false`) is in
+            // neither list. It still takes the selection ring, so the tap is
+            // acknowledged rather than silently dropped.
+            else -> Unit
+        }
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         MachineHeader(
@@ -169,10 +221,21 @@ fun RefillStepContent(
         )
 
         LazyColumn(
+            state = listState,
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (showLayout) {
+                item(key = "layout") {
+                    MachineLayoutSection(
+                        rowCount = layout.rowCount,
+                        cells = layout.cells,
+                        onSlotClick = onSlotSelected
+                    )
+                }
+            }
+
             if (rows.isNotEmpty()) {
                 item(key = "fill-all") {
                     OutlinedButton(
@@ -203,6 +266,7 @@ fun RefillStepContent(
                     RefillTrayCard(
                         row = row,
                         enabled = !isSaving,
+                        isSelected = row.trayId == selectedTrayId,
                         onDecrement = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             onAdjustFillAmount(row.trayId, row.fillAmount - 1)
@@ -385,6 +449,229 @@ private fun stockColor(fraction: Float): Color = when {
     fraction < 0.5f -> StockOrange
     fraction < 0.75f -> StockYellow
     else -> StockGreen
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Machine layout grid
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Alpha of an in-tour cell's fill — same weight the analysis grid uses. */
+private const val SLOT_FILL_ALPHA = 0.35f
+
+/**
+ * Alpha of a slot this tour brought nothing for. Deliberately much lower: the
+ * slot is physically in the machine and has to be drawn, but it must not be
+ * mistakable for one the driver is meant to open.
+ */
+private const val SLOT_FILL_ALPHA_NOT_IN_TOUR = 0.12f
+
+/**
+ * Alpha of the foreground scrim drawn over a slot's product photo
+ * ([MachineLayoutCell.foreground]). [background] alone is invisible on any
+ * slot with a photo — the photo fills the whole cell and paints on top of it
+ * — so this scrim has to carry the state colour on its own. It is deliberately
+ * uniform across every state, [RefillSlotState.NOT_IN_TOUR] included: at the
+ * same strength, [OfflineGray]'s neutral, desaturated tone already reads as
+ * "dimmed" next to the four vivid state colours, so a second, lower alpha
+ * tier is not needed to keep it distinguishable. Strong enough to name the
+ * state at a glance; translucent enough that the photo underneath — which
+ * still matters, it is how the driver recognises the product — stays visible
+ * through it.
+ */
+private const val SLOT_SCRIM_ALPHA = 0.55f
+
+/**
+ * Fill-state colour for a layout cell. Fixed tokens, same argument as
+ * [stockColor], and deliberately the *same palette* — red for empty, orange
+ * for low, green for stocked — so the grid and the tray cards under it speak
+ * one colour language.
+ *
+ * The same palette, **not** the same thresholds, and they genuinely differ:
+ * [stockColor] bands a bar at 0.25 / 0.5 / 0.75 (four steps, yellow
+ * included), while [xyz.vmflow.data.RefillLayout.classify] splits a slot once,
+ * at `LOW_FRACTION = 0.5`. A slot at 10 % of capacity is therefore orange in
+ * the grid and red on its card. That is acceptable because the two answer
+ * different questions at different resolutions: the grid says "does this slot
+ * need opening on this visit" (empty / low / fine), the card's bar quantifies
+ * how full the slot is while the driver dials a number into it. A grid that
+ * resolved four levels in a 30 dp cell would trade a legible map for a
+ * precision the driver reads off the card anyway.
+ *
+ * [RefillSlotState.JUST_FILLED] gets the brand blue rather than a fifth point on
+ * that ramp: "the driver has dialled stock in here" is not a stock level, and
+ * blue is already what this screen uses for a non-zero fill amount.
+ *
+ * Plain function, not `@Composable`: [machineLayout] resolves [isDark] once,
+ * outside its `remember` block, and this is called from inside that block —
+ * `remember`'s calculation lambda cannot itself call a composable.
+ */
+private fun RefillSlotState.slotColor(isDark: Boolean): Color = when (this) {
+    RefillSlotState.NOT_IN_TOUR -> OfflineGray
+    RefillSlotState.JUST_FILLED -> if (isDark) VMflowBlueLight else VMflowBlue
+    RefillSlotState.EMPTY -> StockRed
+    RefillSlotState.LOW -> StockOrange
+    RefillSlotState.FULL -> StockGreen
+}
+
+/**
+ * The ring around the slot the driver is working on. Neutral on purpose: it is
+ * drawn over five state colours and, where a product has a photo, over the photo
+ * — any hue there would read as a sixth state. Black on light and white on dark
+ * are the only two that separate from all of them.
+ *
+ * Plain function for the same reason as [slotColor]: called from inside
+ * [machineLayout]'s `remember` block.
+ */
+private fun slotSelectionColor(isDark: Boolean): Color = if (isDark) Color.White else Color.Black
+
+/** The machine's physical layout, ready for [MachineLayoutGrid]. */
+private data class MachineLayoutState(
+    val rowCount: Int,
+    val cells: List<MachineLayoutCell>
+)
+
+/**
+ * Build the layout grid for the current stop: **every** slot in the machine,
+ * not just the ones on the tour — the driver is looking at a physical shelf and
+ * a hole in the drawing would send them to the wrong slot. Slots the tour
+ * brought nothing for are dimmed instead of omitted.
+ *
+ * Geometry comes from [MachineAnalysis] (`slotRowCol` / `computeSlotWidths`) —
+ * the same unit-tested math the analysis tab's grid uses, not a second copy.
+ * The state bucket comes from [RefillLayout.classify]. This function only
+ * resolves colours and the spoken description on top of them.
+ *
+ * Wrapped in `remember`: this runs on every recomposition of [RefillStepContent]
+ * — including every +/− stepper press — and without memoisation it would map
+ * every tray and resolve one or two strings per tray each time, for output the
+ * grid's own internal `remember` (`buildGridEntries`) would then discard as
+ * unchanged. Keyed on [machine], [selectedTrayId], the dark-theme flag, and
+ * every string template the cells are built from — `remember`'s calculation
+ * lambda cannot itself call a composable (no `stringResource`, no
+ * `isSystemInDarkTheme`), so all of those are read here, outside the lambda,
+ * and passed in as both inputs to the computation and keys that invalidate it
+ * on an in-place configuration change.
+ */
+@Composable
+private fun machineLayout(machine: RefillMachine, selectedTrayId: String?): MachineLayoutState {
+    val isDark = isSystemInDarkTheme()
+    val notInTourLabel = stringResource(R.string.refill_step_layout_state_not_in_tour)
+    val fillingTemplate = stringResource(R.string.refill_step_layout_state_filling)
+    val emptyLabel = stringResource(R.string.refill_step_layout_state_empty)
+    val lowLabel = stringResource(R.string.refill_step_layout_state_low)
+    val fullLabel = stringResource(R.string.refill_step_layout_state_full)
+    val slotTemplate = stringResource(R.string.refill_step_layout_slot)
+    val slotEmptyTemplate = stringResource(R.string.refill_step_layout_slot_empty)
+    val slotSelectedTemplate = stringResource(R.string.refill_step_layout_slot_selected)
+
+    return remember(
+        machine,
+        selectedTrayId,
+        isDark,
+        notInTourLabel,
+        fillingTemplate,
+        emptyLabel,
+        lowLabel,
+        fullLabel,
+        slotTemplate,
+        slotEmptyTemplate,
+        slotSelectedTemplate,
+    ) {
+        val selectionColor = slotSelectionColor(isDark)
+        val widths = MachineAnalysis.computeSlotWidths(machine.trays.map { it.tray.itemNumber })
+
+        val cells = machine.trays.map { refillTray ->
+            val itemNumber = refillTray.tray.itemNumber
+            val position = MachineAnalysis.slotRowCol(itemNumber)
+            val state = RefillLayout.classify(
+                isInTour = refillTray.isInTour,
+                fillAmount = refillTray.fillAmount,
+                currentStock = refillTray.tray.currentStock,
+                capacity = refillTray.tray.capacity
+            )
+            val isSelected = refillTray.tray.id == selectedTrayId
+            val stateColor = state.slotColor(isDark)
+
+            // Never colour alone: the state is spoken with the slot number and
+            // the product, and so is the selection.
+            val stateLabel = when (state) {
+                RefillSlotState.NOT_IN_TOUR -> notInTourLabel
+                RefillSlotState.JUST_FILLED -> String.format(fillingTemplate, refillTray.fillAmount)
+                RefillSlotState.EMPTY -> emptyLabel
+                RefillSlotState.LOW -> lowLabel
+                RefillSlotState.FULL -> fullLabel
+            }
+            val productName = refillTray.tray.products?.name?.takeIf { it.isNotBlank() }
+            val described = if (productName != null) {
+                String.format(slotTemplate, itemNumber, productName, stateLabel)
+            } else {
+                String.format(slotEmptyTemplate, itemNumber, stateLabel)
+            }
+
+            MachineLayoutCell(
+                id = refillTray.tray.id,
+                itemNumber = itemNumber,
+                row = position.row,
+                column = position.column,
+                width = widths[itemNumber] ?: 1,
+                imagePath = refillTray.tray.products?.imagePath,
+                background = stateColor.copy(
+                    alpha = if (state == RefillSlotState.NOT_IN_TOUR) {
+                        SLOT_FILL_ALPHA_NOT_IN_TOUR
+                    } else {
+                        SLOT_FILL_ALPHA
+                    }
+                ),
+                outline = selectionColor.takeIf { isSelected },
+                foreground = stateColor.copy(alpha = SLOT_SCRIM_ALPHA),
+                contentDescription = if (isSelected) {
+                    String.format(slotSelectedTemplate, described)
+                } else {
+                    described
+                }
+            )
+        }
+
+        MachineLayoutState(
+            rowCount = cells.maxOfOrNull { it.row }?.plus(1) ?: 0,
+            cells = cells
+        )
+    }
+}
+
+/**
+ * The grid above the tray cards. Read-only navigation: a tap selects a slot and
+ * scrolls to its card, and there is deliberately no control here that could
+ * change a fill amount — a second, unlabelled way to alter what the driver is
+ * about to book is exactly what this must not be.
+ */
+@Composable
+private fun MachineLayoutSection(
+    rowCount: Int,
+    cells: List<MachineLayoutCell>,
+    onSlotClick: (trayId: String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.refill_step_layout_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = stringResource(R.string.refill_step_layout_hint),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        MachineLayoutGrid(
+            rowCount = rowCount,
+            cells = cells,
+            onCellClick = onSlotClick
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -584,10 +871,19 @@ private fun MachinePickerSheet(
 // Tray card
 // ─────────────────────────────────────────────────────────────────────────
 
+/**
+ * @param isSelected this is the card the driver reached by tapping its slot in
+ *   the layout grid. Purely a marker so the eye lands on the right card after
+ *   the scroll — it changes nothing about what the card does. `colorScheme
+ *   .primary` here rather than a fixed token: this is a Material surface
+ *   affordance, not one of the layout grid's state colours, and there is no
+ *   sibling hue for it to collapse against.
+ */
 @Composable
 private fun RefillTrayCard(
     row: TrayRowState,
     enabled: Boolean,
+    isSelected: Boolean,
     onDecrement: () -> Unit,
     onIncrement: () -> Unit,
     onFillToCapacity: () -> Unit,
@@ -600,7 +896,12 @@ private fun RefillTrayCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = if (isSelected) {
+            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            null
+        }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(

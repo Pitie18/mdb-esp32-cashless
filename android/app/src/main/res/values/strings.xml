@@ -391,6 +391,7 @@
     <string name="refill_pack_empty_machine">Nothing to pack for this machine.</string>
     <!-- Refill wizard — refill step + wizard shell (Phase 5 Task 11) -->
     <string name="refill_wizard_title">Refill Tour</string>
+    <string name="refill_step_title_review">Review</string>
     <string name="refill_step_title_packing">Pack</string>
     <string name="refill_step_title_refill">Refill</string>
     <string name="refill_step_title_summary">Summary</string>
@@ -427,6 +428,17 @@
     <string name="refill_step_full_trays_expand">Show full trays</string>
     <string name="refill_step_full_trays_collapse">Hide full trays</string>
     <string name="refill_step_no_trays">Nothing to fill at this machine.</string>
+    <!-- Refill step — machine layout grid (Phase 5b Task 7) -->
+    <string name="refill_step_layout_title">Machine layout</string>
+    <string name="refill_step_layout_hint">Tap a slot to jump to its card.</string>
+    <string name="refill_step_layout_slot">Slot %1$d, %2$s, %3$s</string>
+    <string name="refill_step_layout_slot_empty">Slot %1$d, no product, %2$s</string>
+    <string name="refill_step_layout_slot_selected">%1$s, selected</string>
+    <string name="refill_step_layout_state_not_in_tour">not on this tour</string>
+    <string name="refill_step_layout_state_filling">%1$d to fill</string>
+    <string name="refill_step_layout_state_empty">empty</string>
+    <string name="refill_step_layout_state_low">low</string>
+    <string name="refill_step_layout_state_full">stocked</string>
     <string name="refill_step_skip">Skip</string>
     <string name="refill_step_confirm">Confirm refill</string>
     <string name="refill_step_saving">Saving…</string>
@@ -458,4 +470,55 @@
     </plurals>
     <string name="refill_summary_row_contribution">%1$s · %2$s</string>
     <string name="refill_summary_row_skipped">Skipped</string>
+    <!-- Refill wizard — review step (Phase 5b Task 5) -->
+    <string name="refill_review_title">Product Review</string>
+    <string name="refill_review_subtitle">The following trays need attention — discontinued, expired, out-of-stock, or unassigned products. Choose a replacement or skip.</string>
+    <string name="refill_review_reason_discontinued">Discontinued</string>
+    <string name="refill_review_reason_expired">Expired</string>
+    <string name="refill_review_reason_no_stock">No Stock</string>
+    <string name="refill_review_reason_unassigned">Unassigned</string>
+    <plurals name="refill_review_stock_remaining">
+        <item quantity="one">%1$d item still in machine</item>
+        <item quantity="other">%1$d items still in machine</item>
+    </plurals>
+    <string name="refill_review_stock_empty">0 items in machine</string>
+    <string name="refill_review_applied">Replaced — already saved</string>
+    <string name="refill_review_skipped_keeping">Skipped — keeping current product</string>
+    <string name="refill_review_skipped_unassigned">Skipped — slot stays unassigned</string>
+    <string name="refill_review_action_replace">Replace</string>
+    <string name="refill_review_action_assign">Assign</string>
+    <string name="refill_review_action_change">Change</string>
+    <string name="refill_review_action_choose">Choose replacement</string>
+    <string name="refill_review_action_skip">Skip</string>
+    <string name="refill_review_skip_all">Skip rest</string>
+    <string name="refill_review_continue">Continue</string>
+    <string name="refill_review_apply_continue">Apply &amp; continue</string>
+    <!-- Refill wizard — replacement product picker (Phase 5b Task 6) -->
+    <string name="refill_picker_title">Select replacement</string>
+    <string name="refill_picker_for_slot">Slot %1$d · %2$s</string>
+    <string name="refill_picker_search_hint">Search products</string>
+    <string name="refill_picker_search_clear">Clear search</string>
+    <string name="refill_picker_bucket_in_stock">In stock</string>
+    <string name="refill_picker_bucket_out_of_stock">Out of stock</string>
+    <string name="refill_picker_uncategorized">Uncategorized</string>
+    <string name="refill_picker_category_current">%1$s · current</string>
+    <plurals name="refill_picker_stock">
+        <item quantity="one">%1$d in stock</item>
+        <item quantity="other">%1$d in stock</item>
+    </plurals>
+    <plurals name="refill_picker_product_count">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d products</item>
+    </plurals>
+    <string name="refill_picker_slot_badge">Slot %1$s</string>
+    <string name="refill_picker_slot_badge_overflow">Slot %1$s +%2$d</string>
+    <plurals name="refill_picker_slot_badge_a11y">
+        <item quantity="one">Already in slot %1$s</item>
+        <item quantity="other">Already in slots %1$s</item>
+    </plurals>
+    <string name="refill_picker_expand_group">Expand group</string>
+    <string name="refill_picker_collapse_group">Collapse group</string>
+    <string name="refill_picker_selected">Selected</string>
+    <string name="refill_picker_no_matches">No products matching \"%1$s\"</string>
+    <string name="refill_picker_empty">No products available</string>
 </resources>
