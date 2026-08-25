@@ -1,12 +1,12 @@
 # Übergabe: Android-Parität zur iOS-App
 
-**Stand:** 2026-08-24 · alles bis einschließlich Phase 5a ist in `main` gemerged (lokal, noch nicht gepusht) · 300 Tests grün
+**Stand:** 2026-08-25 · Phasen 1–5b sind in `main` gemerged **und gepusht** · 387 Tests grün · die Refill-Parität zu iOS ist damit vollständig
 
 ## Wo anfangen
 
 1. Diese Datei lesen.
 2. `.superpowers/sdd/progress.md` lesen — das Ledger mit allen Task-Ergebnissen, Reviews und Befunden. Phase 3 ist darin vollständig protokolliert (Tasks 23–30), inklusive der vier offenen Nachfolgepunkte, die absichtlich nicht in dieser Phase erledigt wurden (siehe unten).
-3. Phase 5b (Review-Schritt, Ersatzprodukt-Picker, Maschinen-Layout-Grid) braucht noch einen Plan. Phase 5a ist fertig und gemerged; ihr Plan [`plans/2026-08-24-android-phase-5-refill.md`](plans/2026-08-24-android-phase-5-refill.md) enthält am Ende zwei Abschnitte, die man vor 5b liest: die bekannten Abweichungen von iOS und die neun Restrisiken.
+3. Die geplante Phasenreihe ist abgeschlossen. Was als Nächstes ansteht, steht nicht mehr hier, sondern in zwei Abschnitten der Pläne: die **neun Restrisiken** am Ende von [`plans/2026-08-24-android-phase-5-refill.md`](plans/2026-08-24-android-phase-5-refill.md) (einseitige Lagerbilanz, fehlende Paginierung in `fetchRefillMachines`, zwei Prozesstod-Fenster, der Rundungsfehler, der auf iOS und in der PWA noch lebt) und die drei zurückgestellten Punkte in [`plans/2026-08-24-android-phase-5b-review.md`](plans/2026-08-24-android-phase-5b-review.md). Aus der Spec offen bleiben außerdem Push über FCM sowie Multi-Server/QR-Login-Feinschliff.
 
 Vorgehen wie bisher: `superpowers:subagent-driven-development` — ein frischer Umsetzer je Task, unabhängiges Review, und der Orchestrator verifiziert Build, Tests und Bildschirm **selbst** nach. Bei kleinen, rein visuellen Fixes (Layout-Feintuning, das iterative Bildschirmzugriff braucht) hat es sich diese Sitzung bewährt, dass der Orchestrator sie direkt selbst macht statt einen Umsetzer zu beauftragen — ein Subagent kann den Bildschirm nicht sehen.
 
@@ -19,9 +19,9 @@ Vorgehen wie bisher: `superpowers:subagent-driven-development` — ein frischer 
 | 3 | Maschinen-Tab: Analyse-Ansicht, unterdrückte Verkäufe, 3 Sheets (Guthaben/Einstellungen/Gerätegesundheit), Lagerverfügbarkeit, Lokalisierungs-Sweep (Tasks 23–30) | **fertig**, am S10 verifiziert |
 | 4 | Lager: Bestand, Wareneingang (Barcode), FIFO-Chargen-Drilldown + Korrektur, Lokalisierung (Tasks 1–12) | **fertig**, am S10 verifiziert, in `main` gemerged |
 | 5a | Refill-Tour auf iOS-Stand: lagerbewusstes Packen, FIFO-Abbuchung nur für gepackte Ware, atomare `refill_machine_trays`-Buchung mit Retry, `activity_log`, Tour fortsetzen, Lokalisierung | **fertig**, am S10 gegen den Testserver verifiziert, in `main` gemerged |
-| 5b | Review-Schritt, Ersatzprodukt-Picker, Maschinen-Layout-Grid | kein Plan — hängt an 5a |
+| 5b | Review-Schritt (vier Ersatzgründe), Ersatzprodukt-Picker mit Bestands-Buckets und Kategorien, Maschinen-Layout-Grid (mit der Analyse-Ansicht geteilt) | **fertig**, am S10 verifiziert, in `main` gemerged |
 
-Tests: **300**, alle grün. Toolchain: AGP 9.3.1 / Gradle 9.5 / Kotlin 2.4.10 / compileSdk 36 — Debug, Tests und `assembleRelease` (R8) verifiziert.
+Tests: **387**, alle grün. Toolchain: AGP 9.3.1 / Gradle 9.5 / Kotlin 2.4.10 / compileSdk 36 — Debug, Tests und `assembleRelease` (R8) verifiziert.
 
 ## Offene Nachfolgepunkte aus Phase 3 (bewusst nicht erledigt)
 
