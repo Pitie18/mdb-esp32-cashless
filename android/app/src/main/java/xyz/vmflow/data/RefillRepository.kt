@@ -59,16 +59,33 @@ object RefillRepository {
         return try {
             val machines = MachineRepository.fetchMachines().getOrThrow()
 
-            val trays = postgrest.from("machine_trays")
-                .select(
-                    Columns.raw(
-                        "id, machine_id, item_number, product_id, capacity, current_stock, " +
-                            "min_stock, fill_when_below, products(id, name, image_path, discontinued, sellprice)"
-                    )
-                ) {
-                    order("item_number", Order.ASCENDING)
-                }
-                .decodeList<Tray>()
+            // Paged, and ordered by a UNIQUE key chain. Both halves matter:
+            //
+            // Unpaged, PostgREST silently caps the response at `db.max_rows`
+            // (1000 on the CLI stack) — a valid 200 with a truncated body. Past
+            // that many tray rows in one company, machines would quietly lose
+            // trays here, and a half-empty machine renders as fully stocked.
+            //
+            // And paging a non-unique sort is its own bug: `item_number` repeats
+            // across machines, so the server may order two pages differently and
+            // a tray appears twice or never. `machine_id, item_number, id` is a
+            // total order and still leaves each machine's trays in slot order,
+            // which is what the caller and the UI below rely on.
+            val trays = fetchAllPages { from, to ->
+                postgrest.from("machine_trays")
+                    .select(
+                        Columns.raw(
+                            "id, machine_id, item_number, product_id, capacity, current_stock, " +
+                                "min_stock, fill_when_below, products(id, name, image_path, discontinued, sellprice)"
+                        )
+                    ) {
+                        order("machine_id", Order.ASCENDING)
+                        order("item_number", Order.ASCENDING)
+                        order("id", Order.ASCENDING)
+                        range(from, to)
+                    }
+                    .decodeList<Tray>()
+            }
 
             val traysByMachine = trays.groupBy { it.machineId }
             val refillMachines = machines.mapNotNull { machine ->

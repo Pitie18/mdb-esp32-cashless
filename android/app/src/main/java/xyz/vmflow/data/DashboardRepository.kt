@@ -144,9 +144,21 @@ object DashboardRepository : DashboardDataSource {
             .select(Columns.raw(MACHINE_COLUMNS))
             .decodeList<VendingMachineWithEmbedded>()
 
-        val trays = postgrest.from("machine_trays")
-            .select(Columns.raw(TRAY_COLUMNS))
-            .decodeList<Tray>()
+        // Paged for the same reason as [RefillRepository.fetchRefillMachines]:
+        // this is a company-wide read of a growing table, and PostgREST caps a
+        // response at `db.max_rows` silently. Truncated, the dashboard would
+        // under-count the machines that need refilling — a banner that
+        // under-reports is worse than one that errors. Ordered by `id` purely
+        // to give paging a total order; nothing downstream depends on the
+        // order, only on having every row.
+        val trays = fetchAllPages { from, to ->
+            postgrest.from("machine_trays")
+                .select(Columns.raw(TRAY_COLUMNS)) {
+                    order("id", Order.ASCENDING)
+                    range(from, to)
+                }
+                .decodeList<Tray>()
+        }
 
         // A warehouse-fetch failure degrades to "no warehouse data", which
         // treats every product as refillable (the pre-warehouse behaviour),
