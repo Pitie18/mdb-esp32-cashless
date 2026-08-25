@@ -476,7 +476,23 @@ Die Lager-Invariante dieser Phase ist **einseitig**: sie garantiert, dass nichts
 3. **`deductForTour` hat keine `(tour_id, product_id)`-Deduplizierung** der Art, die die Tray-Buchung sicher macht.
 4. **Doppelte Audit-Zeile bei Prozesstod** zwischen dem Zustandsschreiben von `recordRefillSuccess` und dem `TourStore.save()` in `advanceToNextMachine`: die fortgesetzte Tour bestätigt dieselbe Maschine erneut, der RPC liefert die alten Werte zurück (DB-Bestand bleibt korrekt), aber eine zweite `stock_refill_tour`-Zeile mit demselben `total_added` entsteht. Vom legitimen Flugmodus-Retry nicht unterscheidbar, deshalb absichtlich unverändert.
 5. **Nicht zugewiesene Fächer** (`product_id IS NULL`) starten mit `fillAmount = deficit` und bleiben in der Tour — ein einfaches Bestätigen bucht sie auf Kapazität, ohne Produkt und ohne Lagerbelastung. iOS-Parität, in der Praxis überraschend; am Gerät ansehen.
-6. **`fetchRefillMachines` paginiert nicht.** Ein Abruf aller `machine_trays` einer Firma; die CLI-Dev-Konfiguration setzt `max_rows = 1000` (`Docker/supabase/config.toml`), die Docker-Prod-Konfiguration derzeit keine Grenze. Über 1000 Tray-Zeilen würde **still** abgeschnitten: Maschinen verlieren Fächer, halbleere Automaten sehen voll aus. Dieses Repo hatte die Klasse schon einmal (der Nayax-Import paginiert genau deswegen in 1000er-Blöcken). Vor dem Merge die Tray-Zeilenzahl der Zielfirma zählen; nahe an der Grenze → hier paginieren, nicht später.
+6. ~~**`fetchRefillMachines` paginiert nicht.**~~ **Behoben** (Merge `d01e114`,
+2026-08-25) — und zwar für **alle drei** firmenweiten `machine_trays`-Lesezugriffe:
+`RefillRepository.fetchRefillMachines`, `DashboardRepository`s Bestandsgesundheit und
+`WarehouseRepository.fetchAssignedProductIds` (letzterer war in der ersten
+Bestandsaufnahme fälschlich als „auf eine Maschine begrenzt" durchgegangen). Neuer
+gemeinsamer Helfer `data/Paging.kt::fetchAllPages`; er rückt um die *tatsächlich*
+gelieferten Zeilen vor, nicht um die angeforderte Seitengröße, und wirft statt eine
+Teilmenge zurückzugeben. Dabei fiel ein zweiter Fehler auf: die Abfrage sortierte nur
+nach `item_number`, was über Maschinen hinweg nicht eindeutig ist — Paginierung auf
+einer nicht-totalen Ordnung lässt Zeilen doppelt oder gar nicht erscheinen; jetzt
+`machine_id, item_number, id`. **Vorbeugend**: der >1000-Pfad ist nur durch Unit-Tests
+belegt, nicht gegen einen Server mit so vielen Zeilen, und ein Gerätetest fand nicht
+statt. **Weiter offen** (benannt, nicht erledigt): die firmenweiten `products`- und
+`warehouse_stock_batches`-Lesezugriffe, einer davon nicht einmal auf ein Lager
+eingegrenzt. Und: Offset-Paginierung bleibt anfällig, wenn während des Blätterns Zeilen
+eingefügt oder gelöscht werden — ein anderes Problem als die Sortierung, in der Praxis
+unwahrscheinlich.
 7. **Kosten pro Zustandsänderung skalieren mit der Flottengröße**, nicht mit dem Nachfüllbedarf: jedes `withPackingList()` gruppiert und sortiert die ganze Flotte neu, und der Namensvergleicher baut pro Aufruf einen frischen ICU-`Collator`. Am Gerät mit echten Daten fühlbar prüfen (Stepper halten und schnell tippen).
 8. **`flattenPickOrder` verliert Gruppen in einem Eltern-Zyklus** (eine zyklisch verkettete Gruppe ist von keiner Wurzel erreichbar, ihre Produkte fallen aus der Pickreihenfolge). Kein Absturz, kein Datenverlust außer der Sortierung; datengetrieben und unwahrscheinlich.
 9. **Der Rundungsfehler bei reduzierten Packmengen existiert weiterhin auf iOS und in der PWA** (`RefillWizardViewModel.swift:1705-1709` und das PWA-Äquivalent): dort wird jede Tray-Quote einzeln gerundet, sodass die Maschine mehr Einheiten gutgeschrieben bekommen kann als das Lager belastet wird. Auf Android in dieser Phase behoben (Largest-Remainder-Verteilung + Eigenschaftstest); für die anderen zwei Clients offen.
