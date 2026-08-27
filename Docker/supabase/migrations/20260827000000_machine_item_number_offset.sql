@@ -91,16 +91,37 @@ AS $$
       greatest(p_window_start, coalesce((select since from cutover), p_window_start)) as w_start,
       p_window_end as w_end
   ),
+  -- Which snapshot serves as the baseline. Normally the latest one at or before
+  -- the window start. When the window opens before the cut-over there is no
+  -- post-cut-over baseline that early, so fall back to the FIRST snapshot taken
+  -- after it — otherwise the guard would silently return nothing at all for
+  -- every machine that has an offset.
+  eff_start_at as (
+    select coalesce(
+      (
+        select max(d.captured_at)
+        from public.dex_snapshots d, bounds b
+        where d.embedded_id = p_embedded_id
+          and d.captured_at <= b.w_start
+          and (
+            (select since from cutover) is null
+            or d.captured_at >= (select since from cutover)
+          )
+      ),
+      (
+        select min(d.captured_at)
+        from public.dex_snapshots d
+        where d.embedded_id = p_embedded_id
+          and (select since from cutover) is not null
+          and d.captured_at >= (select since from cutover)
+      )
+    ) as at
+  ),
   start_snap as (
     select d.slot_counters
-    from public.dex_snapshots d, bounds b
+    from public.dex_snapshots d, eff_start_at e
     where d.embedded_id = p_embedded_id
-      and d.captured_at <= b.w_start
-      and (
-        (select since from cutover) is null
-        or d.captured_at >= (select since from cutover)
-      )
-    order by d.captured_at desc
+      and d.captured_at = e.at
     limit 1
   ),
   end_snap as (

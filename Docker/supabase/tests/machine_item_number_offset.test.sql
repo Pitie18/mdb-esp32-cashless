@@ -116,4 +116,53 @@ BEGIN
   RAISE NOTICE 'machine_item_number_offset: dex guard assertions passed';
 END $$;
 
+-- 7. Regression: a machine WITHOUT an offset must behave exactly as before the
+--    guard was added. The first version of the guard clamped the baseline to an
+--    exact cut-over timestamp and returned nothing at all; this case plus case 6
+--    pin both halves of that behaviour.
+DO $$
+DECLARE
+  v_company uuid := gen_random_uuid();
+  v_admin   uuid := gen_random_uuid();
+  v_dev     uuid := gen_random_uuid();
+  v_now     timestamptz := now();
+  v_gap     bigint;
+  v_rows    int;
+BEGIN
+  INSERT INTO public.companies (id, name) VALUES (v_company, 'Plain Co');
+  INSERT INTO auth.users (id, instance_id, email, created_at)
+    VALUES (v_admin, '00000000-0000-0000-0000-000000000000', 'plain@test.local', now());
+  INSERT INTO public.users (id, company, email) VALUES (v_admin, v_company, 'plain@test.local')
+    ON CONFLICT (id) DO UPDATE SET company = EXCLUDED.company;
+  INSERT INTO public.organization_members (company_id, user_id, role)
+    VALUES (v_company, v_admin, 'admin');
+  INSERT INTO public.embeddeds (id, company, owner_id, status, status_at)
+    VALUES (v_dev, v_company, v_admin, 'online', now());
+  INSERT INTO public."vendingMachine" (name, company, embedded)
+    VALUES ('M-Plain', v_company, v_dev);
+
+  INSERT INTO public.dex_snapshots (embedded_id, raw, slot_counters, total_vends, total_value, captured_at)
+    VALUES (v_dev, '\x00', '{"3": {"vends": 100, "value_cents": 10000}}'::jsonb,
+            100, 10000, v_now - interval '2 hours');
+  INSERT INTO public.dex_snapshots (embedded_id, raw, slot_counters, total_vends, total_value, captured_at)
+    VALUES (v_dev, '\x00', '{"3": {"vends": 107, "value_cents": 10700}}'::jsonb,
+            107, 10700, v_now);
+
+  -- Two of the seven vends were recorded as sales; five are a genuine gap.
+  INSERT INTO public.sales (embedded_id, owner_id, item_price, item_number, channel, created_at)
+  VALUES
+    (v_dev, v_admin, 1.0, 3, 'cash', v_now - interval '1 hour'),
+    (v_dev, v_admin, 1.0, 3, 'cash', v_now - interval '30 minutes');
+
+  -- The window must open at or after the baseline snapshot: dex_reconcile_gaps
+  -- has always required a snapshot at or before p_window_start to subtract from.
+  SELECT count(*), coalesce(max(gap), 0) INTO v_rows, v_gap
+  FROM public.dex_reconcile_gaps(v_dev, v_now - interval '90 minutes', v_now + interval '1 minute');
+
+  ASSERT v_rows = 1, 'no-offset machine must still report its slot, got ' || v_rows || ' rows';
+  ASSERT v_gap = 5, 'no-offset gap must be 7 vends - 2 sales = 5, got ' || v_gap;
+
+  RAISE NOTICE 'machine_item_number_offset: no-offset regression assertions passed';
+END $$;
+
 ROLLBACK;
