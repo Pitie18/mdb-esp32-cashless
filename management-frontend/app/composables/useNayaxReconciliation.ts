@@ -46,6 +46,28 @@ export function parseSelectionInfo(raw: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+export interface MachineOffset {
+  offset: number
+  /** ISO timestamp the offset took effect; null means it never did. */
+  since: string | null
+}
+
+/**
+ * Nayax reads the same MDB bus as our device, so its export carries the RAW
+ * selection number. Since the offset was introduced as a cut-over with no
+ * backfill, DB rows are raw before `since` and shifted from `since` onwards —
+ * so the Nayax row has to be shifted by the same rule to align against them.
+ */
+export function effectiveNayaxItemNumber(
+  rawItemNumber: number,
+  rowUtcDt: string,
+  cfg: MachineOffset | undefined,
+): number {
+  if (!cfg || cfg.offset === 0 || cfg.since === null) return rawItemNumber
+  if (Date.parse(rowUtcDt) < Date.parse(cfg.since)) return rawItemNumber
+  return Math.max(0, rawItemNumber + cfg.offset)
+}
+
 /**
  * Parse "Gesuchter Datumsbereich: DD.MM.YYYY HH:MM:SS - DD.MM.YYYY HH:MM:SS"
  * from row 1 of a Nayax export and convert both endpoints to UTC ISO 8601
@@ -304,6 +326,7 @@ export function useNayaxReconciliation() {
   // observes object property mutations (`mapping.value[k] = v`,
   // `delete mapping.value[k]`) but not `Map.set` / `Map.delete`.
   const mapping = useState<Record<string, string>>('nayax-recon-mapping', () => ({}))
+  const offsets = useState<Record<string, MachineOffset>>('nayax-recon-offsets', () => ({}))
   const settings = useState('nayax-recon-settings', () => ({
     timezone: 'Europe/Berlin',
     fromUtc: '',
@@ -416,14 +439,25 @@ export function useNayaxReconciliation() {
     const supabase = useSupabaseClient()
     const { data, error: err } = await supabase
       .from('vendingMachine')
-      .select('id, nayax_machine_id')
+      .select('id, nayax_machine_id, item_number_offset, item_number_offset_since')
       .not('nayax_machine_id', 'is', null)
     if (err) throw err
     const m: Record<string, string> = {}
-    for (const row of (data ?? []) as { id: string; nayax_machine_id: string }[]) {
+    const o: Record<string, MachineOffset> = {}
+    for (const row of (data ?? []) as {
+      id: string
+      nayax_machine_id: string
+      item_number_offset: number | null
+      item_number_offset_since: string | null
+    }[]) {
       m[row.nayax_machine_id] = row.id
+      o[row.id] = {
+        offset: row.item_number_offset ?? 0,
+        since: row.item_number_offset_since ?? null,
+      }
     }
     mapping.value = m
+    offsets.value = o
   }
 
   function detectUnmappedIds(): string[] {
@@ -556,6 +590,7 @@ export function useNayaxReconciliation() {
           .sort((x, y) => x.utcDt.localeCompare(y.utcDt))
         const bAll = (dbByVm.get(vmId) ?? []).slice()
           .sort((x, y) => x.created_at.localeCompare(y.created_at))
+        const vmOffset = offsets.value[vmId]
 
         // Split DB rows into in-strict-range vs buffer-only. In-range rows are
         // matched FIRST (authoritatively) so a ±2-min buffer row can never steal
@@ -569,7 +604,7 @@ export function useNayaxReconciliation() {
         }
 
         // Pass 1: eligible Nayax rows vs in-range DB rows.
-        const aKeys = aRows.map(r => r.itemNumber as number)
+        const aKeys = aRows.map(r => effectiveNayaxItemNumber(r.itemNumber as number, r.utcDt, vmOffset))
         const aDays = aRows.map(r => r.utcDt.slice(0, 10))
         const sKeys = bStrict.map(r => r.item_number ?? -1)
         const sDays = bStrict.map(r => r.created_at.slice(0, 10))
@@ -583,7 +618,7 @@ export function useNayaxReconciliation() {
         // unmatched buffer rows are dropped (never phantoms).
         const residualA = r1.aOnly.map(ai => aRows[ai]!)
         if (residualA.length > 0 && bBuffer.length > 0) {
-          const raKeys = residualA.map(r => r.itemNumber as number)
+          const raKeys = residualA.map(r => effectiveNayaxItemNumber(r.itemNumber as number, r.utcDt, vmOffset))
           const rbKeys = bBuffer.map(r => r.item_number ?? -1)
           const r2 = alignSequences(raKeys, rbKeys)
           for (const [ai, bi] of r2.pairs) pushMatch(residualA[ai]!, bBuffer[bi]!)
@@ -666,9 +701,17 @@ export function useNayaxReconciliation() {
           continue
         }
         const channel = derivedChannelFromPaymentSource(n.paymentSource)
+        // Nayax reports the raw MDB selection; the DB holds shifted numbers from
+        // the machine's offset cut-over onwards. Import into the same space the
+        // tray join uses, or the manual sale lands on the wrong slot.
+        const importItemNumber = effectiveNayaxItemNumber(
+          n.itemNumber,
+          n.utcDt,
+          offsets.value[vmId],
+        )
         const { data, error: err } = await (supabase as any).rpc('insert_manual_sale', {
           p_machine_id: vmId,
-          p_item_number: n.itemNumber,
+          p_item_number: importItemNumber,
           p_item_price: n.priceGross,
           p_channel: channel,
           p_created_at: n.utcDt,
@@ -686,7 +729,7 @@ export function useNayaxReconciliation() {
         await logNayaxActivity('sale_inserted', inserted?.id ?? null, {
           machine_id: vmId,
           machine_name: n.machineName || null,
-          item_number: n.itemNumber,
+          item_number: importItemNumber,
           item_price: n.priceGross,
           channel,
           sale_created_at: n.utcDt,
