@@ -1,9 +1,18 @@
-# iOS release notes — how the "What's New" text is produced
+# Mobile release notes — how the store "What's New" text is produced
 
 `ios/scripts/release_notes.rb` writes
 `ios/fastlane/metadata/<locale>/release_notes.txt` from git history. The
 `release` lane runs it before uploading, because deliver pushes metadata ahead
 of the binary.
+
+**These rules cover Android too.** `android/scripts/release_notes.rb` writes
+`android/fastlane/metadata/android/<locale>/changelogs/default.txt`, and both
+scripts are thin front-ends over one engine — `scripts/lib/release_notes_core.rb`
+— so the two stores can never describe the same release differently. Read `ios-v*`
+as `android-v*` and `ios/` as `android/` below and everything else applies as
+written. The only real difference is the budget: Play allows 500 characters
+against the App Store's 4000, so Android trims to fewer bullets. The engine has
+its own tests: `ruby scripts/lib/release_notes_core_test.rb`.
 
 Preview what the next release would say, without building or uploading anything:
 
