@@ -4,6 +4,7 @@ import { sendPushToUsers } from '../_shared/web-push.ts'
 import { stockUrgency } from './stock-urgency.ts'
 import { t, formatPrice, type Locale } from '../_shared/notification-i18n.ts'
 import { decideSuppress, rebootCorroborates, REBOOT_CORRELATION_WINDOW_MS, REBOOT_CORRELATION_FORWARD_MS, SUPPRESS_WINDOW_MS, type SuppressCandidate } from "./suppress.ts";
+import { applyItemOffset, shiftSlotCounters } from './slot-offset.ts';
 
 // Sale payload format version carried in byte 1 of the 19-byte XOR-encrypted
 // payload. v2 adds per-device monotonic sale_seq (bytes 14-17) + time_uncertain
@@ -398,6 +399,23 @@ Deno.serve(async (req) => {
         payload[5];
       const itemNumber = ((payload[6] << 8) | payload[7]) & 0xFFFF;
 
+      // The machine is resolved here rather than in the push block below because
+      // the per-machine item-number offset has to be applied before the insert.
+      // Same query the push path used to make on its own — not an extra round
+      // trip, just an earlier one.
+      const { data: machine } = await adminClient
+        .from('vendingMachine')
+        .select('id, name, item_number_offset')
+        .eq('embedded', embedded.id)
+        .maybeSingle();
+
+      // effective = raw + offset. No backfill: rows written before the operator
+      // set the offset keep their raw numbers on purpose.
+      const effectiveItemNumber = applyItemOffset(
+        itemNumber,
+        machine?.item_number_offset ?? 0,
+      );
+
       // 0x21 = CASH_SALE (coin/bill), 0x23 = CARD_SALE (credit card / cashless device #2), 0x24 = CASHLESS_SALE
       const channel = cmd === 0x23 ? 'card' : cmd === 0x24 ? 'cashless' : 'cash';
 
@@ -434,7 +452,7 @@ Deno.serve(async (req) => {
           .from('sales')
           .select('id, created_at, product_id')
           .eq('embedded_id', embedded.id)
-          .eq('item_number', itemNumber)
+          .eq('item_number', effectiveItemNumber)
           .eq('item_price', salePrice)
           .eq('channel', channel)
           .gte('created_at', new Date(incomingMs - SUPPRESS_WINDOW_MS).toISOString())
@@ -467,7 +485,7 @@ Deno.serve(async (req) => {
             const matchedRow = (candRows ?? []).find((r) => r.id === matchedId);
             const { error: suppressErr } = await adminClient.from('suppressed_sales').insert([{
               embedded_id: embedded.id,
-              item_number: itemNumber,
+              item_number: effectiveItemNumber,
               item_price: salePrice,
               channel,
               sale_seq: saleSeq,
@@ -497,7 +515,7 @@ Deno.serve(async (req) => {
         .insert([{
           owner_id: embedded.owner_id,
           embedded_id: embedded.id,
-          item_number: itemNumber,
+          item_number: effectiveItemNumber,
           item_price: salePrice,
           channel,
           created_at: saleTime,
@@ -520,13 +538,8 @@ Deno.serve(async (req) => {
 
       // ── Push notification dispatch (best-effort, never blocks sale recording) ──
       try {
-        // Look up machine + tray + product once (used by both sale and low-stock notifications)
-        const { data: machine } = await adminClient
-          .from('vendingMachine')
-          .select('id, name')
-          .eq('embedded', embedded.id)
-          .maybeSingle();
-
+        // `machine` is resolved above, before the insert, because the
+        // item-number offset needs it. Reused here for tray + product lookup.
         let productImageUrl: string | undefined;
         let lowTray: { current_stock: number; capacity: number } | undefined;
 
@@ -535,7 +548,7 @@ Deno.serve(async (req) => {
             .from('machine_trays')
             .select('product_id, current_stock, min_stock, capacity, fill_when_below')
             .eq('machine_id', machine.id)
-            .eq('item_number', itemNumber)
+            .eq('item_number', effectiveItemNumber)
             .maybeSingle();
           tray = trayRow;
 
@@ -568,7 +581,7 @@ Deno.serve(async (req) => {
         // 1. Sale notification — three-line layout on iOS (title / subtitle /
         //    body), merged on Android+web (subtitle\nbody). Localized per
         //    recipient via sendPushToUsers' locale grouping.
-        const itemLabel = productName ?? `Item #${itemNumber}`;
+        const itemLabel = productName ?? `Item #${effectiveItemNumber}`;
         const machineLabel = machine?.name ? ` · ${machine.name}` : '';
 
         await sendPushToUsers(adminClient, embedded.company, 'sale', (locale: Locale) => {
@@ -599,7 +612,7 @@ Deno.serve(async (req) => {
         //    suppressed for users with sale enabled (sale push already
         //    carries stock info).
         if (machine && lowTray) {
-          const itemLabelLow = productName ?? `Item #${itemNumber}`;
+          const itemLabelLow = productName ?? `Item #${effectiveItemNumber}`;
           const machineName = machine.name;
 
           await sendPushToUsers(adminClient, embedded.company, 'low_stock', (locale: Locale) => {
@@ -626,7 +639,7 @@ Deno.serve(async (req) => {
           entity_id: embedded.id,
           action: 'sale_recorded',
           metadata: {
-            item_number: itemNumber,
+            item_number: effectiveItemNumber,
             price: salePrice,
             channel,
             device_id: embedded.id,
