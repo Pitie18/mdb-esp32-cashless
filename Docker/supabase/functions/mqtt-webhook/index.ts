@@ -342,18 +342,33 @@ Deno.serve(async (req) => {
       const dexBytes = decodeBase64(payloadB64);
       const parsed = parseDexAudit(dexBytes);
 
+      // The parsed slot keys are shifted by the same per-machine offset the sale
+      // path uses, so DEX counters and `sales.item_number` stay in one number
+      // space. `raw` below is deliberately NOT touched: it is the machine's own
+      // audit record and must stay verbatim.
+      const { data: dexMachine } = await adminClient
+        .from('vendingMachine')
+        .select('item_number_offset')
+        .eq('embedded', embedded.id)
+        .maybeSingle();
+
+      const slotCounters = shiftSlotCounters(
+        parsed.slot_counters,
+        dexMachine?.item_number_offset ?? 0,
+      );
+
       const { error: insertErr } = await adminClient
         .from('dex_snapshots')
         .insert({
           embedded_id: embedded.id,
           raw: `\\x${Array.from(dexBytes).map((b) => b.toString(16).padStart(2, '0')).join('')}`,
-          slot_counters: parsed.slot_counters,
+          slot_counters: slotCounters,
           total_vends: parsed.total_vends,
           total_value: parsed.total_value,
         });
 
       if (insertErr) throw insertErr;
-      return new Response(JSON.stringify({ ok: true, slots: Object.keys(parsed.slot_counters).length }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, slots: Object.keys(slotCounters).length }), { status: 200 });
     }
 
     // Sale and paxcounter: encrypted payload
