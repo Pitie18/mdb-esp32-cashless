@@ -56,8 +56,14 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField "String", "SUPABASE_URL", "\"${project.findProperty('SUPABASE_URL') ?: 'https://supabase.vmflow.xyz'}\""
-        buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.findProperty('SUPABASE_ANON_KEY') ?: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.VGEEIztVo-do9cy_Qw2-2sF8bSONckhX71Nvtwj15X4'}\""
+        // Factory default server, used for the "VMflow Cloud" entry in
+        // ServerStore. These two MUST stay in step: the anon key is a JWT
+        // signed with that instance's secret, so a key from another instance
+        // fails every request with 401 rather than anything self-explanatory.
+        // Same production values as iOS's Configurations/Release.xcconfig.
+        // Anon keys are public by design — they ship inside every client.
+        buildConfigField "String", "SUPABASE_URL", "\"${project.findProperty('SUPABASE_URL') ?: 'https://supabase.kerl-handel.de'}\""
+        buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.findProperty('SUPABASE_ANON_KEY') ?: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzcyMzc3NzY3LCJleHAiOjIwODc3Mzc3Njd9.5Mu3-BgmHhekSP6vm0W20iwwT3mOjcYQPjO9b-oqgwA'}\""
     }
 
     signingConfigs {
