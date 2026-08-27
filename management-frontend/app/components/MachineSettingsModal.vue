@@ -18,7 +18,7 @@ import { COUNTRY_OPTIONS } from '~/composables/useTaxSettings'
 const props = defineProps<{
   open: boolean
   machineId: string
-  initial: Partial<LocationModel & { nayax_machine_id: string | null }>
+  initial: Partial<LocationModel & { nayax_machine_id: string | null; item_number_offset: number }>
   publicListing: boolean
 }>()
 
@@ -31,7 +31,7 @@ const { t } = useI18n()
 const supabase = useSupabaseClient()
 const { updateMachineSettings } = useMachines()
 
-type MachineSettingsForm = LocationModel & { nayax_machine_id: string | null }
+type MachineSettingsForm = LocationModel & { nayax_machine_id: string | null; item_number_offset: number }
 
 const form = ref<MachineSettingsForm>(cloneInitial())
 const saving = ref(false)
@@ -141,6 +141,7 @@ function cloneInitial(): MachineSettingsForm {
     formatted_address: props.initial.formatted_address ?? null,
     country_code: props.initial.country_code ?? null,
     nayax_machine_id: props.initial.nayax_machine_id ?? null,
+    item_number_offset: props.initial.item_number_offset ?? 0,
   }
 }
 
@@ -235,6 +236,9 @@ async function save() {
   errorMsg.value = null
   try {
     if (form.value.nayax_machine_id === '') form.value.nayax_machine_id = null
+    // An emptied number input yields '' / NaN; the column is NOT NULL.
+    const parsedOffset = Number(form.value.item_number_offset)
+    form.value.item_number_offset = Number.isFinite(parsedOffset) ? Math.trunc(parsedOffset) : 0
     await updateMachineSettings(props.machineId, form.value as MachineSettingsPatch)
     await saveContact()
     emit('saved')
@@ -305,6 +309,23 @@ function cancel() {
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
           <p class="mt-1 text-[10px] text-muted-foreground">{{ t('machineSettings.nayaxMachineIdHint') }}</p>
+        </div>
+
+        <!-- MDB slot number offset -->
+        <div class="space-y-1">
+          <label class="text-xs font-medium text-muted-foreground">{{ t('machineSettings.itemNumberOffset') }}</label>
+          <input
+            v-model.number="form.item_number_offset"
+            type="number"
+            step="1"
+            inputmode="numeric"
+            :placeholder="t('machineSettings.itemNumberOffsetPlaceholder')"
+            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <p class="mt-1 text-[10px] text-muted-foreground">{{ t('machineSettings.itemNumberOffsetHint') }}</p>
+          <p v-if="form.item_number_offset !== 0" class="mt-1 rounded bg-amber-500/10 px-2 py-1 text-[10px] text-amber-700 dark:text-amber-400">
+            {{ t('machineSettings.itemNumberOffsetWarning') }}
+          </p>
         </div>
 
         <!-- ── Contact overrides for printed posters ─────────── -->
