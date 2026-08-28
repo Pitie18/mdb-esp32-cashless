@@ -19,7 +19,60 @@ and it cannot be reused by another app even after the first one is deleted. If
 you want a different one, change it in `android/app/build.gradle` *before* the
 first upload, not after.
 
-## 1. Create the upload keystore
+## 1. Create the developer account
+
+**Do this first — the verification, not the pipeline, is the long pole.** The
+`$25` fee is instant; being allowed to publish is not.
+
+### Pick the account type before you start
+
+This is the decision that matters, and it cannot be changed later without
+registering again from scratch:
+
+| | Organisation | Personal |
+|---|---|---|
+| Who it's for | a company — Kerl Handel | an individual developer |
+| Extra requirement | a **D-U-N-S number** for the legal entity | none |
+| Shown on the listing | the company name | your verified name |
+| Before you may ship to production | nothing extra | a **closed test with at least 12 testers, opted in continuously for 14 days**, then apply for production access |
+
+**Take the organisation account.** VMflow is sold as a business tool, the
+listing should say Kerl Handel rather than a private name, and it skips the
+12-tester/14-day gate that would otherwise sit between you and the first
+production release.
+
+The catch is the D-U-N-S number: it is free from Dun & Bradstreet, but issuing
+one takes on the order of days to a few weeks. Request it **before** anything
+else in this document — everything else here is hours of work, that is the part
+that waits on someone else. Kerl Handel may already have one; check first.
+
+### Steps
+
+1. **Use a company Google account**, not a personal one. The account that
+   registers owns the developer account, and moving apps between developer
+   accounts later is a formal transfer process, not a setting.
+2. Request the **D-U-N-S number** for the legal entity if you don't have one
+   (name, address and phone must match your business registration exactly —
+   a mismatch is the usual cause of a rejected verification).
+3. Sign up at <https://play.google.com/console/signup>, choose **organisation**,
+   and pay the one-time **$25** registration fee.
+4. Complete **identity and organisation verification**: legal name, address,
+   phone, website, and the D-U-N-S number. Google emails you when it clears —
+   plan for days, not minutes.
+5. Fill in the **developer profile**. The developer name, email address and
+   (for organisations) address are shown publicly on every listing, so use
+   company contact details — the same ones the app's imprint uses.
+6. Under **Users and permissions**, add whoever else needs access. Keep the
+   owner account separate from day-to-day logins.
+
+Once the account shows as verified, continue with section 2.
+
+> Google reworks these requirements regularly — the tester count, the
+> verification documents and the fee have all moved before. The console's own
+> onboarding checklist is authoritative; if it disagrees with this page, it
+> wins, and this page needs fixing.
+
+## 2. Create the upload keystore
 
 Android has no equivalent of Apple's certificate cap, so there is no fastlane
 match here and no separate cert repo — one file does it:
@@ -36,11 +89,11 @@ Keep the `.jks` somewhere safe and out of the repo — `android/.gitignore`
 already refuses `*.jks` and `*.keystore`, deliberately.
 
 This is the **upload key**, not the app signing key. With Play App Signing
-(step 3) Google holds the actual signing key and re-signs every upload; the
+(step 4) Google holds the actual signing key and re-signs every upload; the
 upload key only proves the upload is yours. If you lose it, Google can reset
 it — which is exactly why this doesn't need the ceremony iOS signing does.
 
-## 2. Create the app record
+## 3. Create the app record
 
 Play Console → **All apps** → **Create app**:
 
@@ -50,18 +103,18 @@ Play Console → **All apps** → **Create app**:
 
 `supply` uploads to an **existing** app record; it does not create one.
 
-## 3. Turn on Play App Signing and register the upload key
+## 4. Turn on Play App Signing and register the upload key
 
 Play Console → your app → **Test and release → Setup → App integrity → App
 signing**. Choose *Let Google create and manage my app signing key*, then
-register the certificate of the keystore from step 1 as the upload
+register the certificate of the keystore from step 2 as the upload
 certificate. Export it with:
 
 ```bash
 keytool -export -rfc -keystore vmflow-upload.jks -alias vmflow-upload -file upload_certificate.pem
 ```
 
-## 4. Service account for the Publishing API
+## 5. Service account for the Publishing API
 
 1. Play Console → **Setup → API access** → link (or create) a Google Cloud
    project.
@@ -77,7 +130,7 @@ keytool -export -rfc -keystore vmflow-upload.jks -alias vmflow-upload -file uplo
 Permission changes can take a little while to propagate; a first run that fails
 with a 401/403 right after this step is worth simply retrying.
 
-## 5. GitHub secrets
+## 6. GitHub secrets
 
 Repo → Settings → Secrets and variables → Actions:
 
@@ -85,15 +138,15 @@ Repo → Settings → Secrets and variables → Actions:
 |---|---|
 | `PLAY_JSON_KEY_BASE64` | the service-account JSON: `base64 < play-service-account.json \| pbcopy` |
 | `ANDROID_KEYSTORE_BASE64` | the keystore: `base64 < vmflow-upload.jks \| pbcopy` |
-| `ANDROID_KEYSTORE_PASSWORD` | the store password from step 1 |
+| `ANDROID_KEYSTORE_PASSWORD` | the store password from step 2 |
 | `ANDROID_KEY_ALIAS` | `vmflow-upload` |
-| `ANDROID_KEY_PASSWORD` | the key password from step 1 |
+| `ANDROID_KEY_PASSWORD` | the key password from step 2 |
 
 Piping through stdin rather than `base64 -i file` is deliberate: the input flags
 differ between stock macOS's BSD `base64` and the GNU/Homebrew one, stdin works
 on both. Same reasoning as the iOS `.p8` secret.
 
-## 6. The first upload is manual
+## 7. The first upload is manual
 
 **Play will not accept an upload through the API until the app has had one
 release created in the console.** This catches everyone once. The workflow
@@ -107,12 +160,12 @@ hands you the artefact for it:
 
 From then on every `internal`/`release` dispatch goes through the API.
 
-If this is a **personal** (not organisation) developer account created recently,
-Play additionally requires a closed test with a minimum number of testers over a
-minimum period before production access is granted. The console tells you where
-you stand; the `internal` lane is what you use to feed that test.
+If you ended up on a **personal** account after all (section 1), production is
+gated behind a closed test with 12 testers for 14 days. The `internal` lane is
+what feeds that test — dispatch it as often as you like; only the console's
+counter has to be satisfied.
 
-## 7. Store listing
+## 8. Store listing
 
 The `metadata` and `release` lanes push these from
 `android/fastlane/metadata/android/<locale>/`:
@@ -143,7 +196,7 @@ These are set **by hand** in the console and block publishing while empty —
 - **App category** and contact details.
 - **Pricing** — free.
 
-## 8. Releasing
+## 9. Releasing
 
 Actions → **Android Release** → Run workflow.
 
@@ -182,7 +235,7 @@ notes back, exactly as the iOS pipeline does:
 Only `android-v*` anchors the release notes, so the commits in an internal build
 still show up in the next real release's notes instead of vanishing.
 
-## 9. versionCode
+## 10. versionCode
 
 `versionCode` is `yyMMdd * 100 + the day's commit count` — `26082703` is the
 third commit of 2026-08-27 (`android/app/build.gradle`). Play permanently
@@ -196,7 +249,7 @@ Two consequences:
   CI then cannot reuse. Local release builds are for debugging; without the
   keystore env vars they come out unsigned on purpose.
 
-## 10. Writing better release notes
+## 11. Writing better release notes
 
 Identical to iOS, including the `Release-Note-DE:` / `Release-Note: skip` commit
 trailers — the same engine (`scripts/lib/release_notes_core.rb`) generates both
