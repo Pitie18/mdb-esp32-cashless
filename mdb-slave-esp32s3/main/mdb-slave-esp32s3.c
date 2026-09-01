@@ -43,6 +43,7 @@
 #include "esp_https_ota.h"
 #include "esp_ota_ops.h"
 #include "esp_app_desc.h"
+#include "esp_mac.h"
 #include "cJSON.h"
 
 #define TAG "mdb_cashless"
@@ -147,6 +148,55 @@ enum MDB_READER_FLOW {
 enum MDB_EXPANSION_FLOW {
 	REQUEST_ID = 0x00, DIAGNOSTICS = 0xFF
 };
+
+// EXPANSION REQUEST ID answer: 0x09 + mfr(3) + serial(12) + model(12) +
+// version(2). Level 3 appends four optional-feature bytes; we advertise
+// Level 1 in SETUP CONFIG_DATA, so the short form is the correct one.
+#define MDB_PERIPHERAL_ID_LEN	30
+
+// Some VMCs reject the Peripheral ID in any format and only fall through to
+// OPTIONAL_FEATURE_ENABLED / READER_ENABLE once the reader goes quiet; others
+// (SandenVendo SN02-B) never enable the reader until it is answered. Answer,
+// then stop answering if the VMC keeps asking within one reset cycle.
+#define MDB_ID_MAX_ATTEMPTS	3
+
+static uint8_t mdb_peripheral_id[MDB_PERIPHERAL_ID_LEN];
+static uint8_t mdb_id_attempts;
+
+// MDB ID fields are fixed-width ASCII, space-padded.
+static void mdb_id_field(uint8_t *dst, size_t n, const char *src) {
+
+	size_t i = 0;
+	while (i < n && src[i]) { dst[i] = (uint8_t) src[i]; i++; }
+	while (i < n) dst[i++] = ' ';
+}
+
+// Built once at task start: reading efuse and the app descriptor does not
+// belong inside MDB's 5 ms response deadline.
+static void mdb_build_peripheral_id(void) {
+
+	uint8_t mac[6] = {0};
+	esp_read_mac(mac, ESP_MAC_WIFI_STA);
+
+	char serial[13];
+	snprintf(serial, sizeof(serial), "%02X%02X%02X%02X%02X%02X",
+		mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+	// Two bytes; VMCs on this bus send their own as ASCII digits.
+	char ver[3] = "10";
+	const esp_app_desc_t *desc = esp_app_get_description();
+	if (desc) {
+		size_t k = 0;
+		for (const char *c = desc->version; *c && k < 2; c++)
+			if (*c >= '0' && *c <= '9') ver[k++] = *c;
+	}
+
+	mdb_peripheral_id[0] = 0x09;
+	mdb_id_field(&mdb_peripheral_id[1],   3, "VMF");
+	mdb_id_field(&mdb_peripheral_id[4],  12, serial);
+	mdb_id_field(&mdb_peripheral_id[16], 12, "VMFLOW-S3");
+	mdb_id_field(&mdb_peripheral_id[28],  2, ver);
+}
 
 // Defining machine states
 typedef enum MACHINE_STATE {
@@ -301,6 +351,19 @@ static void mqtt_watchdog_cb(void *arg) {
     }
 }
 
+// A stop bit that sampled low means the sampling window has slipped off the
+// frame — we arrived at this byte more than half a bit late. A real start bit
+// is always preceded by an idle-high line, so wait for one before the next
+// read: without this a single late byte desynchronises the rest of the block,
+// and every byte after it is read at the wrong offset. Bounded to two frames.
+static inline void mdb_resync(void) {
+
+	for (uint32_t waited = 0; waited < 2500; waited += 10) {
+		if (gpio_get_level(PIN_MDB_RX)) return;
+		ets_delay_us(10);
+	}
+}
+
 uint16_t read_9(uint8_t *checksum) {
 
 	uint16_t coming_read = 0;
@@ -323,7 +386,13 @@ uint16_t read_9(uint8_t *checksum) {
 		ets_delay_us(104); // 9600bps
 	}
 
+	// The loop's trailing delay lands us in the middle of the stop bit.
+	bool stop_ok = gpio_get_level(PIN_MDB_RX) != 0;
+
 	portEXIT_CRITICAL(&mdb_mux);
+
+	if (!stop_ok)
+		mdb_resync();
 
 	if (checksum)
 		*checksum += coming_read;
@@ -356,7 +425,12 @@ int32_t read_9_timeout(uint8_t *checksum, uint32_t timeout_us) {
 		ets_delay_us(104);
 	}
 
+	bool stop_ok = gpio_get_level(PIN_MDB_RX) != 0;
+
 	portEXIT_CRITICAL(&mdb_mux);
+
+	if (!stop_ok)
+		mdb_resync();
 
 	if (checksum)
 		*checksum += coming_read;
@@ -436,6 +510,8 @@ void vTaskMdbEvent(void *pvParameters) {
 		cashless_device_address,
 		cashless_device_address == 16 ? "Cashless #1" : "Cashless #2");
 
+	mdb_build_peripheral_id();
+
 	time_t session_begin_time = 0;
 	time_t vend_request_time = 0;
 
@@ -509,6 +585,7 @@ void vTaskMdbEvent(void *pvParameters) {
 					cashless_reset_todo = true;
 					machine_state = INACTIVE_STATE;
 					vmc_feature_level = 1;
+					mdb_id_attempts = 0;
 					mdb_last_cmd = "RESET";
 
 					// Clear all stale control flags to prevent out-of-context
@@ -977,17 +1054,29 @@ void vTaskMdbEvent(void *pvParameters) {
 					uint8_t exp_sub = read_9(&checksum);
 					switch (exp_sub) {
 					case REQUEST_ID: {
-                        // SandenVendo rejects our Peripheral ID response regardless of
-                        // Level 1 or 2+ format (retry 5x → RESET). The original firmware
-                        // (pre-c7d2bca) had the same issue: the checksum read consumed a
-                        // wrong byte because of Level 1/3 format mismatch, so the device
-                        // never responded. The VMC gave up and moved on to
-                        // OPTIONAL_FEATURE_ENABLED → READER_ENABLE, which worked.
-                        // Replicate that behavior: drain without responding (NAK).
-                        mdb_drain_bus();
-                        mdb_last_cmd = "EXPANSION:REQUEST_ID";
-                        ESP_LOGI(TAG, "REQUEST_ID: drain (VMC will skip after retries)");
-                        continue;  // skip response — `continue` not `break`!
+						// VMC identity: mfr(3) + serial(12) + model(12) +
+						// version(2) after the subcommand, then the checksum.
+						// Verify it before answering — replying to a block we
+						// mis-read is what earns a NAK.
+						for (uint8_t x = 0; x < 29; x++) read_9(&checksum);
+
+						if (read_9(NULL) != checksum) {
+							mdb_checksum_errors++;
+							ESP_LOGW(TAG, "EXPANSION:REQUEST_ID checksum FAIL");
+							mdb_drain_bus();
+							continue;
+						}
+
+						mdb_last_cmd = "EXPANSION:REQUEST_ID";
+
+						// See MDB_ID_MAX_ATTEMPTS.
+						if (mdb_id_attempts >= MDB_ID_MAX_ATTEMPTS)
+							continue;  // no response — `continue`, not `break`
+
+						mdb_id_attempts++;
+						memcpy(mdb_payload, mdb_peripheral_id, MDB_PERIPHERAL_ID_LEN);
+						available_tx = MDB_PERIPHERAL_ID_LEN;
+						break;
 					}
 					case 0x04: {
 						// OPTIONAL_FEATURE_ENABLED — VMC tells us which optional features

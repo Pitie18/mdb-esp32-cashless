@@ -35,6 +35,13 @@ Single main file `main/mdb-slave-esp32s3.c` runs these concurrent FreeRTOS tasks
 
 **MDB State machine**: `INACTIVE → DISABLED → ENABLED → IDLE → VEND → IDLE`
 
+**EXPANSION REQUEST ID** (`0x07`/`0x00`) is answered with the Level 1 30-byte
+Peripheral ID, built once at task start by `mdb_build_peripheral_id()`. Some
+VMCs reject it however it is formatted and only proceed once the reader goes
+quiet; others (SandenVendo SN02-B) stay in DISABLED forever until it is
+answered. The firmware answers up to `MDB_ID_MAX_ATTEMPTS` times per reset
+cycle and then stays silent, which satisfies both.
+
 **Security**: MQTT and BLE payloads use XOR obfuscation with an 18-byte `passkey` plus a ±8 second timestamp window to prevent replay attacks.
 
 **MQTT topics**: `/{company_id}/{device_id}/{event}` where events are: `sale`, `status`, `paxcounter`, `dex`, `mdb-log`, `credit`, `ota`, `config`
