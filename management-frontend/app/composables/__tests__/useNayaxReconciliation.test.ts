@@ -3,7 +3,7 @@ import { alignSequences, alignMachine, bufferRange, groupDifferencesByDay } from
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
-import { localDtToUtc, parseSelectionInfo, parseTitleDateRange } from '../useNayaxReconciliation'
+import { localDtToUtc, parseSelectionInfo, parseTitleDateRange, effectiveNayaxItemNumber } from '../useNayaxReconciliation'
 import { useNayaxReconciliation, derivedChannelFromPaymentSource, type NayaxRow, type DbSale } from '../useNayaxReconciliation'
 
 function loadFixture(name: string): File {
@@ -616,5 +616,35 @@ describe('groupDifferencesByDay', () => {
 
   it('returns no groups for no differences', () => {
     expect(groupDifferencesByDay([], [])).toEqual([])
+  })
+})
+
+
+describe('effectiveNayaxItemNumber', () => {
+  const cfg = { offset: 9, since: '2026-08-27T10:00:00.000Z' }
+
+  it('returns the raw number when no offset is configured', () => {
+    expect(effectiveNayaxItemNumber(1, '2026-08-27T12:00:00.000Z', undefined)).toBe(1)
+    expect(effectiveNayaxItemNumber(1, '2026-08-27T12:00:00.000Z', { offset: 0, since: null })).toBe(1)
+  })
+
+  it('shifts rows at or after the cut-over', () => {
+    expect(effectiveNayaxItemNumber(1, '2026-08-27T10:00:00.000Z', cfg)).toBe(10)
+    expect(effectiveNayaxItemNumber(1, '2026-08-27T12:00:00.000Z', cfg)).toBe(10)
+    expect(effectiveNayaxItemNumber(11, '2026-08-27T12:00:00.000Z', cfg)).toBe(20)
+  })
+
+  it('leaves rows from before the cut-over raw \u2014 there was no backfill', () => {
+    expect(effectiveNayaxItemNumber(1, '2026-08-26T23:59:59.000Z', cfg)).toBe(1)
+  })
+
+  it('treats a missing cut-over stamp as "never shift"', () => {
+    // Defensive: offset set but stamp somehow absent. Shifting everything would
+    // silently rewrite history; refusing to shift only degrades to today.
+    expect(effectiveNayaxItemNumber(1, '2026-08-27T12:00:00.000Z', { offset: 9, since: null })).toBe(1)
+  })
+
+  it('never returns a negative item number', () => {
+    expect(effectiveNayaxItemNumber(1, '2026-08-27T12:00:00.000Z', { offset: -9, since: cfg.since })).toBe(0)
   })
 })

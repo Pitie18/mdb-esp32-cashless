@@ -48,6 +48,7 @@ describe('useMachines.updateMachineSettings', () => {
       formatted_address: 'Musterstraße 1, 10115 Berlin, Deutschland',
       country_code: 'DE',
       nayax_machine_id: '92700604',
+      item_number_offset: 0,
     })
     expect(mockSupabase.from).toHaveBeenCalledWith('vendingMachine')
     expect(capturedUpdates).toHaveLength(1)
@@ -72,6 +73,7 @@ describe('useMachines.updateMachineSettings', () => {
       formatted_address: null,
       country_code: null,
       nayax_machine_id: null,
+      item_number_offset: 0,
     })
     expect(capturedUpdates[0]).toMatchObject({
       location_lat: null,
@@ -95,7 +97,37 @@ describe('useMachines.updateMachineSettings', () => {
         formatted_address: null,
         country_code: null,
         nayax_machine_id: null,
+        item_number_offset: 0,
       }),
     ).rejects.toMatchObject({ message: 'boom' })
+  })
+})
+
+describe('useMachines.updateMachineSettings item_number_offset', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    capturedUpdates.length = 0
+    mockFrom.eq.mockResolvedValue({ error: null })
+  })
+
+  it('writes item_number_offset through and updates the local cache', async () => {
+    const { machines, updateMachineSettings } = useMachines()
+    machines.value = [{ id: 'm1', item_number_offset: 0 } as any]
+
+    await updateMachineSettings('m1', {
+      location_lat: null,
+      location_lon: null,
+      address_street: null,
+      address_house_number: null,
+      address_postal_code: null,
+      address_city: null,
+      formatted_address: null,
+      country_code: null,
+      nayax_machine_id: null,
+      item_number_offset: 9,
+    })
+
+    expect(capturedUpdates[0]).toMatchObject({ item_number_offset: 9 })
+    expect(machines.value[0]!.item_number_offset).toBe(9)
   })
 })

@@ -1,0 +1,2 @@
+json_key_file("") # supplied per-lane by `play_auth`, see fastlane/Fastfile
+package_name("de.kerlhandel.app")

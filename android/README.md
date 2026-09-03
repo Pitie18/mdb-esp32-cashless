@@ -35,6 +35,23 @@ Supabase URL and anon key are injected via `BuildConfig` fields defined in `app/
 ./gradlew assembleRelease -PSUPABASE_URL=https://your-instance.supabase.co -PSUPABASE_ANON_KEY=your-key
 ```
 
+## Releasing to Google Play
+
+Releases go out through GitHub Actions → **Android Release**, which runs the
+fastlane lanes in `fastlane/Fastfile`: `internal` (internal testing track),
+`release` (production, with auto-generated release notes), `promote` (move the
+tested build to production without rebuilding), `metadata` (store listing only)
+and `release_notes` (dry run).
+
+The one-time account, keystore and service-account setup — and the fact that
+Play requires the very first upload to go through the console by hand — is in
+[docs/android/play-console-setup.md](../docs/android/play-console-setup.md).
+
+Do not upload from your machine: `versionCode` is derived from the build date
+plus the day's commit count, and a local upload burns a number CI cannot reuse.
+Local release builds come out unsigned on purpose when the keystore env vars
+are absent.
+
 ## Architecture
 
 - **MVVM** pattern with Jetpack Compose + ViewModels

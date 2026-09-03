@@ -12,25 +12,80 @@ def buildDate = new Date()
 def versionDate = buildDate.format("yyMMdd")
 def displayVersion = "${versionBase}.${buildDate.format("M.d")}"
 
+// Number of commits made today, capped at 99. Only used to widen the
+// versionCode below; see there for why.
+def commitsToday = {
+    try {
+        def midnight = buildDate.format("yyyy-MM-dd") + " 00:00:00"
+        def count = providers.exec {
+            commandLine "git", "rev-list", "--count", "--since=${midnight}", "HEAD"
+        }.standardOutput.asText.get().trim()
+        return Math.min(count.toInteger(), 99)
+    } catch (Exception ignored) {
+        // No git available (source archive, shallow export). Falling back to
+        // the day's first slot keeps the code monotonic across days, which is
+        // the only property Play actually enforces.
+        return 0
+    }
+}()
+
 android {
     namespace 'xyz.vmflow'
     compileSdk 36
 
     defaultConfig {
-        applicationId "xyz.vmflow.app"
+        // Matches the iOS bundle identifier as closely as Android permits.
+        // iOS uses `de.kerl-handel.app`, but an Android applicationId may only
+        // contain [a-zA-Z0-9_] with each dot-separated segment starting on a
+        // letter — a hyphen is rejected outright ("not a valid Java package
+        // name"), so the hyphen is dropped rather than the identifier changed
+        // wholesale. Unrelated to the Kotlin namespace `xyz.vmflow` above,
+        // which stays as it is.
+        applicationId "de.kerlhandel.app"
         minSdk 26
         targetSdk 36
-        // Derived from the same build date as versionName so two builds on
-        // different days get different, increasing Play Store codes. Must
-        // stay monotonically increasing across builds — never hand-lower it.
-        versionCode versionDate.toInteger()
+        // Date plus the day's commit count: 26082703 is the third commit of
+        // 2026-08-27. Play permanently rejects a versionCode it has already
+        // seen, and the bare yyMMdd form collided on the second release of any
+        // given day. Monotonic within a day (the count grows) and across days
+        // (the date dominates), and at 8 digits still far below Play's ceiling
+        // of 2100000000. Never hand-lower it.
+        versionCode versionDate.toInteger() * 100 + commitsToday
         versionName "${versionBase}.${versionDate}"
         buildConfigField "String", "DISPLAY_VERSION", "\"${displayVersion}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField "String", "SUPABASE_URL", "\"${project.findProperty('SUPABASE_URL') ?: 'https://supabase.vmflow.xyz'}\""
-        buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.findProperty('SUPABASE_ANON_KEY') ?: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.VGEEIztVo-do9cy_Qw2-2sF8bSONckhX71Nvtwj15X4'}\""
+        // Factory default server, used for the "VMflow Cloud" entry in
+        // ServerStore. These two MUST stay in step: the anon key is a JWT
+        // signed with that instance's secret, so a key from another instance
+        // fails every request with 401 rather than anything self-explanatory.
+        // Same production values as iOS's Configurations/Release.xcconfig.
+        // Anon keys are public by design — they ship inside every client.
+        buildConfigField "String", "SUPABASE_URL", "\"${project.findProperty('SUPABASE_URL') ?: 'https://supabase.kerl-handel.de'}\""
+        buildConfigField "String", "SUPABASE_ANON_KEY", "\"${project.findProperty('SUPABASE_ANON_KEY') ?: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzcyMzc3NzY3LCJleHAiOjIwODc3Mzc3Njd9.5Mu3-BgmHhekSP6vm0W20iwwT3mOjcYQPjO9b-oqgwA'}\""
+    }
+
+    signingConfigs {
+        release {
+            // The upload key. In CI the workflow decodes ANDROID_KEYSTORE_BASE64
+            // to a file and points ANDROID_KEYSTORE_PATH at it; locally you can
+            // put the same four values in ~/.gradle/gradle.properties. Play App
+            // Signing holds the actual app signing key — this one only proves
+            // the upload is ours, and is replaceable if lost.
+            //
+            // Deliberately left unconfigured when no keystore is present, so
+            // `./gradlew assembleRelease` still yields an unsigned build for
+            // local debugging instead of failing the configuration phase for
+            // everyone who has never touched a release.
+            def storePath = System.getenv("ANDROID_KEYSTORE_PATH") ?: project.findProperty("ANDROID_KEYSTORE_PATH")
+            if (storePath && file(storePath).exists()) {
+                storeFile file(storePath)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: project.findProperty("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS") ?: project.findProperty("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD") ?: project.findProperty("ANDROID_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -38,6 +93,12 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Only wire the config up once it actually has a keystore —
+            // assigning a half-populated one makes the build fail late, during
+            // packaging, with a far less obvious message.
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            }
         }
     }
     compileOptions {

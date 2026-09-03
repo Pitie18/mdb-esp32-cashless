@@ -78,3 +78,12 @@ test-output/
 # Android Studio pins the daemon JVM here and points it at a foojay download.
 # Every machine already builds fine on its ambient JDK 21.
 gradle/gradle-daemon-jvm.properties
+
+# === fastlane ===
+# Generated per run; the lanes and metadata are what's tracked.
+fastlane/report.xml
+fastlane/README.md
+# Play service-account JSON and the upload keystore never belong in the repo.
+# `*.keystore` / `*.jks` are already refused above; this covers the JSON key.
+play-service-account*.json
+*.aab

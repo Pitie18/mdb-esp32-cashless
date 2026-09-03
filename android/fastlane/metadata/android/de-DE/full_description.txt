@@ -1,0 +1,23 @@
+VMflow ist der Begleiter für Betreiber von Verkaufsautomaten. Gebaut für den Einsatz vor Ort und für die einhändige Bedienung, bringt die App die Zahlen deiner Flotte und deine Tagesarbeit an einen Ort.
+
+ÜBERSICHT
+Umsatz und Verkäufe von heute und dieser Woche auf einen Blick, ein 30-Tage-Trend, Warnungen bei niedrigem Bestand und wie viele Automaten online sind.
+
+AUTOMATEN
+Alle Automaten nach Bestandsdringlichkeit sortiert, mit Umsatz für heute, gestern, diese und letzte Woche, Produktdefiziten und Lagerverfügbarkeit auf einen Blick.
+
+FÄCHER & BESTAND
+Volle Kontrolle über die Fächer jedes Automaten: Fächer einzeln oder als Serie anlegen, Produkte, Kapazitäten und Nachfüllschwellen festlegen und den Bestand mit +/- schnell anpassen.
+
+GEFÜHRTES BEFÜLLEN
+Ein Schritt-für-Schritt-Befülltour, optimiert für den Außeneinsatz: Produkte über Automaten hinweg packen, Route wählen, bis zur Kapazität befüllen mit automatischem Lagerabzug und vor dem Abschluss prüfen.
+
+LAGER
+FIFO-Chargen mit Ablaufverfolgung, Wareneingang per Barcode, Transaktionshistorie und Mindestbestandswarnungen.
+
+PUSH-BENACHRICHTIGUNGEN
+Optionale Warnungen bei niedrigem Bestand und zu Ereignissen, damit du Bescheid weißt, bevor ein Automat leer ist.
+
+VMflow verbindet sich mit einem selbst betriebenen VMflow-Backend, das du oder deine Organisation betreibst. Es ist ein Werkzeug zur Verwaltung deines eigenen Automatengeschäfts — du meldest dich am Server deiner Organisation an; neue Teammitglieder kommen per Einladung dazu.
+
+Du kannst dein Konto jederzeit direkt in der App löschen (Einstellungen → Konto löschen).
