@@ -1,7 +1,8 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts'
 import { sendPushToUsers } from '../_shared/web-push.ts'
-import { stockUrgency } from './stock-urgency.ts'
+import { lowStockCrossed, saleStockLine, summarizeProductStock } from './product-stock.ts'
+import type { ProductStock } from './product-stock.ts'
 import { t, formatPrice, type Locale } from '../_shared/notification-i18n.ts'
 import { decideSuppress, rebootCorroborates, REBOOT_CORRELATION_WINDOW_MS, REBOOT_CORRELATION_FORWARD_MS, SUPPRESS_WINDOW_MS, type SuppressCandidate } from "./suppress.ts";
 import { buildTrayMap, mapSlotCounters, resolveItemNumber, type TrayMap } from './tray-mapping.ts';
@@ -706,7 +707,9 @@ Deno.serve(async (req) => {
         // `machine` is resolved above, before the insert, because the
         // item-number translation needs it. Reused here for tray + product lookup.
         let productImageUrl: string | undefined;
-        let lowTray: { current_stock: number; capacity: number } | undefined;
+        // Summed over every slot of the sold product in this machine — the
+        // push judges the product, not the spiral (see product-stock.ts).
+        let productStock: ProductStock | undefined;
 
         if (machine) {
           const { data: trayRow } = await adminClient
@@ -738,8 +741,15 @@ Deno.serve(async (req) => {
             }
           }
 
-          if (tray && tray.min_stock > 0 && tray.current_stock <= tray.min_stock) {
-            lowTray = { current_stock: tray.current_stock, capacity: tray.capacity ?? tray.min_stock };
+          if (tray?.product_id) {
+            const { data: productSlots } = await adminClient
+              .from('machine_trays')
+              .select('item_number, current_stock, capacity, min_stock, fill_when_below')
+              .eq('machine_id', machine.id)
+              .eq('product_id', tray.product_id);
+            productStock = summarizeProductStock(productSlots?.length ? productSlots : [{ item_number: effectiveItemNumber, ...tray }]);
+          } else if (tray) {
+            productStock = summarizeProductStock([{ item_number: effectiveItemNumber, ...tray }]);
           }
         }
 
@@ -754,12 +764,8 @@ Deno.serve(async (req) => {
           const priceStr = formatPrice(salePrice, locale);
 
           let body: string;
-          if (tray && typeof tray.current_stock === 'number' && typeof tray.capacity === 'number' && tray.capacity > 0) {
-            const emoji = stockUrgency(tray.current_stock, tray.fill_when_below ?? 0);
-            const refillHint = (tray.fill_when_below ?? 0) > 0
-              ? ` — ${strings.refillAt(tray.fill_when_below)}`
-              : '';
-            body = `${emoji}${tray.current_stock}/${tray.capacity} ${strings.left}${refillHint}`;
+          if (tray && productStock && typeof tray.current_stock === 'number' && typeof tray.capacity === 'number' && tray.capacity > 0) {
+            body = saleStockLine(productStock, { item_number: effectiveItemNumber, ...tray }, strings);
           } else {
             body = strings.noStockInfo;
           }
@@ -776,7 +782,8 @@ Deno.serve(async (req) => {
         // 2. Low stock notification — localized title + body. Still
         //    suppressed for users with sale enabled (sale push already
         //    carries stock info).
-        if (machine && lowTray) {
+        if (machine && productStock && lowStockCrossed(productStock)) {
+          const lowProduct = productStock;
           const itemLabelLow = productName ?? `Item #${effectiveItemNumber}`;
           const machineName = machine.name;
 
@@ -784,7 +791,7 @@ Deno.serve(async (req) => {
             const strings = t(locale);
             return {
               title: strings.lowStockTitle,
-              body: `${itemLabelLow} in ${machineName}: ${lowTray.current_stock}/${lowTray.capacity} ${strings.remaining}`,
+              body: `${itemLabelLow} in ${machineName}: ${lowProduct.current_stock}/${lowProduct.capacity} ${strings.remaining}`,
               image: productImageUrl,
               data: { type: 'low_stock', machine_id: machine.id },
             };

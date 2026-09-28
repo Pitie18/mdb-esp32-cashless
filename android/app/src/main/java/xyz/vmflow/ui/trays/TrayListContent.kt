@@ -12,11 +12,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,16 +29,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import xyz.vmflow.R
+import xyz.vmflow.data.ProductListRow
+import xyz.vmflow.data.StockHealth
+import xyz.vmflow.data.TrayStockFlag
 import kotlinx.coroutines.launch
 import xyz.vmflow.data.TrayRepository
 import xyz.vmflow.models.Product
 import xyz.vmflow.models.Tray
 import xyz.vmflow.models.TrayUpsert
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrayListContent(
     trays: List<Tray>,
@@ -49,6 +59,11 @@ fun TrayListContent(
     var showAddDialog by remember { mutableStateOf(false) }
     var showBatchDialog by remember { mutableStateOf(false) }
     var editingTray by remember { mutableStateOf<Tray?>(null) }
+    // "By product" (default) groups a product's slots under a summary header;
+    // "By slot" is the plain list. Mirrors the PWA's trayView toggle.
+    var viewByProduct by rememberSaveable { mutableStateOf(true) }
+    // Product picked on the stock map; its slots are ringed in the map and the list.
+    var selectedProductId by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -73,20 +88,71 @@ fun TrayListContent(
                 )
             }
         } else {
+            val groupIndex = remember(trays) { StockHealth.buildTrayGroupIndex(trays) }
+            // Top-off rows are only tinted while some product is actually low,
+            // same rule as the PWA's tray list.
+            val anyLow = remember(groupIndex) { groupIndex.values.any { it.flag == TrayStockFlag.LOW } }
+            val rows = remember(trays, groupIndex, viewByProduct) {
+                if (viewByProduct) StockHealth.productListRows(trays, groupIndex)
+                else trays.map { ProductListRow(tray = it) }
+            }
+            // A selection whose product disappeared (slot reassigned/deleted) is dropped.
+            val activeSelection = selectedProductId?.takeIf { id -> trays.any { it.productId == id } }
+
             LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(
-                    items = trays,
-                    key = { it.id }
-                ) { tray ->
-                    TrayRow(
-                        tray = tray,
-                        onStockChange = { delta -> onStockChange(tray.id, delta) },
-                        onFill = { onFillTray(tray.id) },
-                        onDelete = { onDeleteTray(tray.id) }
+                item(key = "stock-map") {
+                    TrayStockMap(
+                        trays = trays,
+                        index = groupIndex,
+                        selectedProductId = activeSelection,
+                        onSelect = { selectedProductId = it }
                     )
+                }
+                item(key = "view-toggle") {
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = viewByProduct,
+                            onClick = { viewByProduct = true },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                        ) {
+                            Text(stringResource(R.string.tray_view_by_product))
+                        }
+                        SegmentedButton(
+                            selected = !viewByProduct,
+                            onClick = { viewByProduct = false },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                        ) {
+                            Text(stringResource(R.string.tray_view_by_slot))
+                        }
+                    }
+                }
+                rows.forEach { row ->
+                    val tray = row.tray
+                    val header = row.header
+                    if (header != null) {
+                        item(key = "header-${header.productId}") {
+                            ProductGroupHeader(
+                                group = header,
+                                needsRefill = groupIndex[tray.id]?.needsRefill ?: false,
+                                selected = activeSelection == header.productId
+                            )
+                        }
+                    }
+                    item(key = tray.id) {
+                        TrayRow(
+                            tray = tray,
+                            onStockChange = { delta -> onStockChange(tray.id, delta) },
+                            onFill = { onFillTray(tray.id) },
+                            onDelete = { onDeleteTray(tray.id) },
+                            modifier = if (row.inGroup) Modifier.padding(start = 16.dp) else Modifier,
+                            flag = groupIndex[tray.id]?.flag ?: TrayStockFlag.OK,
+                            showFillHighlight = anyLow,
+                            selected = activeSelection != null && tray.productId == activeSelection
+                        )
+                    }
                 }
             }
         }

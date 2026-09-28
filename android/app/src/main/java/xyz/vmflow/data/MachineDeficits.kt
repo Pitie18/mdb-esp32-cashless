@@ -7,43 +7,49 @@ import xyz.vmflow.models.WarehouseAvailability
 
 /**
  * Per-product warehouse-availability deficit list for a machine's card in
- * the machine list — ported 1:1 from the deficit-building algorithm in
- * `ios/VMflow/ViewModels/MachineListViewModel.swift` (lines 137-239), using
- * the exact severity predicates from `ios/VMflow/Models/Tray.swift` (lines
- * 59-90: `isEmpty`, `isBelowMinStock`, `isBelowFillThreshold`, `deficit`).
+ * the machine list. Originally ported from the deficit-building algorithm in
+ * `ios/VMflow/ViewModels/MachineListViewModel.swift`; since the multi-slot
+ * rework it sits on top of [StockHealth.groupTraysByProduct], mirroring the
+ * PWA's `management-frontend/app/composables/useMachines.ts` (which builds
+ * on `app/lib/stock-health.ts`) and iOS `MachineStockHealth.swift`.
  *
  * This is a presence-only warehouse check (does the warehouse have *any*
  * positive-quantity stock of a product — yes/no), not a quantity/coverage
  * calculation; [warehouseProductIds] is deliberately a `Set<String>` rather
- * than a quantity map, matching iOS's actual behaviour despite the feature
- * plan's looser "how much can be covered" prose.
+ * than a quantity map, matching iOS's actual behaviour.
  *
- * Performance here is a property of the PRODUCT, not the slot: a product
- * spread across multiple trays is aggregated into a single [TrayDeficit]
- * with the summed deficit and the worst (not best) severity across its
- * trays — aggregating per-tray instead would double-count it.
+ * Stock is judged per PRODUCT, not per slot: a product spread across several
+ * trays is one group whose stock, capacity and thresholds are the sums over
+ * its slots, classified on those sums. Cola at 0/2/9 in three slots is 11
+ * Cola — a `FILL` row with the group deficit, not a critical one. Only a
+ * product sold out in every slot is `CRITICAL` (and, without warehouse
+ * stock, `NEEDS_SWAP`). A group that needs nothing produces no row at all,
+ * even if one of its slots is empty — that is the
+ * [MachineStockSummary.emptySlotsWithStock] hint, not a deficit.
+ *
+ * Unassigned trays (no product) are not a product group; each keeps its own
+ * per-slot row as before (iOS parity — the PWA skips them).
  *
  * Deliberately does not reuse `Tray.isLow`/`isCritical` (Android's existing
- * computed properties) — those use different, looser heuristics for a
- * different purpose (the Trays-tab row colouring and the Overview tab's
- * stock-summary card) and are out of scope for this task.
+ * computed properties) — those use different, looser heuristics for the
+ * Trays-tab row colouring.
  */
 data class MachineDeficitSummary(
     val trayDeficits: List<TrayDeficit>,
+    /** Products the warehouse can't refill that are sold out in every slot. */
     val swapNeededCount: Int,
+    /** Products needing refill the warehouse can't refill that still have stock somewhere. */
     val noStockCount: Int,
 )
 
 object MachineDeficits {
 
-    private class ProductAccumulator(
-        val productName: String,
-        val imagePath: String?,
-        var totalDeficit: Int,
-        var worstSeverity: StockSeverity,
-        val isDiscontinued: Boolean,
-        var hasEmptyTray: Boolean,
-    )
+    private fun severityOf(state: TrayStockState): StockSeverity? = when (state) {
+        TrayStockState.CRITICAL -> StockSeverity.CRITICAL
+        TrayStockState.LOW -> StockSeverity.LOW
+        TrayStockState.FILL -> StockSeverity.FILL_BELOW
+        TrayStockState.OK -> null
+    }
 
     /**
      * Builds the per-product deficit list plus the two warehouse-aware
@@ -58,11 +64,9 @@ object MachineDeficits {
      * @param slotLabel formats the fallback row label for a tray with no
      *   resolvable product name (unassigned slot, or an assigned slot whose
      *   `products` relation wasn't joined), given the tray's `itemNumber`.
-     *   Kept as an injected function rather than a hardcoded `"Slot $n"`
-     *   string so this stays a pure, Android/Context-free function — the
-     *   caller resolves the localized `R.string.machine_card_unassigned_slot`
-     *   (same split as [parseRestartReason] returning a raw enum for the UI
-     *   layer to localize in `DeviceHealthSheet.kt`).
+     *   Kept as an injected function so this stays a pure, Context-free
+     *   function — the caller resolves the localized
+     *   `R.string.machine_card_unassigned_slot`.
      */
     fun computeDeficits(
         trays: List<Tray>,
@@ -70,80 +74,52 @@ object MachineDeficits {
         hasWarehouses: Boolean,
         slotLabel: (Int) -> String,
     ): MachineDeficitSummary {
-        val byProduct = LinkedHashMap<String, ProductAccumulator>()
-        val unassigned = mutableListOf<ProductAccumulator>()
-
-        for (tray in trays) {
-            val minStock = tray.minStock ?: 0
-            val fillWhenBelow = tray.fillWhenBelow ?: 0
-            val isEmpty = tray.currentStock == 0
-            val isBelowMinStock = minStock > 0 && tray.currentStock <= minStock
-            val isBelowFillThreshold = fillWhenBelow > 0 && tray.currentStock <= fillWhenBelow
-
-            val severity = when {
-                isEmpty -> StockSeverity.CRITICAL
-                isBelowMinStock -> StockSeverity.LOW
-                isBelowFillThreshold -> StockSeverity.FILL_BELOW
-                else -> null
-            } ?: continue
-
-            val productId = tray.productId
-            if (productId != null) {
-                val existing = byProduct[productId]
-                if (existing != null) {
-                    existing.totalDeficit += tray.deficit
-                    if (severity < existing.worstSeverity) existing.worstSeverity = severity
-                    if (isEmpty) existing.hasEmptyTray = true
-                } else {
-                    byProduct[productId] = ProductAccumulator(
-                        productName = tray.products?.name ?: slotLabel(tray.itemNumber),
-                        imagePath = tray.products?.imagePath,
-                        totalDeficit = tray.deficit,
-                        worstSeverity = severity,
-                        isDiscontinued = tray.products?.discontinued ?: false,
-                        hasEmptyTray = isEmpty,
-                    )
-                }
-            } else {
-                unassigned.add(
-                    ProductAccumulator(
-                        productName = tray.products?.name ?: slotLabel(tray.itemNumber),
-                        imagePath = null,
-                        totalDeficit = tray.deficit,
-                        worstSeverity = severity,
-                        isDiscontinued = false,
-                        hasEmptyTray = isEmpty,
-                    )
-                )
-            }
-        }
-
-        fun availability(productId: String?, hasEmptyTray: Boolean): WarehouseAvailability {
-            if (!hasWarehouses || productId == null) return WarehouseAvailability.UNKNOWN
-            if (productId in warehouseProductIds) return WarehouseAvailability.IN_STOCK
-            return if (hasEmptyTray) WarehouseAvailability.NEEDS_SWAP else WarehouseAvailability.NO_STOCK
-        }
-
         val allDeficits = mutableListOf<TrayDeficit>()
-        for ((productId, accum) in byProduct) {
+        var swapNeededCount = 0
+        var noStockCount = 0
+
+        for (group in StockHealth.groupTraysByProduct(trays)) {
+            if (!StockHealth.groupNeedsRefill(group)) continue
+            val severity = severityOf(group.state) ?: continue
+            val first = group.trays.first()
+            val product = group.trays.firstNotNullOfOrNull { it.products }
+
+            val availability = when {
+                !hasWarehouses -> WarehouseAvailability.UNKNOWN
+                group.productId in warehouseProductIds -> WarehouseAvailability.IN_STOCK
+                group.state == TrayStockState.CRITICAL -> WarehouseAvailability.NEEDS_SWAP
+                else -> WarehouseAvailability.NO_STOCK
+            }
+            when (availability) {
+                WarehouseAvailability.NEEDS_SWAP -> swapNeededCount++
+                WarehouseAvailability.NO_STOCK -> noStockCount++
+                else -> Unit
+            }
+
             allDeficits.add(
                 TrayDeficit(
-                    productName = accum.productName,
-                    imagePath = accum.imagePath,
-                    deficit = accum.totalDeficit,
-                    severity = accum.worstSeverity,
-                    isDiscontinued = accum.isDiscontinued,
-                    warehouseAvailability = availability(productId, accum.hasEmptyTray),
+                    productName = product?.name ?: slotLabel(first.itemNumber),
+                    imagePath = product?.imagePath,
+                    deficit = group.deficit,
+                    severity = severity,
+                    isDiscontinued = product?.discontinued ?: false,
+                    warehouseAvailability = availability,
                 )
             )
         }
-        for (accum in unassigned) {
+
+        // Unassigned slots: one row each, never merged, availability unknown.
+        for (tray in trays) {
+            if (tray.productId != null) continue
+            val severity = severityOf(
+                StockHealth.classifyTray(tray.currentStock, tray.minStock, tray.fillWhenBelow)
+            ) ?: continue
             allDeficits.add(
                 TrayDeficit(
-                    productName = accum.productName,
-                    imagePath = accum.imagePath,
-                    deficit = accum.totalDeficit,
-                    severity = accum.worstSeverity,
+                    productName = tray.products?.name ?: slotLabel(tray.itemNumber),
+                    imagePath = null,
+                    deficit = tray.deficit,
+                    severity = severity,
                     isDiscontinued = false,
                     warehouseAvailability = WarehouseAvailability.UNKNOWN,
                 )
@@ -155,13 +131,6 @@ object MachineDeficits {
                 .thenBy { it.severity }
                 .thenByDescending { it.deficit }
         )
-
-        val swapNeededCount = byProduct.count { (productId, accum) ->
-            hasWarehouses && productId !in warehouseProductIds && accum.hasEmptyTray
-        }
-        val noStockCount = byProduct.count { (productId, accum) ->
-            hasWarehouses && productId !in warehouseProductIds && !accum.hasEmptyTray
-        }
 
         return MachineDeficitSummary(
             trayDeficits = sorted,

@@ -195,10 +195,10 @@ object MachineRepository {
                 }
             }
 
-            // Sort: critical > low > ok, then by lowTrayCount desc
+            // Sort: critical > low > ok, then by productsNeedingRefill desc
             val sorted = machinesWithStats.sortedWith(
                 compareBy<MachineWithStats> { it.stockHealth.ordinal }
-                    .thenByDescending { it.lowTrayCount }
+                    .thenByDescending { it.productsNeedingRefill }
             )
 
             Result.success(sorted)

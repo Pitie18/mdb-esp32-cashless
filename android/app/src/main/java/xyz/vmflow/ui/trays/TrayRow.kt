@@ -1,5 +1,7 @@
 package xyz.vmflow.ui.trays
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,30 +34,49 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import xyz.vmflow.R
+import xyz.vmflow.data.TrayStockFlag
 import xyz.vmflow.models.Tray
 import xyz.vmflow.ui.components.ProductImage
 import xyz.vmflow.ui.components.StockBar
-import xyz.vmflow.ui.theme.StockRed
+import xyz.vmflow.ui.theme.StockOrange
+import xyz.vmflow.ui.theme.VMflowBlue
+import xyz.vmflow.ui.theme.VMflowBlueLight
 
+/**
+ * One slot of the machine-detail tray list.
+ *
+ * The highlight is judged on the slot's **product** ([flag], from
+ * [xyz.vmflow.data.StockHealth.buildTrayGroupIndex]) — same rules as the PWA's
+ * tray list: amber when the product is sold out / low and this slot has room,
+ * blue for "top off" only while some product in the machine is actually low
+ * ([showFillHighlight]), and a muted hint for an empty slot whose product is
+ * fine thanks to another slot.
+ */
 @Composable
 fun TrayRow(
     tray: Tray,
     onStockChange: (delta: Int) -> Unit,
     onFill: () -> Unit,
     onDelete: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    flag: TrayStockFlag = TrayStockFlag.OK,
+    showFillHighlight: Boolean = false,
+    selected: Boolean = false,
 ) {
     val haptic = LocalHapticFeedback.current
+    val isDark = isSystemInDarkTheme()
 
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = when {
-                tray.isCritical -> StockRed.copy(alpha = 0.06f)
-                tray.isLow -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                flag == TrayStockFlag.LOW -> StockOrange.copy(alpha = if (isDark) 0.14f else 0.10f)
+                flag == TrayStockFlag.FILL && showFillHighlight ->
+                    (if (isDark) VMflowBlueLight else VMflowBlue).copy(alpha = if (isDark) 0.12f else 0.07f)
                 else -> MaterialTheme.colorScheme.surface
             }
         ),
+        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Row(
@@ -84,7 +105,7 @@ fun TrayRow(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = tray.products?.name ?: "No product",
+                        text = tray.products?.name ?: stringResource(R.string.tray_unassigned),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -98,6 +119,14 @@ fun TrayRow(
                     height = 6.dp,
                     showLabel = true
                 )
+                if (flag == TrayStockFlag.SLOT_EMPTY) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.tray_slot_empty_elsewhere),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(8.dp))

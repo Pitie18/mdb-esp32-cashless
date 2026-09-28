@@ -313,11 +313,11 @@ class RefillTourLogicTest {
     }
 
     @Test
-    fun `applyTourInclusion distributes a custom quantity proportionally across trays and clamps to capacity`() {
+    fun `applyTourInclusion distributes a custom quantity emptiest slot first and clamps to capacity`() {
         // Two trays of product A, deficits 6 and 4 (total 10). Custom quantity is 5.
-        // Expected proportional split: 6 * (5/10) = 3, 4 * (5/10) = 2.
-        val trayLarge = tray("t1", machineId = "m1", productId = "A", capacity = 10, currentStock = 4) // deficit 6
-        val traySmall = tray("t2", machineId = "m1", productId = "A", capacity = 5, currentStock = 1)  // deficit 4
+        // Emptiest first: t2 (stock 1) takes its full headroom 4, t1 (stock 4) gets the last 1.
+        val trayLarge = tray("t1", machineId = "m1", itemNumber = 1, productId = "A", capacity = 10, currentStock = 4) // deficit 6
+        val traySmall = tray("t2", machineId = "m1", itemNumber = 2, productId = "A", capacity = 5, currentStock = 1)  // deficit 4
         val machine = refillMachine(
             "m1",
             listOf(refillTray(trayLarge, fillAmount = 6), refillTray(traySmall, fillAmount = 4)),
@@ -328,14 +328,14 @@ class RefillTourLogicTest {
         val result = RefillTourLogic.applyTourInclusion(listOf(machine), packedItems, custom)
 
         val trays = result[0].trays.associateBy { it.tray.id }
-        assertEquals(3, trays.getValue("t1").fillAmount)
-        assertEquals(2, trays.getValue("t2").fillAmount)
+        assertEquals(1, trays.getValue("t1").fillAmount)
+        assertEquals(4, trays.getValue("t2").fillAmount)
         assertTrue(trays.getValue("t1").isInTour)
         assertTrue(trays.getValue("t2").isInTour)
     }
 
     @Test
-    fun `applyTourInclusion clamps the proportional fill to remaining tray capacity`() {
+    fun `applyTourInclusion clamps the pinned fill to remaining tray capacity`() {
         // Single tray, deficit 4 (capacity 10, currentStock 6). Custom quantity 100 (way
         // more than the warehouse could realistically hand this tray) must still clamp to
         // the tray's own remaining capacity (4), not overflow it.
@@ -407,7 +407,7 @@ class RefillTourLogicTest {
             DistributionCase("exact division", listOf(6, 4), pin = 5),
             DistributionCase("pin equals the full deficit", listOf(6, 4), pin = 10),
             DistributionCase("pin of 1 across three trays", listOf(4, 4, 4), pin = 1),
-            // Every tray's proportional share exceeds its own headroom.
+            // More than every tray can hold together.
             DistributionCase("pin above the combined headroom", listOf(4, 6), pin = 20)
         )
 
@@ -445,10 +445,32 @@ class RefillTourLogicTest {
     }
 
     @Test
-    fun `applyTourInclusion hands the remainder to the largest fractional shares`() {
-        // Deficits 5 + 5, pinned 7. Proportional shares are 3.5 each; flooring
-        // gives 3 + 3 and one unit is left over, which goes to the larger
-        // fraction — a tie here, broken by tray id, so t1 gets it.
+    fun `applyTourInclusion fills the emptiest slot first so no selection stays sold out`() {
+        // Slots 12/13/14 of product A at 4/0/9 (capacity 10 each), pinned 8:
+        // everything goes into the empty slot 13 instead of topping up 12 and 14.
+        val machine = refillMachine(
+            "m1",
+            listOf(
+                refillTray(tray("t12", itemNumber = 12, productId = "A", capacity = 10, currentStock = 4), fillAmount = 6),
+                refillTray(tray("t13", itemNumber = 13, productId = "A", capacity = 10, currentStock = 0), fillAmount = 10),
+                refillTray(tray("t14", itemNumber = 14, productId = "A", capacity = 10, currentStock = 9), fillAmount = 1),
+            ),
+            isPacked = true
+        )
+        val result = RefillTourLogic.applyTourInclusion(
+            listOf(machine),
+            mapOf("m1" to setOf("A")),
+            mapOf("m1" to mapOf("A" to 8))
+        )
+        val trays = result[0].trays.associateBy { it.tray.id }
+        assertEquals(0, trays.getValue("t12").fillAmount)
+        assertEquals(8, trays.getValue("t13").fillAmount)
+        assertEquals(0, trays.getValue("t14").fillAmount)
+    }
+
+    @Test
+    fun `applyTourInclusion breaks equal-stock ties by slot number`() {
+        // Deficits 5 + 5 (both empty), pinned 7: slot 1 is filled first.
         val machine = machineWithDeficits(listOf(5, 5))
         val result = RefillTourLogic.applyTourInclusion(
             listOf(machine),
@@ -456,34 +478,16 @@ class RefillTourLogicTest {
             mapOf("m1" to mapOf("A" to 7))
         )
         val trays = result[0].trays.associateBy { it.tray.id }
-        assertEquals(4, trays.getValue("t1").fillAmount)
-        assertEquals(3, trays.getValue("t2").fillAmount)
-    }
-
-    @Test
-    fun `applyTourInclusion distributes a pin smaller than the tray count`() {
-        // Deficits 3 + 3 + 3, pinned 4: shares of 1.33 each floor to 1 + 1 + 1
-        // and the fourth unit goes to one tray — not to all three (which is
-        // what independent rounding did, losing it entirely).
-        val machine = machineWithDeficits(listOf(3, 3, 3))
-        val result = RefillTourLogic.applyTourInclusion(
-            listOf(machine),
-            mapOf("m1" to setOf("A")),
-            mapOf("m1" to mapOf("A" to 4))
-        )
-        val trays = result[0].trays.associateBy { it.tray.id }
-        assertEquals(2, trays.getValue("t1").fillAmount)
-        assertEquals(1, trays.getValue("t2").fillAmount)
-        assertEquals(1, trays.getValue("t3").fillAmount)
+        assertEquals(5, trays.getValue("t1").fillAmount)
+        assertEquals(2, trays.getValue("t2").fillAmount)
     }
 
     @Test
     fun `applyTourInclusion distribution is deterministic regardless of tray order`() {
-        // Identical deficits mean identical fractional remainders, so only the
-        // tray-id tiebreaker decides who gets the leftover unit. Feeding the
-        // trays in reverse must not move it: a tour that redistributes
-        // differently on a resume would book different numbers for the same
-        // physical box of goods.
+        // Equal stock means only the slot-number tiebreaker decides. Feeding
+        // the trays in reverse must not move anything: a tour that
+        // redistributes differently on a resume would book different numbers
+        // for the same physical box of goods.
         val forward = machineWithDeficits(listOf(3, 3, 3))
         val reversed = forward.copy(trays = forward.trays.reversed())
         val packedItems = mapOf("m1" to setOf("A"))
@@ -495,6 +499,7 @@ class RefillTourLogicTest {
                 .associate { it.tray.id to it.fillAmount }
 
         assertEquals(fills(forward), fills(reversed))
+        assertEquals(mapOf("t1" to 3, "t2" to 1, "t3" to 0), fills(forward))
     }
 
     // ─── buildCombinedPackingList ────────────────────────────────────────
@@ -615,9 +620,10 @@ class RefillTourLogicTest {
     // ─── sortByVisitOrder ────────────────────────────────────────────────
 
     @Test
-    fun `sortByVisitOrder puts the machine with more empty trays first`() {
-        // "few" has the larger total deficit but only one empty tray, so the
-        // empty-tray count must outrank the deficit — same precedence as iOS.
+    fun `sortByVisitOrder puts the machine with more sold-out products first`() {
+        // "few" has the larger total deficit but no sold-out product (its
+        // empty slot's product is still in the other slot), so the sold-out
+        // count must outrank the deficit — same precedence as iOS.
         val many = refillMachine(
             "many",
             listOf(
@@ -689,6 +695,28 @@ class RefillTourLogicTest {
 
         val result = RefillTourLogic.sortByVisitOrder(listOf(packed, unpacked))
         assertEquals(listOf("unpacked", "packed"), result.map { it.machine.id })
+    }
+
+    @Test
+    fun `sortByVisitOrder does not rank an empty slot whose product is stocked elsewhere as sold out`() {
+        // "slots" has two empty slots, but product A still sits in a third one;
+        // "product" has a single product sold out everywhere. Only the latter
+        // counts as sold out, despite "slots" having the larger deficit.
+        val slots = refillMachine(
+            "a_slots",
+            listOf(
+                refillTray(tray("s1", machineId = "a_slots", itemNumber = 1, productId = "A", capacity = 10, currentStock = 0)),
+                refillTray(tray("s2", machineId = "a_slots", itemNumber = 2, productId = "A", capacity = 10, currentStock = 0)),
+                refillTray(tray("s3", machineId = "a_slots", itemNumber = 3, productId = "A", capacity = 10, currentStock = 5)),
+            )
+        )
+        val product = refillMachine(
+            "z_product",
+            listOf(refillTray(tray("p1", machineId = "z_product", productId = "B", capacity = 5, currentStock = 0)))
+        )
+
+        val result = RefillTourLogic.sortByVisitOrder(listOf(slots, product))
+        assertEquals(listOf("z_product", "a_slots"), result.map { it.machine.id })
     }
 
     // ─── flattenPickOrder ────────────────────────────────────────────────

@@ -471,8 +471,8 @@ private fun NeedsAttentionCard(
                 Text(
                     text = pluralStringResource(
                         R.plurals.dashboard_trays_need_refill,
-                        machineStats.lowTrayCount,
-                        machineStats.lowTrayCount,
+                        machineStats.productsNeedingRefill,
+                        machineStats.productsNeedingRefill,
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

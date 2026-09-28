@@ -66,6 +66,14 @@ struct MachineCard: View {
                 }
             }
 
+            // Hint only: a slot is empty but its product is still stocked in
+            // another slot of this machine — never counts as out of stock.
+            if stats.emptySlotsWithStock > 0 {
+                Text("\(stats.emptySlotsWithStock) slots empty, product available")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
             // Product Deficit Rows
             if !stats.trayDeficits.isEmpty {
                 let visible = deficitsExpanded

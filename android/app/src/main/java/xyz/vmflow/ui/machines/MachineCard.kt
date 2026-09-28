@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -140,25 +141,26 @@ fun MachineCard(
             }
 
             // Warehouse-availability deficit list: summary badges + per-product rows.
-            // Empty/low counts mirror MachineDetailScreen's OverviewTab (isCritical /
-            // isLow && !isCritical) rather than MachineDeficits's own severity enum —
-            // this task deliberately doesn't touch that existing precedent.
-            val emptyTrayCount = machineStats.trays.count { it.isCritical }
-            val lowTrayCount = machineStats.trays.count { it.isLow && !it.isCritical }
-            if (emptyTrayCount > 0 || lowTrayCount > 0 || machineStats.swapNeededCount > 0 || machineStats.noStockCount > 0) {
+            // Every count is a PRODUCT, judged on the sums over all its slots
+            // (StockHealth.groupTraysByProduct): "Empty" = sold out in every slot,
+            // "Low" = at/below its summed min_stock or fill_when_below.
+            val stock = machineStats.productStock
+            val emptyProductCount = stock.refillableEmpty
+            val lowProductCount = stock.refillableLow + stock.refillableFill
+            if (emptyProductCount > 0 || lowProductCount > 0 || machineStats.swapNeededCount > 0 || machineStats.noStockCount > 0) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    if (emptyTrayCount > 0) {
+                    if (emptyProductCount > 0) {
                         SummaryBadge(
-                            text = stringResource(R.string.machine_card_badge_empty, emptyTrayCount),
+                            text = stringResource(R.string.machine_card_badge_empty, emptyProductCount),
                             color = StockRed
                         )
                     }
-                    if (lowTrayCount > 0) {
+                    if (lowProductCount > 0) {
                         SummaryBadge(
-                            text = stringResource(R.string.machine_card_badge_low, lowTrayCount),
+                            text = stringResource(R.string.machine_card_badge_low, lowProductCount),
                             color = StockOrange
                         )
                     }
@@ -180,6 +182,21 @@ fun MachineCard(
 
             if (machineStats.trayDeficits.isNotEmpty()) {
                 DeficitRowsSection(machineStats.trayDeficits)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Hint only, never a health input: slots that are empty while their
+            // product is still stocked in another slot of this machine.
+            if (stock.emptySlotsWithStock > 0) {
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.machine_card_empty_slots_with_stock,
+                        stock.emptySlotsWithStock,
+                        stock.emptySlotsWithStock
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(modifier = Modifier.height(8.dp))
             }
 

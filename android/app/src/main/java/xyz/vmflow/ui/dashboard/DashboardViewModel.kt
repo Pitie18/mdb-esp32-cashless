@@ -67,9 +67,9 @@ data class DashboardUiState(
     /** True after a real (non-cancellation) load-more failure; UI should offer manual retry. */
     val loadMoreFailed: Boolean = false,
     val newDealsCount: Int = 0,
-    /** Machines with >=1 empty tray. */
+    /** Machines with >=1 refillable product sold out in every slot ([xyz.vmflow.data.StockHealth.buckets]). */
     val stockCriticalCount: Int = 0,
-    /** Machines with >=1 tray at/under min_stock, that aren't already critical. */
+    /** Machines with >=1 refillable product at/under its summed min_stock, that aren't already critical. */
     val stockLowCount: Int = 0,
     /** Dashboard cash-book (Barkasse) summary tile. */
     val cashBookSummary: CashBookSummary = CashBookSummary(hasCashBook = false),

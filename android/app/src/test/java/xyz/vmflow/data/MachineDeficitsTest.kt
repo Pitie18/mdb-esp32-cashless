@@ -9,10 +9,12 @@ import xyz.vmflow.models.Tray
 import xyz.vmflow.models.WarehouseAvailability
 
 /**
- * Ported 1:1 from `ios/VMflow/ViewModels/MachineListViewModel.swift` (lines
- * 137-239, the per-machine deficit-building algorithm) and the severity
- * predicates in `ios/VMflow/Models/Tray.swift` (lines 59-90: `isEmpty`,
- * `isBelowMinStock`, `isBelowFillThreshold`, `deficit`). Deliberately does
+ * Originally ported from `ios/VMflow/ViewModels/MachineListViewModel.swift`
+ * (lines 137-239, the per-machine deficit-building algorithm) and the
+ * severity predicates in `ios/VMflow/Models/Tray.swift` (lines 59-90).
+ * Since the multi-slot rework, severity is judged per product on the sums
+ * over its slots ([StockHealth.groupTraysByProduct], mirroring the PWA's
+ * `app/lib/stock-health.ts`); the grouping cases below pin that down. Deliberately does
  * NOT reuse Android's existing `Tray.isLow`/`isCritical` — those are looser
  * heuristics for a different purpose (Trays-tab row colouring, Overview
  * tab's stock-summary card) and must keep disagreeing with iOS's exact
@@ -100,12 +102,48 @@ class MachineDeficitsTest {
     }
 
     @Test
-    fun `two trays of the same product take the worse of the two severities`() {
-        // t1 is low (below minStock but not empty), t2 is critical (empty) — worst wins.
+    fun `a product empty in one slot but stocked in another is judged on its sums, not critical`() {
+        // t1 is low-ish (4), t2 is empty — but the product still has 4 units:
+        // group 4/20 with summed minStock 10 is LOW, not CRITICAL.
         val t1 = tray("t1", itemNumber = 1, productId = "p1", capacity = 10, currentStock = 4, minStock = 5, product = product("p1"))
         val t2 = tray("t2", itemNumber = 2, productId = "p1", capacity = 10, currentStock = 0, minStock = 5, product = product("p1"))
         val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
-        assertEquals(StockSeverity.CRITICAL, summary.trayDeficits.single().severity)
+        val row = summary.trayDeficits.single()
+        assertEquals(StockSeverity.LOW, row.severity)
+        assertEquals(16, row.deficit)
+    }
+
+    @Test
+    fun `cola in slots 12, 13, 14 at 0, 2, 9 is one fill row with the group deficit`() {
+        val trays = listOf(0, 2, 9).mapIndexed { i, stock ->
+            tray("t$i", itemNumber = 12 + i, productId = "cola", capacity = 10, currentStock = stock,
+                minStock = 2, fillWhenBelow = 5, product = product("cola", name = "Cola"))
+        }
+        val summary = MachineDeficits.computeDeficits(trays, setOf("cola"), hasWarehouses = true, slotLabel = { "Slot $it" })
+        val row = summary.trayDeficits.single()
+        assertEquals("Cola", row.productName)
+        assertEquals(StockSeverity.FILL_BELOW, row.severity)
+        assertEquals(19, row.deficit)
+        assertEquals(WarehouseAvailability.IN_STOCK, row.warehouseAvailability)
+    }
+
+    @Test
+    fun `a product whose summed stock is fine produces no row even with an empty slot`() {
+        val trays = listOf(0, 10, 10).mapIndexed { i, stock ->
+            tray("t$i", itemNumber = 12 + i, productId = "cola", capacity = 10, currentStock = stock,
+                minStock = 2, fillWhenBelow = 5, product = product("cola"))
+        }
+        val summary = MachineDeficits.computeDeficits(trays, emptySet(), hasWarehouses = true, slotLabel = { "Slot $it" })
+        assertTrue(summary.trayDeficits.isEmpty())
+        assertEquals(0, summary.swapNeededCount)
+        assertEquals(0, summary.noStockCount)
+    }
+
+    @Test
+    fun `a fill-tier product that is already full produces no row`() {
+        val t = tray("t1", productId = "p1", capacity = 10, currentStock = 10, fillWhenBelow = 10, product = product("p1"))
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
+        assertTrue(summary.trayDeficits.isEmpty())
     }
 
     @Test
@@ -169,6 +207,16 @@ class MachineDeficitsTest {
         val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = true, slotLabel = { "Slot $it" })
         assertEquals(1, summary.swapNeededCount)
         assertEquals(0, summary.noStockCount)
+    }
+
+    @Test
+    fun `an out-of-stock product empty in one slot but stocked in another is noStock, not a swap`() {
+        val t1 = tray("t1", itemNumber = 1, productId = "p1", capacity = 10, currentStock = 0, minStock = 2, fillWhenBelow = 5, product = product("p1"))
+        val t2 = tray("t2", itemNumber = 2, productId = "p1", capacity = 10, currentStock = 4, minStock = 2, fillWhenBelow = 5, product = product("p1"))
+        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = true, slotLabel = { "Slot $it" })
+        assertEquals(WarehouseAvailability.NO_STOCK, summary.trayDeficits.single().warehouseAvailability)
+        assertEquals(0, summary.swapNeededCount)
+        assertEquals(1, summary.noStockCount)
     }
 
     @Test

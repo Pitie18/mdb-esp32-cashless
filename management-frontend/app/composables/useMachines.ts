@@ -1,5 +1,5 @@
 import { ref, useState, useSupabaseClient } from '#imports'
-import { buildWarehouseStockInfo, classifyTrayStock, isProductRefillable } from '@/lib/stock-health'
+import { buildWarehouseStockInfo, groupNeedsRefill, groupTraysByProduct, isProductRefillable } from '@/lib/stock-health'
 
 interface Embedded {
   id: string
@@ -45,11 +45,14 @@ interface VendingMachine {
   last_month_revenue?: number
   last_month_sales_count?: number
   paxcounter_count?: number | null
-  // Stock fields
+  // Stock fields. low/empty/fill/no_stock count **products** (all slots of a
+  // product form one group, see lib/stock-health.ts), total_trays counts slots.
   total_trays?: number
   low_trays?: number
   empty_trays?: number
   fill_trays?: number
+  /** Empty slots whose product is still stocked in another slot — a hint only. */
+  empty_slots_with_stock?: number
   stock_health?: 'ok' | 'low' | 'fill' | 'critical'
   stock_percent?: number
   tray_summary?: { product_name: string; product_id: string | null; deficit: number; image_path: string | null; sellprice: number | null; in_stock: boolean; severity: 'critical' | 'low' | 'fill'; discontinued?: boolean }[]
@@ -274,103 +277,72 @@ export function useMachines() {
         current_stock: number
         min_stock: number
         fill_when_below: number
-        products: { name: string; image_path: string | null; sellprice: number | null } | null
+        products: { name: string; image_path: string | null; sellprice: number | null; discontinued?: boolean } | null
       }[]
 
+      type Deficit = NonNullable<VendingMachine['tray_summary']>[number]
       const stockMap = new Map<string, {
         total: number
         refillableEmpty: number
         refillableLow: number
         refillableFill: number
         noStockCount: number
+        emptySlotsWithStock: number
         totalStock: number
         totalCapacity: number
-        deficits: Map<string, { product_name: string; product_id: string | null; deficit: number; image_path: string | null; sellprice: number | null; in_stock: boolean; severity: 'critical' | 'low' | 'fill'; discontinued?: boolean }>
-        noStockDeficits: Map<string, { product_name: string; product_id: string | null; deficit: number; image_path: string | null; sellprice: number | null; in_stock: boolean; severity: 'critical' | 'low' | 'fill'; discontinued?: boolean }>
+        deficits: Deficit[]
+        noStockDeficits: Deficit[]
         criticalProductIds: Set<string>
-        fillBelowPending: { product_id: string | null; capacity: number; current_stock: number; item_number: number; products: { name: string; image_path: string | null; sellprice: number | null; discontinued?: boolean } | null }[]
       }>()
+      const entryFor = (machineId: string) => {
+        let entry = stockMap.get(machineId)
+        if (!entry) {
+          entry = { total: 0, refillableEmpty: 0, refillableLow: 0, refillableFill: 0, noStockCount: 0, emptySlotsWithStock: 0, totalStock: 0, totalCapacity: 0, deficits: [], noStockDeficits: [], criticalProductIds: new Set() }
+          stockMap.set(machineId, entry)
+        }
+        return entry
+      }
 
-      // Pass 1: count low/empty trays, split by warehouse availability
       for (const tray of trayRows) {
         if (!tray.machine_id) continue
-        let entry = stockMap.get(tray.machine_id)
-        if (!entry) {
-          entry = { total: 0, refillableEmpty: 0, refillableLow: 0, refillableFill: 0, noStockCount: 0, totalStock: 0, totalCapacity: 0, deficits: new Map(), noStockDeficits: new Map(), criticalProductIds: new Set(), fillBelowPending: [] }
-          stockMap.set(tray.machine_id, entry)
-        }
+        const entry = entryFor(tray.machine_id)
         entry.total++
         entry.totalStock += tray.current_stock
         entry.totalCapacity += tray.capacity
-
-        const state = classifyTrayStock(tray)
-        const isLow = state === 'low'
-        const isEmpty = state === 'critical'
-        const isFillBelow = state === 'fill'
-
-        if (isLow || isEmpty) {
-          // Skip unassigned trays — nothing to refill
-          if (tray.product_id == null) continue
-
-          const refillable = isProductRefillable(tray.product_id, warehouseStockMap, hasWarehouses)
-          const deficit = tray.capacity - tray.current_stock
-          const productName = tray.products?.name ?? `Slot ${tray.item_number}`
-          const imagePath = tray.products?.image_path ?? null
-          const sellprice = tray.products?.sellprice ?? null
-          const discontinued = tray.products?.discontinued ?? false
-          const key = tray.product_id
-
-          const severity = isEmpty ? 'critical' : 'low'
-          if (refillable) {
-            if (isEmpty) entry.refillableEmpty++
-            else entry.refillableLow++
-            const existing = entry.deficits.get(key)
-            if (existing) {
-              existing.deficit += deficit
-              if (severity === 'critical') existing.severity = 'critical'
-            } else {
-              entry.deficits.set(key, { product_name: productName, product_id: tray.product_id, deficit, image_path: imagePath, sellprice, in_stock: true, severity, discontinued })
-            }
-            entry.criticalProductIds.add(tray.product_id)
-          } else {
-            entry.noStockCount++
-            const existing = entry.noStockDeficits.get(key)
-            if (existing) {
-              existing.deficit += deficit
-              if (severity === 'critical') existing.severity = 'critical'
-            } else {
-              entry.noStockDeficits.set(key, { product_name: productName, product_id: tray.product_id, deficit, image_path: imagePath, sellprice, in_stock: false, severity, discontinued })
-            }
-          }
-        }
-
-        if (isFillBelow) {
-          entry.fillBelowPending.push(tray)
-        }
       }
 
-      // Pass 2: fold fill_when_below deficits in for every machine (not gated on
-      // already having a low/empty tray — a fill-only machine must still surface)
-      for (const [, entry] of stockMap) {
-        for (const tray of entry.fillBelowPending) {
-          if (tray.product_id == null) continue
-          const deficit = tray.capacity - tray.current_stock
-          if (deficit <= 0) continue
-          const refillable = isProductRefillable(tray.product_id, warehouseStockMap, hasWarehouses)
-          if (refillable) entry.refillableFill++
-          const productName = tray.products?.name ?? `Slot ${tray.item_number}`
-          const imagePath = tray.products?.image_path ?? null
-          const sellprice = tray.products?.sellprice ?? null
-          const discontinued = tray.products?.discontinued ?? false
-          const key = tray.product_id
-          const targetMap = refillable ? entry.deficits : entry.noStockDeficits
-          const existing = targetMap.get(key)
-          if (existing) {
-            existing.deficit += deficit
-            // Don't downgrade severity — fill is lowest priority
-          } else {
-            targetMap.set(key, { product_name: productName, product_id: tray.product_id, deficit, image_path: imagePath, sellprice, in_stock: refillable, severity: 'fill', discontinued })
-          }
+      // One entry per product: its slots are summed, so a product that is
+      // empty in one spiral but stocked in another is not "out of stock".
+      for (const group of groupTraysByProduct(trayRows.filter(t => t.machine_id))) {
+        const entry = entryFor(group.machine_id)
+        if (!groupNeedsRefill(group)) {
+          entry.emptySlotsWithStock += group.emptySlots
+          continue
+        }
+
+        const product = group.trays[0]!.products
+        const severity = group.state as Deficit['severity']
+        const refillable = isProductRefillable(group.product_id, warehouseStockMap, hasWarehouses)
+        const deficit: Deficit = {
+          product_name: product?.name ?? `Slot ${group.trays[0]!.item_number}`,
+          product_id: group.product_id,
+          deficit: group.deficit,
+          image_path: product?.image_path ?? null,
+          sellprice: product?.sellprice ?? null,
+          in_stock: refillable,
+          severity,
+          discontinued: product?.discontinued ?? false,
+        }
+
+        if (refillable) {
+          if (severity === 'critical') entry.refillableEmpty++
+          else if (severity === 'low') entry.refillableLow++
+          else entry.refillableFill++
+          entry.deficits.push(deficit)
+          if (severity !== 'fill') entry.criticalProductIds.add(group.product_id)
+        } else {
+          entry.noStockCount++
+          entry.noStockDeficits.push(deficit)
         }
       }
 
@@ -382,6 +354,7 @@ export function useMachines() {
           machine.low_trays = stock.refillableLow + stock.refillableEmpty
           machine.empty_trays = stock.refillableEmpty
           machine.fill_trays = stock.refillableFill
+          machine.empty_slots_with_stock = stock.emptySlotsWithStock
           machine.stock_health = stock.refillableEmpty > 0
             ? 'critical'
             : stock.refillableLow > 0
@@ -392,15 +365,16 @@ export function useMachines() {
           machine.stock_percent = stock.totalCapacity > 0
             ? Math.round((stock.totalStock / stock.totalCapacity) * 100)
             : 0
-          machine.tray_summary = Array.from(stock.deficits.values()).sort((a, b) => b.deficit - a.deficit)
+          machine.tray_summary = stock.deficits.sort((a, b) => b.deficit - a.deficit)
           machine.critical_product_ids = stock.criticalProductIds
           machine.no_stock_trays = stock.noStockCount
-          machine.no_stock_summary = Array.from(stock.noStockDeficits.values()).sort((a, b) => b.deficit - a.deficit)
+          machine.no_stock_summary = stock.noStockDeficits.sort((a, b) => b.deficit - a.deficit)
         } else {
           machine.total_trays = 0
           machine.low_trays = 0
           machine.empty_trays = 0
           machine.fill_trays = 0
+          machine.empty_slots_with_stock = 0
           machine.stock_health = 'ok'
           machine.stock_percent = 0
           machine.tray_summary = []

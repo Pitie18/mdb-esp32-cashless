@@ -306,33 +306,24 @@ struct MachineDetailView: View {
                         .padding(.top, 24)
                         .padding(.bottom, 12)
                     } else {
-                        LazyVStack(spacing: 0) {
-                            ForEach(displayTrays) { tray in
-                                TrayRow(
-                                    tray: tray,
-                                    onAdjust: { delta in
-                                        HapticFeedback.light.fire()
-                                        Task {
-                                            await trayVM.adjustStock(tray: tray, delta: delta)
-                                        }
-                                    },
-                                    onFill: {
-                                        HapticFeedback.medium.fire()
-                                        Task {
-                                            await trayVM.fillToCapacity(tray)
-                                        }
-                                    },
-                                    onEdit: {
-                                        editingTray = tray
-                                    }
-                                )
-
-                                if tray.id != displayTrays.last?.id {
-                                    Divider()
-                                        .padding(.leading, 52)
+                        TrayStockSection(
+                            trays: displayTrays,
+                            onAdjust: { tray, delta in
+                                HapticFeedback.light.fire()
+                                Task {
+                                    await trayVM.adjustStock(tray: tray, delta: delta)
                                 }
+                            },
+                            onFill: { tray in
+                                HapticFeedback.medium.fire()
+                                Task {
+                                    await trayVM.fillToCapacity(tray)
+                                }
+                            },
+                            onEdit: { tray in
+                                editingTray = tray
                             }
-                        }
+                        )
                     }
                 }
             }

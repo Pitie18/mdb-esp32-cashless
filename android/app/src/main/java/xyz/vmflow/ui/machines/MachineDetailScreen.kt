@@ -63,6 +63,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import xyz.vmflow.R
+import xyz.vmflow.data.StockHealth
 import xyz.vmflow.data.SalesFeed
 import xyz.vmflow.data.SalesFeedItem
 import xyz.vmflow.models.Sale
@@ -552,13 +553,22 @@ private fun OverviewTab(
                         Spacer(modifier = Modifier.height(8.dp))
                         val totalCapacity = stats.trays.sumOf { it.capacity }
                         val totalStock = stats.trays.sumOf { it.currentStock }
-                        val emptyTrays = stats.trays.count { it.isCritical }
-                        val lowTrays = stats.trays.count { it.isLow && !it.isCritical }
+                        // Counted per product (all of a product's slots summed), not
+                        // per slot — an empty slot of a product that is still in
+                        // another slot is not "empty". Same rules as the tray list.
+                        val refill = StockHealth.productRefillCounts(stats.trays)
 
                         DeviceInfoRow("Total Stock", "$totalStock / $totalCapacity")
                         DeviceInfoRow("Trays", "${stats.trays.size}")
-                        if (emptyTrays > 0) DeviceInfoRow("Empty Trays", "$emptyTrays")
-                        if (lowTrays > 0) DeviceInfoRow("Low Trays", "$lowTrays")
+                        if (refill.soldOut > 0) {
+                            DeviceInfoRow(stringResource(R.string.machine_detail_products_sold_out), "${refill.soldOut}")
+                        }
+                        if (refill.low > 0) {
+                            DeviceInfoRow(stringResource(R.string.machine_detail_products_low), "${refill.low}")
+                        }
+                        if (refill.fill > 0) {
+                            DeviceInfoRow(stringResource(R.string.machine_detail_products_fill), "${refill.fill}")
+                        }
                     }
                 }
             }

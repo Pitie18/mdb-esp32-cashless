@@ -124,71 +124,64 @@ final class MachineListViewModel: ObservableObject {
                     }
                 }
 
-                // Trays / stock
+                // Trays / stock — judged per product, not per slot: all slots
+                // of a product form one group (see `MachineStockHealth`), so a
+                // product empty in one spiral but stocked in another is not
+                // "out of stock". Mirrors the PWA's `useMachines.ts`.
                 let machineTrays = traysByMachine[machine.id] ?? []
                 ms.totalTrays = machineTrays.count
-                ms.emptyTrays = machineTrays.filter { $0.isEmpty }.count
-                ms.lowTrays = machineTrays.filter { $0.isBelowMinStock && !$0.isEmpty }.count
 
                 let totalCapacity = machineTrays.reduce(0) { $0 + $1.capacity }
                 let totalStock = machineTrays.reduce(0) { $0 + $1.currentStock }
                 ms.stockPercent = totalCapacity > 0 ? Double(totalStock) / Double(totalCapacity) : 1.0
 
-                // Build per-product deficit list
-                // Group trays by productId and aggregate deficit + worst severity
+                // Build per-product deficit list from the product groups.
                 struct ProductDeficitAccum {
                     var productName: String
                     var imagePath: String?
                     var totalDeficit: Int
                     var worstSeverity: StockSeverity
                     var isDiscontinued: Bool
-                    var hasEmptyTray: Bool  // at least one tray is empty
+                    var hasEmptyTray: Bool  // product sold out in every slot
                 }
 
                 var deficitsByProduct: [UUID: ProductDeficitAccum] = [:]
-                var unassignedDeficits: [ProductDeficitAccum] = []
+                var emptyProducts = 0
+                var lowProducts = 0
+                var emptySlotsWithStock = 0
 
-                for tray in machineTrays {
-                    let severity: StockSeverity?
-                    if tray.isEmpty {
+                for group in MachineStockHealth.groupTraysByProduct(machineTrays) {
+                    guard group.needsRefill else {
+                        emptySlotsWithStock += group.emptySlots
+                        continue
+                    }
+
+                    let severity: StockSeverity
+                    switch group.state {
+                    case .critical:
                         severity = .critical
-                    } else if tray.isBelowMinStock {
+                        emptyProducts += 1
+                    case .low:
                         severity = .low
-                    } else if tray.isBelowFillThreshold {
+                        lowProducts += 1
+                    default:
                         severity = .fillBelow
-                    } else {
-                        severity = nil
                     }
 
-                    guard let sev = severity else { continue }
-
-                    if let pid = tray.productId {
-                        if var existing = deficitsByProduct[pid] {
-                            existing.totalDeficit += tray.deficit
-                            if sev < existing.worstSeverity { existing.worstSeverity = sev }
-                            if tray.isEmpty { existing.hasEmptyTray = true }
-                            deficitsByProduct[pid] = existing
-                        } else {
-                            deficitsByProduct[pid] = ProductDeficitAccum(
-                                productName: tray.productName,
-                                imagePath: tray.products?.imagePath,
-                                totalDeficit: tray.deficit,
-                                worstSeverity: sev,
-                                isDiscontinued: tray.isDiscontinued,
-                                hasEmptyTray: tray.isEmpty
-                            )
-                        }
-                    } else {
-                        unassignedDeficits.append(ProductDeficitAccum(
-                            productName: tray.productName,
-                            imagePath: nil,
-                            totalDeficit: tray.deficit,
-                            worstSeverity: sev,
-                            isDiscontinued: false,
-                            hasEmptyTray: tray.isEmpty
-                        ))
-                    }
+                    let first = group.trays[0]
+                    deficitsByProduct[group.productId] = ProductDeficitAccum(
+                        productName: first.productName,
+                        imagePath: first.products?.imagePath,
+                        totalDeficit: group.deficit,
+                        worstSeverity: severity,
+                        isDiscontinued: first.isDiscontinued,
+                        hasEmptyTray: group.state == .critical
+                    )
                 }
+
+                ms.emptyTrays = emptyProducts
+                ms.lowTrays = lowProducts
+                ms.emptySlotsWithStock = emptySlotsWithStock
 
                 // Classify warehouse availability per product
                 func warehouseAvail(for productId: UUID?, hasEmpty: Bool) -> WarehouseAvailability {
@@ -206,16 +199,6 @@ final class MachineListViewModel: ObservableObject {
                         severity: accum.worstSeverity,
                         isDiscontinued: accum.isDiscontinued,
                         warehouseAvailability: warehouseAvail(for: pid, hasEmpty: accum.hasEmptyTray)
-                    )
-                }
-                allDeficits += unassignedDeficits.map { accum in
-                    TrayDeficit(
-                        productName: accum.productName,
-                        imagePath: accum.imagePath,
-                        deficit: accum.totalDeficit,
-                        severity: accum.worstSeverity,
-                        isDiscontinued: false,
-                        warehouseAvailability: .unknown
                     )
                 }
 

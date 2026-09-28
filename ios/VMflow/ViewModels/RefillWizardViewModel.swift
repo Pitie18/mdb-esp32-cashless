@@ -39,10 +39,13 @@ struct RefillMachine: Identifiable, Equatable, Codable {
         return Int((Double(totalCurrentStock) / Double(totalCapacity) * 100).rounded())
     }
 
-    /// Stock health derived from tray states.
+    /// Stock health derived from the product groups (all slots of a product
+    /// summed, see `MachineStockHealth`): an empty slot whose product is still
+    /// in another slot is not critical.
     var stockHealth: StockHealth {
-        if trays.contains(where: { $0.tray.isEmpty }) { return .critical }
-        if trays.contains(where: { $0.tray.isBelowMinStock }) { return .low }
+        let groups = MachineStockHealth.groupTraysByProduct(trays.map(\.tray))
+        if groups.contains(where: { $0.state == .critical }) { return .critical }
+        if groups.contains(where: { $0.state == .low }) { return .low }
         return .ok
     }
 
@@ -989,38 +992,56 @@ final class RefillWizardViewModel: ObservableObject {
 
     /// Build the list of machines that need refilling from raw machine/tray data.
     ///
-    /// Filter logic (mirrors the web app):
-    /// 1. A machine is included only if it has at least one empty or below-min-stock tray.
-    /// 2. Trays included: empty + below-min-stock + below-fill-threshold
-    ///    (fill-when-below trays ride along only when the machine already has a critical tray).
+    /// Stock is judged per **product**, not per slot: all slots of a product in
+    /// a machine form one group with summed stock/capacity/thresholds
+    /// (`MachineStockHealth.groupTraysByProduct`, mirrors the PWA's
+    /// `stock-health.ts`).
+    ///
+    /// Filter logic:
+    /// 1. A machine is included only if at least one product group is
+    ///    critical (sold out in every slot) or low (at/below its summed min stock).
+    /// 2. Trays included: **every slot** of each product group that needs a
+    ///    refill (`groupNeedsRefill`), including slots that are already full —
+    ///    the packed quantity is later spread across them emptiest-first
+    ///    (`MachineStockHealth.distributeAcrossSlots`). Fill-tier groups ride
+    ///    along only when the machine already qualifies via rule 1.
+    /// 3. Product-less trays never qualify a machine; they ride along with the
+    ///    old per-slot rule (deficit and empty/low/fill threshold) so the
+    ///    driver can still top them up manually.
     ///
     /// Static so both `loadData()` and `refreshDuringPacking()` share identical filtering.
     private static func buildRefillMachines(allMachines: [VendingMachine], allTrays: [Tray]) -> [RefillMachine] {
         let traysByMachine = Dictionary(grouping: allTrays, by: { $0.machineId })
         var refillMachines: [RefillMachine] = []
+        var criticalProductsByMachine: [UUID: Int] = [:]
 
         for machine in allMachines {
             let machineTrays = traysByMachine[machine.id] ?? []
+            let groups = MachineStockHealth.groupTraysByProduct(machineTrays).filter(\.needsRefill)
 
-            let hasEmptyOrLow = machineTrays.contains { $0.isEmpty || $0.isBelowMinStock }
+            let hasEmptyOrLow = groups.contains { $0.state == .critical || $0.state == .low }
             guard hasEmptyOrLow else { continue }
 
+            let trayIdsInGroups = Set(groups.flatMap { $0.trays.map(\.id) })
             let refillTrays: [RefillTray] = machineTrays.compactMap { tray in
+                if tray.productId != nil {
+                    guard trayIdsInGroups.contains(tray.id) else { return nil }
+                    return RefillTray(tray: tray, fillAmount: tray.deficit)
+                }
                 guard tray.deficit > 0 else { return nil }
-                let isCriticalOrLow = tray.isEmpty || tray.isBelowMinStock
-                let isBelowFillThreshold = tray.isBelowFillThreshold
-                guard isCriticalOrLow || isBelowFillThreshold else { return nil }
+                guard tray.isEmpty || tray.isBelowMinStock || tray.isBelowFillThreshold else { return nil }
                 return RefillTray(tray: tray, fillAmount: tray.deficit)
             }
 
             guard !refillTrays.isEmpty else { continue }
             refillMachines.append(RefillMachine(machine: machine, trays: refillTrays))
+            criticalProductsByMachine[machine.id] = groups.filter { $0.state == .critical }.count
         }
 
-        // Sort by urgency: machines with empty trays first, then by total deficit.
+        // Sort by urgency: machines with sold-out products first, then by total deficit.
         refillMachines.sort { a, b in
-            let aEmpty = a.trays.filter { $0.tray.isEmpty }.count
-            let bEmpty = b.trays.filter { $0.tray.isEmpty }.count
+            let aEmpty = criticalProductsByMachine[a.id] ?? 0
+            let bEmpty = criticalProductsByMachine[b.id] ?? 0
             if aEmpty != bEmpty { return aEmpty > bEmpty }
             return a.totalDeficit > b.totalDeficit
         }
@@ -1670,6 +1691,7 @@ final class RefillWizardViewModel: ObservableObject {
                 continue
             }
             let packedProductIds = packedItems[machine.id] ?? Set()
+            var distributedProductIds = Set<UUID>()
 
             for ti in machines[mi].trays.indices {
                 let tray = machines[mi].trays[ti]
@@ -1688,25 +1710,34 @@ final class RefillWizardViewModel: ObservableObject {
                     continue
                 }
 
+                // Already handled together with an earlier slot of this product.
+                guard !distributedProductIds.contains(productId) else { continue }
+
                 machines[mi].trays[ti].isInTour = true
 
-                // Apply custom quantity if set
+                // Apply custom quantity if set (always the case for a packed
+                // product — `pinPackingQuantity` pins it at pack time).
                 guard let machineCustom = customQuantities[machine.id],
                       let customQty = machineCustom[productId] else { continue }
+                distributedProductIds.insert(productId)
 
-                // Distribute custom quantity across trays with same product
-                let productTrays = machines[mi].trays.enumerated().filter {
-                    $0.element.tray.productId == productId && $0.element.deficit > 0
+                // Spread the packed quantity across every slot of the product,
+                // emptiest slot first, so no selection stays sold out while
+                // another slot of the same product is topped up. Slots that get
+                // nothing leave the tour (mirrors the PWA, which hides them).
+                let productTrayIndices = machines[mi].trays.indices.filter {
+                    machines[mi].trays[$0].tray.productId == productId
                 }
-                guard !productTrays.isEmpty else { continue }
-
-                let shares = Self.distributeProportionally(
-                    quantity: customQty,
-                    trays: productTrays.map { $0.element }
+                let amounts = MachineStockHealth.distributeAcrossSlots(
+                    productTrayIndices.map {
+                        let t = machines[mi].trays[$0].tray
+                        return (itemNumber: t.itemNumber, capacity: t.capacity, currentStock: t.currentStock)
+                    },
+                    amount: customQty
                 )
-                for (idx, pt) in productTrays {
-                    guard let share = shares[pt.tray.id] else { continue }
-                    machines[mi].trays[idx].fillAmount = share
+                for (idx, amount) in zip(productTrayIndices, amounts) {
+                    machines[mi].trays[idx].fillAmount = amount
+                    machines[mi].trays[idx].isInTour = amount > 0
                 }
             }
         }
@@ -1735,71 +1766,6 @@ final class RefillWizardViewModel: ObservableObject {
         isSaving = false
         currentStep = .refill
         saveTourState()
-    }
-
-    /// Splits a pinned pack quantity across the trays holding that product,
-    /// handing out **exactly** that many units — never more, never fewer.
-    ///
-    /// Largest-remainder distribution: each tray gets `floor(deficit * qty /
-    /// totalDeficit)`, then the units lost to flooring go one at a time to the
-    /// trays with the largest dropped fraction, each clamped to its own
-    /// headroom. Ties break by tray id so two runs agree.
-    ///
-    /// This replaces an independent `.rounded()` per tray, which did not add
-    /// up to the quantity the warehouse was charged. Two trays needing 5 each
-    /// with a reduced pin of 7 rounded to 4 + 4 = **8 booked against 7
-    /// charged**; three trays needing 3 each with a pin of 1 rounded to 0 + 0
-    /// + 0, so the warehouse paid for a unit the machine never received. The
-    /// mismatch only appears when the pin differs from the total deficit —
-    /// i.e. whenever the warehouse capped the quantity or the driver reduced
-    /// it, which is the ordinary case. Ported from Android's
-    /// `RefillTourLogic.distributeProportionally`, where it is unit-tested.
-    ///
-    /// Only an over-pinned quantity (more than the trays can physically hold)
-    /// cannot balance, and it errs safe: the machine is credited less than the
-    /// warehouse was charged, never more.
-    static func distributeProportionally(quantity: Int, trays: [RefillTray]) -> [UUID: Int] {
-        let target = max(0, quantity)
-        let totalDeficit = trays.reduce(0) { $0 + $1.deficit }
-        guard totalDeficit > 0 else { return [:] }
-
-        // Deterministic base order, so the remainder pass is reproducible
-        // even before its explicit id tiebreaker applies.
-        let ordered = trays.sorted { $0.tray.id.uuidString < $1.tray.id.uuidString }
-
-        var amounts: [UUID: Int] = [:]
-        var remainders: [(tray: RefillTray, remainder: Int)] = []
-        var distributed = 0
-        for pt in ordered {
-            // `headroom` and `deficit` are the same number for every tray that
-            // reaches here (the caller filters on `deficit > 0`, and `deficit`
-            // is `capacity - currentStock` clamped at 0), but the clamp is
-            // written against headroom so an over-pinned quantity can never
-            // push a tray past its capacity.
-            let headroom = max(0, pt.tray.capacity - pt.tray.currentStock)
-            let exact = pt.deficit * target
-            let floor = min(exact / totalDeficit, headroom)
-            amounts[pt.tray.id] = floor
-            distributed += floor
-            remainders.append((pt, exact % totalDeficit))
-        }
-
-        // Largest dropped fraction first, ties by tray id ascending.
-        let queue = remainders.sorted {
-            $0.remainder != $1.remainder
-                ? $0.remainder > $1.remainder
-                : $0.tray.tray.id.uuidString < $1.tray.tray.id.uuidString
-        }
-        var left = target - distributed
-        for entry in queue {
-            guard left > 0 else { break }
-            let headroom = max(0, entry.tray.tray.capacity - entry.tray.tray.currentStock)
-            let current = amounts[entry.tray.tray.id] ?? 0
-            guard current < headroom else { continue }
-            amounts[entry.tray.tray.id] = current + 1
-            left -= 1
-        }
-        return amounts
     }
 
     /// Deduct warehouse stock via the `deduct_warehouse_stock_fifo` RPC for each packed product-machine pair.

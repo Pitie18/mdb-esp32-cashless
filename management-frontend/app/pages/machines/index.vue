@@ -262,6 +262,9 @@ async function submitCreateMachine() {
                       {{ t('machines.noTraysConfigured') }}
                     </template>
                   </p>
+                  <p v-if="(machine.empty_slots_with_stock ?? 0) > 0" class="text-xs text-muted-foreground">
+                    {{ t('machines.emptySlotsWithStock', { count: machine.empty_slots_with_stock }, machine.empty_slots_with_stock ?? 0) }}
+                  </p>
                 </template>
 
                 <!-- Machine has stock issues (refillable and/or no-stock) -->
@@ -302,6 +305,12 @@ async function submitCreateMachine() {
                       class="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400"
                     >
                       {{ t('machines.topoffRecommended', { count: machine.fill_trays }) }}
+                    </span>
+                    <span
+                      v-if="(machine.empty_slots_with_stock ?? 0) > 0"
+                      class="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                    >
+                      {{ t('machines.emptySlotsWithStock', { count: machine.empty_slots_with_stock }, machine.empty_slots_with_stock ?? 0) }}
                     </span>
                   </div>
 

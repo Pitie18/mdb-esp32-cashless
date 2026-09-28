@@ -1,7 +1,18 @@
 /**
  * Shared warehouse-aware stock health utilities.
  *
- * Used by useMachines composable (full detail) and the dashboard (summary counts).
+ * Used by useMachines composable (full detail), the refill wizard and the
+ * dashboard (summary counts).
+ *
+ * Stock is judged per **product within a machine**, not per slot: a product
+ * that sits in several spirals is one group whose stock, capacity and
+ * thresholds are the sums over its slots (`groupTraysByProduct`). Cola in
+ * slots 12/13/14 at 0/2/9 is 11 Cola, not one sold-out slot. A slot that is
+ * empty while its product is still in another slot is only a hint
+ * (`emptySlotsWithStock`), never a critical machine.
+ *
+ * Ported 1:1 to iOS (`MachineStockHealth.swift`) and Android
+ * (`StockHealth.kt`) — change all three together.
  */
 
 export interface WarehouseStockInfo {
@@ -61,14 +72,109 @@ export function classifyTrayStock(tray: {
   return 'ok'
 }
 
+// ── Product groups (all slots of one product in one machine) ─────────
+
+export interface GroupableTray {
+  machine_id: string
+  product_id: string | null
+  capacity: number
+  current_stock: number
+  min_stock: number
+  fill_when_below: number
+}
+
+export interface ProductStockGroup<T extends GroupableTray = GroupableTray> {
+  machine_id: string
+  product_id: string
+  /** The slots holding this product, in input order. */
+  trays: T[]
+  /** Σ over the slots — same field names as a tray so `classifyTrayStock` applies. */
+  current_stock: number
+  capacity: number
+  min_stock: number
+  fill_when_below: number
+  state: TrayStockState
+  /** Units needed to fill every slot of the product. */
+  deficit: number
+  /** Slots at 0 while the product still has stock in another slot. */
+  emptySlots: number
+}
+
+/**
+ * Group assigned trays by (machine, product) and classify each group on the
+ * summed values. Thresholds add up, so a product in one slot classifies
+ * exactly like before and no per-product configuration is needed. A disabled
+ * (0) threshold on one slot simply contributes nothing to the sum.
+ * Unassigned trays are skipped. Groups keep first-appearance order.
+ */
+export function groupTraysByProduct<T extends GroupableTray>(trays: T[]): ProductStockGroup<T>[] {
+  const groups = new Map<string, ProductStockGroup<T>>()
+  for (const tray of trays) {
+    if (tray.product_id == null) continue
+    const key = `${tray.machine_id}|${tray.product_id}`
+    let g = groups.get(key)
+    if (!g) {
+      g = { machine_id: tray.machine_id, product_id: tray.product_id, trays: [], current_stock: 0, capacity: 0, min_stock: 0, fill_when_below: 0, state: 'ok', deficit: 0, emptySlots: 0 }
+      groups.set(key, g)
+    }
+    g.trays.push(tray)
+    g.current_stock += tray.current_stock
+    g.capacity += tray.capacity
+    g.min_stock += tray.min_stock ?? 0
+    g.fill_when_below += tray.fill_when_below ?? 0
+  }
+  for (const g of groups.values()) {
+    g.state = classifyTrayStock(g)
+    g.deficit = Math.max(0, g.capacity - g.current_stock)
+    g.emptySlots = g.current_stock > 0 ? g.trays.filter(t => t.current_stock === 0).length : 0
+  }
+  return Array.from(groups.values())
+}
+
+/**
+ * Whether a product group should be refilled. A `fill`-tier group that is
+ * already full (misconfigured `fill_when_below >= capacity`) moves nothing.
+ */
+export function groupNeedsRefill(group: Pick<ProductStockGroup, 'state' | 'deficit'>): boolean {
+  if (group.state === 'ok') return false
+  if (group.state === 'fill' && group.deficit <= 0) return false
+  return true
+}
+
+/**
+ * Split `amount` units of one product across its slots, emptiest slot first
+ * (ties by slot number), so no selection stays sold out while another slot of
+ * the same product gets topped up. Returns fill amounts aligned with `slots`.
+ */
+export function distributeAcrossSlots(
+  slots: { item_number: number; capacity: number; current_stock: number }[],
+  amount: number,
+): number[] {
+  const result = slots.map(() => 0)
+  const order = slots
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => a.s.current_stock - b.s.current_stock || a.s.item_number - b.s.item_number)
+  let remaining = Math.max(0, amount)
+  for (const { s, i } of order) {
+    if (remaining <= 0) break
+    const take = Math.min(Math.max(0, s.capacity - s.current_stock), remaining)
+    result[i] = take
+    remaining -= take
+  }
+  return result
+}
+
 // ── Simple per-machine stock health (used by dashboard) ──────────────
 
+/** Counts are **products** (groups), not slots. */
 export interface MachineStockSummary {
   refillableEmpty: number
   refillableLow: number
   refillableFill: number
   noStockCount: number
   noStockEmptyCount: number
+  /** Empty slots whose product is otherwise fine in this machine — a hint, not a health input. */
+  emptySlotsWithStock: number
   totalStock: number
   totalCapacity: number
   health: 'ok' | 'low' | 'fill' | 'critical'
@@ -87,10 +193,11 @@ interface TrayRow {
 /**
  * Compute warehouse-aware stock health per machine from raw tray rows.
  *
- * - Trays without a product (`product_id == null`) are ignored.
- * - Low/empty/fill-below trays are split into "refillable" (product available in
+ * - Trays are grouped per product (`groupTraysByProduct`); every count is a product.
+ * - Trays without a product (`product_id == null`) only count towards the fill percentage.
+ * - Groups needing refill are split into "refillable" (product available in
  *   warehouse) and "no-stock" (not available).
- * - `health` is determined only by refillable trays, priority critical > low > fill.
+ * - `health` is determined only by refillable groups, priority critical > low > fill.
  */
 export function computeStockHealthPerMachine(
   trayRows: TrayRow[],
@@ -98,34 +205,37 @@ export function computeStockHealthPerMachine(
   hasWarehouses: boolean,
 ): Map<string, MachineStockSummary> {
   const map = new Map<string, MachineStockSummary>()
+  const entryFor = (machineId: string) => {
+    let entry = map.get(machineId)
+    if (!entry) {
+      entry = { refillableEmpty: 0, refillableLow: 0, refillableFill: 0, noStockCount: 0, noStockEmptyCount: 0, emptySlotsWithStock: 0, totalStock: 0, totalCapacity: 0, health: 'ok', percent: 100 }
+      map.set(machineId, entry)
+    }
+    return entry
+  }
 
   for (const tray of trayRows) {
     if (!tray.machine_id) continue
-
-    let entry = map.get(tray.machine_id)
-    if (!entry) {
-      entry = { refillableEmpty: 0, refillableLow: 0, refillableFill: 0, noStockCount: 0, noStockEmptyCount: 0, totalStock: 0, totalCapacity: 0, health: 'ok', percent: 100 }
-      map.set(tray.machine_id, entry)
-    }
-
+    const entry = entryFor(tray.machine_id)
     entry.totalStock += tray.current_stock
     entry.totalCapacity += tray.capacity
+  }
 
-    // Skip unassigned trays — nothing to refill
-    if (tray.product_id == null) continue
+  for (const group of groupTraysByProduct(trayRows.filter(t => t.machine_id))) {
+    const entry = entryFor(group.machine_id)
+    if (!groupNeedsRefill(group)) {
+      entry.emptySlotsWithStock += group.emptySlots
+      continue
+    }
 
-    const state = classifyTrayStock(tray)
-    if (state === 'ok') continue
-    if (state === 'fill' && tray.capacity - tray.current_stock <= 0) continue
-
-    const refillable = isProductRefillable(tray.product_id, warehouseStockMap, hasWarehouses)
+    const refillable = isProductRefillable(group.product_id, warehouseStockMap, hasWarehouses)
     if (refillable) {
-      if (state === 'critical') entry.refillableEmpty++
-      else if (state === 'low') entry.refillableLow++
+      if (group.state === 'critical') entry.refillableEmpty++
+      else if (group.state === 'low') entry.refillableLow++
       else entry.refillableFill++
     } else {
       entry.noStockCount++
-      if (state === 'critical') entry.noStockEmptyCount++
+      if (group.state === 'critical') entry.noStockEmptyCount++
     }
   }
 

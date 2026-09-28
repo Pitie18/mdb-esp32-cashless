@@ -203,10 +203,22 @@ object RefillTourLogic {
      *    false`, `fillAmount = 0`.
      *  - Packed machine, tray whose product WAS packed: `isInTour = true`;
      *    if a custom quantity is pinned for that product, its `fillAmount`
-     *    comes from [distributeProportionally], which splits the pinned
-     *    quantity across every tray of that product with `deficit > 0` and
-     *    hands out **exactly** that many units — never more; otherwise the
-     *    tray keeps its existing `fillAmount`.
+     *    comes from [StockHealth.distributeAcrossSlots], which splits the
+     *    pinned quantity across every slot of that product **emptiest slot
+     *    first** (ties by slot number) — so a short-packed product never
+     *    leaves one selection sold out while another slot of the same product
+     *    gets topped up. Mirrors the PWA refill wizard (`useRefillWizard.ts`,
+     *    via `app/lib/stock-health.ts`). Otherwise the tray keeps its
+     *    existing `fillAmount`.
+     *
+     * Ledger invariant: the pinned quantity is the number the driver
+     * physically carried and the number [buildDeductions] charges the
+     * warehouse, so the fills sum to **exactly** that quantity — the one
+     * exception being a pin above the slots' combined headroom
+     * (`capacity - currentStock`), where no slot may be overfilled and the
+     * machine is credited that headroom instead (the safe direction).
+     * Deterministic: the order depends only on stock and slot number, never
+     * on input order, so a resume distributes the same way.
      */
     fun applyTourInclusion(
         machines: List<RefillMachine>,
@@ -221,7 +233,7 @@ object RefillTourLogic {
             val packedProductIds = packedItems[machine.machine.id] ?: emptySet()
             val machineCustom = customQuantities[machine.machine.id] ?: emptyMap()
 
-            // Precompute the proportional-fill override per tray, for every
+            // Precompute the emptiest-first fill override per tray, for every
             // packed product that has a pinned custom quantity.
             val overrides = mutableMapOf<String, Int>() // trayId -> fillAmount
             val productsWithCustom = machine.trays
@@ -229,10 +241,9 @@ object RefillTourLogic {
                 .toSet()
                 .filter { it in packedProductIds && machineCustom[it] != null }
             for (productId in productsWithCustom) {
-                val customQty = machineCustom.getValue(productId)
-                val productTrays = machine.trays.filter { it.tray.productId == productId && it.deficit > 0 }
-                if (productTrays.sumOf { it.deficit } <= 0) continue
-                overrides += distributeProportionally(customQty, productTrays)
+                val slots = machine.trays.map { it.tray }.filter { it.productId == productId }
+                val amounts = StockHealth.distributeAcrossSlots(slots, machineCustom.getValue(productId))
+                slots.forEachIndexed { index, tray -> overrides[tray.id] = amounts[index] }
             }
 
             val newTrays = machine.trays.map { rt ->
@@ -251,100 +262,18 @@ object RefillTourLogic {
     }
 
     /**
-     * Splits [quantity] across [trays] in proportion to each tray's `deficit`,
-     * by **largest remainder** — `trayId -> fillAmount` for every tray in
-     * [trays].
-     *
-     * Every tray first gets `floor(deficit * quantity / totalDeficit)`, then
-     * the units that integer division dropped (`quantity - Σfloor`, always
-     * fewer than there are trays) are handed out one each to the trays with
-     * the largest dropped fraction. The sum is therefore **exactly**
-     * [quantity] whenever the trays can physically hold it.
-     *
-     * This is the whole point of the function, and the reason it is not the
-     * one-liner it looks like: rounding each tray's share on its own —
-     * `(deficit * ratio).roundToInt()`, which is what iOS still does
-     * (`ios/VMflow/ViewModels/RefillWizardViewModel.swift:1705-1709`) — makes
-     * the fills sum to something *other* than the quantity
-     * [buildDeductions] charges the warehouse for. Two trays with deficit 5
-     * and a pinned quantity of 7 round to 4 + 4: eight units booked into the
-     * machine, seven charged to the warehouse, one unit invented out of thin
-     * air. Three trays of deficit 3 with a pinned 4 round to 1 + 1 + 1 and
-     * lose one the other way. The pinned quantity is the number the driver
-     * physically carried and the number the ledger is charged, so the fills
-     * have to add up to it exactly — that invariant is what
-     * `RefillTourLogicTest`'s distribution property test pins down.
-     *
-     * Clamping: no tray is ever given more than it can hold
-     * (`capacity - currentStock`). A [quantity] larger than the trays'
-     * combined headroom therefore cannot be distributed in full — the result
-     * sums to that headroom (`Σ deficit`) instead, and the machine ends up
-     * credited *less* than the warehouse is charged. That is the one case
-     * where the two legitimately disagree, and it is the safe direction:
-     * overfilling a tray is a physical impossibility, so the alternative
-     * would be a fill amount the driver cannot carry out.
-     *
-     * Ties in the dropped fraction are broken by tray id ascending — the same
-     * total-order tiebreaker [sortByVisitOrder] and [buildCombinedPackingList]
-     * use — so the same tour distributes the same way on every run, resume and
-     * recomposition.
-     */
-    private fun distributeProportionally(
-        quantity: Int,
-        trays: List<RefillTray>
-    ): Map<String, Int> {
-        val target = quantity.coerceAtLeast(0)
-        val totalDeficit = trays.sumOf { it.deficit }
-        if (totalDeficit <= 0) return emptyMap()
-
-        // Deterministic base order, so the remainder pass below is reproducible
-        // even before its explicit id tiebreaker kicks in.
-        val ordered = trays.sortedBy { it.tray.id }
-
-        // `headroom` and `deficit` are the same number for every tray reaching
-        // this function (`deficit > 0` is the caller's filter, and
-        // `Tray.deficit` is `capacity - currentStock` clamped at 0), but the
-        // clamp is written against the tray's own headroom rather than its
-        // deficit so an over-pinned quantity can never exceed capacity.
-        val amounts = LinkedHashMap<String, Int>(ordered.size)
-        val remainders = mutableListOf<Pair<RefillTray, Int>>()
-        var distributed = 0
-        for (rt in ordered) {
-            val headroom = maxOf(0, rt.tray.capacity - rt.tray.currentStock)
-            val exact = rt.deficit.toLong() * target.toLong()
-            val floor = (exact / totalDeficit).toInt().coerceAtMost(headroom)
-            amounts[rt.tray.id] = floor
-            distributed += floor
-            remainders.add(rt to (exact % totalDeficit).toInt())
-        }
-
-        // Largest dropped fraction first, ties by tray id ascending.
-        val queue = remainders.sortedWith(
-            compareByDescending<Pair<RefillTray, Int>> { it.second }
-                .thenBy { it.first.tray.id }
-        )
-        var left = target - distributed
-        for ((rt, _) in queue) {
-            if (left <= 0) break
-            val headroom = maxOf(0, rt.tray.capacity - rt.tray.currentStock)
-            val current = amounts.getValue(rt.tray.id)
-            if (current >= headroom) continue
-            amounts[rt.tray.id] = current + 1
-            left--
-        }
-        return amounts
-    }
-
-    /**
      * The tour's visit order, most urgent machine first: machines with the
-     * most empty trays (`currentStock == 0`) first, then by [RefillMachine.totalDeficit]
+     * most sold-out products first, then by [RefillMachine.totalDeficit]
      * descending, then by machine id ascending.
      *
      * Ported from iOS `buildRefillMachines`' final sort
      * (`RefillWizardViewModel.swift:1017-1022`) — a step
      * [RefillRepository.fetchRefillMachines] deliberately bypasses, which is
      * why the tour has to establish its own order. iOS compares the *count*
-     * of empty trays (not a boolean "has empty trays"), and so does this.
+     * of empty trays (not a boolean "has empty trays"); since the multi-slot
+     * rework this counts **products** sold out in every slot
+     * ([StockHealth.groupTraysByProduct], state `CRITICAL`), so an empty slot
+     * whose product is still in another slot no longer makes a machine urgent.
      *
      * The machine-id tiebreaker is the reason this is a total order: iOS's
      * two-key comparison leaves machines with identical urgency in whatever
@@ -358,10 +287,15 @@ object RefillTourLogic {
      */
     fun sortByVisitOrder(machines: List<RefillMachine>): List<RefillMachine> =
         machines.sortedWith(
-            compareByDescending<RefillMachine> { m -> m.trays.count { it.tray.currentStock == 0 } }
+            compareByDescending<RefillMachine> { m -> soldOutProductCount(m) }
                 .thenByDescending { it.totalDeficit }
                 .thenBy { it.machine.id }
         )
+
+    /** Products of [machine] sold out in every one of their slots. */
+    private fun soldOutProductCount(machine: RefillMachine): Int =
+        StockHealth.groupTraysByProduct(machine.trays.map { it.tray })
+            .count { it.state == TrayStockState.CRITICAL }
 
     /**
      * Products needed across ALL machines (independent of `isPacked`),

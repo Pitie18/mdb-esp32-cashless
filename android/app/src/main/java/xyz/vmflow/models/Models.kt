@@ -4,6 +4,8 @@ import kotlin.math.roundToInt
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import xyz.vmflow.data.ExpirationStatus
+import xyz.vmflow.data.MachineStockSummary
+import xyz.vmflow.data.MachineStockTier
 
 @Serializable
 data class Organization(
@@ -358,16 +360,28 @@ data class MachineWithStats(
 ) {
     enum class StockHealth { OK, LOW, CRITICAL }
 
+    /**
+     * Product-level stock roll-up of [trays] ([xyz.vmflow.data.StockHealth.summaries]):
+     * a product in several slots is judged on the sums over its slots, so an
+     * empty slot next to a stocked one of the same product does not make the
+     * machine critical. Warehouse-agnostic on purpose (every product counts
+     * as refillable) — the card's swap / no-stock badges carry the warehouse
+     * dimension separately via [swapNeededCount] / [noStockCount].
+     */
+    val productStock: MachineStockSummary =
+        xyz.vmflow.data.StockHealth.summaries(trays, emptySet(), hasWarehouses = false)
+            .values.firstOrNull() ?: MachineStockSummary()
+
     val stockHealth: StockHealth
-        get() = when {
-            trays.isEmpty() -> StockHealth.OK
-            trays.any { it.isCritical } -> StockHealth.CRITICAL
-            trays.any { it.isLow } -> StockHealth.LOW
-            else -> StockHealth.OK
+        get() = when (productStock.tier) {
+            MachineStockTier.CRITICAL -> StockHealth.CRITICAL
+            MachineStockTier.LOW, MachineStockTier.FILL -> StockHealth.LOW
+            MachineStockTier.OK -> StockHealth.OK
         }
 
-    val lowTrayCount: Int
-        get() = trays.count { it.isLow || it.isCritical }
+    /** Products (not slots) needing a refill: sold out, low or below their fill threshold. */
+    val productsNeedingRefill: Int
+        get() = productStock.refillableEmpty + productStock.refillableLow + productStock.refillableFill
 }
 
 // ─────────────────────────────────────────────────────────────────────────

@@ -249,10 +249,13 @@ final class MachineDetailViewModel: ObservableObject {
             .reduce(0) { $0 + ($1.itemPrice ?? 0) }
     }
 
-    /// Formatted stock health summary.
+    /// Formatted stock health summary. Counts **products** (all slots of a
+    /// product summed, see `MachineStockHealth`), not slots — matching the
+    /// machine card.
     var stockSummary: String {
-        let empty = trays.filter { $0.isEmpty }.count
-        let low = trays.filter { $0.isBelowMinStock && !$0.isEmpty }.count
+        let groups = MachineStockHealth.groupTraysByProduct(trays).filter(\.needsRefill)
+        let empty = groups.filter { $0.state == .critical }.count
+        let low = groups.filter { $0.state == .low }.count
 
         if empty > 0 { return String(localized: "\(empty) empty, \(low) low") }
         if low > 0 { return String(localized: "\(low) low") }

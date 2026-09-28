@@ -147,8 +147,8 @@
     <!-- Dashboard: Braucht Aufmerksamkeit -->
     <string name="dashboard_needs_attention_title">Braucht Aufmerksamkeit</string>
     <plurals name="dashboard_trays_need_refill">
-        <item quantity="one">%1$d Fach muss aufgefüllt werden</item>
-        <item quantity="other">%1$d Fächer müssen aufgefüllt werden</item>
+        <item quantity="one">%1$d Produkt muss aufgefüllt werden</item>
+        <item quantity="other">%1$d Produkte müssen aufgefüllt werden</item>
     </plurals>
 
     <!-- Dashboard: Aktivitäts-Feed -->
@@ -204,6 +204,10 @@
     <string name="machine_card_deficit_show_more">+%1$d weitere</string>
     <string name="machine_card_deficit_show_less">Weniger anzeigen</string>
     <string name="machine_card_unassigned_slot">Fach %1$d</string>
+    <plurals name="machine_card_empty_slots_with_stock">
+        <item quantity="one">%1$d Fach leer, Produkt in anderem Fach</item>
+        <item quantity="other">%1$d Fächer leer, Produkt in anderem Fach</item>
+    </plurals>
 
     <!-- Analyse-Tab -->
     <string name="analysis_tab_title">Analyse</string>
@@ -604,4 +608,33 @@
     <string name="deals_view_all_offers">Alle Angebote ansehen</string>
     <string name="deals_stock_warehouse">Im Lager</string>
     <string name="deals_stock_machines">In Automaten</string>
+    <!-- Maschinendetail: Fächerliste nach Produkt gruppiert (wie PWA machineDetail.*) -->
+    <string name="tray_view_by_product">Nach Produkt</string>
+    <string name="tray_view_by_slot">Nach Fach</string>
+    <string name="tray_stock_map">Belegung</string>
+    <plurals name="tray_group_slots">
+        <item quantity="one">%d Fach</item>
+        <item quantity="other">%d Fächer</item>
+    </plurals>
+    <plurals name="tray_group_missing">
+        <item quantity="one">fehlt %d</item>
+        <item quantity="other">fehlen %d</item>
+    </plurals>
+    <plurals name="tray_group_empty_slots">
+        <item quantity="one">%d Fach leer</item>
+        <item quantity="other">%d Fächer leer</item>
+    </plurals>
+    <string name="tray_slot_empty_elsewhere">Fach leer, Produkt in anderem Fach</string>
+    <string name="tray_group_state_critical">Ausverkauft</string>
+    <string name="tray_group_state_low">Knapp</string>
+    <string name="tray_group_state_fill">Auffüllen</string>
+    <string name="tray_group_state_ok">OK</string>
+    <string name="tray_clear_selection">Auswahl aufheben</string>
+    <string name="tray_selected_product_summary">%1$s · %2$s · %3$d/%4$d</string>
+    <string name="tray_unassigned">Kein Produkt</string>
+    <string name="tray_stock_map_cell">Fach %1$d, %2$s, %3$s</string>
+    <string name="tray_stock_map_cell_unassigned">Fach %1$d, kein Produkt</string>
+    <string name="machine_detail_products_sold_out">Ausverkaufte Produkte</string>
+    <string name="machine_detail_products_low">Knappe Produkte</string>
+    <string name="machine_detail_products_fill">Aufzufüllende Produkte</string>
 </resources>

@@ -22,12 +22,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import xyz.vmflow.BuildConfig
 import xyz.vmflow.data.MachineAnalysis
@@ -59,6 +67,9 @@ private const val GRID_SPACING_DP = 4
 
 private val CELL_SHAPE = RoundedCornerShape(6.dp)
 
+/** Opacity of a [MachineLayoutCell.dimmed] cell. */
+private const val DIMMED_ALPHA = 0.35f
+
 /**
  * One occupied slot as the grid draws it. Purely presentational: the caller has
  * already resolved the geometry (from [MachineAnalysis]), the colours, and the
@@ -85,6 +96,14 @@ private val CELL_SHAPE = RoundedCornerShape(6.dp)
  *   to the pre-extraction one.
  * @param contentDescription spoken for the cell. Never null: every cell is
  *   tappable, and colour alone must not carry the state.
+ * @param dashedOutline a 2 dp *dashed* ring in this colour — the machine-detail
+ *   stock map's "slot empty, product in another slot" / "unassigned" marker.
+ *   Drawn in addition to [outline] (which stays solid). Null for the other
+ *   callers, which adds nothing to their modifier chain.
+ * @param dimmed draws the cell at reduced opacity — the stock map fades every
+ *   slot that does not hold the selected product. False for the other callers.
+ * @param caption small secondary text in the top-end corner (the stock map's
+ *   "9/10"). Null for the other callers, which emits no extra child.
  */
 data class MachineLayoutCell(
     val id: String,
@@ -97,6 +116,9 @@ data class MachineLayoutCell(
     val outline: Color? = null,
     val foreground: Color? = null,
     val contentDescription: String,
+    val dashedOutline: Color? = null,
+    val dimmed: Boolean = false,
+    val caption: String? = null,
 )
 
 /** One cell of the flattened row-major grid; `cell == null` is a gap/spacer column. */
@@ -197,6 +219,7 @@ private fun MachineLayoutGridCell(cell: MachineLayoutCell, onClick: () -> Unit) 
         modifier = Modifier
             .fillMaxWidth()
             .height(GRID_CELL_HEIGHT_DP.dp)
+            .then(if (cell.dimmed) Modifier.alpha(DIMMED_ALPHA) else Modifier)
             .clip(CELL_SHAPE)
             .background(cell.background)
             // `then(Modifier)` when there is no outline: the analysis tab's
@@ -204,6 +227,26 @@ private fun MachineLayoutGridCell(cell: MachineLayoutCell, onClick: () -> Unit) 
             .then(
                 cell.outline
                     ?.let { Modifier.border(width = 2.dp, color = it, shape = CELL_SHAPE) }
+                    ?: Modifier,
+            )
+            .then(
+                cell.dashedOutline
+                    ?.let { color ->
+                        Modifier.drawBehind {
+                            val stroke = 2.dp.toPx()
+                            val radius = 6.dp.toPx()
+                            drawRoundRect(
+                                color = color,
+                                topLeft = Offset(stroke / 2, stroke / 2),
+                                size = Size(size.width - stroke, size.height - stroke),
+                                cornerRadius = CornerRadius(radius, radius),
+                                style = Stroke(
+                                    width = stroke,
+                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())),
+                                ),
+                            )
+                        }
+                    }
                     ?: Modifier,
             )
             .clickable(onClick = onClick)
@@ -223,6 +266,18 @@ private fun MachineLayoutGridCell(cell: MachineLayoutCell, onClick: () -> Unit) 
         // to its tree, so its cell composition is untouched.
         if (cell.foreground != null) {
             Box(modifier = Modifier.fillMaxSize().background(cell.foreground))
+        }
+        if (cell.caption != null) {
+            Text(
+                text = cell.caption,
+                style = MaterialTheme.typography.labelSmall,
+                fontSize = 9.sp,
+                maxLines = 1,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(horizontal = 3.dp, vertical = 2.dp),
+            )
         }
         Text(
             text = cell.itemNumber.toString(),

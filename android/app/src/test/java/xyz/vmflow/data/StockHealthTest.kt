@@ -1,6 +1,8 @@
 package xyz.vmflow.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import xyz.vmflow.models.Tray
 
@@ -9,7 +11,10 @@ import xyz.vmflow.models.Tray
  * `management-frontend/app/lib/stock-health.ts`. The cases mirror
  * `app/lib/__tests__/stock-health.test.ts` plus the two divergences this
  * port fixed: unassigned slots and non-refillable products used to make a
- * machine "critical" on Android but not in the PWA.
+ * machine "critical" on Android but not in the PWA. The grouping cases
+ * (one product in several slots) mirror the TS `groupTraysByProduct`,
+ * `groupNeedsRefill`, `distributeAcrossSlots` and "one product in several
+ * slots" describe blocks.
  */
 class StockHealthTest {
 
@@ -24,10 +29,11 @@ class StockHealthTest {
         currentStock: Int = 0,
         minStock: Int? = 2,
         fillWhenBelow: Int? = 5,
+        itemNumber: Int = 1,
     ) = Tray(
-        id = "t-$machineId-$currentStock-$productId",
+        id = "t-$machineId-$itemNumber-$currentStock-$productId",
         machineId = machineId,
-        itemNumber = 1,
+        itemNumber = itemNumber,
         productId = productId,
         capacity = capacity,
         currentStock = currentStock,
@@ -111,6 +117,159 @@ class StockHealthTest {
         assertEquals(100, StockHealth.summaries(listOf(tray(capacity = 0)), warehouse, true)["m1"]!!.percent)
     }
 
+    @Test
+    fun `prioritizes critical over low and fill on the same machine`() {
+        val other = "p-other"
+        val trays = listOf(
+            tray(productId = STOCKED, capacity = 20, currentStock = 0, minStock = 5, fillWhenBelow = 10),
+            tray(productId = other, capacity = 20, currentStock = 8, minStock = 5, fillWhenBelow = 10, itemNumber = 2),
+        )
+        assertEquals(
+            MachineStockTier.CRITICAL,
+            StockHealth.summaries(trays, setOf(STOCKED, other), true)["m1"]?.tier,
+        )
+    }
+
+    // ── groupTraysByProduct ─────────────────────────────────────────────
+
+    private val COLA = "cola"
+    private fun cola(itemNumber: Int, currentStock: Int, machineId: String = "m1", productId: String? = COLA) =
+        tray(machineId = machineId, productId = productId, capacity = 10, currentStock = currentStock,
+            minStock = 2, fillWhenBelow = 5, itemNumber = itemNumber)
+
+    @Test
+    fun `sums stock, capacity and both thresholds across the slots of one product`() {
+        val g = StockHealth.groupTraysByProduct(listOf(cola(12, 0), cola(13, 2), cola(14, 9))).single()
+        assertEquals("m1", g.machineId)
+        assertEquals(COLA, g.productId)
+        assertEquals(11, g.currentStock)
+        assertEquals(30, g.capacity)
+        assertEquals(6, g.minStock)
+        assertEquals(15, g.fillWhenBelow)
+        assertEquals(19, g.deficit)
+        assertEquals(listOf(12, 13, 14), g.trays.map { it.itemNumber })
+    }
+
+    @Test
+    fun `classifies the product, not the slot - an empty slot next to full ones is not critical`() {
+        val g = StockHealth.groupTraysByProduct(listOf(cola(12, 0), cola(13, 2), cola(14, 9))).single()
+        assertEquals(TrayStockState.FILL, g.state)
+        assertEquals(1, g.emptySlots)
+    }
+
+    @Test
+    fun `is critical only when the product is sold out in every slot`() {
+        val g = StockHealth.groupTraysByProduct(listOf(cola(10, 0), cola(11, 0))).single()
+        assertEquals(TrayStockState.CRITICAL, g.state)
+        assertEquals(0, g.emptySlots)
+    }
+
+    @Test
+    fun `keeps products and machines apart and skips unassigned slots`() {
+        val groups = StockHealth.groupTraysByProduct(
+            listOf(
+                cola(10, 10),
+                cola(11, 10, productId = "fanta"),
+                cola(10, 10, machineId = "m2"),
+                cola(12, 10, productId = null),
+            )
+        )
+        assertEquals(listOf("m1/cola", "m1/fanta", "m2/cola"), groups.map { "${it.machineId}/${it.productId}" })
+    }
+
+    @Test
+    fun `behaves exactly like classifyTray for a product in a single slot`() {
+        for (stock in listOf(0, 1, 2, 3, 5, 6, 10)) {
+            val t = cola(10, stock)
+            assertEquals(
+                StockHealth.classifyTray(t.currentStock, t.minStock, t.fillWhenBelow),
+                StockHealth.groupTraysByProduct(listOf(t)).single().state,
+            )
+        }
+    }
+
+    @Test
+    fun `null thresholds contribute nothing to the summed thresholds`() {
+        val g = StockHealth.groupTraysByProduct(
+            listOf(
+                tray(productId = COLA, currentStock = 3, minStock = null, fillWhenBelow = null, itemNumber = 1),
+                tray(productId = COLA, currentStock = 3, minStock = 2, fillWhenBelow = 5, itemNumber = 2),
+            )
+        ).single()
+        assertEquals(2, g.minStock)
+        assertEquals(5, g.fillWhenBelow)
+        assertEquals(TrayStockState.OK, g.state)
+    }
+
+    // ── groupNeedsRefill ────────────────────────────────────────────────
+
+    @Test
+    fun `groupNeedsRefill is true for critical, low and fill with a deficit`() {
+        assertTrue(StockHealth.groupNeedsRefill(TrayStockState.CRITICAL, 5))
+        assertTrue(StockHealth.groupNeedsRefill(TrayStockState.LOW, 5))
+        assertTrue(StockHealth.groupNeedsRefill(TrayStockState.FILL, 5))
+    }
+
+    @Test
+    fun `groupNeedsRefill is false for ok and for a fill tier that is already full`() {
+        assertFalse(StockHealth.groupNeedsRefill(TrayStockState.OK, 5))
+        assertFalse(StockHealth.groupNeedsRefill(TrayStockState.FILL, 0))
+    }
+
+    // ── distributeAcrossSlots ───────────────────────────────────────────
+
+    private fun slot(itemNumber: Int, capacity: Int, currentStock: Int) =
+        tray(capacity = capacity, currentStock = currentStock, itemNumber = itemNumber)
+
+    @Test
+    fun `fills the emptiest slot first so no selection stays sold out`() {
+        val slots = listOf(slot(12, 10, 4), slot(13, 10, 0), slot(14, 10, 9))
+        assertEquals(listOf(0, 8, 0), StockHealth.distributeAcrossSlots(slots, 8))
+        assertEquals(listOf(3, 10, 0), StockHealth.distributeAcrossSlots(slots, 13))
+        assertEquals(listOf(6, 10, 1), StockHealth.distributeAcrossSlots(slots, 100))
+    }
+
+    @Test
+    fun `breaks ties by slot number and never returns negatives`() {
+        val slots = listOf(slot(21, 5, 1), slot(20, 5, 1), slot(22, 5, 7))
+        assertEquals(listOf(0, 2, 0), StockHealth.distributeAcrossSlots(slots, 2))
+        assertEquals(listOf(0, 0, 0), StockHealth.distributeAcrossSlots(slots, 0))
+        assertEquals(listOf(0, 0, 0), StockHealth.distributeAcrossSlots(slots, -3))
+    }
+
+    // ── summaries — one product in several slots ────────────────────────
+
+    private fun colaSlots(vararg stocks: Int) = stocks.mapIndexed { i, s -> cola(12 + i, s) }
+    private val colaWarehouse = setOf(COLA)
+
+    @Test
+    fun `does not mark the machine critical while the product is still in another slot`() {
+        val s = StockHealth.summaries(colaSlots(0, 2, 9), colaWarehouse, true)["m1"]!!
+        assertEquals(MachineStockTier.FILL, s.tier)
+        assertEquals(0, s.refillableEmpty)
+        assertEquals(1, s.refillableFill)
+    }
+
+    @Test
+    fun `reports an empty slot of a well-stocked product only as a hint`() {
+        val s = StockHealth.summaries(colaSlots(0, 10, 10), colaWarehouse, true)["m1"]!!
+        assertEquals(MachineStockTier.OK, s.tier)
+        assertEquals(1, s.emptySlotsWithStock)
+    }
+
+    @Test
+    fun `counts a product once, however many of its slots are low`() {
+        val s = StockHealth.summaries(colaSlots(1, 1, 1), colaWarehouse, true)["m1"]!!
+        assertEquals(MachineStockTier.LOW, s.tier)
+        assertEquals(1, s.refillableLow)
+    }
+
+    @Test
+    fun `is a swap candidate only when the non-refillable product is empty everywhere`() {
+        assertEquals(0, StockHealth.summaries(colaSlots(0, 4), emptySet(), true)["m1"]!!.noStockEmptyCount)
+        assertEquals(1, StockHealth.summaries(colaSlots(0, 0), emptySet(), true)["m1"]!!.noStockEmptyCount)
+    }
+
     // ── buckets ─────────────────────────────────────────────────────────
 
     @Test
@@ -160,5 +319,91 @@ class StockHealthTest {
         )
         val buckets = StockHealth.buckets(StockHealth.summaries(trays, warehouse, true).values)
         assertEquals(MachineStockBuckets(critical = 0, low = 1, fill = 1, swap = 0, needingAttention = 2), buckets)
+    }
+
+    // ── buildTrayGroupIndex / productListRows (PWA trayGroups.test.ts) ──
+
+    private fun slot(id: String, itemNumber: Int, productId: String?, currentStock: Int) = Tray(
+        id = id,
+        machineId = "m1",
+        itemNumber = itemNumber,
+        productId = productId,
+        capacity = 10,
+        currentStock = currentStock,
+        minStock = 2,
+        fillWhenBelow = 5,
+    )
+
+    @Test
+    fun `flags only the slots with room when the product needs refill`() {
+        val idx = StockHealth.buildTrayGroupIndex(
+            listOf(slot("a", 12, "cola", 0), slot("b", 13, "cola", 1), slot("c", 14, "cola", 10))
+        )
+        // 11/30, min 6 → fill (11 > 6, ≤ 15)
+        assertEquals(TrayStockFlag.FILL, idx["a"]!!.flag)
+        assertEquals(TrayStockFlag.FILL, idx["b"]!!.flag)
+        assertEquals(TrayStockFlag.OK, idx["c"]!!.flag)
+        assertEquals(11, idx["a"]!!.group.currentStock)
+    }
+
+    @Test
+    fun `marks an empty slot of a well-stocked product as slotEmpty, not low`() {
+        val idx = StockHealth.buildTrayGroupIndex(
+            listOf(slot("a", 12, "cola", 0), slot("b", 13, "cola", 10), slot("c", 14, "cola", 10))
+        )
+        assertEquals(TrayStockFlag.SLOT_EMPTY, idx["a"]!!.flag)
+        assertFalse(idx["a"]!!.needsRefill)
+    }
+
+    @Test
+    fun `flags low when the product total is at or below the summed min_stock`() {
+        val idx = StockHealth.buildTrayGroupIndex(listOf(slot("a", 12, "cola", 1), slot("b", 13, "cola", 3)))
+        assertEquals(TrayStockFlag.LOW, idx["a"]!!.flag)
+        assertEquals(TrayStockFlag.LOW, idx["b"]!!.flag)
+    }
+
+    @Test
+    fun `leaves unassigned slots out of the group index`() {
+        assertFalse(StockHealth.buildTrayGroupIndex(listOf(slot("a", 12, null, 0))).containsKey("a"))
+    }
+
+    private val listTrays = listOf(
+        slot("fanta", 11, "fanta", 5),
+        slot("c14", 14, "cola", 9),
+        slot("c12", 12, "cola", 0),
+        slot("empty", 13, null, 0),
+        slot("c20", 20, "cola", 2),
+    )
+
+    @Test
+    fun `orders products by their first slot and keeps a product together`() {
+        val rows = StockHealth.productListRows(listTrays, StockHealth.buildTrayGroupIndex(listTrays))
+        assertEquals(listOf("fanta", "c12", "c14", "c20", "empty"), rows.map { it.tray.id })
+    }
+
+    @Test
+    fun `puts a header on the first slot of multi-slot products only`() {
+        val rows = StockHealth.productListRows(listTrays, StockHealth.buildTrayGroupIndex(listTrays))
+        assertEquals(listOf(null, "cola", null, null, null), rows.map { it.header?.productId })
+        assertEquals(listOf(false, true, true, true, false), rows.map { it.inGroup })
+    }
+
+    @Test
+    fun `filters rows but keeps whole-product totals in the header`() {
+        val rows = StockHealth.productListRows(listTrays, StockHealth.buildTrayGroupIndex(listTrays)) { it.id == "c14" }
+        assertEquals(1, rows.size)
+        assertEquals(11, rows[0].header?.currentStock)
+    }
+
+    @Test
+    fun `product refill counts count products not slots`() {
+        val trays = listOf(
+            slot("a", 11, "cola", 0), slot("b", 12, "cola", 0),   // sold out product
+            slot("c", 13, "fanta", 1),                             // low
+            slot("d", 14, "water", 4),                             // fill
+            slot("e", 15, "tea", 0), slot("f", 16, "tea", 10), slot("h", 18, "tea", 10), // 20/30: fine, slot empty only
+            slot("g", 17, null, 0),                                // unassigned
+        )
+        assertEquals(ProductRefillCounts(soldOut = 1, low = 1, fill = 1), StockHealth.productRefillCounts(trays))
     }
 }

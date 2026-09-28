@@ -16,6 +16,9 @@ import { MAX_INTERNAL_ITEM_NUMBER, findInternalItemNumberConflict, findShadowing
 import MachineSettingsModal from '~/components/MachineSettingsModal.vue'
 import { usePosterFreshness } from '@/composables/usePosterFreshness'
 import MachineAnalysisPanel from '~/components/analysis/MachineAnalysisPanel.vue'
+import ProductGroupHeader from '~/components/machine/ProductGroupHeader.vue'
+import TrayStockGrid from '~/components/machine/TrayStockGrid.vue'
+import { buildTrayGroupIndex, productListRows } from '@/lib/trayGroups'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,6 +91,31 @@ const sortedTrays = computed(() => {
     }
     return dir * ((a.current_stock ?? 0) - (b.current_stock ?? 0))
   })
+})
+
+// Slots are judged per product (all slots of a product summed, see
+// lib/stock-health.ts). "By product" lists a product's slots together under a
+// summary header; "By slot" is the plain sortable list. Sorting a column
+// switches to "By slot".
+const trayGroupIndex = computed(() => buildTrayGroupIndex(trays.value))
+const trayView = ref<'product' | 'slot'>('product')
+const selectedGridProductId = ref<string | null>(null)
+
+function sortTrays(key: 'slot' | 'product' | 'stock') {
+  trayView.value = 'slot'
+  toggleTraySort(key)
+}
+
+const trayRows = computed(() => {
+  if (trayView.value === 'slot') return sortedTrays.value.map(tray => ({ tray, header: undefined, inGroup: false }))
+  const visible = new Set(sortedTrays.value.map(t => t.id))
+  return productListRows(trays.value, trayGroupIndex.value, t => visible.has(t.id))
+})
+
+const selectedGridProduct = computed(() => {
+  if (!selectedGridProductId.value) return null
+  const tray = trays.value.find(t => t.product_id === selectedGridProductId.value)
+  return tray ? trayGroupIndex.value.get(tray.id) ?? null : null
 })
 
 // Merged Sales feed: real sales + auto-removed (suppressed) rows, day-grouped.
@@ -1045,15 +1073,17 @@ async function handleDeleteTray(trayId: string) {
 }
 
 // Summary computed
-const lowStockCount = computed(() =>
-  trays.value.filter(t => t.min_stock > 0 && t.current_stock <= t.min_stock).length
-)
-
-const fillBelowCount = computed(() =>
-  trays.value.filter(t =>
-    !isLowStock(t) && t.fill_when_below > 0 && t.current_stock <= t.fill_when_below && t.current_stock > 0
-  ).length
-)
+// Products (not slots) that need refill, split by severity.
+const productsNeedingRefill = computed(() => {
+  const seen = new Map<string, 'low' | 'fill'>()
+  for (const info of trayGroupIndex.value.values()) {
+    if (!info.needsRefill) continue
+    seen.set(info.group.product_id, info.group.state === 'fill' ? 'fill' : 'low')
+  }
+  return [...seen.values()]
+})
+const lowStockCount = computed(() => productsNeedingRefill.value.filter(s => s === 'low').length)
+const fillBelowCount = computed(() => productsNeedingRefill.value.filter(s => s === 'fill').length)
 
 // Packing list: group needed items by product for low-stock and fill-when-below trays, ordered by first slot appearance
 const packingList = computed(() => {
@@ -1087,12 +1117,18 @@ const packingList = computed(() => {
 
 const isRefillMode = computed(() => route.query.tab === 'stock')
 
+// Judged on the tray's product, so a low slot next to a full one of the same
+// product is not flagged (see lib/trayGroups.ts).
 function isLowStock(tray: any) {
-  return tray.min_stock > 0 && tray.current_stock <= tray.min_stock
+  return trayGroupIndex.value.get(tray.id)?.flag === 'low'
 }
 
 function isFillBelow(tray: any) {
-  return !isLowStock(tray) && tray.fill_when_below > 0 && tray.current_stock <= tray.fill_when_below && tray.current_stock > 0
+  return trayGroupIndex.value.get(tray.id)?.flag === 'fill'
+}
+
+function isEmptySlotWithStock(tray: any) {
+  return trayGroupIndex.value.get(tray.id)?.flag === 'slotEmpty'
 }
 
 function isHealthyInRefillMode(tray: any) {
@@ -1603,14 +1639,68 @@ async function handleAddSale() {
               <div v-if="traysLoading" class="text-sm text-muted-foreground">{{ t('machineDetail.loadingTrays') }}</div>
               <div v-else-if="trays.length === 0" class="text-sm text-muted-foreground">{{ t('machineDetail.noTraysConfiguredDetail') }}</div>
               <template v-else>
-                <SearchInput v-model="traySearch" :placeholder="t('common.search') + '...'" class="max-w-xs mb-3" />
+                <div class="mb-4 rounded-lg border bg-card p-3">
+                  <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-sm font-medium">{{ t('machineDetail.stockMap') }}</h3>
+                    <div v-if="selectedGridProduct" class="flex items-center gap-2 text-xs">
+                      <span class="font-medium">
+                        {{ t('machineDetail.selectedProductSummary', {
+                          name: trays.find(tr => tr.product_id === selectedGridProductId)?.product_name ?? '',
+                          slots: t('machineDetail.groupSlots', { count: selectedGridProduct.group.trays.length }, selectedGridProduct.group.trays.length),
+                          stock: selectedGridProduct.group.current_stock,
+                          capacity: selectedGridProduct.group.capacity,
+                        }) }}
+                      </span>
+                      <button type="button" class="text-muted-foreground underline-offset-2 hover:underline" @click="selectedGridProductId = null">
+                        {{ t('machineDetail.clearSelection') }}
+                      </button>
+                    </div>
+                  </div>
+                  <TrayStockGrid
+                    :trays="trays"
+                    :index="trayGroupIndex"
+                    :selected-product-id="selectedGridProductId"
+                    @select="(id) => (selectedGridProductId = id)"
+                  />
+                </div>
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                  <SearchInput v-model="traySearch" :placeholder="t('common.search') + '...'" class="max-w-xs" />
+                  <div class="inline-flex rounded-md border p-0.5 text-xs" role="group">
+                    <button
+                      type="button"
+                      class="rounded px-2.5 py-1 font-medium transition-colors"
+                      :class="trayView === 'product' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                      :aria-pressed="trayView === 'product'"
+                      @click="trayView = 'product'"
+                    >
+                      {{ t('machineDetail.viewByProduct') }}
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded px-2.5 py-1 font-medium transition-colors"
+                      :class="trayView === 'slot' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                      :aria-pressed="trayView === 'slot'"
+                      @click="trayView = 'slot'"
+                    >
+                      {{ t('machineDetail.viewBySlot') }}
+                    </button>
+                  </div>
+                </div>
                 <div v-if="sortedTrays.length === 0" class="text-sm text-muted-foreground">{{ t('common.noResults') }}</div>
                 <!-- ── Mobile card layout ── -->
                 <div class="space-y-3 md:hidden">
+                  <template v-for="{ tray, header, inGroup } in trayRows" :key="'m-' + tray.id">
+                  <div v-if="header" class="rounded-lg border bg-muted/30 p-3 pb-2.5" :class="selectedGridProductId === header.product_id ? 'ring-2 ring-primary' : ''">
+                    <ProductGroupHeader
+                      :group="header"
+                      :name="tray.product_name ?? '—'"
+                      :image-url="trayProductMap.get(tray.item_number)?.image_url ?? null"
+                      :needs-refill="trayGroupIndex.get(tray.id)?.needsRefill ?? false"
+                    />
+                  </div>
                   <SwipeRight
-                    v-for="tray in sortedTrays"
-                    :key="'m-' + tray.id"
                     :label="t('machineDetail.stockHistory')"
+                    :class="inGroup ? 'ml-4' : ''"
                     @action="openStockHistory(tray)"
                   >
                     <template #icon>
@@ -1623,6 +1713,7 @@ async function handleAddSale() {
                         : isFillBelow(tray) && lowStockCount > 0 ? 'border-blue-300 bg-blue-50/40 dark:border-blue-700 dark:bg-blue-950/10'
                         : 'bg-card',
                       isHealthyInRefillMode(tray) ? 'opacity-40' : '',
+                      selectedGridProductId && tray.product_id === selectedGridProductId ? 'ring-2 ring-primary' : '',
                     ]"
                   >
                     <!-- Row 1: image + slot + product + actions -->
@@ -1812,6 +1903,9 @@ async function handleAddSale() {
                         </span>
                       </div>
                     </div>
+                    <p v-if="isEmptySlotWithStock(tray)" class="mt-1 text-xs text-muted-foreground">
+                      {{ t('machineDetail.slotEmptyElsewhere') }}
+                    </p>
                     <!-- Expandable thresholds row (mobile, admin only) -->
                     <div
                       v-if="isAdmin && expandedMobileTray === tray.id"
@@ -1860,6 +1954,7 @@ async function handleAddSale() {
                     </div>
                   </div>
                   </SwipeRight>
+                  </template>
                 </div>
 
                 <!-- ── Desktop table layout ── -->
@@ -1867,7 +1962,7 @@ async function handleAddSale() {
                   <table class="w-full text-sm">
                     <thead>
                       <tr class="border-b bg-muted/50 text-left">
-                        <th class="w-20 px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="toggleTraySort('slot')">
+                        <th class="w-20 px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="sortTrays('slot')">
                           <SortHeader :icon="traySortIcon('slot')">{{ t('machineDetail.slot') }}</SortHeader>
                         </th>
                         <th class="w-24 px-4 py-3 font-medium">
@@ -1885,10 +1980,10 @@ async function handleAddSale() {
                             </Tooltip>
                           </TooltipProvider>
                         </th>
-                        <th class="px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="toggleTraySort('product')">
+                        <th class="px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="sortTrays('product')">
                           <SortHeader :icon="traySortIcon('product')">{{ t('machineDetail.product') }}</SortHeader>
                         </th>
-                        <th class="w-36 px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="toggleTraySort('stock')">
+                        <th class="w-36 px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="sortTrays('stock')">
                           <SortHeader :icon="traySortIcon('stock')">{{ t('machineDetail.stock') }}</SortHeader>
                         </th>
                         <th class="w-16 px-4 py-3 font-medium">
@@ -1926,11 +2021,22 @@ async function handleAddSale() {
                       </tr>
                     </thead>
                     <tbody>
+                      <template v-for="{ tray, header, inGroup } in trayRows" :key="tray.id">
+                      <tr v-if="header" class="border-b bg-muted/30" :class="selectedGridProductId === header.product_id ? 'outline outline-2 -outline-offset-2 outline-primary' : ''">
+                        <td :colspan="isAdmin ? 8 : 7" class="px-4 py-2.5">
+                          <ProductGroupHeader
+                            :group="header"
+                            :name="tray.product_name ?? '—'"
+                            :image-url="trayProductMap.get(tray.item_number)?.image_url ?? null"
+                            :needs-refill="trayGroupIndex.get(tray.id)?.needsRefill ?? false"
+                          />
+                        </td>
+                      </tr>
                       <tr
-                        v-for="tray in sortedTrays"
-                        :key="tray.id"
                         class="border-b last:border-0 transition-colors"
                         :class="[
+                          inGroup ? 'border-l-4 border-l-primary/30' : '',
+                          selectedGridProductId && tray.product_id === selectedGridProductId ? 'bg-primary/5' : '',
                           isLowStock(tray) ? 'bg-amber-50/60 hover:bg-amber-100/60 dark:bg-amber-950/20 dark:hover:bg-amber-950/40'
                             : isFillBelow(tray) && lowStockCount > 0 ? 'bg-blue-50/40 hover:bg-blue-100/40 dark:bg-blue-950/10 dark:hover:bg-blue-950/20'
                             : 'hover:bg-muted/30',
@@ -2100,6 +2206,9 @@ async function handleAddSale() {
                               -{{ trayDeficit(tray) }}
                             </span>
                           </div>
+                          <p v-if="isEmptySlotWithStock(tray)" class="mt-0.5 text-[11px] leading-tight text-muted-foreground">
+                            {{ t('machineDetail.slotEmptyElsewhere') }}
+                          </p>
                         </td>
 
                         <!-- Min stock threshold -->
@@ -2188,6 +2297,7 @@ async function handleAddSale() {
                           </div>
                         </td>
                       </tr>
+                      </template>
                     </tbody>
                   </table>
                 </div>

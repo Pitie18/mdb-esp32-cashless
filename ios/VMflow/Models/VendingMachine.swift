@@ -206,15 +206,19 @@ struct MachineStats: Identifiable, Equatable {
     var lastWeekSalesCount: Int = 0
     var paxcounterCount: Int?
 
-    // Stock health
+    // Stock health. `lowTrays`/`emptyTrays` count **products** (all slots of
+    // a product form one group, see `MachineStockHealth`); `totalTrays`
+    // counts slots. Names kept for compatibility.
     var totalTrays: Int = 0
     var lowTrays: Int = 0
     var emptyTrays: Int = 0
     var stockPercent: Double = 0
+    /// Empty slots whose product is still stocked in another slot — a hint only.
+    var emptySlotsWithStock: Int = 0
 
-    // Warehouse-aware stock counts
-    var swapNeededCount: Int = 0   // empty trays with no warehouse stock
-    var noStockCount: Int = 0      // low trays with no warehouse stock
+    // Warehouse-aware stock counts (products)
+    var swapNeededCount: Int = 0   // products sold out everywhere with no warehouse stock
+    var noStockCount: Int = 0      // products needing refill with no warehouse stock
 
     // Per-product deficit info for card display
     var trayDeficits: [TrayDeficit] = []

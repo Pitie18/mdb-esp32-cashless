@@ -151,8 +151,8 @@
     <!-- Dashboard: needs attention -->
     <string name="dashboard_needs_attention_title">Needs Attention</string>
     <plurals name="dashboard_trays_need_refill">
-        <item quantity="one">%1$d tray needs refill</item>
-        <item quantity="other">%1$d trays need refill</item>
+        <item quantity="one">%1$d product needs refill</item>
+        <item quantity="other">%1$d products need refill</item>
     </plurals>
 
     <!-- Dashboard: recent activity feed -->
@@ -208,6 +208,10 @@
     <string name="machine_card_deficit_show_more">+%1$d more</string>
     <string name="machine_card_deficit_show_less">Show less</string>
     <string name="machine_card_unassigned_slot">Slot %1$d</string>
+    <plurals name="machine_card_empty_slots_with_stock">
+        <item quantity="one">%1$d slot empty, product in another slot</item>
+        <item quantity="other">%1$d slots empty, product in another slot</item>
+    </plurals>
 
     <!-- Machine Analysis tab -->
     <string name="analysis_tab_title">Analysis</string>
@@ -608,4 +612,35 @@
     <string name="deals_view_all_offers">View all offers</string>
     <string name="deals_stock_warehouse">In warehouse</string>
     <string name="deals_stock_machines">In machines</string>
+    <!-- Machine detail: tray list grouped by product (mirrors PWA machineDetail.*) -->
+    <string name="tray_view_by_product">By product</string>
+    <string name="tray_view_by_slot">By slot</string>
+    <string name="tray_stock_map">Layout</string>
+    <plurals name="tray_group_slots">
+        <item quantity="one">%d slot</item>
+        <item quantity="other">%d slots</item>
+    </plurals>
+    <plurals name="tray_group_missing">
+        <item quantity="one">%d missing</item>
+        <item quantity="other">%d missing</item>
+    </plurals>
+    <plurals name="tray_group_empty_slots">
+        <item quantity="one">%d slot empty</item>
+        <item quantity="other">%d slots empty</item>
+    </plurals>
+    <string name="tray_slot_empty_elsewhere">Slot empty, product in another slot</string>
+    <string name="tray_group_state_critical">Sold out</string>
+    <string name="tray_group_state_low">Low</string>
+    <string name="tray_group_state_fill">Top off</string>
+    <string name="tray_group_state_ok">OK</string>
+    <string name="tray_clear_selection">Clear selection</string>
+    <!-- %1$s product name, %2$s "3 slots", %3$d stock, %4$d capacity -->
+    <string name="tray_selected_product_summary">%1$s · %2$s · %3$d/%4$d</string>
+    <string name="tray_unassigned">No product</string>
+    <!-- Stock map cell, spoken: %1$d slot number, %2$s product, %3$s state -->
+    <string name="tray_stock_map_cell">Slot %1$d, %2$s, %3$s</string>
+    <string name="tray_stock_map_cell_unassigned">Slot %1$d, no product</string>
+    <string name="machine_detail_products_sold_out">Sold-out products</string>
+    <string name="machine_detail_products_low">Low products</string>
+    <string name="machine_detail_products_fill">Products to top off</string>
 </resources>
