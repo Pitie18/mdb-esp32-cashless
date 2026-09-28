@@ -6,6 +6,8 @@ import kotlinx.serialization.Serializable
 import xyz.vmflow.data.ExpirationStatus
 import xyz.vmflow.data.MachineStockSummary
 import xyz.vmflow.data.MachineStockTier
+import xyz.vmflow.data.ReachLevel
+import xyz.vmflow.data.StockReach
 
 @Serializable
 data class Organization(
@@ -589,8 +591,15 @@ data class WarehouseProductSummary(
     val batchCount: Int,
     val earliestExpiration: String?,
     val discontinued: Boolean,
-    val expirationStatus: ExpirationStatus
+    val expirationStatus: ExpirationStatus,
+    /** Fleet-wide average units sold per day (`get_product_sales_velocity`); 0 when the product didn't sell in the window. */
+    val avgDailySales: Double = 0.0
 ) {
     val isLow: Boolean get() = totalQuantity > 0 && totalQuantity < 10
     val isOutOfStock: Boolean get() = totalQuantity == 0
+
+    /** Days until this warehouse's stock runs out at the current sales rate; null without sales. */
+    val daysRemaining: Int? get() = StockReach.daysRemaining(totalQuantity, avgDailySales)
+
+    val reachLevel: ReachLevel get() = StockReach.level(daysRemaining)
 }

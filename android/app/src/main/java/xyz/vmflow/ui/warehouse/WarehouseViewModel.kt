@@ -42,6 +42,8 @@ data class WarehouseUiState(
     val includeOutOfStock: Boolean = false,
     val includeArchived: Boolean = false,
     val expirationFilter: ExpirationFilter = ExpirationFilter.ALL,
+    /** Shortest stock reach first instead of alphabetical (products without sales last). */
+    val sortByReach: Boolean = false,
     val isBookingIntake: Boolean = false,
     /**
      * Increments exactly once per intake whose underlying write actually
@@ -58,7 +60,8 @@ data class WarehouseUiState(
 ) {
     /**
      * Product summaries after search + the three filters, sorted alphabetically
-     * by product name (case-insensitive). Stock level deliberately does NOT
+     * by product name (case-insensitive) — or, with [sortByReach], shortest
+     * stock reach first. Stock level deliberately does NOT
      * influence the order — a zero-stock product sits where its name puts it
      * and is identified by its badge instead of by position. Ported 1:1 from
      * iOS `filteredSummaries` (`WarehouseViewModel.swift:78-103`).
@@ -90,7 +93,13 @@ data class WarehouseUiState(
                 ExpirationFilter.CRITICAL -> items.filter { it.expirationStatus == ExpirationStatus.CRITICAL }
             }
 
-            return items.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.productName })
+            val byName = compareBy(String.CASE_INSENSITIVE_ORDER) { it: WarehouseProductSummary -> it.productName }
+            if (sortByReach) {
+                return items.sortedWith(
+                    compareBy<WarehouseProductSummary> { it.daysRemaining ?: Int.MAX_VALUE }.then(byName)
+                )
+            }
+            return items.sortedWith(byName)
         }
 }
 
@@ -159,7 +168,8 @@ class WarehouseViewModel : ViewModel() {
             _uiState.update { it.copy(productSummaries = emptyList()) }
             return
         }
-        WarehouseRepository.fetchProductSummaries(warehouseId).fold(
+        val companyId = _uiState.value.warehouses.firstOrNull { it.id == warehouseId }?.companyId
+        WarehouseRepository.fetchProductSummaries(warehouseId, companyId).fold(
             onSuccess = { summaries -> _uiState.update { it.copy(productSummaries = summaries) } },
             onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
         )
@@ -213,6 +223,10 @@ class WarehouseViewModel : ViewModel() {
 
     fun toggleIncludeArchived() {
         _uiState.update { it.copy(includeArchived = !it.includeArchived) }
+    }
+
+    fun toggleSortByReach() {
+        _uiState.update { it.copy(sortByReach = !it.sortByReach) }
     }
 
     fun setExpirationFilter(filter: ExpirationFilter) {

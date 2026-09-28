@@ -37,6 +37,19 @@ private data class ProductSummaryBatchRow(
     @SerialName("expiration_date") val expirationDate: String? = null
 )
 
+/** Decode target for `get_product_sales_velocity` in [WarehouseRepository.fetchVelocity]. */
+@Serializable
+private data class WarehouseVelocityRow(
+    @SerialName("product_id") val productId: String,
+    @SerialName("avg_daily_units") @Serializable(with = FlexibleDoubleSerializer::class) val avgDailyUnits: Double = 0.0
+)
+
+/** Decode target for the company's configured velocity window. */
+@Serializable
+private data class CompanyVelocityDaysRow(
+    @SerialName("velocity_days") val velocityDays: Int? = null
+)
+
 /** Decode target for [WarehouseRepository.fetchAssignedProductIds]. */
 @Serializable
 private data class TrayProductIdRow(
@@ -147,8 +160,9 @@ object WarehouseRepository {
      * [WarehouseIntakeLogic.buildProductSummaries]), merged with the given
      * warehouse's batches. Mirrors iOS `loadProductSummaries()`.
      */
-    suspend fun fetchProductSummaries(warehouseId: String): Result<List<WarehouseProductSummary>> {
+    suspend fun fetchProductSummaries(warehouseId: String, companyId: String?): Result<List<WarehouseProductSummary>> {
         return try {
+            val velocity = companyId?.let { fetchVelocity(it) } ?: emptyMap()
             val products = fetchAllProductsIncludingDiscontinued().getOrThrow()
             val batches = postgrest.from("warehouse_stock_batches")
                 .select(Columns.raw("product_id, quantity, expiration_date")) {
@@ -176,11 +190,41 @@ object WarehouseRepository {
                         expirationDate = batch.expirationDate
                     )
                 },
-                today = today
+                today = today,
+                velocity = velocity
             )
             Result.success(summaries)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Fleet-wide avg units sold per day, keyed by product id, over the
+     * company's `velocity_days` window (default 30 — same setting the web
+     * warehouse page uses). Best-effort like on the web: a failure yields an
+     * empty map, so the list still loads, just without reach.
+     */
+    private suspend fun fetchVelocity(companyId: String): Map<String, Double> {
+        return try {
+            val days = try {
+                postgrest.from("companies")
+                    .select(Columns.raw("velocity_days")) { filter { eq("id", companyId) } }
+                    .decodeList<CompanyVelocityDaysRow>()
+                    .firstOrNull()?.velocityDays
+            } catch (_: Exception) {
+                null
+            } ?: 30
+            val params = buildJsonObject {
+                put("p_company_id", companyId)
+                put("p_days", days)
+            }
+            postgrest.rpc("get_product_sales_velocity", params)
+                .decodeList<WarehouseVelocityRow>()
+                .filter { it.avgDailyUnits > 0 }
+                .associate { it.productId to it.avgDailyUnits }
+        } catch (_: Exception) {
+            emptyMap()
         }
     }
 

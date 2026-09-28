@@ -42,8 +42,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import xyz.vmflow.R
 import xyz.vmflow.data.ExpirationStatus
+import xyz.vmflow.data.ReachLevel
+import xyz.vmflow.data.StockReach
 import xyz.vmflow.models.WarehouseProductSummary
 import xyz.vmflow.ui.components.ProductImage
+import xyz.vmflow.ui.theme.StockGreen
 import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
 import java.time.format.DateTimeFormatter
@@ -68,6 +71,7 @@ fun WarehouseStockTab(
     onToggleOutOfStock: () -> Unit,
     onToggleArchived: () -> Unit,
     onExpirationFilterChange: (ExpirationFilter) -> Unit,
+    onToggleSortByReach: () -> Unit,
     onProductClick: (productId: String) -> Unit
 ) {
     val filtered = uiState.filteredSummaries
@@ -133,6 +137,11 @@ fun WarehouseStockTab(
                     },
                     label = { Text(stringResource(R.string.warehouse_stock_filter_critical)) }
                 )
+                FilterChip(
+                    selected = uiState.sortByReach,
+                    onClick = onToggleSortByReach,
+                    label = { Text(stringResource(R.string.warehouse_stock_sort_reach)) }
+                )
             }
         }
 
@@ -169,9 +178,10 @@ fun WarehouseStockTab(
 }
 
 /**
- * One product row: image, name (+ "DC" badge when discontinued), batch
- * count + expiration badge, total quantity (red when out of stock) with a
- * "Low"/"Out of Stock" pill. Mirrors iOS `StockSummaryRow`.
+ * One product row: image, name (+ "DC" badge when discontinued), throughput
+ * (units/day) + batch count + expiration badge, total quantity (red when out
+ * of stock) with an "Out of Stock" pill, else the stock-reach pill ("~12
+ * days", coloured by [ReachLevel]), else "Low" for products without sales. Mirrors iOS `StockSummaryRow`.
  */
 @Composable
 private fun WarehouseStockRow(
@@ -221,8 +231,17 @@ private fun WarehouseStockRow(
             }
             Spacer(modifier = Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val throughput = if (summary.avgDailySales > 0) {
+                    stringResource(R.string.warehouse_stock_per_day, formatDailySales(summary.avgDailySales))
+                } else {
+                    stringResource(R.string.warehouse_stock_no_sales)
+                }
                 Text(
-                    text = pluralStringResource(R.plurals.warehouse_batch_count, summary.batchCount, summary.batchCount),
+                    text = throughput + " · " +
+                        pluralStringResource(R.plurals.warehouse_batch_count, summary.batchCount, summary.batchCount),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -248,14 +267,34 @@ private fun WarehouseStockRow(
                 fontWeight = FontWeight.Bold,
                 color = if (summary.isOutOfStock) StockRed else MaterialTheme.colorScheme.onSurface
             )
+            val daysRemaining = summary.daysRemaining
             if (summary.isOutOfStock) {
                 StockStatusPill(text = stringResource(R.string.warehouse_stock_out_of_stock), color = StockRed)
+            } else if (daysRemaining != null) {
+                StockStatusPill(text = reachText(daysRemaining), color = reachColor(summary.reachLevel))
             } else if (summary.isLow) {
                 StockStatusPill(text = stringResource(R.string.warehouse_stock_low), color = StockOrange)
             }
         }
     }
 }
+
+/** "~12 days", "<1 day", or ">90 days" above [StockReach.DISPLAY_CAP_DAYS]. */
+@Composable
+private fun reachText(days: Int): String = when {
+    days < 1 -> stringResource(R.string.warehouse_stock_reach_under_one)
+    days > StockReach.DISPLAY_CAP_DAYS -> stringResource(R.string.warehouse_stock_reach_over, StockReach.DISPLAY_CAP_DAYS)
+    else -> pluralStringResource(R.plurals.warehouse_stock_reach_days, days, days)
+}
+
+private fun reachColor(level: ReachLevel): Color = when (level) {
+    ReachLevel.CRITICAL -> StockRed
+    ReachLevel.WARNING -> StockOrange
+    ReachLevel.OK, ReachLevel.UNKNOWN -> StockGreen
+}
+
+/** Units per day with one decimal in the device locale ("1,2" in German). */
+private fun formatDailySales(value: Double): String = String.format(Locale.getDefault(), "%.1f", value)
 
 @Composable
 private fun ExpirationBadge(dateIso: String, color: Color) {

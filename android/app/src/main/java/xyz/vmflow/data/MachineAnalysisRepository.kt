@@ -76,7 +76,7 @@ data class SwapLogContext(
  * mirrors the defensive decode in `MachineAnalysisViewModel.swift` (lines
  * 288-297 and 312-318) for `revenue_eur` / `avg_daily_units`.
  */
-private object FlexibleDoubleSerializer : KSerializer<Double> {
+internal object FlexibleDoubleSerializer : KSerializer<Double> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("FlexibleDouble", PrimitiveKind.DOUBLE)
 
     override fun serialize(encoder: Encoder, value: Double) = encoder.encodeDouble(value)
