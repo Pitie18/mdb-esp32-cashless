@@ -180,11 +180,14 @@ object WarehouseIntakeLogic {
      * (deliberately non-localized) literal "Unknown", matching iOS's own
      * `p.name ?? "Unknown"` verbatim (`WarehouseViewModel.swift:202`).
      * Output order follows [products]' input order — no sorting here either.
+     * [velocity] (product id → avg units/day) feeds the stock reach; missing
+     * products count as "no sales".
      */
     fun buildProductSummaries(
         products: List<ProductSummaryInput>,
         batches: List<BatchSummaryInput>,
         today: LocalDate,
+        velocity: Map<String, Double> = emptyMap(),
     ): List<WarehouseProductSummary> {
         data class BatchAggregate(var totalQuantity: Int = 0, var batchCount: Int = 0, var earliestExpiration: String? = null)
 
@@ -214,6 +217,7 @@ object WarehouseIntakeLogic {
                 earliestExpiration = earliestExpiration,
                 discontinued = product.discontinued,
                 expirationStatus = expirationStatus(earliestExpiration, today),
+                avgDailySales = velocity[product.productId] ?: 0.0,
             )
         }
     }

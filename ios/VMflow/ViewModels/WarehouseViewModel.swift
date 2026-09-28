@@ -31,6 +31,8 @@ final class WarehouseViewModel: ObservableObject {
     /// (RLS scopes it). Drives the out-of-stock exemption above.
     @Published var assignedProductIds: Set<UUID> = []
     @Published var expirationFilter: ExpirationFilterOption = .all
+    /// Shortest stock reach first instead of alphabetical (products without sales last).
+    @Published var sortByReach = false
 
     /// Filter options for the stock list's expiration severity.
     enum ExpirationFilterOption: String, CaseIterable, Identifiable {
@@ -47,7 +49,7 @@ final class WarehouseViewModel: ObservableObject {
 
     /// True when any filter deviates from the default view.
     var hasActiveFilters: Bool {
-        includeOutOfStock || includeArchived || expirationFilter != .all
+        includeOutOfStock || includeArchived || expirationFilter != .all || sortByReach
     }
 
     // Intake form state
@@ -71,8 +73,8 @@ final class WarehouseViewModel: ObservableObject {
 
     // MARK: - Computed
 
-    /// Product summaries after search + filters, sorted purely by name (web
-    /// parity). Stock level deliberately does NOT influence the order — a
+    /// Product summaries after search + filters, sorted by name (web parity) —
+    /// or, with `sortByReach`, shortest stock reach first. Stock level deliberately does NOT influence the order — a
     /// zero-stock product sits where its name puts it and is identified by its
     /// red quantity + "Out of Stock" badge instead of by position.
     var filteredSummaries: [WarehouseProductSummary] {
@@ -98,7 +100,12 @@ final class WarehouseViewModel: ObservableObject {
         }
 
         return items.sorted { lhs, rhs in
-            lhs.productName.localizedCaseInsensitiveCompare(rhs.productName) == .orderedAscending
+            if sortByReach {
+                let l = lhs.daysRemaining ?? Int.max
+                let r = rhs.daysRemaining ?? Int.max
+                if l != r { return l < r }
+            }
+            return lhs.productName.localizedCaseInsensitiveCompare(rhs.productName) == .orderedAscending
         }
     }
 
@@ -176,7 +183,10 @@ final class WarehouseViewModel: ObservableObject {
                 .execute()
                 .value
 
+            async let velocityRes = loadVelocity(warehouseId: warehouseId)
+
             let (productRows, batchRows) = try await (productsRes, batchesRes)
+            let velocity = await velocityRes
 
             // Aggregate batches per product
             var stock: [UUID: (total: Int, count: Int, earliest: String?)] = [:]
@@ -205,7 +215,8 @@ final class WarehouseViewModel: ObservableObject {
                     batchCount: s?.count ?? 0,
                     earliestExpiration: s?.earliest,
                     discontinued: p.discontinued ?? false,
-                    expirationStatus: WarehouseProductSummary.expirationStatus(for: s?.earliest)
+                    expirationStatus: WarehouseProductSummary.expirationStatus(for: s?.earliest),
+                    avgDailySales: velocity[p.id] ?? 0
                 )
             }
         } catch is CancellationError {
@@ -213,6 +224,61 @@ final class WarehouseViewModel: ObservableObject {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    // MARK: - Load Sales Velocity
+
+    /// Fleet-wide avg units sold per day, keyed by product, over the company's
+    /// `velocity_days` window (default 30 — the setting the web warehouse page
+    /// uses). Best-effort like on the web: a failure yields an empty map, so
+    /// the list still loads, just without reach.
+    private func loadVelocity(warehouseId: UUID) async -> [UUID: Double] {
+        guard let companyId = warehouses.first(where: { $0.id == warehouseId })?.companyId else { return [:] }
+
+        struct CompanyRow: Decodable {
+            let velocityDays: Int?
+            enum CodingKeys: String, CodingKey { case velocityDays = "velocity_days" }
+        }
+        struct VelocityRow: Decodable {
+            let productId: UUID
+            let avgDailyUnits: Double
+
+            enum CodingKeys: String, CodingKey {
+                case productId = "product_id", avgDailyUnits = "avg_daily_units"
+            }
+
+            // `numeric` arrives as number or string depending on PostgREST version.
+            init(from decoder: Decoder) throws {
+                let c = try decoder.container(keyedBy: CodingKeys.self)
+                productId = try c.decode(UUID.self, forKey: .productId)
+                if let d = (try? c.decodeIfPresent(Double.self, forKey: .avgDailyUnits)) ?? nil {
+                    avgDailyUnits = d
+                } else if let s = (try? c.decodeIfPresent(String.self, forKey: .avgDailyUnits)) ?? nil, let d = Double(s) {
+                    avgDailyUnits = d
+                } else {
+                    avgDailyUnits = 0
+                }
+            }
+        }
+
+        let company: [CompanyRow]? = try? await client
+            .from("companies")
+            .select("velocity_days")
+            .eq("id", value: companyId.uuidString)
+            .execute()
+            .value
+        let days = company?.first?.velocityDays ?? 30
+
+        guard let rows: [VelocityRow] = try? await client.rpc("get_product_sales_velocity", params: [
+            "p_company_id": AnyJSON.string(companyId.uuidString),
+            "p_days": AnyJSON.integer(days),
+        ]).execute().value else { return [:] }
+
+        var velocity: [UUID: Double] = [:]
+        for row in rows where row.avgDailyUnits > 0 {
+            velocity[row.productId] = row.avgDailyUnits
+        }
+        return velocity
     }
 
     // MARK: - Load Machine Assignments

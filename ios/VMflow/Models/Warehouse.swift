@@ -60,11 +60,35 @@ struct WarehouseProductSummary: Identifiable, Equatable {
     let earliestExpiration: String?  // date string or nil
     let discontinued: Bool
     let expirationStatus: ExpirationStatus
+    /// Fleet-wide average units sold per day (`get_product_sales_velocity`);
+    /// 0 when the product didn't sell in the window.
+    var avgDailySales: Double = 0
 
     var id: UUID { productId }
 
     var isLow: Bool { totalQuantity > 0 && totalQuantity < 10 }
     var isOutOfStock: Bool { totalQuantity == 0 }
+
+    /// Reach above this is shown as ">90 days" — beyond that the exact figure is noise.
+    static let reachDisplayCapDays = 90
+
+    /// Days until this warehouse's stock runs out at the current sales rate,
+    /// `round(quantity / avgDailySales)`; nil without sales. Same formula as
+    /// the web warehouse page (`estimated_days_remaining`) and Android `StockReach`.
+    var daysRemaining: Int? {
+        guard avgDailySales > 0 else { return nil }
+        return Int((Double(totalQuantity) / avgDailySales).rounded())
+    }
+
+    /// ≤ 7 days critical, ≤ 14 warning — the web page's thresholds.
+    var reachLevel: ReachLevel {
+        guard let days = daysRemaining else { return .unknown }
+        if days <= 7 { return .critical }
+        if days <= 14 { return .warning }
+        return .ok
+    }
+
+    enum ReachLevel { case critical, warning, ok, unknown }
 
     /// Classifies a `yyyy-MM-dd` date string into an expiration severity.
     /// critical: < 7 days away (incl. already expired); warning: ≤ 30 days; else ok.
