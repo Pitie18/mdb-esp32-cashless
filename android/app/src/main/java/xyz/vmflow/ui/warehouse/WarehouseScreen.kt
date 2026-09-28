@@ -145,6 +145,7 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
                             onToggleOutOfStock = { viewModel.toggleIncludeOutOfStock() },
                             onToggleArchived = { viewModel.toggleIncludeArchived() },
                             onExpirationFilterChange = { filter -> viewModel.setExpirationFilter(filter) },
+                            onToggleSortByReach = { viewModel.toggleSortByReach() },
                             onProductClick = { productId ->
                                 drilldownProductId = productId
                                 adjustBatchId = null

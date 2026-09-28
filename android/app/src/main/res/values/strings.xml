@@ -26,6 +26,15 @@
     <string name="warehouse_stock_filter_expiring_soon">Expiring soon</string>
     <string name="warehouse_stock_filter_critical">Critical</string>
     <string name="warehouse_stock_low">Low</string>
+    <string name="warehouse_stock_per_day">%1$s / day</string>
+    <string name="warehouse_stock_no_sales">No sales</string>
+    <plurals name="warehouse_stock_reach_days">
+        <item quantity="one">~%1$d day</item>
+        <item quantity="other">~%1$d days</item>
+    </plurals>
+    <string name="warehouse_stock_reach_under_one">&lt;1 day</string>
+    <string name="warehouse_stock_reach_over">&gt;%1$d days</string>
+    <string name="warehouse_stock_sort_reach">Shortest reach</string>
     <string name="warehouse_stock_empty_no_stock">No stock in this warehouse</string>
     <string name="warehouse_stock_empty_search">No products matching \"%1$s\"</string>
     <string name="warehouse_stock_empty_filtered">No products match the current filters</string>
