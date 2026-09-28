@@ -1,7 +1,2 @@
-Improved
-• Deals: make "not valid yet" offers unmistakable, group by validity
-
-Fixed
-• Stop "fill all" booking stock the driver never packed
-• Distribute a reduced pack quantity without inventing units
-• Restore MDB status and real uptime on Device Health
+New
+• Show throughput and stock reach in warehouse list

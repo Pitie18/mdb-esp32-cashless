@@ -1,7 +1,2 @@
-Verbessert
-• Deals: make "not valid yet" offers unmistakable, group by validity
-
-Behoben
-• Stop "fill all" booking stock the driver never packed
-• Distribute a reduced pack quantity without inventing units
-• Restore MDB status and real uptime on Device Health
+Neu
+• Show throughput and stock reach in warehouse list
