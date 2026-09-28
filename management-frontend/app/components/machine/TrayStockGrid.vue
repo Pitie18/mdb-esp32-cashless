@@ -3,14 +3,15 @@ import { computeSlotWidths, slotRowCol } from '@/composables/useMachineAnalysis'
 import type { TrayGroupInfo } from '@/lib/trayGroups'
 
 /**
- * Compact stock map of the machine, laid out like the Analysis grid (10
- * columns, width = gap to the next slot). A cell's colour is its **product's**
+ * Stock map of the machine, laid out and styled like the Analysis grid
+ * (`analysis/MachineLayoutGrid.vue`: 10 columns, width = gap to the next
+ * slot, product image, slot number bottom-left, stock top-right). A cell's colour is its **product's**
  * status, so all slots of a product light up together; an empty slot of an
  * otherwise stocked product only gets a dashed outline. Tapping a cell
  * selects its product and highlights every slot that holds it.
  */
 const props = defineProps<{
-  trays: { id: string; item_number: number; product_id: string | null; product_name: string | null; current_stock: number; capacity: number }[]
+  trays: { id: string; item_number: number; product_id: string | null; product_name: string | null; image_url?: string | null; current_stock: number; capacity: number }[]
   index: Map<string, TrayGroupInfo<any>>
   selectedProductId: string | null
 }>()
@@ -45,13 +46,13 @@ function toggle(productId: string | null) {
 
 <template>
   <div class="flex flex-col gap-2">
-    <div class="grid gap-1" :style="{ gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gridAutoRows: '2.75rem' }">
+    <div class="grid gap-1.5" :style="{ gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gridAutoRows: '6.5rem' }">
       <button
         v-for="cell in cells"
         :key="cell.tray.id"
         type="button"
         :style="{ gridColumn: `${cell.column + 1} / span ${cell.width}`, gridRow: `${cell.row + 1}` }"
-        class="flex min-w-0 flex-col items-center justify-center rounded-md border-2 px-0.5 leading-tight transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        class="relative flex min-w-0 flex-col items-center justify-center overflow-hidden rounded-md border-2 p-1 transition-opacity hover:brightness-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         :class="[
           cellClass(cell.info, cell.tray.product_id),
           selectedProductId && cell.tray.product_id === selectedProductId ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : '',
@@ -60,8 +61,35 @@ function toggle(productId: string | null) {
         :title="cell.tray.product_name ?? ''"
         @click="toggle(cell.tray.product_id)"
       >
-        <span class="text-[10px] font-semibold tabular-nums">{{ cell.tray.item_number }}</span>
-        <span v-if="cell.tray.product_id" class="text-[9px] tabular-nums text-muted-foreground">{{ cell.tray.current_stock }}/{{ cell.tray.capacity }}</span>
+        <!-- Product image / placeholder -->
+        <img
+          v-if="cell.tray.image_url"
+          :src="cell.tray.image_url"
+          :alt="cell.tray.product_name ?? ''"
+          loading="lazy"
+          class="aspect-square w-full max-w-16 rounded object-cover"
+          :class="cell.tray.product_id && cell.tray.current_stock === 0 ? 'grayscale opacity-60' : ''"
+        />
+        <div
+          v-else
+          class="flex aspect-square w-full max-w-16 items-center justify-center rounded bg-muted/50 text-sm text-muted-foreground"
+        >
+          {{ cell.tray.product_id ? (cell.tray.product_name ?? '?').charAt(0) : '—' }}
+        </div>
+
+        <!-- Slot number (bottom-left) -->
+        <span class="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[9px] font-semibold tabular-nums text-white">
+          {{ cell.tray.item_number }}
+        </span>
+
+        <!-- Stock (top-right) -->
+        <span
+          v-if="cell.tray.product_id"
+          class="absolute right-0.5 top-0.5 rounded px-1 text-[9px] font-semibold tabular-nums"
+          :class="cell.info?.needsRefill && cell.info.group.state !== 'fill' ? 'bg-red-600 text-white' : 'bg-black/50 text-white'"
+        >
+          {{ cell.tray.current_stock }}<span class="hidden sm:inline">/{{ cell.tray.capacity }}</span>
+        </span>
       </button>
     </div>
     <div class="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">

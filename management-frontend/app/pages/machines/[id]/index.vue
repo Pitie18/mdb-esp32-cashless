@@ -112,6 +112,11 @@ const trayRows = computed(() => {
   return productListRows(trays.value, trayGroupIndex.value, t => visible.has(t.id))
 })
 
+const stockGridTrays = computed(() => trays.value.map(tr => ({
+  ...tr,
+  image_url: trayProductMap.value.get(tr.item_number)?.image_url ?? null,
+})))
+
 const selectedGridProduct = computed(() => {
   if (!selectedGridProductId.value) return null
   const tray = trays.value.find(t => t.product_id === selectedGridProductId.value)
@@ -1657,7 +1662,7 @@ async function handleAddSale() {
                     </div>
                   </div>
                   <TrayStockGrid
-                    :trays="trays"
+                    :trays="stockGridTrays"
                     :index="trayGroupIndex"
                     :selected-product-id="selectedGridProductId"
                     @select="(id) => (selectedGridProductId = id)"
