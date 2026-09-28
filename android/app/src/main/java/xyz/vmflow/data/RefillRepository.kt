@@ -14,7 +14,6 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
 import xyz.vmflow.models.ProductCategory
 import xyz.vmflow.models.RefillMachine
-import xyz.vmflow.models.RefillTray
 import xyz.vmflow.models.RefillTrayPayload
 import xyz.vmflow.models.Tray
 import xyz.vmflow.models.TrayApplicationResult
@@ -44,10 +43,13 @@ object RefillRepository {
      * only trays below threshold: the refill step's UI shows full trays too,
      * collapsed. A machine with zero trays drops out of the result; a
      * machine with trays is included even if none of them currently need a
-     * refill — need-based filtering now happens downstream, over the
-     * combined packing list, not here (see [RefillTourLogic.buildCombinedPackingList]).
+     * refill: the pre-tour review looks at every machine, and the tour itself
+     * is narrowed down by the caller ([RefillTourLogic.tourMachines]).
      *
-     * `fillAmount` on every [RefillTray] starts at the tray's `deficit`.
+     * Built by [RefillTourLogic.buildRefillMachines]: `fillAmount` starts at
+     * the slot deficit for slots of product groups needing refill, 0 for the
+     * rest, and each machine carries which of its products the warehouse can
+     * refill.
      *
      * The returned machine order carries **no meaning** — it is whatever
      * order the `vendingMachine` fetch happened to yield. iOS sorts by
@@ -87,16 +89,18 @@ object RefillRepository {
                     .decodeList<Tray>()
             }
 
-            val traysByMachine = trays.groupBy { it.machineId }
-            val refillMachines = machines.mapNotNull { machine ->
-                val machineTrays = traysByMachine[machine.id]
-                if (machineTrays.isNullOrEmpty()) return@mapNotNull null
-                RefillMachine(
-                    machine = machine,
-                    trays = machineTrays.map { tray -> RefillTray(tray = tray, fillAmount = tray.deficit) }
+            // Company-wide warehouse presence decides which products are
+            // refillable (PWA `initTour`). A failed fetch degrades to "no
+            // warehouse data" — every product refillable — like the machine list.
+            val warehouseProductIds = MachineRepository.fetchWarehouseStockProductIds().getOrDefault(emptySet())
+            Result.success(
+                RefillTourLogic.buildRefillMachines(
+                    machines = machines,
+                    trays = trays,
+                    warehouseProductIds = warehouseProductIds,
+                    hasWarehouses = warehouseProductIds.isNotEmpty()
                 )
-            }
-            Result.success(refillMachines)
+            )
         } catch (e: Exception) {
             Result.failure(e)
         }

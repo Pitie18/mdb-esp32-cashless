@@ -93,6 +93,7 @@ struct StockHealthIndicator: View {
     private var localizedLabel: LocalizedStringKey {
         switch health {
         case .ok: return "Ok"
+        case .fill: return "Top off"
         case .low: return "Low"
         case .critical: return "Critical"
         }
@@ -101,6 +102,7 @@ struct StockHealthIndicator: View {
     private var color: Color {
         switch health {
         case .ok: return .green
+        case .fill: return .blue
         case .low: return .yellow
         case .critical: return .red
         }
@@ -109,6 +111,7 @@ struct StockHealthIndicator: View {
     private var iconName: String {
         switch health {
         case .ok: return "checkmark.circle.fill"
+        case .fill: return "arrow.up.circle.fill"
         case .low: return "exclamationmark.triangle.fill"
         case .critical: return "xmark.octagon.fill"
         }
@@ -124,6 +127,7 @@ struct StockHealthIndicator: View {
 
         HStack(spacing: 16) {
             StockHealthIndicator(health: .ok)
+            StockHealthIndicator(health: .fill)
             StockHealthIndicator(health: .low)
             StockHealthIndicator(health: .critical)
         }

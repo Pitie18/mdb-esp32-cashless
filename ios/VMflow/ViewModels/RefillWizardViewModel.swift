@@ -10,6 +10,13 @@ struct RefillMachine: Identifiable, Equatable, Codable {
     var isPacked: Bool = false
     var isRefilled: Bool = false
     var isSkipped: Bool = false
+    /// Tour health, fixed when the tour list is built (warehouse-aware, see
+    /// `RefillWizardViewModel.buildRefillMachines`). Optional so tours saved
+    /// by older builds (without the key) still decode.
+    var health: StockHealth? = nil
+    /// Refillable products that are sold out or low — the tie-breaker of the
+    /// tour order. Optional for the same reason as `health`.
+    var urgentProductCount: Int? = nil
 
     var id: UUID { machine.id }
 
@@ -39,14 +46,15 @@ struct RefillMachine: Identifiable, Equatable, Codable {
         return Int((Double(totalCurrentStock) / Double(totalCapacity) * 100).rounded())
     }
 
-    /// Stock health derived from the product groups (all slots of a product
-    /// summed, see `MachineStockHealth`): an empty slot whose product is still
-    /// in another slot is not critical.
+    /// Tour health: critical if a refillable product group is sold out, low
+    /// if one is low, else fill (mirrors the PWA's `initTour`). Tours saved
+    /// before `health` existed fall back to the product groups alone.
     var stockHealth: StockHealth {
-        let groups = MachineStockHealth.groupTraysByProduct(trays.map(\.tray))
+        if let health { return health }
+        let groups = MachineStockHealth.groupTraysByProduct(trays.map(\.tray)).filter(\.needsRefill)
         if groups.contains(where: { $0.state == .critical }) { return .critical }
         if groups.contains(where: { $0.state == .low }) { return .low }
-        return .ok
+        return groups.isEmpty ? .ok : .fill
     }
 
     /// Products needed with quantities (aggregated for packing).
@@ -991,6 +999,7 @@ final class RefillWizardViewModel: ObservableObject {
     // MARK: - Load Data
 
     /// Build the list of machines that need refilling from raw machine/tray data.
+    /// Mirrors the PWA's `initTour` (`useRefillWizard.ts`).
     ///
     /// Stock is judged per **product**, not per slot: all slots of a product in
     /// a machine form one group with summed stock/capacity/thresholds
@@ -998,55 +1007,111 @@ final class RefillWizardViewModel: ObservableObject {
     /// `stock-health.ts`).
     ///
     /// Filter logic:
-    /// 1. A machine is included only if at least one product group is
-    ///    critical (sold out in every slot) or low (at/below its summed min stock).
-    /// 2. Trays included: **every slot** of each product group that needs a
-    ///    refill (`groupNeedsRefill`), including slots that are already full —
-    ///    the packed quantity is later spread across them emptiest-first
-    ///    (`MachineStockHealth.distributeAcrossSlots`). Fill-tier groups ride
-    ///    along only when the machine already qualifies via rule 1.
-    /// 3. Product-less trays never qualify a machine; they ride along with the
-    ///    old per-slot rule (deficit and empty/low/fill threshold) so the
-    ///    driver can still top them up manually.
+    /// 1. A machine is included when at least one product group that needs a
+    ///    refill (`groupNeedsRefill`, top-off included) is **refillable** —
+    ///    a positive batch exists in any warehouse of the company, or the
+    ///    company has no warehouse stock at all
+    ///    (`MachineStockHealth.isProductRefillable`).
+    /// 2. Tour health: critical if a refillable group is sold out, low if one
+    ///    is low, else fill.
+    /// 3. Trays included: **every slot** of each product group that needs a
+    ///    refill — non-refillable products too (the packing step greys them
+    ///    out) — including slots that are already full; the packed quantity
+    ///    is later spread across them emptiest-first
+    ///    (`MachineStockHealth.distributeAcrossSlots`).
+    /// 4. Unassigned slots (no product) never ride along.
+    /// 5. Order: critical, low, fill; then more sold-out + low refillable
+    ///    products first.
     ///
     /// Static so both `loadData()` and `refreshDuringPacking()` share identical filtering.
-    private static func buildRefillMachines(allMachines: [VendingMachine], allTrays: [Tray]) -> [RefillMachine] {
+    private static func buildRefillMachines(
+        allMachines: [VendingMachine],
+        allTrays: [Tray],
+        warehouseProductIds: Set<UUID>,
+        hasWarehouses: Bool
+    ) -> [RefillMachine] {
         let traysByMachine = Dictionary(grouping: allTrays, by: { $0.machineId })
         var refillMachines: [RefillMachine] = []
-        var criticalProductsByMachine: [UUID: Int] = [:]
 
         for machine in allMachines {
             let machineTrays = traysByMachine[machine.id] ?? []
             let groups = MachineStockHealth.groupTraysByProduct(machineTrays).filter(\.needsRefill)
 
-            let hasEmptyOrLow = groups.contains { $0.state == .critical || $0.state == .low }
-            guard hasEmptyOrLow else { continue }
+            var empty = 0, low = 0, fill = 0
+            for group in groups where MachineStockHealth.isProductRefillable(
+                productId: group.productId,
+                warehouseProductIds: warehouseProductIds,
+                hasWarehouses: hasWarehouses
+            ) {
+                switch group.state {
+                case .critical: empty += 1
+                case .low: low += 1
+                default: fill += 1
+                }
+            }
+            guard empty + low + fill > 0 else { continue }
 
             let trayIdsInGroups = Set(groups.flatMap { $0.trays.map(\.id) })
-            let refillTrays: [RefillTray] = machineTrays.compactMap { tray in
-                if tray.productId != nil {
-                    guard trayIdsInGroups.contains(tray.id) else { return nil }
-                    return RefillTray(tray: tray, fillAmount: tray.deficit)
-                }
-                guard tray.deficit > 0 else { return nil }
-                guard tray.isEmpty || tray.isBelowMinStock || tray.isBelowFillThreshold else { return nil }
-                return RefillTray(tray: tray, fillAmount: tray.deficit)
-            }
-
+            let refillTrays: [RefillTray] = machineTrays
+                .filter { trayIdsInGroups.contains($0.id) }
+                .map { RefillTray(tray: $0, fillAmount: $0.deficit) }
             guard !refillTrays.isEmpty else { continue }
-            refillMachines.append(RefillMachine(machine: machine, trays: refillTrays))
-            criticalProductsByMachine[machine.id] = groups.filter { $0.state == .critical }.count
+
+            var refillMachine = RefillMachine(machine: machine, trays: refillTrays)
+            refillMachine.health = empty > 0 ? .critical : low > 0 ? .low : .fill
+            refillMachine.urgentProductCount = empty + low
+            refillMachines.append(refillMachine)
         }
 
-        // Sort by urgency: machines with sold-out products first, then by total deficit.
-        refillMachines.sort { a, b in
-            let aEmpty = criticalProductsByMachine[a.id] ?? 0
-            let bEmpty = criticalProductsByMachine[b.id] ?? 0
-            if aEmpty != bEmpty { return aEmpty > bEmpty }
-            return a.totalDeficit > b.totalDeficit
+        func rank(_ health: StockHealth) -> Int {
+            switch health {
+            case .critical: return 0
+            case .low: return 1
+            case .fill: return 2
+            case .ok: return 3
+            }
         }
+        // Stable sort: ties keep the fetch order, like the PWA.
+        return refillMachines.enumerated().sorted { a, b in
+            let ra = rank(a.element.stockHealth), rb = rank(b.element.stockHealth)
+            if ra != rb { return ra < rb }
+            let ua = a.element.urgentProductCount ?? 0, ub = b.element.urgentProductCount ?? 0
+            if ua != ub { return ua > ub }
+            return a.offset < b.offset
+        }.map(\.element)
+    }
 
-        return refillMachines
+    /// Company-wide warehouse availability for the tour selection: product
+    /// ids with a positive batch in **any** warehouse, and whether any batch
+    /// exists at all (same presence check as the machine list and the PWA's
+    /// `buildWarehouseStockInfo`).
+    private func fetchCompanyWarehouseAvailability() async throws -> (productIds: Set<UUID>, hasWarehouses: Bool) {
+        struct BatchRow: Decodable {
+            let productId: UUID?
+            enum CodingKeys: String, CodingKey { case productId = "product_id" }
+        }
+        let rows: [BatchRow] = try await client
+            .from("warehouse_stock_batches")
+            .select("product_id, quantity")
+            .gt("quantity", value: 0)
+            .execute()
+            .value
+        return (Set(rows.compactMap(\.productId)), !rows.isEmpty)
+    }
+
+    /// Display health of a tour machine, mirroring the PWA's
+    /// `effectiveStockHealth`: a machine is shown as `ok` (dimmed) when none
+    /// of its listed products has stock in the **selected** warehouse. Uses
+    /// the raw warehouse stock, not what is left after packing, so packing
+    /// the last unit doesn't collapse the machine.
+    func effectiveStockHealth(_ machine: RefillMachine) -> StockHealth {
+        let health = machine.stockHealth
+        guard health != .ok, selectedWarehouseId != nil else { return health }
+        let productIds = Set(machine.trays.compactMap(\.tray.productId))
+        let hasRefillable = productIds.contains { pid in
+            (warehouseStockFor(productId: pid)?.totalQuantity ?? 0) > 0
+        }
+        return hasRefillable ? health : .ok
     }
 
     /// Re-fetch machines/trays and warehouse stock in response to realtime
@@ -1082,7 +1147,13 @@ final class RefillWizardViewModel: ObservableObject {
                 .execute()
                 .value
 
-            self.machines = Self.buildRefillMachines(allMachines: allMachines, allTrays: allTrays)
+            let availability = try await fetchCompanyWarehouseAvailability()
+            self.machines = Self.buildRefillMachines(
+                allMachines: allMachines,
+                allTrays: allTrays,
+                warehouseProductIds: availability.productIds,
+                hasWarehouses: availability.hasWarehouses
+            )
             self.allTraysByMachine = Dictionary(grouping: allTrays, by: { $0.machineId })
 
             // `packedItems` keyed by machineId still applies to machines that are
@@ -1255,7 +1326,13 @@ final class RefillWizardViewModel: ObservableObject {
                 .value
             print("[RefillWizard] Fetched \(allTrays.count) trays")
 
-            self.machines = Self.buildRefillMachines(allMachines: allMachines, allTrays: allTrays)
+            let availability = try await fetchCompanyWarehouseAvailability()
+            self.machines = Self.buildRefillMachines(
+                allMachines: allMachines,
+                allTrays: allTrays,
+                warehouseProductIds: availability.productIds,
+                hasWarehouses: availability.hasWarehouses
+            )
             let traysByMachine = Dictionary(grouping: allTrays, by: { $0.machineId })
             self.allTraysByMachine = traysByMachine
 
@@ -1680,7 +1757,6 @@ final class RefillWizardViewModel: ObservableObject {
 
         // Apply custom packing quantities and mark which trays belong to this tour.
         // Trays for products that were NOT packed get fillAmount = 0 and isInTour = false.
-        // Product-less trays always stay in the tour (user refills them manually).
         for mi in machines.indices {
             let machine = machines[mi]
             guard machine.isPacked else {
@@ -1696,8 +1772,9 @@ final class RefillWizardViewModel: ObservableObject {
             for ti in machines[mi].trays.indices {
                 let tray = machines[mi].trays[ti]
 
-                // Product-less trays: always part of the tour (bug 1 follow-through).
-                // Keep their initial fillAmount (= deficit) so the user sees something sensible.
+                // Product-less trays: no longer part of a freshly built tour
+                // (`buildRefillMachines` skips them, like the PWA); only a tour
+                // saved by an older build can still hold one — keep it as it was.
                 guard let productId = tray.tray.productId else {
                     machines[mi].trays[ti].isInTour = true
                     continue

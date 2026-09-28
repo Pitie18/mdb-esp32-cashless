@@ -30,9 +30,8 @@ import xyz.vmflow.models.Tray
 enum class TrayStockState { CRITICAL, LOW, FILL, OK }
 
 /**
- * Machine-level stock tier. Deliberately separate from
- * [xyz.vmflow.models.StockHealth] — that enum drives machine-card colouring
- * and has no `FILL` case; widening it is a UI change, not a counting one.
+ * Machine-level stock tier, driven only by refillable products. The machine
+ * list's [xyz.vmflow.models.MachineWithStats.StockHealth] maps 1:1 onto it.
  */
 enum class MachineStockTier { CRITICAL, LOW, FILL, OK }
 
@@ -112,9 +111,6 @@ enum class TrayStockFlag {
     /** Nothing to do. */
     OK,
 }
-
-/** Products (not slots) needing refill in one machine, by severity. */
-data class ProductRefillCounts(val soldOut: Int = 0, val low: Int = 0, val fill: Int = 0)
 
 /** A slot's product group plus the derived per-slot flag. */
 data class TrayGroupInfo(
@@ -290,22 +286,26 @@ object StockHealth {
     }
 
     /**
-     * Summary counts for the machine-detail Overview card, in **products**:
-     * products needing refill split by severity (sold out / low / top off).
+     * The tray list's search, a port of the PWA's `fuzzyFilter`
+     * (`app/lib/fuzzySearch.ts`) over product name and slot number: every
+     * character of the trimmed [query] must appear in order in one of the two
+     * fields, case-insensitive. A blank query matches everything.
      */
-    fun productRefillCounts(trays: List<Tray>): ProductRefillCounts {
-        var soldOut = 0
-        var low = 0
-        var fill = 0
-        for (group in groupTraysByProduct(trays)) {
-            if (!groupNeedsRefill(group)) continue
-            when (group.state) {
-                TrayStockState.CRITICAL -> soldOut++
-                TrayStockState.LOW -> low++
-                else -> fill++
-            }
+    fun trayMatchesSearch(tray: Tray, query: String): Boolean {
+        val q = query.trim()
+        if (q.isEmpty()) return true
+        return fuzzyMatch(q, tray.products?.name) || fuzzyMatch(q, tray.itemNumber.toString())
+    }
+
+    private fun fuzzyMatch(query: String, target: String?): Boolean {
+        if (target.isNullOrEmpty()) return false
+        val q = query.lowercase()
+        val t = target.lowercase()
+        var qi = 0
+        for (c in t) {
+            if (qi < q.length && c == q[qi]) qi++
         }
-        return ProductRefillCounts(soldOut, low, fill)
+        return qi == q.length
     }
 
     /**

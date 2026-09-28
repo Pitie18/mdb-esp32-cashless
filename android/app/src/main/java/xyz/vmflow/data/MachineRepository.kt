@@ -103,7 +103,7 @@ object MachineRepository {
         return try {
             val machines = fetchMachines().getOrThrow()
             // A warehouse-fetch failure degrades gracefully to "no warehouse
-            // data" (every deficit row becomes UNKNOWN) rather than failing
+            // data" (every product refillable, deficit rows UNKNOWN) rather than failing
             // the whole machine list — this is enrichment, not core data.
             val warehouseProductIds = fetchWarehouseStockProductIds().getOrDefault(emptySet())
             val hasWarehouses = warehouseProductIds.isNotEmpty()
@@ -188,18 +188,17 @@ object MachineRepository {
                         trays = trays,
                         trayDeficits = deficitSummary.trayDeficits,
                         swapNeededCount = deficitSummary.swapNeededCount,
-                        noStockCount = deficitSummary.noStockCount
+                        noStockCount = deficitSummary.noStockCount,
+                        warehouseProductIds = warehouseProductIds,
+                        hasWarehouses = hasWarehouses
                     )
                 } catch (_: Exception) {
                     MachineWithStats(machine = machine)
                 }
             }
 
-            // Sort: critical > low > ok, then by productsNeedingRefill desc
-            val sorted = machinesWithStats.sortedWith(
-                compareBy<MachineWithStats> { it.stockHealth.ordinal }
-                    .thenByDescending { it.productsNeedingRefill }
-            )
+            // PWA order: critical > low > top off > ok, then sold-out + low products desc.
+            val sorted = machinesWithStats.sortedWith(MachineWithStats.STOCK_URGENCY)
 
             Result.success(sorted)
         } catch (e: Exception) {
@@ -223,6 +222,9 @@ object MachineRepository {
                     limit(1)
                 }
                 .decodeSingle<VendingMachineWithEmbedded>()
+
+            // Degrades to "no warehouse data" (every product refillable) on failure, like the list.
+            val warehouseProductIds = fetchWarehouseStockProductIds().getOrDefault(emptySet())
 
             val now = Clock.System.now()
             val tz = TimeZone.currentSystemDefault()
@@ -289,7 +291,10 @@ object MachineRepository {
                     yesterdayRevenue = yesterdaySales.sumOf { it.itemPrice },
                     lastSaleAt = lastSale?.createdAt,
                     paxCount = paxCount,
-                    trays = trays
+                    trays = trays,
+                    // Same warehouse-aware counts as the machine list's card.
+                    warehouseProductIds = warehouseProductIds,
+                    hasWarehouses = warehouseProductIds.isNotEmpty()
                 )
             )
         } catch (e: Exception) {

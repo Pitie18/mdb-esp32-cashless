@@ -2,6 +2,8 @@ package xyz.vmflow.ui.refill
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +60,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -69,6 +72,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import xyz.vmflow.R
+import xyz.vmflow.data.MachineStockTier
 import xyz.vmflow.data.RefillTourLogic
 import xyz.vmflow.models.CombinedPackingItem
 import xyz.vmflow.models.MachineNeed
@@ -78,6 +82,8 @@ import xyz.vmflow.ui.components.ProductImage
 import xyz.vmflow.ui.theme.StockGreen
 import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
+import xyz.vmflow.ui.theme.VMflowBlue
+import xyz.vmflow.ui.theme.VMflowBlueLight
 
 /**
  * Pack step — the screen a driver uses to load the van from a warehouse
@@ -133,11 +139,10 @@ fun PackingStep(
 ) {
     val haptic = LocalHapticFeedback.current
 
-    // Chips: "All" plus one per machine that actually has a need. iOS builds
-    // its chip order from every machine in `machines`, but its machine list
-    // is pre-filtered to machines needing a refill; Android's
-    // `RefillRepository.fetchRefillMachines` returns every machine that has
-    // trays, so filtering by need here is what reproduces iOS's chip set.
+    // Chips: "All" plus one per machine that actually has a need, in the
+    // tour's urgency order. `machines` is already narrowed to the tour's
+    // machines (RefillTourLogic.tourMachines); the need filter additionally
+    // drops a machine whose needs vanished (e.g. after a replacement).
     val machineIdsWithNeeds = uiState.packingList
         .flatMap { item -> item.machineNeeds.map { it.machineId } }
         .toSet()
@@ -190,7 +195,10 @@ fun PackingStep(
                     machineId = id,
                     name = machine.machine.displayName,
                     count = chipItemCount(id),
-                    isFullyPacked = chipIsFullyPacked(id)
+                    isFullyPacked = chipIsFullyPacked(id),
+                    // PWA `effectiveStockHealth`: OK once the selected warehouse
+                    // holds none of this machine's products needing refill.
+                    tier = RefillTourLogic.displayTier(machine, uiState.warehouseStock, uiState.stockLoaded)
                 )
             )
         }
@@ -584,7 +592,9 @@ private data class ChipState(
     val name: String,
     /** Outstanding units for this chip, from `RefillViewModel.chipItemCount`. */
     val count: Int,
-    val isFullyPacked: Boolean
+    val isFullyPacked: Boolean,
+    /** The machine's tour health, shown as a dot; `null` for the "All" chip. */
+    val tier: MachineStockTier? = null
 )
 
 /**
@@ -612,6 +622,7 @@ private fun PackChipRow(
                 count = chip.count,
                 isSelected = activeChip == chip.machineId,
                 isFullyPacked = chip.isFullyPacked,
+                tier = chip.tier,
                 onClick = { onSelectChip(chip.machineId) }
             )
         }
@@ -624,8 +635,16 @@ private fun PackChip(
     count: Int,
     isSelected: Boolean,
     isFullyPacked: Boolean,
+    tier: MachineStockTier?,
     onClick: () -> Unit
 ) {
+    val tierColor: Color? = when (tier) {
+        null -> null
+        MachineStockTier.CRITICAL -> StockRed
+        MachineStockTier.LOW -> StockOrange
+        MachineStockTier.FILL -> if (isSystemInDarkTheme()) VMflowBlueLight else VMflowBlue
+        MachineStockTier.OK -> StockGreen
+    }
     FilterChip(
         selected = isSelected,
         onClick = onClick,
@@ -658,6 +677,15 @@ private fun PackChip(
                     contentDescription = stringResource(R.string.refill_pack_status_complete),
                     tint = StockGreen,
                     modifier = Modifier.size(18.dp)
+                )
+            }
+        } else if (tierColor != null) {
+            {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(tierColor)
                 )
             }
         } else {

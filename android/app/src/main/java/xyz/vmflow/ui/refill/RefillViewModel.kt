@@ -51,9 +51,11 @@ import xyz.vmflow.models.Warehouse
  * `RefillViewModel.withPackingList`) whenever its inputs — [machines] or
  * [pickOrder] — change.
  *
- * @property machines every machine with at least one tray, in the
- *   repository's meaningless fetch order. The tour's visit order is
- *   established at tour start (Task 8), not here.
+ * @property machines the tour's machines: every machine with at least one
+ *   refillable product group needing refill
+ *   ([xyz.vmflow.data.RefillTourLogic.tourMachines], PWA `initTour`), most
+ *   urgent first (critical, low, fill; then sold-out + low product count).
+ *   Re-sorted at tour start and on resume.
  * @property warehouseStock `productId -> total units in the selected
  *   warehouse`. Empty before the first load, after a failed load, and for a
  *   warehouse that genuinely holds nothing. There is deliberately no
@@ -247,6 +249,13 @@ class RefillViewModel : ViewModel() {
      */
     private var reviewCompleted = false
 
+    /**
+     * Every machine with trays from the last load — the pre-tour review's
+     * input. [RefillUiState.machines] holds only the tour's machines
+     * ([RefillTourLogic.tourMachines]). Flow state, like [reviewCompleted].
+     */
+    private var reviewMachines: List<RefillMachine> = emptyList()
+
     /** Call from the screen on entry. No-op after the first call — see [didRunInitialLoad]. */
     fun loadDataIfNeeded() {
         if (didRunInitialLoad) return
@@ -323,7 +332,13 @@ class RefillViewModel : ViewModel() {
                 // Defensive: nothing reaches this branch with a non-empty
                 // `packedItems` today, and no future caller should be able
                 // to break the invariant either.
-                _uiState.update { it.copy(machines = machines).withSyncedPackedState() }
+                // The review looks at every machine; the tour only at the ones
+                // with a refillable product needing refill, most urgent first
+                // (PWA `initTour`).
+                reviewMachines = machines
+                _uiState.update {
+                    it.copy(machines = RefillTourLogic.tourMachines(machines)).withSyncedPackedState()
+                }
             },
             onFailure = { e ->
                 _uiState.update {
@@ -565,9 +580,11 @@ class RefillViewModel : ViewModel() {
         // Read after the awaits above, not before: `machines` and
         // `warehouseStock` were written by earlier steps of this same load.
         val state = _uiState.value
+        // Every machine, not only the tour's: a sold-out discontinued product
+        // in an otherwise fine machine still deserves a replacement.
         val suggestions = RefillReviewLogic.buildReplacementSuggestions(
-            machines = state.machines.map { it.machine },
-            traysByMachine = state.machines.associate { machine ->
+            machines = reviewMachines.map { it.machine },
+            traysByMachine = reviewMachines.associate { machine ->
                 machine.machine.id to machine.trays.map { it.tray }
             },
             stockedProductIds = state.warehouseStock.filterValues { it > 0 }.keys,

@@ -1,6 +1,5 @@
 package xyz.vmflow.ui.trays
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +41,7 @@ import xyz.vmflow.ui.theme.VMflowBlue
 import xyz.vmflow.ui.theme.VMflowBlueLight
 
 /**
- * A product group's status as the tray list and stock map show it — the same
+ * A product group's status as the tray list shows it — the same
  * four buckets as the PWA (`ProductGroupHeader.vue` / `TrayStockGrid.vue`):
  * sold out (red), low (amber), top off (blue), OK (green). A group that does
  * not need refill is OK even if its state says otherwise (a FILL group that is
@@ -84,7 +83,6 @@ internal fun GroupStatus.label(): String = stringResource(
 fun ProductGroupHeader(
     group: ProductStockGroup,
     needsRefill: Boolean,
-    selected: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
@@ -104,7 +102,6 @@ fun ProductGroupHeader(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
         ),
-        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

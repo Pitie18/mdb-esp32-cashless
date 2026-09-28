@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -22,6 +24,8 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,8 +68,8 @@ fun TrayListContent(
     // "By product" (default) groups a product's slots under a summary header;
     // "By slot" is the plain list. Mirrors the PWA's trayView toggle.
     var viewByProduct by rememberSaveable { mutableStateOf(true) }
-    // Product picked on the stock map; its slots are ringed in the map and the list.
-    var selectedProductId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Search on product name and slot number, like the PWA's tray search.
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -96,23 +100,32 @@ fun TrayListContent(
             // Top-off rows are only tinted while some product is actually low,
             // same rule as the PWA's tray list.
             val anyLow = remember(groupIndex) { groupIndex.values.any { it.flag == TrayStockFlag.LOW } }
-            val rows = remember(trays, groupIndex, viewByProduct) {
-                if (viewByProduct) StockHealth.productListRows(trays, groupIndex)
-                else trays.map { ProductListRow(tray = it) }
+            val rows = remember(trays, groupIndex, viewByProduct, searchQuery) {
+                val visible: (Tray) -> Boolean = { StockHealth.trayMatchesSearch(it, searchQuery) }
+                // Headers keep the whole product's totals even when the search hides some of its slots.
+                if (viewByProduct) StockHealth.productListRows(trays, groupIndex, visible)
+                else trays.filter(visible).map { ProductListRow(tray = it) }
             }
-            // A selection whose product disappeared (slot reassigned/deleted) is dropped.
-            val activeSelection = selectedProductId?.takeIf { id -> trays.any { it.productId == id } }
 
             LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                item(key = "stock-map") {
-                    TrayStockMap(
-                        trays = trays,
-                        index = groupIndex,
-                        selectedProductId = activeSelection,
-                        onSelect = { selectedProductId = it }
+                item(key = "search") {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(stringResource(R.string.tray_search_hint)) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.warehouse_stock_search_clear))
+                                }
+                            }
+                        },
+                        singleLine = true
                     )
                 }
                 item(key = "view-toggle") {
@@ -140,8 +153,7 @@ fun TrayListContent(
                         item(key = "header-${header.productId}") {
                             ProductGroupHeader(
                                 group = header,
-                                needsRefill = groupIndex[tray.id]?.needsRefill ?: false,
-                                selected = activeSelection == header.productId
+                                needsRefill = groupIndex[tray.id]?.needsRefill ?: false
                             )
                         }
                     }
@@ -153,8 +165,7 @@ fun TrayListContent(
                             onDelete = { onDeleteTray(tray.id) },
                             modifier = if (row.inGroup) Modifier.padding(start = 16.dp) else Modifier,
                             flag = groupIndex[tray.id]?.flag ?: TrayStockFlag.OK,
-                            showFillHighlight = anyLow,
-                            selected = activeSelection != null && tray.productId == activeSelection
+                            showFillHighlight = anyLow
                         )
                     }
                 }

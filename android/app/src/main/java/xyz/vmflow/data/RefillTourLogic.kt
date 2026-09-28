@@ -5,6 +5,8 @@ import xyz.vmflow.models.CombinedPackingItem
 import xyz.vmflow.models.MachineNeed
 import xyz.vmflow.models.RefillMachine
 import xyz.vmflow.models.RefillTray
+import xyz.vmflow.models.Tray
+import xyz.vmflow.models.VendingMachineWithEmbedded
 import xyz.vmflow.models.WarehousePositionGroup
 import xyz.vmflow.models.WarehouseProductPosition
 
@@ -28,6 +30,18 @@ import xyz.vmflow.models.WarehouseProductPosition
  * deducts only the intersection of `packedItems` and the machine's actual
  * tray products, never "every tray product".
  *
+ * **Which machines and slots the tour covers follows the PWA refill wizard**
+ * (`management-frontend/app/composables/useRefillWizard.ts`, on top of
+ * `app/lib/stock-health.ts`): stock is judged per product group
+ * ([StockHealth.groupTraysByProduct]); a machine joins the tour when at
+ * least one product the warehouse can refill needs a refill
+ * ([StockHealth.groupNeedsRefill], fill-only machines included); its packing
+ * needs are every product group needing refill with the group deficit
+ * (including products without warehouse stock, which the pack step shows as
+ * out of stock); and the refill step only covers the slots of those groups,
+ * with the packed amount spread emptiest slot first. Unassigned slots are
+ * never part of a tour.
+ *
  * Nothing here touches coroutines, Supabase, Android, a clock, or
  * randomness — everything it needs comes in as parameters, same split as
  * `WarehouseIntakeLogic.kt` / `MachineAnalysis.kt`.
@@ -43,10 +57,11 @@ object RefillTourLogic {
 
     /**
      * Packing quantity for a machine-product pair: the pinned custom quantity
-     * if one was set, else the sum of deficits across this machine's trays
-     * holding this product (deficit > 0 only — full trays contribute 0
-     * anyway, since [xyz.vmflow.models.Tray.deficit] is already clamped at 0,
-     * but the filter mirrors iOS exactly).
+     * if one was set, else the product's **group deficit** (its slots'
+     * capacity minus their stock, summed) — but only while the product group
+     * needs a refill ([StockHealth.groupNeedsRefill]); a product that is fine
+     * in this machine needs nothing. PWA `effectiveDeficit` before the
+     * warehouse cap.
      */
     fun packingQuantity(
         machine: RefillMachine,
@@ -55,10 +70,114 @@ object RefillTourLogic {
     ): Int {
         val custom = customQuantities[machine.machine.id]?.get(productId)
         if (custom != null) return custom
-        return machine.trays
-            .filter { it.tray.productId == productId && it.deficit > 0 }
-            .sumOf { it.deficit }
+        return refillGroups(machine).firstOrNull { it.productId == productId }?.deficit ?: 0
     }
+
+    // ── Tour scope (PWA `initTour` / `effectiveStockHealth`) ─────────────
+
+    /** Product groups of [machine] that need a refill, judged on the trays' current stock. */
+    fun refillGroups(machine: RefillMachine): List<ProductStockGroup> =
+        StockHealth.groupTraysByProduct(machine.trays.map { it.tray })
+            .filter { StockHealth.groupNeedsRefill(it) }
+
+    /** Whether the warehouse can refill [productId] for [machine] (see [RefillMachine.refillableProductIds]). */
+    fun isRefillable(machine: RefillMachine, productId: String): Boolean =
+        machine.refillableProductIds?.contains(productId) ?: true
+
+    /**
+     * The machine's tour health, driven only by refillable product groups:
+     * critical if one is sold out in every slot, else low, else fill, else ok.
+     */
+    fun machineTier(machine: RefillMachine): MachineStockTier {
+        var low = false
+        var fill = false
+        for (group in refillGroups(machine)) {
+            if (!isRefillable(machine, group.productId)) continue
+            when (group.state) {
+                TrayStockState.CRITICAL -> return MachineStockTier.CRITICAL
+                TrayStockState.LOW -> low = true
+                else -> fill = true
+            }
+        }
+        return when {
+            low -> MachineStockTier.LOW
+            fill -> MachineStockTier.FILL
+            else -> MachineStockTier.OK
+        }
+    }
+
+    /** Refillable products sold out or low — the PWA's `low_trays`, the tour order's tie-breaker. */
+    fun lowOrEmptyProductCount(machine: RefillMachine): Int =
+        refillGroups(machine).count {
+            isRefillable(machine, it.productId) &&
+                (it.state == TrayStockState.CRITICAL || it.state == TrayStockState.LOW)
+        }
+
+    /**
+     * The tier the pack step shows for a machine, PWA `effectiveStockHealth`:
+     * [machineTier], downgraded to OK once the selected warehouse's stock is
+     * known and **none** of the machine's products needing refill has stock
+     * there. Uses the raw warehouse totals, not what is left after other
+     * machines' commitments, so packing doesn't make a machine flip to OK.
+     *
+     * While no stock is loaded ([stockLoaded] false — no warehouse selected,
+     * still loading, or a failed load) the tier is shown as is.
+     */
+    fun displayTier(
+        machine: RefillMachine,
+        warehouseStock: Map<String, Int>,
+        stockLoaded: Boolean
+    ): MachineStockTier {
+        val tier = machineTier(machine)
+        if (tier == MachineStockTier.OK || !stockLoaded) return tier
+        val anyInStock = refillGroups(machine).any { (warehouseStock[it.productId] ?: 0) > 0 }
+        return if (anyInStock) tier else MachineStockTier.OK
+    }
+
+    /**
+     * Builds a [RefillMachine] for every machine that has trays, resolving
+     * which of its products the warehouse can refill. Initial fill amounts
+     * are the slot deficits of product groups that need a refill, 0 for every
+     * other slot (including unassigned ones).
+     *
+     * @param warehouseProductIds product ids with any positive batch, company-wide.
+     * @param hasWarehouses false when there is no warehouse stock at all —
+     *   then every product counts as refillable.
+     */
+    fun buildRefillMachines(
+        machines: List<VendingMachineWithEmbedded>,
+        trays: List<Tray>,
+        warehouseProductIds: Set<String>,
+        hasWarehouses: Boolean
+    ): List<RefillMachine> {
+        val traysByMachine = trays.groupBy { it.machineId }
+        return machines.mapNotNull { machine ->
+            val machineTrays = traysByMachine[machine.id]
+            if (machineTrays.isNullOrEmpty()) return@mapNotNull null
+            val needing = StockHealth.groupTraysByProduct(machineTrays)
+                .filter { StockHealth.groupNeedsRefill(it) }
+                .flatMapTo(HashSet()) { group -> group.trays.map { it.id } }
+            RefillMachine(
+                machine = machine,
+                trays = machineTrays.map { tray ->
+                    RefillTray(tray = tray, fillAmount = if (tray.id in needing) tray.deficit else 0)
+                },
+                refillableProductIds = if (hasWarehouses) {
+                    machineTrays.mapNotNullTo(HashSet()) { it.productId }.filterTo(HashSet()) { it in warehouseProductIds }
+                } else {
+                    null
+                }
+            )
+        }
+    }
+
+    /**
+     * The tour's machines, PWA `initTour`: every machine with at least one
+     * refillable product group needing refill (fill-only machines included),
+     * in [sortByVisitOrder] order.
+     */
+    fun tourMachines(machines: List<RefillMachine>): List<RefillMachine> =
+        sortByVisitOrder(machines.filter { machineTier(it) != MachineStockTier.OK })
 
     /** Total quantity already committed (packed) for a product, across all machines that packed it. */
     fun committedQuantity(
@@ -195,23 +314,20 @@ object RefillTourLogic {
     /**
      * Applies the same packed/product gating as [buildDeductions] to the
      * trays themselves, producing the tour-scoped machine list `startTour()`
-     * builds:
+     * builds — the PWA refill step (`loadTraysForCurrentMachine`):
      *  - Unpacked machine: every tray gets `isInTour = false`.
-     *  - Packed machine, product-less tray: always stays in the tour with
-     *    its existing `fillAmount` (the driver refills it manually).
-     *  - Packed machine, tray whose product was NOT packed: `isInTour =
-     *    false`, `fillAmount = 0`.
-     *  - Packed machine, tray whose product WAS packed: `isInTour = true`;
-     *    if a custom quantity is pinned for that product, its `fillAmount`
-     *    comes from [StockHealth.distributeAcrossSlots], which splits the
-     *    pinned quantity across every slot of that product **emptiest slot
-     *    first** (ties by slot number) — so a short-packed product never
-     *    leaves one selection sold out while another slot of the same product
-     *    gets topped up. Mirrors the PWA refill wizard (`useRefillWizard.ts`,
-     *    via `app/lib/stock-health.ts`). Otherwise the tray keeps its
-     *    existing `fillAmount`.
+     *  - Unassigned slot, or a slot whose product was not packed or does not
+     *    need a refill in this machine ([refillGroups]): `isInTour = false`,
+     *    `fillAmount = 0`.
+     *  - Slots of a packed product group needing refill: the packed quantity
+     *    ([packingQuantity] — the pinned custom quantity, else the group
+     *    deficit) is split with [StockHealth.distributeAcrossSlots],
+     *    **emptiest slot first** (ties by slot number), so a short-packed
+     *    product never leaves one selection sold out while another slot of
+     *    the same product gets topped up. A slot that receives 0 is hidden
+     *    (`isInTour = false`), exactly like the PWA.
      *
-     * Ledger invariant: the pinned quantity is the number the driver
+     * Ledger invariant: the packed quantity is the number the driver
      * physically carried and the number [buildDeductions] charges the
      * warehouse, so the fills sum to **exactly** that quantity — the one
      * exception being a pin above the slots' combined headroom
@@ -231,55 +347,30 @@ object RefillTourLogic {
             }
 
             val packedProductIds = packedItems[machine.machine.id] ?: emptySet()
-            val machineCustom = customQuantities[machine.machine.id] ?: emptyMap()
 
-            // Precompute the emptiest-first fill override per tray, for every
-            // packed product that has a pinned custom quantity.
-            val overrides = mutableMapOf<String, Int>() // trayId -> fillAmount
-            val productsWithCustom = machine.trays
-                .mapNotNull { it.tray.productId }
-                .toSet()
-                .filter { it in packedProductIds && machineCustom[it] != null }
-            for (productId in productsWithCustom) {
-                val slots = machine.trays.map { it.tray }.filter { it.productId == productId }
-                val amounts = StockHealth.distributeAcrossSlots(slots, machineCustom.getValue(productId))
-                slots.forEachIndexed { index, tray -> overrides[tray.id] = amounts[index] }
+            val fills = mutableMapOf<String, Int>() // trayId -> fillAmount
+            for (group in refillGroups(machine)) {
+                if (group.productId !in packedProductIds) continue
+                val amount = packingQuantity(machine, group.productId, customQuantities)
+                val amounts = StockHealth.distributeAcrossSlots(group.trays, amount)
+                group.trays.forEachIndexed { index, tray -> fills[tray.id] = amounts[index] }
             }
 
             val newTrays = machine.trays.map { rt ->
-                val productId = rt.tray.productId
-                when {
-                    productId == null -> rt.copy(isInTour = true)
-                    productId !in packedProductIds -> rt.copy(isInTour = false, fillAmount = 0)
-                    else -> {
-                        val override = overrides[rt.tray.id]
-                        if (override != null) rt.copy(isInTour = true, fillAmount = override) else rt.copy(isInTour = true)
-                    }
-                }
+                val fill = fills[rt.tray.id] ?: 0
+                rt.copy(isInTour = fill > 0, fillAmount = fill)
             }
             machine.copy(trays = newTrays)
         }
     }
 
     /**
-     * The tour's visit order, most urgent machine first: machines with the
-     * most sold-out products first, then by [RefillMachine.totalDeficit]
-     * descending, then by machine id ascending.
-     *
-     * Ported from iOS `buildRefillMachines`' final sort
-     * (`RefillWizardViewModel.swift:1017-1022`) — a step
-     * [RefillRepository.fetchRefillMachines] deliberately bypasses, which is
-     * why the tour has to establish its own order. iOS compares the *count*
-     * of empty trays (not a boolean "has empty trays"); since the multi-slot
-     * rework this counts **products** sold out in every slot
-     * ([StockHealth.groupTraysByProduct], state `CRITICAL`), so an empty slot
-     * whose product is still in another slot no longer makes a machine urgent.
-     *
-     * The machine-id tiebreaker is the reason this is a total order: iOS's
-     * two-key comparison leaves machines with identical urgency in whatever
-     * order the fetch produced, so the same tour could list them differently
-     * on a resume or a recomposition. Same rationale as
-     * [buildCombinedPackingList]'s `productId` tiebreaker.
+     * The tour's visit order, PWA `initTour`'s sort: by tour health
+     * ([machineTier] — critical, low, fill, ok), then by the number of
+     * refillable products sold out or low ([lowOrEmptyProductCount])
+     * descending. Two extra tie-breakers keep it a total order so the same
+     * tour never lists machines differently on a resume or a recomposition:
+     * [RefillMachine.totalDeficit] descending, then machine id ascending.
      *
      * Sorts the whole list, packed and unpacked alike, so `machines` stays
      * the single ordered source the refill step walks; unpacked machines are
@@ -287,18 +378,15 @@ object RefillTourLogic {
      */
     fun sortByVisitOrder(machines: List<RefillMachine>): List<RefillMachine> =
         machines.sortedWith(
-            compareByDescending<RefillMachine> { m -> soldOutProductCount(m) }
+            compareBy<RefillMachine> { machineTier(it).ordinal }
+                .thenByDescending { lowOrEmptyProductCount(it) }
                 .thenByDescending { it.totalDeficit }
                 .thenBy { it.machine.id }
         )
 
-    /** Products of [machine] sold out in every one of their slots. */
-    private fun soldOutProductCount(machine: RefillMachine): Int =
-        StockHealth.groupTraysByProduct(machine.trays.map { it.tray })
-            .count { it.state == TrayStockState.CRITICAL }
-
     /**
-     * Products needed across ALL machines (independent of `isPacked`),
+     * Products needed across ALL machines (independent of `isPacked`): every
+     * product group needing refill ([refillGroups]) with its group deficit,
      * grouped by product into one [CombinedPackingItem] per product with a
      * [MachineNeed] per machine that needs it.
      *
@@ -333,34 +421,27 @@ object RefillTourLogic {
 
         val grouped = LinkedHashMap<String, Accumulator>()
         for (machine in machines) {
-            for (rt in machine.trays) {
-                if (rt.deficit <= 0) continue
-                val productId = rt.tray.productId ?: continue
-                val acc = grouped.getOrPut(productId) {
+            // One need per product group needing refill, with the group deficit
+            // (PWA `tray_summary`) — products without warehouse stock included.
+            for (group in refillGroups(machine)) {
+                if (group.deficit <= 0) continue
+                val product = group.trays.firstNotNullOfOrNull { it.products }
+                val acc = grouped.getOrPut(group.productId) {
                     Accumulator(
-                        productName = rt.tray.products?.name,
-                        imagePath = rt.tray.products?.imagePath,
-                        sellprice = rt.tray.products?.sellprice,
+                        productName = product?.name,
+                        imagePath = product?.imagePath,
+                        sellprice = product?.sellprice,
                         totalQuantity = 0,
                         needs = LinkedHashMap()
                     )
                 }
-                acc.totalQuantity += rt.deficit
-
-                val existing = acc.needs[machine.machine.id]
-                acc.needs[machine.machine.id] = if (existing != null) {
-                    existing.copy(
-                        quantity = existing.quantity + rt.deficit,
-                        capacity = existing.capacity + rt.tray.capacity
-                    )
-                } else {
-                    MachineNeed(
-                        machineId = machine.machine.id,
-                        machineName = machine.machine.displayName,
-                        quantity = rt.deficit,
-                        capacity = rt.tray.capacity
-                    )
-                }
+                acc.totalQuantity += group.deficit
+                acc.needs[machine.machine.id] = MachineNeed(
+                    machineId = machine.machine.id,
+                    machineName = machine.machine.displayName,
+                    quantity = group.deficit,
+                    capacity = group.capacity
+                )
             }
         }
 

@@ -37,7 +37,12 @@ class RefillTourLogicTest {
         productId: String? = "p1",
         capacity: Int = 10,
         currentStock: Int = 0,
-        product: Product? = null
+        product: Product? = null,
+        minStock: Int? = null,
+        // Default: "top off whenever not full", so a fixture slot with room
+        // needs a refill (FILL tier) unless a test says otherwise. Without a
+        // threshold only a sold-out product would need one.
+        fillWhenBelow: Int? = capacity
     ) = Tray(
         id = id,
         machineId = machineId,
@@ -45,6 +50,8 @@ class RefillTourLogicTest {
         productId = productId,
         capacity = capacity,
         currentStock = currentStock,
+        minStock = minStock,
+        fillWhenBelow = fillWhenBelow,
         products = product
     )
 
@@ -58,11 +65,13 @@ class RefillTourLogicTest {
         machineId: String,
         trays: List<RefillTray>,
         isPacked: Boolean = false,
-        machineName: String = "Machine $machineId"
+        machineName: String = "Machine $machineId",
+        refillableProductIds: Set<String>? = null
     ) = RefillMachine(
         machine = vm(machineId, machineName),
         trays = trays,
-        isPacked = isPacked
+        isPacked = isPacked,
+        refillableProductIds = refillableProductIds
     )
 
     // ─── packingQuantity ─────────────────────────────────────────────────
@@ -284,7 +293,9 @@ class RefillTourLogicTest {
     }
 
     @Test
-    fun `applyTourInclusion keeps product-less trays in the tour with their initial fillAmount`() {
+    fun `applyTourInclusion never refills an unassigned slot`() {
+        // PWA parity: a slot without a product is not a product group, so the
+        // refill step neither shows nor books it.
         val machine = refillMachine(
             "m1",
             listOf(refillTray(tray("t1", machineId = "m1", productId = null, capacity = 10, currentStock = 3), fillAmount = 7, isInTour = true)),
@@ -293,8 +304,68 @@ class RefillTourLogicTest {
         val result = RefillTourLogic.applyTourInclusion(listOf(machine), emptyMap(), emptyMap())
 
         val t = result[0].trays[0]
-        assertTrue(t.isInTour)
-        assertEquals(7, t.fillAmount)
+        assertFalse(t.isInTour)
+        assertEquals(0, t.fillAmount)
+    }
+
+    @Test
+    fun `applyTourInclusion skips a packed product whose group does not need a refill`() {
+        // Product A: 0 + 9 of 20 with min_stock 1 per slot and no fill
+        // threshold -> group 9 > 2, state OK. The empty slot is only a hint.
+        val machine = refillMachine(
+            "m1",
+            listOf(
+                refillTray(tray("t1", itemNumber = 1, productId = "A", capacity = 10, currentStock = 0, minStock = 1, fillWhenBelow = null), fillAmount = 10),
+                refillTray(tray("t2", itemNumber = 2, productId = "A", capacity = 10, currentStock = 9, minStock = 1, fillWhenBelow = null), fillAmount = 1),
+            ),
+            isPacked = true
+        )
+        val result = RefillTourLogic.applyTourInclusion(listOf(machine), mapOf("m1" to setOf("A")), emptyMap())
+
+        assertTrue(result[0].trays.none { it.isInTour })
+        assertTrue(result[0].trays.all { it.fillAmount == 0 })
+    }
+
+    @Test
+    fun `applyTourInclusion spreads the group deficit and hides slots that receive nothing`() {
+        // No pinned quantity: the packed amount is the group deficit (4 + 0),
+        // the full slot gets 0 and is hidden from the refill step.
+        val machine = refillMachine(
+            "m1",
+            listOf(
+                refillTray(tray("t1", itemNumber = 1, productId = "A", capacity = 10, currentStock = 6)),
+                refillTray(tray("t2", itemNumber = 2, productId = "A", capacity = 10, currentStock = 10)),
+            ),
+            isPacked = true
+        )
+        val result = RefillTourLogic.applyTourInclusion(listOf(machine), mapOf("m1" to setOf("A")), emptyMap())
+
+        val trays = result[0].trays.associateBy { it.tray.id }
+        assertEquals(4, trays.getValue("t1").fillAmount)
+        assertTrue(trays.getValue("t1").isInTour)
+        assertEquals(0, trays.getValue("t2").fillAmount)
+        assertFalse(trays.getValue("t2").isInTour)
+    }
+
+    @Test
+    fun `applyTourInclusion hides a slot a short-packed product does not reach`() {
+        // Pinned 3 across slots at 0 and 5 (capacity 10): all 3 go to the
+        // empty slot, the other one gets nothing and is hidden.
+        val machine = refillMachine(
+            "m1",
+            listOf(
+                refillTray(tray("t1", itemNumber = 1, productId = "A", capacity = 10, currentStock = 0)),
+                refillTray(tray("t2", itemNumber = 2, productId = "A", capacity = 10, currentStock = 5)),
+            ),
+            isPacked = true
+        )
+        val result = RefillTourLogic.applyTourInclusion(
+            listOf(machine), mapOf("m1" to setOf("A")), mapOf("m1" to mapOf("A" to 3))
+        )
+        val trays = result[0].trays.associateBy { it.tray.id }
+        assertEquals(3, trays.getValue("t1").fillAmount)
+        assertTrue(trays.getValue("t1").isInTour)
+        assertFalse(trays.getValue("t2").isInTour)
     }
 
     @Test
@@ -620,7 +691,7 @@ class RefillTourLogicTest {
     // ─── sortByVisitOrder ────────────────────────────────────────────────
 
     @Test
-    fun `sortByVisitOrder puts the machine with more sold-out products first`() {
+    fun `sortByVisitOrder puts a machine with a sold-out product before a top-off-only one`() {
         // "few" has the larger total deficit but no sold-out product (its
         // empty slot's product is still in the other slot), so the sold-out
         // count must outrank the deficit — same precedence as iOS.
@@ -644,7 +715,7 @@ class RefillTourLogicTest {
     }
 
     @Test
-    fun `sortByVisitOrder falls back to total deficit descending at equal empty-tray counts`() {
+    fun `sortByVisitOrder falls back to total deficit descending at equal tier and low count`() {
         // The ids are chosen so the id tiebreaker would put them the OTHER way
         // round ("a_small" < "z_big"). Without the totalDeficit key this test
         // fails instead of passing by coincidence.
@@ -717,6 +788,118 @@ class RefillTourLogicTest {
 
         val result = RefillTourLogic.sortByVisitOrder(listOf(slots, product))
         assertEquals(listOf("z_product", "a_slots"), result.map { it.machine.id })
+    }
+
+    @Test
+    fun `sortByVisitOrder ranks critical, low, fill and then by sold-out plus low count`() {
+        fun m(id: String, vararg trays: Tray) = refillMachine(id, trays.map { refillTray(it) })
+        // fill only
+        val fill = m("a_fill", tray("f1", machineId = "a_fill", capacity = 10, currentStock = 5))
+        // low: stock 2 at/below min_stock 3
+        val low = m("b_low", tray("l1", machineId = "b_low", capacity = 10, currentStock = 2, minStock = 3))
+        // critical with one sold-out product
+        val critOne = m("c_crit1", tray("c1", machineId = "c_crit1", productId = "A", capacity = 10, currentStock = 0))
+        // critical with a sold-out and a low product -> ranks above critOne
+        val critTwo = m(
+            "d_crit2",
+            tray("d1", machineId = "d_crit2", itemNumber = 1, productId = "A", capacity = 10, currentStock = 0),
+            tray("d2", machineId = "d_crit2", itemNumber = 2, productId = "B", capacity = 10, currentStock = 1, minStock = 2),
+        )
+
+        val result = RefillTourLogic.sortByVisitOrder(listOf(fill, low, critOne, critTwo))
+        assertEquals(listOf("d_crit2", "c_crit1", "b_low", "a_fill"), result.map { it.machine.id })
+    }
+
+    // ─── tour scope (PWA initTour / effectiveStockHealth) ────────────────
+
+    @Test
+    fun `machineTier ignores products the warehouse cannot refill`() {
+        // A is sold out but has no warehouse stock; B only needs a top-off and is refillable.
+        val machine = refillMachine(
+            "m1",
+            listOf(
+                refillTray(tray("t1", itemNumber = 1, productId = "A", capacity = 10, currentStock = 0)),
+                refillTray(tray("t2", itemNumber = 2, productId = "B", capacity = 10, currentStock = 5)),
+            ),
+            refillableProductIds = setOf("B")
+        )
+        assertEquals(MachineStockTier.FILL, RefillTourLogic.machineTier(machine))
+        assertEquals(0, RefillTourLogic.lowOrEmptyProductCount(machine))
+    }
+
+    @Test
+    fun `tourMachines keeps machines with a refillable need, including fill-only ones`() {
+        val vms = listOf(vm("crit"), vm("fill"), vm("nostock"), vm("ok"), vm("unassigned"), vm("empty"))
+        val trays = listOf(
+            tray("c", machineId = "crit", productId = "A", currentStock = 0),
+            tray("f", machineId = "fill", productId = "A", currentStock = 5),
+            // sold out, but the warehouse has none of C
+            tray("n", machineId = "nostock", productId = "C", currentStock = 0),
+            tray("o", machineId = "ok", productId = "A", currentStock = 10),
+            // an empty unassigned slot never puts a machine on the tour
+            tray("u", machineId = "unassigned", productId = null, currentStock = 0),
+        )
+        val all = RefillTourLogic.buildRefillMachines(vms, trays, warehouseProductIds = setOf("A"), hasWarehouses = true)
+        assertEquals(listOf("crit", "fill", "nostock", "ok", "unassigned"), all.map { it.machine.id })
+
+        val tour = RefillTourLogic.tourMachines(all)
+        assertEquals(listOf("crit", "fill"), tour.map { it.machine.id })
+    }
+
+    @Test
+    fun `without warehouse stock every product counts as refillable`() {
+        val trays = listOf(tray("n", machineId = "m1", productId = "C", currentStock = 0))
+        val all = RefillTourLogic.buildRefillMachines(listOf(vm("m1")), trays, emptySet(), hasWarehouses = false)
+        assertEquals(null, all.single().refillableProductIds)
+        assertEquals(listOf("m1"), RefillTourLogic.tourMachines(all).map { it.machine.id })
+    }
+
+    @Test
+    fun `buildRefillMachines starts slots outside a group needing refill at zero`() {
+        val trays = listOf(
+            // A: 0 + 9 with min 1 each and no fill threshold -> OK group, empty slot is only a hint
+            tray("a1", machineId = "m1", itemNumber = 1, productId = "A", capacity = 10, currentStock = 0, minStock = 1, fillWhenBelow = null),
+            tray("a2", machineId = "m1", itemNumber = 2, productId = "A", capacity = 10, currentStock = 9, minStock = 1, fillWhenBelow = null),
+            tray("b1", machineId = "m1", itemNumber = 3, productId = "B", capacity = 10, currentStock = 0),
+            tray("u1", machineId = "m1", itemNumber = 4, productId = null, capacity = 10, currentStock = 0),
+        )
+        val machine = RefillTourLogic.buildRefillMachines(listOf(vm("m1")), trays, emptySet(), false).single()
+        assertEquals(mapOf("a1" to 0, "a2" to 0, "b1" to 10, "u1" to 0), machine.trays.associate { it.tray.id to it.fillAmount })
+    }
+
+    @Test
+    fun `buildCombinedPackingList lists every product group needing refill with its group deficit`() {
+        // A (no warehouse stock) is still listed; D is fine and is not; the
+        // unassigned slot is not; B's two slots are one need with the group deficit.
+        val machine = refillMachine(
+            "m1",
+            listOf(
+                refillTray(tray("a", itemNumber = 1, productId = "A", capacity = 10, currentStock = 0)),
+                refillTray(tray("b1", itemNumber = 2, productId = "B", capacity = 10, currentStock = 0)),
+                refillTray(tray("b2", itemNumber = 3, productId = "B", capacity = 10, currentStock = 7)),
+                refillTray(tray("d", itemNumber = 4, productId = "D", capacity = 10, currentStock = 8, fillWhenBelow = null)),
+                refillTray(tray("u", itemNumber = 5, productId = null, capacity = 10, currentStock = 0)),
+            ),
+            refillableProductIds = setOf("B")
+        )
+        val list = RefillTourLogic.buildCombinedPackingList(listOf(machine), emptyMap())
+        assertEquals(mapOf("B" to 13, "A" to 10), list.associate { it.productId to it.totalQuantity })
+        assertEquals(20, list.first { it.productId == "B" }.machineNeeds.single().capacity)
+    }
+
+    @Test
+    fun `displayTier downgrades to OK when the selected warehouse has none of the needed products`() {
+        val machine = refillMachine(
+            "m1",
+            listOf(
+                refillTray(tray("a", itemNumber = 1, productId = "A", capacity = 10, currentStock = 0)),
+                refillTray(tray("b", itemNumber = 2, productId = "B", capacity = 10, currentStock = 4)),
+            )
+        )
+        assertEquals(MachineStockTier.CRITICAL, RefillTourLogic.displayTier(machine, emptyMap(), stockLoaded = false))
+        assertEquals(MachineStockTier.OK, RefillTourLogic.displayTier(machine, mapOf("X" to 5), stockLoaded = true))
+        // One listed product in stock is enough to keep the tier.
+        assertEquals(MachineStockTier.CRITICAL, RefillTourLogic.displayTier(machine, mapOf("B" to 1), stockLoaded = true))
     }
 
     // ─── flattenPickOrder ────────────────────────────────────────────────

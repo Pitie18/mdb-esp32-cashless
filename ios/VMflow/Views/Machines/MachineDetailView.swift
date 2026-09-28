@@ -241,7 +241,8 @@ struct MachineDetailView: View {
                         title: "Stock",
                         value: viewModel.stockSummary,
                         color: viewModel.stats.stockHealth == .critical ? .red :
-                               viewModel.stats.stockHealth == .low ? .yellow : .green
+                               viewModel.stats.stockHealth == .low ? .yellow :
+                               viewModel.stats.stockHealth == .fill ? .blue : .green
                     )
                 }
 

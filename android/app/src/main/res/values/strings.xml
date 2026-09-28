@@ -205,15 +205,21 @@
     <string name="cash_book_category_other">Other</string>
 
     <!-- Machine list: per-product warehouse-availability deficit list (MachineCard) -->
-    <string name="machine_card_badge_empty">%1$d Empty</string>
-    <string name="machine_card_badge_low">%1$d Low</string>
-    <string name="machine_card_badge_swap">%1$d Swap</string>
-    <string name="machine_card_badge_no_stock">%1$d No Stock</string>
+    <string name="machine_card_badge_empty">%1$d out of stock</string>
+    <string name="machine_card_badge_low">%1$d refill needed</string>
+    <string name="machine_card_badge_swap">%1$d swap product</string>
+    <string name="machine_card_badge_no_stock">%1$d no stock</string>
+    <string name="machine_card_badge_topoff">%1$d recommended to top off</string>
+    <string name="machine_card_no_trays">No trays configured</string>
+    <plurals name="machine_card_all_stocked">
+        <item quantity="one">All stocked (%1$d tray)</item>
+        <item quantity="other">All stocked (%1$d trays)</item>
+    </plurals>
     <string name="machine_card_deficit_amount">(-%1$d)</string>
     <string name="machine_card_deficit_discontinued">DC</string>
-    <string name="machine_card_deficit_in_stock">In Stock</string>
-    <string name="machine_card_deficit_needs_swap">Swap</string>
-    <string name="machine_card_deficit_no_stock">No Stock</string>
+    <string name="machine_card_deficit_in_stock">in stock</string>
+    <string name="machine_card_deficit_needs_swap">swap</string>
+    <string name="machine_card_deficit_no_stock">no stock</string>
     <string name="machine_card_deficit_show_more">+%1$d more</string>
     <string name="machine_card_deficit_show_less">Show less</string>
     <string name="machine_card_unassigned_slot">Slot %1$d</string>
@@ -624,7 +630,6 @@
     <!-- Machine detail: tray list grouped by product (mirrors PWA machineDetail.*) -->
     <string name="tray_view_by_product">By product</string>
     <string name="tray_view_by_slot">By slot</string>
-    <string name="tray_stock_map">Layout</string>
     <plurals name="tray_group_slots">
         <item quantity="one">%d slot</item>
         <item quantity="other">%d slots</item>
@@ -642,14 +647,13 @@
     <string name="tray_group_state_low">Low</string>
     <string name="tray_group_state_fill">Top off</string>
     <string name="tray_group_state_ok">OK</string>
-    <string name="tray_clear_selection">Clear selection</string>
-    <!-- %1$s product name, %2$s "3 slots", %3$d stock, %4$d capacity -->
-    <string name="tray_selected_product_summary">%1$s · %2$s · %3$d/%4$d</string>
     <string name="tray_unassigned">No product</string>
-    <!-- Stock map cell, spoken: %1$d slot number, %2$s product, %3$s state -->
-    <string name="tray_stock_map_cell">Slot %1$d, %2$s, %3$s</string>
-    <string name="tray_stock_map_cell_unassigned">Slot %1$d, no product</string>
     <string name="machine_detail_products_sold_out">Sold-out products</string>
     <string name="machine_detail_products_low">Low products</string>
     <string name="machine_detail_products_fill">Products to top off</string>
+    <string name="machine_detail_stock_summary">Stock Summary</string>
+    <string name="machine_detail_total_stock">Total Stock</string>
+    <string name="machine_detail_stock_of_capacity">%1$d / %2$d</string>
+    <string name="machine_detail_tray_count">Trays</string>
+    <string name="tray_search_hint">Search…</string>
 </resources>

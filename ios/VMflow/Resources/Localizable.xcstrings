@@ -1150,25 +1150,24 @@
         }
       }
     },
-    "%lld Empty": {
-      "extractionState": "stale",
+    "%lld out of stock": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Leer"
+            "value": "%lld ausverkauft"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Vide"
+            "value": "%lld en rupture de stock"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Leeg"
+            "value": "%lld zonder voorraad"
           }
         }
       }
@@ -1288,25 +1287,46 @@
         }
       }
     },
-    "%lld Low": {
-      "extractionState": "stale",
+    "%lld refill needed": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Niedrig"
+            "value": "%lld Refill nötig"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Faible"
+            "value": "%lld réapprovisionnement(s) requis"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Laag"
+            "value": "%lld bijvulling(en) nodig"
+          }
+        }
+      }
+    },
+    "%lld recommended to top off": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Auffüllen empfohlen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld à réapprovisionner"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld bijvullen aanbevolen"
           }
         }
       }
@@ -1402,25 +1422,24 @@
         }
       }
     },
-    "%lld No Stock": {
-      "extractionState": "stale",
+    "%lld no stock": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Kein Lager"
+            "value": "%lld kein Lager"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Rupture"
+            "value": "%lld aucun stock"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Geen voorraad"
+            "value": "%lld geen voorraad"
           }
         }
       }
@@ -1746,7 +1765,7 @@
         }
       }
     },
-    "%lld slots empty, product available": {
+    "%lld slots empty, product in another slot": {
       "localizations": {
         "de": {
           "variations": {
@@ -1754,13 +1773,13 @@
               "one": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld Fach leer, Produkt vorhanden"
+                  "value": "%lld Fach leer, Produkt in anderem Fach"
                 }
               },
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld Fächer leer, Produkt vorhanden"
+                  "value": "%lld Fächer leer, Produkt in anderem Fach"
                 }
               }
             }
@@ -1772,13 +1791,13 @@
               "one": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld slot empty, product available"
+                  "value": "%lld slot empty, product in another slot"
                 }
               },
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld slots empty, product available"
+                  "value": "%lld slots empty, product in another slot"
                 }
               }
             }
@@ -1790,13 +1809,13 @@
               "one": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld emplacement vide, produit disponible"
+                  "value": "%lld emplacement vide, produit dans un autre"
                 }
               },
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld emplacements vides, produit disponible"
+                  "value": "%lld emplacements vides, produit dans un autre"
                 }
               }
             }
@@ -1808,13 +1827,13 @@
               "one": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld vak leeg, product beschikbaar"
+                  "value": "%lld vak leeg, product in ander vak"
                 }
               },
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld vakken leeg, product beschikbaar"
+                  "value": "%lld vakken leeg, product in ander vak"
                 }
               }
             }
@@ -1822,25 +1841,24 @@
         }
       }
     },
-    "%lld Swap": {
-      "extractionState": "stale",
+    "%lld swap product": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Tausch"
+            "value": "%lld Produkt wechseln"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Échange"
+            "value": "%lld produit(s) à remplacer"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Wissel"
+            "value": "%lld product(en) te vervangen"
           }
         }
       }
@@ -6662,28 +6680,6 @@
         }
       }
     },
-    "Layout": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Belegung"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Disposition"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Indeling"
-          }
-        }
-      }
-    },
     "likely mismatch": {
       "extractionState": "stale",
       "localizations": {
@@ -10343,19 +10339,19 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tausch"
+            "value": "Wechseln"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échanger"
+            "value": "Remplacer"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wisselen"
+            "value": "Vervangen"
           }
         }
       }
@@ -11541,66 +11537,6 @@
           }
         }
       }
-    },
-    "%lld empty, %lld low": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld empty, %lld low"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld leer, %lld niedrig"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld vide, %lld faible"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld leeg, %lld laag"
-          }
-        }
-      },
-      "comment": "Machine overview stock health summary: count of empty trays and count of low-stock trays."
-    },
-    "%lld low": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld low"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld niedrig"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld faible"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld laag"
-          }
-        }
-      },
-      "comment": "Machine overview stock health summary when no trays are empty but some are low."
     },
     "All good": {
       "extractionState": "manual",
@@ -13774,6 +13710,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bijvullen"
+          }
+        }
+      }
+    },
+    "stock_group_state_low": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Knapp"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Low"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bas"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laag"
           }
         }
       }

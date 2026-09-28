@@ -29,9 +29,9 @@ enum TrayStockState {
     case ok
 }
 
-/// Machine-level stock tier. Deliberately separate from ``StockHealth`` —
-/// that enum drives machine-card colouring and has no `fill` case; widening
-/// it is a UI change, not a counting one.
+/// Machine-level stock tier of the pure roll-up. ``StockHealth`` (the
+/// machine card's enum) has the same four tiers; this one stays separate so
+/// the pure logic doesn't depend on the UI model.
 enum MachineStockTier {
     case critical
     case low

@@ -2,6 +2,7 @@ package xyz.vmflow.ui.machines
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,8 @@ import xyz.vmflow.ui.components.StockHealthBar
 import xyz.vmflow.ui.theme.StockGreen
 import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
+import xyz.vmflow.ui.theme.VMflowBlue
+import xyz.vmflow.ui.theme.VMflowBlueLight
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -134,33 +137,65 @@ fun MachineCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Stock health bar
-            if (machineStats.trays.isNotEmpty()) {
-                StockHealthBar(trays = machineStats.trays)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // Warehouse-availability deficit list: summary badges + per-product rows.
-            // Every count is a PRODUCT, judged on the sums over all its slots
-            // (StockHealth.groupTraysByProduct): "Empty" = sold out in every slot,
-            // "Low" = at/below its summed min_stock or fill_when_below.
+            // Stock section, laid out like the PWA machine card
+            // (`pages/machines/index.vue`). Every count is a PRODUCT, judged on
+            // the sums over all its slots (StockHealth.groupTraysByProduct).
+            // Only products the warehouse can refill count as Empty / Low /
+            // Top off and drive the colour; the rest are "swap" (sold out) or
+            // "no warehouse stock".
             val stock = machineStats.productStock
-            val emptyProductCount = stock.refillableEmpty
-            val lowProductCount = stock.refillableLow + stock.refillableFill
-            if (emptyProductCount > 0 || lowProductCount > 0 || machineStats.swapNeededCount > 0 || machineStats.noStockCount > 0) {
+            val health = machineStats.stockHealth
+            val hasNoStockIssues = machineStats.swapNeededCount > 0 || machineStats.noStockCount > 0
+            val totalSlots = machineStats.trays.size
+
+            if (health == MachineWithStats.StockHealth.OK && !hasNoStockIssues) {
+                Text(
+                    text = if (totalSlots > 0) {
+                        pluralStringResource(R.plurals.machine_card_all_stocked, totalSlots, totalSlots)
+                    } else {
+                        stringResource(R.string.machine_card_no_trays)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                // Hint only, never a health input: slots that are empty while their
+                // product is still stocked in another slot of this machine.
+                if (stock.emptySlotsWithStock > 0) {
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.machine_card_empty_slots_with_stock,
+                            stock.emptySlotsWithStock,
+                            stock.emptySlotsWithStock
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            } else {
+                // "All stocked" context when only no-warehouse-stock issues remain.
+                if (health == MachineWithStats.StockHealth.OK) {
+                    Text(
+                        text = pluralStringResource(R.plurals.machine_card_all_stocked, totalSlots, totalSlots),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    if (emptyProductCount > 0) {
+                    if (stock.refillableEmpty > 0) {
                         SummaryBadge(
-                            text = stringResource(R.string.machine_card_badge_empty, emptyProductCount),
+                            text = stringResource(R.string.machine_card_badge_empty, stock.refillableEmpty),
                             color = StockRed
                         )
                     }
-                    if (lowProductCount > 0) {
+                    if (stock.refillableLow > 0) {
                         SummaryBadge(
-                            text = stringResource(R.string.machine_card_badge_low, lowProductCount),
+                            text = stringResource(R.string.machine_card_badge_low, stock.refillableLow),
                             color = StockOrange
                         )
                     }
@@ -176,28 +211,35 @@ fun MachineCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    if (stock.refillableFill > 0) {
+                        SummaryBadge(
+                            text = stringResource(R.string.machine_card_badge_topoff, stock.refillableFill),
+                            color = fillColor()
+                        )
+                    }
+                    if (stock.emptySlotsWithStock > 0) {
+                        SummaryBadge(
+                            text = pluralStringResource(
+                                R.plurals.machine_card_empty_slots_with_stock,
+                                stock.emptySlotsWithStock,
+                                stock.emptySlotsWithStock
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-            }
 
-            if (machineStats.trayDeficits.isNotEmpty()) {
-                DeficitRowsSection(machineStats.trayDeficits)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+                if (machineStats.trayDeficits.isNotEmpty()) {
+                    DeficitRowsSection(machineStats.trayDeficits)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
-            // Hint only, never a health input: slots that are empty while their
-            // product is still stocked in another slot of this machine.
-            if (stock.emptySlotsWithStock > 0) {
-                Text(
-                    text = pluralStringResource(
-                        R.plurals.machine_card_empty_slots_with_stock,
-                        stock.emptySlotsWithStock,
-                        stock.emptySlotsWithStock
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+                // Stock bar only while refillable products need attention (PWA).
+                if (health != MachineWithStats.StockHealth.OK) {
+                    StockHealthBar(trays = machineStats.trays)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
 
             // Last sale + pax
@@ -233,6 +275,10 @@ fun MachineCard(
         }
     }
 }
+
+/** Top-off tier colour — the PWA's blue, lighter in dark mode. */
+@Composable
+private fun fillColor(): Color = if (isSystemInDarkTheme()) VMflowBlueLight else VMflowBlue
 
 /** Capsule badge used by the summary row above the deficit list ("N Empty", "N Swap", …). */
 @Composable
@@ -299,7 +345,7 @@ private fun DeficitRow(deficit: TrayDeficit) {
         else -> when (deficit.severity) {
             StockSeverity.CRITICAL -> StockRed
             StockSeverity.LOW -> StockOrange
-            StockSeverity.FILL_BELOW -> MaterialTheme.colorScheme.primary
+            StockSeverity.FILL_BELOW -> fillColor()
         }
     }
 

@@ -147,18 +147,20 @@ class MachineDeficitsTest {
     }
 
     @Test
-    fun `a tray with null productId gets its own row named Slot N`() {
-        val t = tray("t1", itemNumber = 7, productId = null, capacity = 10, currentStock = 0)
-        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
-        assertEquals("Slot 7", summary.trayDeficits.single().productName)
+    fun `unassigned slots produce no row, like the PWA`() {
+        val t1 = tray("t1", itemNumber = 7, productId = null, capacity = 10, currentStock = 0)
+        val t2 = tray("t2", itemNumber = 8, productId = null, capacity = 10, currentStock = 2, minStock = 5)
+        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = true, slotLabel = { "Slot $it" })
+        assertTrue(summary.trayDeficits.isEmpty())
+        assertEquals(0, summary.swapNeededCount)
+        assertEquals(0, summary.noStockCount)
     }
 
     @Test
-    fun `two unassigned trays never merge even at the same severity`() {
-        val t1 = tray("t1", itemNumber = 7, productId = null, capacity = 10, currentStock = 0)
-        val t2 = tray("t2", itemNumber = 8, productId = null, capacity = 10, currentStock = 0)
-        val summary = MachineDeficits.computeDeficits(listOf(t1, t2), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
-        assertEquals(2, summary.trayDeficits.size)
+    fun `an assigned slot without a joined product name falls back to Slot N`() {
+        val t = tray("t1", itemNumber = 7, productId = "p1", capacity = 10, currentStock = 0)
+        val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = false, slotLabel = { "Slot $it" })
+        assertEquals("Slot 7", summary.trayDeficits.single().productName)
     }
 
     // ─── Warehouse availability classification ────────────────────────────
@@ -189,13 +191,6 @@ class MachineDeficitsTest {
         val t = tray("t1", productId = "p1", capacity = 10, currentStock = 4, minStock = 5, product = product("p1"))
         val summary = MachineDeficits.computeDeficits(listOf(t), emptySet(), hasWarehouses = true, slotLabel = { "Slot $it" })
         assertEquals(WarehouseAvailability.NO_STOCK, summary.trayDeficits.single().warehouseAvailability)
-    }
-
-    @Test
-    fun `a null-productId row is always unknown even with warehouses present`() {
-        val t = tray("t1", itemNumber = 3, productId = null, capacity = 10, currentStock = 0)
-        val summary = MachineDeficits.computeDeficits(listOf(t), setOf("anything"), hasWarehouses = true, slotLabel = { "Slot $it" })
-        assertEquals(WarehouseAvailability.UNKNOWN, summary.trayDeficits.single().warehouseAvailability)
     }
 
     // ─── swapNeededCount / noStockCount count distinct products ──────────
@@ -231,29 +226,26 @@ class MachineDeficitsTest {
     // ─── Sort order ────────────────────────────────────────────────────────
 
     @Test
-    fun `needsSwap rows sort first, then by severity, then by deficit descending`() {
-        // needsSwap requires a contributing empty tray, and an empty tray is
-        // itself always CRITICAL severity — so needsSwap rows are always
-        // CRITICAL. Differentiate the two needsSwap rows by deficit instead.
-        // p3: needs swap, critical, deficit 10 (empty tray, capacity 10)
-        val pSwapBigDeficit = tray("t3", itemNumber = 3, productId = "p3", capacity = 10, currentStock = 0, product = product("p3"))
-        // p4: needs swap, critical, deficit 6 (smaller than p3's, same severity)
-        val pSwapSmallDeficit = tray("t4", itemNumber = 4, productId = "p4", capacity = 6, currentStock = 0, product = product("p4"))
-        // p1: in stock (non-swap group), critical severity, deficit 10 — must
-        // still sort after both swap rows despite matching p3's severity/deficit.
-        val pInStock = tray("t1", itemNumber = 1, productId = "p1", capacity = 10, currentStock = 0, product = product("p1"))
-        // p2: no stock (non-swap group), low severity, deficit 4 — sorts after
-        // p1 within the non-swap group, since CRITICAL sorts before LOW.
-        val pNonSwapLow = tray("t2", itemNumber = 2, productId = "p2", capacity = 10, currentStock = 6, minStock = 8, product = product("p2"))
+    fun `rows follow the PWA card - refillable, then swap, then no stock, each by deficit`() {
+        // refillable (in warehouse): p1 low deficit 4, p5 fill deficit 7
+        val pInStockLow = tray("t1", itemNumber = 1, productId = "p1", capacity = 10, currentStock = 6, minStock = 8, product = product("p1"))
+        val pInStockFill = tray("t5", itemNumber = 5, productId = "p5", capacity = 10, currentStock = 3, fillWhenBelow = 5, product = product("p5"))
+        // swap (sold out, no warehouse stock): p3 deficit 10, p4 deficit 6
+        val pSwapBig = tray("t3", itemNumber = 3, productId = "p3", capacity = 10, currentStock = 0, product = product("p3"))
+        val pSwapSmall = tray("t4", itemNumber = 4, productId = "p4", capacity = 6, currentStock = 0, product = product("p4"))
+        // no stock (low, no warehouse stock): p2 deficit 4
+        val pNoStock = tray("t2", itemNumber = 2, productId = "p2", capacity = 10, currentStock = 6, minStock = 8, product = product("p2"))
 
         val summary = MachineDeficits.computeDeficits(
-            listOf(pInStock, pNonSwapLow, pSwapBigDeficit, pSwapSmallDeficit),
-            warehouseProductIds = setOf("p1"),
+            listOf(pInStockLow, pNoStock, pSwapSmall, pSwapBig, pInStockFill),
+            warehouseProductIds = setOf("p1", "p5"),
             hasWarehouses = true,
             slotLabel = { "Slot $it" },
         )
 
         val order = summary.trayDeficits.map { it.productName }
-        assertEquals(listOf("Product p3", "Product p4", "Product p1", "Product p2"), order)
+        assertEquals(listOf("Product p5", "Product p1", "Product p3", "Product p4", "Product p2"), order)
+        assertEquals(2, summary.swapNeededCount)
+        assertEquals(1, summary.noStockCount)
     }
 }

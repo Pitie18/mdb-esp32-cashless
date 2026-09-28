@@ -63,7 +63,6 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import xyz.vmflow.R
-import xyz.vmflow.data.StockHealth
 import xyz.vmflow.data.SalesFeed
 import xyz.vmflow.data.SalesFeedItem
 import xyz.vmflow.models.Sale
@@ -547,28 +546,30 @@ private fun OverviewTab(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "Stock Summary",
+                            stringResource(R.string.machine_detail_stock_summary),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         val totalCapacity = stats.trays.sumOf { it.capacity }
                         val totalStock = stats.trays.sumOf { it.currentStock }
-                        // Counted per product (all of a product's slots summed), not
-                        // per slot — an empty slot of a product that is still in
-                        // another slot is not "empty". Same rules as the tray list.
-                        val refill = StockHealth.productRefillCounts(stats.trays)
+                        // The machine card's own roll-up (MachineWithStats.productStock):
+                        // per product, warehouse-aware — so card and detail can't disagree.
+                        val stock = stats.productStock
 
-                        DeviceInfoRow("Total Stock", "$totalStock / $totalCapacity")
-                        DeviceInfoRow("Trays", "${stats.trays.size}")
-                        if (refill.soldOut > 0) {
-                            DeviceInfoRow(stringResource(R.string.machine_detail_products_sold_out), "${refill.soldOut}")
+                        DeviceInfoRow(
+                            stringResource(R.string.machine_detail_total_stock),
+                            stringResource(R.string.machine_detail_stock_of_capacity, totalStock, totalCapacity)
+                        )
+                        DeviceInfoRow(stringResource(R.string.machine_detail_tray_count), "${stats.trays.size}")
+                        if (stock.refillableEmpty > 0) {
+                            DeviceInfoRow(stringResource(R.string.machine_detail_products_sold_out), "${stock.refillableEmpty}")
                         }
-                        if (refill.low > 0) {
-                            DeviceInfoRow(stringResource(R.string.machine_detail_products_low), "${refill.low}")
+                        if (stock.refillableLow > 0) {
+                            DeviceInfoRow(stringResource(R.string.machine_detail_products_low), "${stock.refillableLow}")
                         }
-                        if (refill.fill > 0) {
-                            DeviceInfoRow(stringResource(R.string.machine_detail_products_fill), "${refill.fill}")
+                        if (stock.refillableFill > 0) {
+                            DeviceInfoRow(stringResource(R.string.machine_detail_products_fill), "${stock.refillableFill}")
                         }
                     }
                 }

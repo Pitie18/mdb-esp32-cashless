@@ -62,6 +62,7 @@ import xyz.vmflow.ui.common.dayLabel
 import xyz.vmflow.ui.theme.OnlineGreen
 import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
+import xyz.vmflow.ui.theme.VMflowBlue
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
@@ -440,6 +441,7 @@ private fun NeedsAttentionCard(
     val healthColor = when (machineStats.stockHealth) {
         MachineWithStats.StockHealth.CRITICAL -> StockRed
         MachineWithStats.StockHealth.LOW -> StockOrange
+        MachineWithStats.StockHealth.FILL -> VMflowBlue
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Card(
@@ -449,6 +451,7 @@ private fun NeedsAttentionCard(
             containerColor = when (machineStats.stockHealth) {
                 MachineWithStats.StockHealth.CRITICAL -> StockRed.copy(alpha = 0.08f)
                 MachineWithStats.StockHealth.LOW -> StockOrange.copy(alpha = 0.08f)
+                MachineWithStats.StockHealth.FILL -> VMflowBlue.copy(alpha = 0.08f)
                 else -> MaterialTheme.colorScheme.surface
             }
         )

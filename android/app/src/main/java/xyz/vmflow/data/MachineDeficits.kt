@@ -27,8 +27,13 @@ import xyz.vmflow.models.WarehouseAvailability
  * even if one of its slots is empty — that is the
  * [MachineStockSummary.emptySlotsWithStock] hint, not a deficit.
  *
- * Unassigned trays (no product) are not a product group; each keeps its own
- * per-slot row as before (iOS parity — the PWA skips them).
+ * Unassigned trays (no product) are not a product group and produce no row
+ * (PWA parity: they only count towards the machine's total slots and stock
+ * percentage).
+ *
+ * Row order is the PWA card's: refillable products first (deficit
+ * descending), then swap products (sold out, no warehouse stock), then the
+ * remaining no-stock products — each block sorted by deficit descending.
  *
  * Deliberately does not reuse `Tray.isLow`/`isCritical` (Android's existing
  * computed properties) — those use different, looser heuristics for the
@@ -61,9 +66,9 @@ object MachineDeficits {
      *   at all — when false every row is [WarehouseAvailability.UNKNOWN]
      *   regardless of [warehouseProductIds] (mirrors iOS: no warehouse data
      *   means "we can't say", not "nothing available").
-     * @param slotLabel formats the fallback row label for a tray with no
-     *   resolvable product name (unassigned slot, or an assigned slot whose
-     *   `products` relation wasn't joined), given the tray's `itemNumber`.
+     * @param slotLabel formats the fallback row label for an assigned slot
+     *   whose `products` relation wasn't joined, given the first slot's
+     *   `itemNumber` (the PWA's `Slot N` fallback).
      *   Kept as an injected function so this stays a pure, Context-free
      *   function — the caller resolves the localized
      *   `R.string.machine_card_unassigned_slot`.
@@ -108,28 +113,15 @@ object MachineDeficits {
             )
         }
 
-        // Unassigned slots: one row each, never merged, availability unknown.
-        for (tray in trays) {
-            if (tray.productId != null) continue
-            val severity = severityOf(
-                StockHealth.classifyTray(tray.currentStock, tray.minStock, tray.fillWhenBelow)
-            ) ?: continue
-            allDeficits.add(
-                TrayDeficit(
-                    productName = tray.products?.name ?: slotLabel(tray.itemNumber),
-                    imagePath = null,
-                    deficit = tray.deficit,
-                    severity = severity,
-                    isDiscontinued = false,
-                    warehouseAvailability = WarehouseAvailability.UNKNOWN,
-                )
-            )
-        }
-
+        // PWA order: refillable rows, then swap rows, then the dimmed no-stock rows.
         val sorted = allDeficits.sortedWith(
-            compareBy<TrayDeficit> { if (it.warehouseAvailability == WarehouseAvailability.NEEDS_SWAP) 0 else 1 }
-                .thenBy { it.severity }
-                .thenByDescending { it.deficit }
+            compareBy<TrayDeficit> {
+                when (it.warehouseAvailability) {
+                    WarehouseAvailability.IN_STOCK, WarehouseAvailability.UNKNOWN -> 0
+                    WarehouseAvailability.NEEDS_SWAP -> 1
+                    WarehouseAvailability.NO_STOCK -> 2
+                }
+            }.thenByDescending { it.deficit }
         )
 
         return MachineDeficitSummary(

@@ -1,6 +1,5 @@
 package xyz.vmflow.ui.trays
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -61,7 +60,6 @@ fun TrayRow(
     modifier: Modifier = Modifier,
     flag: TrayStockFlag = TrayStockFlag.OK,
     showFillHighlight: Boolean = false,
-    selected: Boolean = false,
 ) {
     val haptic = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
@@ -76,7 +74,6 @@ fun TrayRow(
                 else -> MaterialTheme.colorScheme.surface
             }
         ),
-        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
     ) {
         Row(

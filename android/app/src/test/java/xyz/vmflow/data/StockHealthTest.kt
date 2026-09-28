@@ -438,15 +438,32 @@ class StockHealthTest {
         assertEquals(11, rows[0].header?.currentStock)
     }
 
+    // ─── trayMatchesSearch (PWA fuzzyFilter on product name + slot number) ─
+
+    private fun named(itemNumber: Int, name: String?) = Tray(
+        id = "s$itemNumber",
+        machineId = "m1",
+        itemNumber = itemNumber,
+        productId = name?.let { "p-$it" },
+        products = name?.let { xyz.vmflow.models.Product(id = "p-$it", name = it) },
+    )
+
     @Test
-    fun `product refill counts count products not slots`() {
-        val trays = listOf(
-            slot("a", 11, "cola", 0), slot("b", 12, "cola", 0),   // sold out product
-            slot("c", 13, "fanta", 1),                             // low
-            slot("d", 14, "water", 4),                             // fill
-            slot("e", 15, "tea", 0), slot("f", 16, "tea", 10), slot("h", 18, "tea", 10), // 20/30: fine, slot empty only
-            slot("g", 17, null, 0),                                // unassigned
-        )
-        assertEquals(ProductRefillCounts(soldOut = 1, low = 1, fill = 1), StockHealth.productRefillCounts(trays))
+    fun `tray search matches product names fuzzily and case-insensitively`() {
+        assertTrue(StockHealth.trayMatchesSearch(named(12, "Coca-Cola Zero"), "cola"))
+        assertTrue(StockHealth.trayMatchesSearch(named(12, "Coca-Cola Zero"), "CCZ"))
+        assertFalse(StockHealth.trayMatchesSearch(named(12, "Coca-Cola Zero"), "fanta"))
+    }
+
+    @Test
+    fun `tray search matches the slot number`() {
+        assertTrue(StockHealth.trayMatchesSearch(named(12, "Fanta"), "12"))
+        assertTrue(StockHealth.trayMatchesSearch(named(12, null), "1"))
+        assertFalse(StockHealth.trayMatchesSearch(named(12, null), "3"))
+    }
+
+    @Test
+    fun `a blank tray search matches everything`() {
+        assertTrue(StockHealth.trayMatchesSearch(named(12, null), "   "))
     }
 }

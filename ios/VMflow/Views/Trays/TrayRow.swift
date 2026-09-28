@@ -14,8 +14,6 @@ struct TrayRow: View {
     /// sold out/low anyway, mirroring the PWA (topping off is only worth it
     /// on a trip that happens regardless).
     var highlightFill: Bool = false
-    /// Selected via the stock grid: gets an accent ring.
-    var isSelected: Bool = false
     let onAdjust: (Int) -> Void
     let onFill: () -> Void
     let onEdit: () -> Void
@@ -31,9 +29,7 @@ struct TrayRow: View {
                 }
             }
             .overlay {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 10).stroke(Color.accentColor, lineWidth: 2)
-                } else if let tint = highlightTint {
+                if let tint = highlightTint {
                     RoundedRectangle(cornerRadius: 10).stroke(tint.opacity(0.45), lineWidth: 1)
                 }
             }
@@ -151,7 +147,7 @@ struct TrayRow: View {
 
 // MARK: - Product status
 
-/// Status of a product group as shown in the tray list and stock grid:
+/// Status of a product group as shown in the tray list:
 /// Sold out (red) / Low (orange) / Top off (blue) / OK (green). A group that
 /// doesn't need a refill is OK, whatever its raw state (e.g. a `fill` group
 /// that is already full). Mirrors the PWA's `ProductGroupHeader.vue`.
@@ -179,7 +175,9 @@ enum ProductStockStatus: Equatable {
     var label: String {
         switch self {
         case .soldOut: return String(localized: "Sold out")
-        case .low: return String(localized: "Low")
+        // Own key: the PWA's `machineDetail.groupStateLow` ("Knapp" in
+        // German), not the generic "Low" ("Niedrig") used elsewhere.
+        case .low: return String(localized: "stock_group_state_low")
         case .topOff: return String(localized: "Top off")
         case .ok: return String(localized: "OK")
         }
@@ -194,7 +192,6 @@ enum ProductStockStatus: Equatable {
 /// `ProductGroupHeader.vue`.
 struct ProductGroupHeader: View {
     let group: ProductStockGroup<Tray>
-    var isSelected: Bool = false
 
     private var status: ProductStockStatus { ProductStockStatus(group) }
     private var sortedTrays: [Tray] { group.trays.sorted { $0.itemNumber < $1.itemNumber } }
@@ -258,11 +255,6 @@ struct ProductGroupHeader: View {
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
-        .overlay {
-            if isSelected {
-                RoundedRectangle(cornerRadius: 12).stroke(Color.accentColor, lineWidth: 2)
-            }
-        }
         .accessibilityElement(children: .combine)
     }
 }

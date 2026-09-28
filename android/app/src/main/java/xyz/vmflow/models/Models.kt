@@ -363,37 +363,73 @@ data class MachineWithStats(
     val paxCount: Int = 0,
     val trays: List<Tray> = emptyList(),
     val trayDeficits: List<TrayDeficit> = emptyList(),
+    /** Products sold out in every slot that the warehouse can't refill ("swap product"). */
     val swapNeededCount: Int = 0,
-    val noStockCount: Int = 0
+    /** Products needing refill (low / top off) that the warehouse can't refill. */
+    val noStockCount: Int = 0,
+    /**
+     * Product ids with any positive-quantity warehouse batch, company-wide.
+     * Together with [hasWarehouses] decides which products are refillable
+     * ([xyz.vmflow.data.StockHealth.isProductRefillable]).
+     */
+    val warehouseProductIds: Set<String> = emptySet(),
+    /** False when the company has no warehouse stock at all — then every product counts as refillable. */
+    val hasWarehouses: Boolean = false,
 ) {
-    enum class StockHealth { OK, LOW, CRITICAL }
+    /** Declaration order is the list's urgency order (PWA `healthOrder`). */
+    enum class StockHealth { CRITICAL, LOW, FILL, OK }
 
     /**
-     * Product-level stock roll-up of [trays] ([xyz.vmflow.data.StockHealth.summaries]):
-     * a product in several slots is judged on the sums over its slots, so an
-     * empty slot next to a stocked one of the same product does not make the
-     * machine critical. Warehouse-agnostic on purpose (every product counts
-     * as refillable) — the card's swap / no-stock badges carry the warehouse
-     * dimension separately via [swapNeededCount] / [noStockCount].
+     * Warehouse-aware, product-level stock roll-up of [trays]
+     * ([xyz.vmflow.data.StockHealth.summaries]), exactly like the PWA's
+     * machine card (`useMachines.ts`): a product in several slots is judged
+     * on the sums over its slots, and only products the warehouse can refill
+     * count towards Empty / Low / Top off and drive the machine colour.
+     * Products it can't refill are counted separately in [swapNeededCount] /
+     * [noStockCount]. Unassigned slots only count towards the stock percentage.
      */
     val productStock: MachineStockSummary =
         xyz.vmflow.data.StockHealth.summaries(
             trays,
-            emptySet(),
-            hasWarehouses = false,
+            warehouseProductIds,
+            hasWarehouses = hasWarehouses,
             linkedMachineIds = if (machine.linkedSelections) setOf(machine.id) else emptySet(),
         ).values.firstOrNull() ?: MachineStockSummary()
 
+    /** Critical if any refillable product is sold out, else low, else top off, else ok. */
     val stockHealth: StockHealth
         get() = when (productStock.tier) {
             MachineStockTier.CRITICAL -> StockHealth.CRITICAL
-            MachineStockTier.LOW, MachineStockTier.FILL -> StockHealth.LOW
+            MachineStockTier.LOW -> StockHealth.LOW
+            MachineStockTier.FILL -> StockHealth.FILL
             MachineStockTier.OK -> StockHealth.OK
         }
 
-    /** Products (not slots) needing a refill: sold out, low or below their fill threshold. */
+    /** Refillable products needing a refill: sold out, low or below their fill threshold. */
     val productsNeedingRefill: Int
         get() = productStock.refillableEmpty + productStock.refillableLow + productStock.refillableFill
+
+    /** Refillable products sold out or low — the PWA's `low_trays`, the list's tie-breaker. */
+    val lowOrEmptyProductCount: Int
+        get() = productStock.refillableEmpty + productStock.refillableLow
+
+    /** Σ stock / Σ capacity over every slot (assigned or not), rounded; 0 without capacity (PWA `stock_percent`). */
+    val stockPercent: Int
+        get() = if (productStock.totalCapacity > 0) {
+            (productStock.totalStock.toDouble() / productStock.totalCapacity * 100).roundToInt()
+        } else {
+            0
+        }
+
+    companion object {
+        /**
+         * Machine-list order, the PWA's: critical, low, top off, ok; ties by
+         * the number of sold-out + low refillable products, descending.
+         */
+        val STOCK_URGENCY: Comparator<MachineWithStats> =
+            compareBy<MachineWithStats> { it.stockHealth.ordinal }
+                .thenByDescending { it.lowOrEmptyProductCount }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -432,7 +468,15 @@ data class RefillMachine(
     val trays: List<RefillTray>,
     val isPacked: Boolean = false,
     val isRefilled: Boolean = false,
-    val isSkipped: Boolean = false
+    val isSkipped: Boolean = false,
+    /**
+     * Products of this machine the warehouse can refill (any positive batch,
+     * company-wide), resolved when the machines are loaded. `null` means the
+     * company has no warehouse stock at all, so every product counts as
+     * refillable — also what a tour persisted before this field existed
+     * decodes to. See [xyz.vmflow.data.RefillTourLogic.isRefillable].
+     */
+    val refillableProductIds: Set<String>? = null
 ) {
     val totalDeficit: Int get() = trays.sumOf { it.deficit }
     val traysNeedingRefill: Int get() = trays.count { it.deficit > 0 }
