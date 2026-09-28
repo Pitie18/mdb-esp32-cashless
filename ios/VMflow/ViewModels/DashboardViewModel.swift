@@ -200,7 +200,7 @@ final class DashboardViewModel: ObservableObject {
     private func loadMachineStats() async throws {
         let machines: [VendingMachine] = try await client
             .from("vendingMachine")
-            .select("id, name, location_lat, location_lon, embedded, country_code, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version)")
+            .select("id, name, location_lat, location_lon, embedded, country_code, linked_selections, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version)")
             .execute()
             .value
 
@@ -238,7 +238,8 @@ final class DashboardViewModel: ObservableObject {
         let summaries = MachineStockHealth.summaries(
             trays: trays,
             warehouseProductIds: warehouseProductIds,
-            hasWarehouses: hasWarehouses
+            hasWarehouses: hasWarehouses,
+            linkedMachineIds: Set(machines.filter(\.linkedSelections).map(\.id))
         )
         // Machines without a single tray row never reach `summaries` — they
         // have nothing to refill, which is exactly the `ok` bucket.

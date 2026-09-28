@@ -117,6 +117,12 @@ data class VendingMachineWithEmbedded(
     @SerialName("formatted_address") val formattedAddress: String? = null,
     @SerialName("nayax_machine_id") val nayaxMachineId: String? = null,
     @SerialName("public_listing") val publicListing: Boolean? = null,
+    /**
+     * `vendingMachine.linked_selections`: the machine vends from a sibling
+     * slot when one is empty, so the "slot empty" hint is hidden. Display
+     * only; edited in the web app.
+     */
+    @SerialName("linked_selections") val linkedSelections: Boolean = false,
     val embeddeds: Embedded? = null
 ) {
     val displayName: String get() = name ?: "Machine ${id.take(8)}"
@@ -371,8 +377,12 @@ data class MachineWithStats(
      * dimension separately via [swapNeededCount] / [noStockCount].
      */
     val productStock: MachineStockSummary =
-        xyz.vmflow.data.StockHealth.summaries(trays, emptySet(), hasWarehouses = false)
-            .values.firstOrNull() ?: MachineStockSummary()
+        xyz.vmflow.data.StockHealth.summaries(
+            trays,
+            emptySet(),
+            hasWarehouses = false,
+            linkedMachineIds = if (machine.linkedSelections) setOf(machine.id) else emptySet(),
+        ).values.firstOrNull() ?: MachineStockSummary()
 
     val stockHealth: StockHealth
         get() = when (productStock.tier) {

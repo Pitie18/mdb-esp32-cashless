@@ -230,7 +230,8 @@ final class MachineDetailViewModel: ObservableObject {
                 addressStreet: addressStreet, addressHouseNumber: addressHouseNumber,
                 addressPostalCode: addressPostalCode, addressCity: addressCity,
                 formattedAddress: formattedAddress, nayaxMachineId: nayaxMachineId,
-                publicListing: publicListing
+                publicListing: publicListing,
+                linkedSelections: machine.linkedSelections
             )
             return true
         } catch {

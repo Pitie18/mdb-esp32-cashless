@@ -131,3 +131,33 @@ describe('useMachines.updateMachineSettings item_number_offset', () => {
     expect(machines.value[0]!.item_number_offset).toBe(9)
   })
 })
+
+describe('useMachines.updateMachineSettings linked_selections', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    capturedUpdates.length = 0
+    mockFrom.eq.mockResolvedValue({ error: null })
+  })
+
+  it('writes linked_selections through and updates the local cache', async () => {
+    const { machines, updateMachineSettings } = useMachines()
+    machines.value = [{ id: 'm1', item_number_offset: 0, linked_selections: false } as any]
+
+    await updateMachineSettings('m1', {
+      location_lat: null,
+      location_lon: null,
+      address_street: null,
+      address_house_number: null,
+      address_postal_code: null,
+      address_city: null,
+      formatted_address: null,
+      country_code: null,
+      nayax_machine_id: null,
+      item_number_offset: 0,
+      linked_selections: true,
+    })
+
+    expect(capturedUpdates[0]).toMatchObject({ linked_selections: true })
+    expect(machines.value[0]!.linked_selections).toBe(true)
+  })
+})

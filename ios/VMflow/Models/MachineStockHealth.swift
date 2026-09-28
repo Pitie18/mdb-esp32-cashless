@@ -103,7 +103,10 @@ struct ProductStockGroup<T: StockCountableTray> {
     var state: TrayStockState = .ok
     /// Units needed to fill every slot of the product.
     var deficit = 0
-    /// Slots at 0 while the product still has stock in another slot.
+    /// Slots at 0 while the product still has stock in another slot. Always
+    /// 0 on a machine with linked selections (`vendingMachine.linked_selections`):
+    /// that machine vends from a sibling slot itself, so the empty slot is
+    /// irrelevant.
     var emptySlots = 0
 
     /// See ``MachineStockHealth/groupNeedsRefill(state:deficit:)``.
@@ -147,7 +150,15 @@ enum MachineStockHealth {
     /// Group assigned trays by (machine, product) and classify each group on
     /// the summed values. Unassigned trays are skipped. Groups keep
     /// first-appearance order.
-    static func groupTraysByProduct<T: StockCountableTray>(_ trays: [T]) -> [ProductStockGroup<T>] {
+    ///
+    /// `linkedMachineIds`: machines with linked selections — their groups
+    /// never report ``ProductStockGroup/emptySlots``, which in turn removes
+    /// the `slotEmpty` flag, the header hint and
+    /// ``MachineStockSummary/emptySlotsWithStock``. Nothing else changes.
+    static func groupTraysByProduct<T: StockCountableTray>(
+        _ trays: [T],
+        linkedMachineIds: Set<UUID> = []
+    ) -> [ProductStockGroup<T>] {
         var order: [ProductGroupKey] = []
         var groups: [ProductGroupKey: ProductStockGroup<T>] = [:]
 
@@ -174,7 +185,7 @@ enum MachineStockHealth {
                 fillWhenBelow: group.fillWhenBelow
             )
             group.deficit = max(0, group.capacity - group.currentStock)
-            group.emptySlots = group.currentStock > 0
+            group.emptySlots = group.currentStock > 0 && !linkedMachineIds.contains(group.machineId)
                 ? group.trays.filter { $0.currentStock == 0 }.count
                 : 0
             return group
@@ -229,7 +240,8 @@ enum MachineStockHealth {
     static func summaries<T: StockCountableTray>(
         trays: [T],
         warehouseProductIds: Set<UUID>,
-        hasWarehouses: Bool
+        hasWarehouses: Bool,
+        linkedMachineIds: Set<UUID> = []
     ) -> [UUID: MachineStockSummary] {
         var map: [UUID: MachineStockSummary] = [:]
 
@@ -238,7 +250,7 @@ enum MachineStockHealth {
             map[tray.machineId, default: MachineStockSummary()].totalCapacity += tray.capacity
         }
 
-        for group in groupTraysByProduct(trays) {
+        for group in groupTraysByProduct(trays, linkedMachineIds: linkedMachineIds) {
             var entry = map[group.machineId] ?? MachineStockSummary()
             defer { map[group.machineId] = entry }
 
@@ -348,9 +360,17 @@ extension MachineStockHealth {
 
     /// Index every assigned tray by id to its product group and highlight
     /// flag. Unassigned trays have no entry. Mirrors `buildTrayGroupIndex`.
-    static func trayGroupIndex<T: SlottedStockTray>(_ trays: [T]) -> [UUID: TrayGroupInfo<T>] {
+    ///
+    /// `linkedSelections`: the trays' machine vends from a sibling slot when
+    /// one is empty, so no slot is ever flagged `slotEmpty` (see
+    /// ``groupTraysByProduct(_:linkedMachineIds:)``).
+    static func trayGroupIndex<T: SlottedStockTray>(
+        _ trays: [T],
+        linkedSelections: Bool = false
+    ) -> [UUID: TrayGroupInfo<T>] {
         var index: [UUID: TrayGroupInfo<T>] = [:]
-        for group in groupTraysByProduct(trays) {
+        let linked = linkedSelections ? Set(trays.map(\.machineId)) : []
+        for group in groupTraysByProduct(trays, linkedMachineIds: linked) {
             for tray in group.trays {
                 index[tray.id] = TrayGroupInfo(group: group, flag: trayStockFlag(tray, in: group))
             }
@@ -360,11 +380,13 @@ extension MachineStockHealth {
 
     /// See ``TrayStockFlag``. A slot that is already full is never flagged
     /// for refill even when its product is — there is nothing to put in it.
+    /// `slotEmpty` requires the group to report empty slots, so it is `ok` on
+    /// a machine with linked selections.
     static func trayStockFlag<T: SlottedStockTray>(_ tray: T, in group: ProductStockGroup<T>) -> TrayStockFlag {
         let needsRefill = group.needsRefill
         let hasRoom = tray.capacity - tray.currentStock > 0
         if needsRefill && hasRoom { return group.state == .fill ? .fill : .low }
-        if !needsRefill && tray.currentStock == 0 && group.currentStock > 0 { return .slotEmpty }
+        if !needsRefill && tray.currentStock == 0 && group.emptySlots > 0 { return .slotEmpty }
         return .ok
     }
 

@@ -736,6 +736,8 @@
     "itemNumberOffsetPlaceholder": "0",
     "itemNumberOffsetHint": "Added to the slot number the machine reports. If the machine reports 1 where the slot is labelled 10, enter 9. Takes effect on save — sales already recorded are left untouched.",
     "itemNumberOffsetWarning": "Check first that your trays here use the numbers from the label (10, 11, …) and not the machine's raw numbers.",
+    "linkedSelections": "Same products are linked",
+    "linkedSelectionsHint": "The machine vends a product from another slot on its own when one slot is empty. An empty slot is then no longer shown as a hint while the product is still in another slot.",
     "save": "Save",
     "cancel": "Cancel",
     "contactOverrides": "Different contact details",

@@ -180,6 +180,7 @@ fun MachineDetailScreen(
                             trays = uiState.machineStats?.trays ?: emptyList(),
                             products = uiState.products,
                             machineId = machineId,
+                            linkedSelections = uiState.machineStats?.machine?.linkedSelections ?: false,
                             onStockChange = { trayId, delta ->
                                 viewModel.updateTrayStock(trayId, delta)
                             },

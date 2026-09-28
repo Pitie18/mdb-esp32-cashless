@@ -203,6 +203,8 @@ export function computeStockHealthPerMachine(
   trayRows: TrayRow[],
   warehouseStockMap: Map<string, number>,
   hasWarehouses: boolean,
+  /** Machines that vend from a sibling slot on their own (`vendingMachine.linked_selections`) — their empty slots are no hint. */
+  linkedMachineIds: ReadonlySet<string> = new Set(),
 ): Map<string, MachineStockSummary> {
   const map = new Map<string, MachineStockSummary>()
   const entryFor = (machineId: string) => {
@@ -224,7 +226,7 @@ export function computeStockHealthPerMachine(
   for (const group of groupTraysByProduct(trayRows.filter(t => t.machine_id))) {
     const entry = entryFor(group.machine_id)
     if (!groupNeedsRefill(group)) {
-      entry.emptySlotsWithStock += group.emptySlots
+      if (!linkedMachineIds.has(group.machine_id)) entry.emptySlotsWithStock += group.emptySlots
       continue
     }
 

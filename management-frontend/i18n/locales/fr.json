@@ -736,6 +736,8 @@
     "itemNumberOffsetPlaceholder": "0",
     "itemNumberOffsetHint": "Ajouté au numéro de case signalé par la machine. Si la machine signale 1 là où la case porte l'étiquette 10, saisissez 9. Prend effet à l'enregistrement — les ventes déjà enregistrées ne sont pas modifiées.",
     "itemNumberOffsetWarning": "Vérifiez d'abord que vos cases sont créées ici avec les numéros de l'étiquette (10, 11, …) et non avec les numéros bruts de la machine.",
+    "linkedSelections": "Les produits identiques sont liés",
+    "linkedSelectionsHint": "La machine distribue automatiquement un produit depuis un autre emplacement lorsqu'un emplacement est vide. Un emplacement vide n'est alors plus signalé tant que le produit reste dans un autre emplacement.",
     "save": "Enregistrer",
     "cancel": "Annuler",
     "contactOverrides": "Coordonnées différentes",

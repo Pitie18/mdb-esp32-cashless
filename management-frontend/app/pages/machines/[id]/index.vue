@@ -97,7 +97,7 @@ const sortedTrays = computed(() => {
 // lib/stock-health.ts). "By product" lists a product's slots together under a
 // summary header; "By slot" is the plain sortable list. Sorting a column
 // switches to "By slot".
-const trayGroupIndex = computed(() => buildTrayGroupIndex(trays.value))
+const trayGroupIndex = computed(() => buildTrayGroupIndex(trays.value, { linkedSelections: (machine.value as any)?.linked_selections === true }))
 const trayView = ref<'product' | 'slot'>('product')
 const selectedGridProductId = ref<string | null>(null)
 
@@ -226,7 +226,7 @@ const errorMsg = ref('')
 async function fetchMachine() {
   const { data, error } = await supabase
     .from('vendingMachine')
-    .select('id, name, location_lat, location_lon, embedded, country_code, public_listing, address_street, address_house_number, address_postal_code, address_city, formatted_address, nayax_machine_id, item_number_offset, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, firmware_build_date, mdb_address, mdb_diagnostics, last_restart_reason, last_restart_at, online_since, softap_password)')
+    .select('id, name, location_lat, location_lon, embedded, country_code, public_listing, address_street, address_house_number, address_postal_code, address_city, formatted_address, nayax_machine_id, item_number_offset, linked_selections, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, firmware_build_date, mdb_address, mdb_diagnostics, last_restart_reason, last_restart_at, online_since, softap_password)')
     .eq('id', route.params.id)
     .single()
   if (error) {
@@ -1696,6 +1696,7 @@ async function handleAddSale() {
                       :name="tray.product_name ?? '—'"
                       :image-url="trayProductMap.get(tray.item_number)?.image_url ?? null"
                       :needs-refill="trayGroupIndex.get(tray.id)?.needsRefill ?? false"
+                      :show-empty-slots="machine?.linked_selections !== true"
                     />
                   </div>
                   <SwipeRight
@@ -2029,6 +2030,7 @@ async function handleAddSale() {
                             :name="tray.product_name ?? '—'"
                             :image-url="trayProductMap.get(tray.item_number)?.image_url ?? null"
                             :needs-refill="trayGroupIndex.get(tray.id)?.needsRefill ?? false"
+                      :show-empty-slots="machine?.linked_selections !== true"
                           />
                         </td>
                       </tr>
@@ -3380,6 +3382,7 @@ async function handleAddSale() {
           country_code: machine.country_code,
           nayax_machine_id: (machine as any).nayax_machine_id ?? null,
           item_number_offset: (machine as any).item_number_offset ?? 0,
+          linked_selections: (machine as any).linked_selections ?? false,
         }"
         @saved="() => { fetchMachine(); posters.load() }"
       />

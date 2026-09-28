@@ -59,3 +59,15 @@ describe('productListRows', () => {
     expect(rows[0]!.header?.current_stock).toBe(11)
   })
 })
+
+describe('buildTrayGroupIndex with linked selections', () => {
+  it('does not flag an empty slot when the machine vends from a sibling slot', () => {
+    const idx = buildTrayGroupIndex([tray('a', 12, 'cola', 0), tray('b', 13, 'cola', 10), tray('c', 14, 'cola', 10)], { linkedSelections: true })
+    expect(idx.get('a')!.flag).toBe('ok')
+  })
+
+  it('still flags slots of a product that needs refill', () => {
+    const idx = buildTrayGroupIndex([tray('a', 12, 'cola', 0), tray('b', 13, 'cola', 1)], { linkedSelections: true })
+    expect(idx.get('a')!.flag).toBe('low')
+  })
+})

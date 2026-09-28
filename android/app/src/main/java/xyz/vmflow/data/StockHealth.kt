@@ -52,7 +52,12 @@ data class ProductStockGroup(
     val state: TrayStockState,
     /** Units needed to fill every slot of the product. */
     val deficit: Int,
-    /** Slots at 0 while the product still has stock in another slot. */
+    /**
+     * Slots at 0 while the product still has stock in another slot. Always 0
+     * on a machine with linked selections (`vendingMachine.linked_selections`):
+     * that machine vends from a sibling slot itself, so the empty one is
+     * irrelevant.
+     */
     val emptySlots: Int,
 )
 
@@ -99,7 +104,10 @@ enum class TrayStockFlag {
     LOW,
     /** The product is below its summed fill threshold, and this slot has room. */
     FILL,
-    /** This slot is empty, but the product is fine thanks to other slots. */
+    /**
+     * This slot is empty, but the product is fine thanks to other slots.
+     * Never set on a machine with linked selections — there it is [OK].
+     */
     SLOT_EMPTY,
     /** Nothing to do. */
     OK,
@@ -161,8 +169,15 @@ object StockHealth {
      * needed; a disabled (0/null) threshold on one slot contributes nothing
      * to the sum. Unassigned trays are skipped. Groups keep first-appearance
      * order.
+     *
+     * [linkedMachineIds] are machines with `linked_selections` set: they vend
+     * from a sibling slot when one is empty, so their groups report no
+     * [ProductStockGroup.emptySlots].
      */
-    fun groupTraysByProduct(trays: List<Tray>): List<ProductStockGroup> {
+    fun groupTraysByProduct(
+        trays: List<Tray>,
+        linkedMachineIds: Set<String> = emptySet(),
+    ): List<ProductStockGroup> {
         val grouped = LinkedHashMap<Pair<String, String>, MutableList<Tray>>()
         for (tray in trays) {
             val productId = tray.productId ?: continue
@@ -183,7 +198,11 @@ object StockHealth {
                 fillWhenBelow = fillWhenBelow,
                 state = classifyTray(currentStock, minStock, fillWhenBelow),
                 deficit = maxOf(0, capacity - currentStock),
-                emptySlots = if (currentStock > 0) slots.count { it.currentStock == 0 } else 0,
+                emptySlots = if (currentStock > 0 && key.first !in linkedMachineIds) {
+                    slots.count { it.currentStock == 0 }
+                } else {
+                    0
+                },
             )
         }
     }
@@ -203,24 +222,39 @@ object StockHealth {
     /**
      * Per-tray view of [groupTraysByProduct], keyed by tray id. Unassigned
      * slots have no entry. Port of the PWA's `buildTrayGroupIndex`.
+     *
+     * [linkedSelections] is the machine's `linked_selections` flag (the
+     * trays belong to one machine): when set, an empty slot whose product is
+     * stocked elsewhere is [TrayStockFlag.OK] instead of
+     * [TrayStockFlag.SLOT_EMPTY], and groups report no empty slots.
      */
-    fun buildTrayGroupIndex(trays: List<Tray>): Map<String, TrayGroupInfo> {
+    fun buildTrayGroupIndex(
+        trays: List<Tray>,
+        linkedSelections: Boolean = false,
+    ): Map<String, TrayGroupInfo> {
+        val linkedMachineIds = if (linkedSelections) trays.mapTo(HashSet()) { it.machineId } else emptySet()
         val index = LinkedHashMap<String, TrayGroupInfo>()
-        for (group in groupTraysByProduct(trays)) {
+        for (group in groupTraysByProduct(trays, linkedMachineIds)) {
             val needsRefill = groupNeedsRefill(group)
+            val linked = group.machineId in linkedMachineIds
             for (tray in group.trays) {
-                index[tray.id] = TrayGroupInfo(group, needsRefill, trayStockFlag(tray, group, needsRefill))
+                index[tray.id] = TrayGroupInfo(group, needsRefill, trayStockFlag(tray, group, needsRefill, linked))
             }
         }
         return index
     }
 
-    private fun trayStockFlag(tray: Tray, group: ProductStockGroup, needsRefill: Boolean): TrayStockFlag {
+    private fun trayStockFlag(
+        tray: Tray,
+        group: ProductStockGroup,
+        needsRefill: Boolean,
+        linked: Boolean,
+    ): TrayStockFlag {
         val hasRoom = tray.capacity - tray.currentStock > 0
         if (needsRefill && hasRoom) {
             return if (group.state == TrayStockState.FILL) TrayStockFlag.FILL else TrayStockFlag.LOW
         }
-        if (!needsRefill && tray.currentStock == 0 && group.currentStock > 0) return TrayStockFlag.SLOT_EMPTY
+        if (!linked && !needsRefill && tray.currentStock == 0 && group.currentStock > 0) return TrayStockFlag.SLOT_EMPTY
         return TrayStockFlag.OK
     }
 
@@ -306,11 +340,14 @@ object StockHealth {
      * - A group that needs nothing contributes its empty slots to
      *   [MachineStockSummary.emptySlotsWithStock].
      * - The tier is determined only by refillable groups, critical > low > fill.
+     * - Machines in [linkedMachineIds] (`linked_selections` set) always report
+     *   0 [MachineStockSummary.emptySlotsWithStock]; nothing else changes.
      */
     fun summaries(
         trays: List<Tray>,
         warehouseProductIds: Set<String>,
         hasWarehouses: Boolean,
+        linkedMachineIds: Set<String> = emptySet(),
     ): Map<String, MachineStockSummary> {
         class Accumulator {
             var refillableEmpty = 0
@@ -331,7 +368,7 @@ object StockHealth {
             entry.totalCapacity += tray.capacity
         }
 
-        for (group in groupTraysByProduct(trays)) {
+        for (group in groupTraysByProduct(trays, linkedMachineIds)) {
             val entry = accumulators.getOrPut(group.machineId) { Accumulator() }
             if (!groupNeedsRefill(group)) {
                 entry.emptySlotsWithStock += group.emptySlots

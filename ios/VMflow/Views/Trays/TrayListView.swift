@@ -6,14 +6,16 @@ struct TrayListView: View {
     let trays: [Tray]
     let products: [Product]
     let onRefresh: () async -> Void
+    var linkedSelections: Bool = false
 
     @StateObject private var viewModel: TrayViewModel
     @State private var showAddSheet = false
     @State private var showBatchSheet = false
     @State private var editingTray: Tray?
 
-    init(machineId: UUID, trays: [Tray], products: [Product], onRefresh: @escaping () async -> Void) {
+    init(machineId: UUID, trays: [Tray], products: [Product], linkedSelections: Bool = false, onRefresh: @escaping () async -> Void) {
         self.machineId = machineId
+        self.linkedSelections = linkedSelections
         self.trays = trays
         self.products = products
         self.onRefresh = onRefresh
@@ -87,7 +89,8 @@ struct TrayListView: View {
                         },
                         onEdit: { tray in
                             editingTray = tray
-                        }
+                        },
+                        linkedSelections: linkedSelections
                     )
                     .padding(.horizontal)
                 }
@@ -177,12 +180,15 @@ struct TrayStockSection: View {
     let onAdjust: (Tray, Int) -> Void
     let onFill: (Tray) -> Void
     let onEdit: (Tray) -> Void
+    /// `vendingMachine.linked_selections`: the machine vends from a sibling
+    /// slot itself, so empty slots of a stocked product are not highlighted.
+    var linkedSelections: Bool = false
 
     @State private var mode: TrayListMode = .byProduct
     @State private var selectedProductId: UUID?
 
     var body: some View {
-        let index = MachineStockHealth.trayGroupIndex(trays)
+        let index = MachineStockHealth.trayGroupIndex(trays, linkedSelections: linkedSelections)
         let rows = listRows(index: index)
         // Topping off (`fill`) is only highlighted when a product is sold
         // out/low anyway, like the PWA.
@@ -291,7 +297,7 @@ struct TrayStockSection: View {
             )
 
             FlowLayout(spacing: 10) {
-                ForEach(TrayStockGridStyle.legend, id: \.self) { style in
+                ForEach(TrayStockGridStyle.legend.filter { !linkedSelections || $0 != .slotEmpty }, id: \.self) { style in
                     HStack(spacing: 4) {
                         TrayStockGridSwatch(style: style)
                         Text(style.legendLabel)

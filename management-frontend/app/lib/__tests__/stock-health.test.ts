@@ -255,3 +255,14 @@ describe('computeStockHealthPerMachine — one product in several slots', () => 
     expect(computeStockHealthPerMachine(rows([0, 0]), empty, true).get('m1')!.noStockEmptyCount).toBe(1)
   })
 })
+
+describe('computeStockHealthPerMachine — linked selections', () => {
+  it('drops the empty-slot hint for machines that vend from a sibling slot', () => {
+    const rows = [0, 10, 10].map((current_stock, i) => ({
+      machine_id: 'm1', product_id: 'cola', capacity: 10, current_stock, min_stock: 2, fill_when_below: 5, item_number: 12 + i,
+    }))
+    const map = new Map([['cola', 1]])
+    expect(computeStockHealthPerMachine(rows, map, true).get('m1')!.emptySlotsWithStock).toBe(1)
+    expect(computeStockHealthPerMachine(rows, map, true, new Set(['m1'])).get('m1')!.emptySlotsWithStock).toBe(0)
+  })
+})

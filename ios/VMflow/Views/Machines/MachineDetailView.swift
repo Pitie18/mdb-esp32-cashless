@@ -322,7 +322,8 @@ struct MachineDetailView: View {
                             },
                             onEdit: { tray in
                                 editingTray = tray
-                            }
+                            },
+                            linkedSelections: viewModel.machine.linkedSelections
                         )
                     }
                 }

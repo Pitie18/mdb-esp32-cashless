@@ -367,6 +367,49 @@ class StockHealthTest {
         assertFalse(StockHealth.buildTrayGroupIndex(listOf(slot("a", 12, null, 0))).containsKey("a"))
     }
 
+    // ── linked selections (vendingMachine.linked_selections) ────────────
+
+    @Test
+    fun `linked selections turn an empty slot of a stocked product into ok`() {
+        val trays = listOf(slot("a", 12, "cola", 0), slot("b", 13, "cola", 10), slot("c", 14, "cola", 10))
+        val idx = StockHealth.buildTrayGroupIndex(trays, linkedSelections = true)
+        assertEquals(TrayStockFlag.OK, idx["a"]!!.flag)
+        assertEquals(0, idx["a"]!!.group.emptySlots)
+        assertFalse(idx["a"]!!.needsRefill)
+    }
+
+    @Test
+    fun `linked selections keep low and fill flags`() {
+        val low = StockHealth.buildTrayGroupIndex(
+            listOf(slot("a", 12, "cola", 0), slot("b", 13, "cola", 3)),
+            linkedSelections = true,
+        )
+        assertEquals(TrayStockFlag.LOW, low["a"]!!.flag)
+        val fill = StockHealth.buildTrayGroupIndex(
+            listOf(slot("a", 12, "cola", 0), slot("b", 13, "cola", 1), slot("c", 14, "cola", 10)),
+            linkedSelections = true,
+        )
+        assertEquals(TrayStockFlag.FILL, fill["a"]!!.flag)
+    }
+
+    @Test
+    fun `linked machines report no empty slots with stock, others unchanged`() {
+        val trays = colaSlots(0, 10, 10) + colaSlots(0, 10, 10).map {
+            it.copy(id = "m2-${it.id}", machineId = "m2")
+        }
+        val s = StockHealth.summaries(trays, colaWarehouse, true, linkedMachineIds = setOf("m1"))
+        assertEquals(0, s["m1"]!!.emptySlotsWithStock)
+        assertEquals(MachineStockTier.OK, s["m1"]!!.tier)
+        assertEquals(1, s["m2"]!!.emptySlotsWithStock)
+    }
+
+    @Test
+    fun `linked selections do not change the tier of a sold-out product`() {
+        val s = StockHealth.summaries(colaSlots(0, 0), colaWarehouse, true, linkedMachineIds = setOf("m1"))["m1"]!!
+        assertEquals(MachineStockTier.CRITICAL, s.tier)
+        assertEquals(1, s.refillableEmpty)
+    }
+
     private val listTrays = listOf(
         slot("fanta", 11, "fanta", 5),
         slot("c14", 14, "cola", 9),

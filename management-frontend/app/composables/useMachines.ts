@@ -32,6 +32,8 @@ interface VendingMachine {
   formatted_address: string | null
   nayax_machine_id: string | null
   item_number_offset: number
+  /** The machine vends from a sibling slot when one is empty — hides the "slot empty" hint. */
+  linked_selections?: boolean
   embeddeds: Embedded | null
   last_sale_at?: string | null
   last_sale_amount?: number | null
@@ -81,6 +83,7 @@ export interface MachineSettingsPatch {
   country_code: string | null
   nayax_machine_id: string | null
   item_number_offset: number
+  linked_selections?: boolean
 }
 
 /**
@@ -88,7 +91,7 @@ export interface MachineSettingsPatch {
  * non-null since a machine is only created "with location" when a pin was placed.
  * nayax_machine_id is set later via Machine Settings, not at creation time.
  */
-export type CreateMachineLocation = Omit<MachineSettingsPatch, 'location_lat' | 'location_lon' | 'nayax_machine_id' | 'item_number_offset'> & {
+export type CreateMachineLocation = Omit<MachineSettingsPatch, 'location_lat' | 'location_lon' | 'nayax_machine_id' | 'item_number_offset' | 'linked_selections'> & {
   location_lat: number
   location_lon: number
 }
@@ -106,7 +109,7 @@ export function useMachines() {
         .select(`
           id, name, location_lat, location_lon, embedded, country_code, public_listing,
           address_street, address_house_number, address_postal_code, address_city, formatted_address,
-          nayax_machine_id, item_number_offset,
+          nayax_machine_id, item_number_offset, linked_selections,
           embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, firmware_build_date, mdb_diagnostics, last_restart_reason, last_restart_at, online_since)
         `)
 
@@ -313,10 +316,12 @@ export function useMachines() {
 
       // One entry per product: its slots are summed, so a product that is
       // empty in one spiral but stocked in another is not "out of stock".
+      const linkedMachineIds = new Set(machines.value.filter(m => m.linked_selections).map(m => m.id))
       for (const group of groupTraysByProduct(trayRows.filter(t => t.machine_id))) {
         const entry = entryFor(group.machine_id)
         if (!groupNeedsRefill(group)) {
-          entry.emptySlotsWithStock += group.emptySlots
+          // A machine that vends from a sibling slot on its own doesn't care about an empty one.
+          if (!linkedMachineIds.has(group.machine_id)) entry.emptySlotsWithStock += group.emptySlots
           continue
         }
 
@@ -584,6 +589,7 @@ export function useMachines() {
       machine.formatted_address = patch.formatted_address
       machine.nayax_machine_id = patch.nayax_machine_id
       machine.item_number_offset = patch.item_number_offset
+      if (patch.linked_selections !== undefined) machine.linked_selections = patch.linked_selections
     }
   }
 

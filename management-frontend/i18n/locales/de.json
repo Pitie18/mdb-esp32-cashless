@@ -736,6 +736,8 @@
     "itemNumberOffsetPlaceholder": "0",
     "itemNumberOffsetHint": "Wird auf die vom Automaten gemeldete Fachnummer addiert. Meldet der Automat 1, wo das Fach mit 10 beschriftet ist, trag 9 ein. Gilt erst ab dem Speichern — bereits erfasste Verkäufe bleiben unverändert.",
     "itemNumberOffsetWarning": "Prüfe vorher, dass deine Fächer hier mit den Nummern vom Aufkleber angelegt sind (10, 11, …) und nicht mit den rohen Nummern des Automaten.",
+    "linkedSelections": "Gleiche Produkte sind verknüpft",
+    "linkedSelectionsHint": "Der Automat gibt ein Produkt automatisch aus einem anderen Fach aus, wenn ein Fach leer ist. Dann wird ein leeres Fach nicht mehr als Hinweis angezeigt, solange das Produkt noch in einem anderen Fach liegt.",
     "save": "Speichern",
     "cancel": "Abbrechen",
     "contactOverrides": "Abweichende Kontaktdaten",

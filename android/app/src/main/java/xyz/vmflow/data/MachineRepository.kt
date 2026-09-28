@@ -69,7 +69,7 @@ object MachineRepository {
     suspend fun fetchMachines(): Result<List<VendingMachineWithEmbedded>> {
         return try {
             val machines = postgrest.from("vendingMachine")
-                .select(Columns.raw("id, name, location_lat, location_lon, country_code, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version)"))
+                .select(Columns.raw("id, name, location_lat, location_lon, country_code, linked_selections, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version)"))
                 .decodeList<VendingMachineWithEmbedded>()
             Result.success(machines)
         } catch (e: Exception) {
@@ -214,7 +214,7 @@ object MachineRepository {
                     Columns.raw(
                         "id, name, location_lat, location_lon, country_code, " +
                             "address_street, address_house_number, address_postal_code, address_city, " +
-                            "formatted_address, nayax_machine_id, public_listing, " +
+                            "formatted_address, nayax_machine_id, public_listing, linked_selections, " +
                             "embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, " +
                             "mdb_diagnostics, last_restart_reason, last_restart_at, online_since)"
                     )

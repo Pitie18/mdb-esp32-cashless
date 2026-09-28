@@ -18,7 +18,7 @@ import { COUNTRY_OPTIONS } from '~/composables/useTaxSettings'
 const props = defineProps<{
   open: boolean
   machineId: string
-  initial: Partial<LocationModel & { nayax_machine_id: string | null; item_number_offset: number }>
+  initial: Partial<LocationModel & { nayax_machine_id: string | null; item_number_offset: number; linked_selections: boolean }>
   publicListing: boolean
 }>()
 
@@ -31,7 +31,7 @@ const { t } = useI18n()
 const supabase = useSupabaseClient()
 const { updateMachineSettings } = useMachines()
 
-type MachineSettingsForm = LocationModel & { nayax_machine_id: string | null; item_number_offset: number }
+type MachineSettingsForm = LocationModel & { nayax_machine_id: string | null; item_number_offset: number; linked_selections: boolean }
 
 const form = ref<MachineSettingsForm>(cloneInitial())
 const saving = ref(false)
@@ -142,6 +142,7 @@ function cloneInitial(): MachineSettingsForm {
     country_code: props.initial.country_code ?? null,
     nayax_machine_id: props.initial.nayax_machine_id ?? null,
     item_number_offset: props.initial.item_number_offset ?? 0,
+    linked_selections: props.initial.linked_selections ?? false,
   }
 }
 
@@ -327,6 +328,20 @@ function cancel() {
             {{ t('machineSettings.itemNumberOffsetWarning') }}
           </p>
         </div>
+
+        <!-- Linked selections: the machine vends from a sibling slot when one is empty -->
+        <label for="machine-linked-selections" class="flex cursor-pointer items-start gap-3">
+          <input
+            id="machine-linked-selections"
+            v-model="form.linked_selections"
+            type="checkbox"
+            class="mt-0.5 h-4 w-4 shrink-0 rounded border-input accent-primary"
+          />
+          <span class="space-y-0.5">
+            <span class="block text-xs font-medium">{{ t('machineSettings.linkedSelections') }}</span>
+            <span class="block text-[10px] text-muted-foreground">{{ t('machineSettings.linkedSelectionsHint') }}</span>
+          </span>
+        </label>
 
         <!-- ── Contact overrides for printed posters ─────────── -->
         <div class="rounded-xl border bg-card p-4">

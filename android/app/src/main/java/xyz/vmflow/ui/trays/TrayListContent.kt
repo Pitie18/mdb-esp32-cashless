@@ -51,6 +51,8 @@ fun TrayListContent(
     trays: List<Tray>,
     products: List<Product>,
     machineId: String,
+    /** The machine's `linked_selections` flag: hides the "slot empty" hint. */
+    linkedSelections: Boolean = false,
     onStockChange: (trayId: String, delta: Int) -> Unit,
     onFillTray: (trayId: String) -> Unit,
     onDeleteTray: (trayId: String) -> Unit,
@@ -88,7 +90,9 @@ fun TrayListContent(
                 )
             }
         } else {
-            val groupIndex = remember(trays) { StockHealth.buildTrayGroupIndex(trays) }
+            val groupIndex = remember(trays, linkedSelections) {
+                StockHealth.buildTrayGroupIndex(trays, linkedSelections)
+            }
             // Top-off rows are only tinted while some product is actually low,
             // same rule as the PWA's tray list.
             val anyLow = remember(groupIndex) { groupIndex.values.any { it.flag == TrayStockFlag.LOW } }

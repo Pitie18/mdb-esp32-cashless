@@ -127,6 +127,15 @@ struct VendingMachine: Codable, Identifiable, Equatable {
     let formattedAddress: String?
     let nayaxMachineId: String?
     let publicListing: Bool?
+    /// Raw `linked_selections` column; read ``linkedSelections`` instead.
+    /// Optional so the synthesized decoder uses `decodeIfPresent` and a
+    /// select (or fixture, or older server) without the column still decodes.
+    let linkedSelectionsRaw: Bool?
+
+    /// The machine vends from a sibling slot when one of a product's slots is
+    /// empty, so the "slot empty, product in another slot" hint is hidden.
+    /// Display only; edited in the web app.
+    var linkedSelections: Bool { linkedSelectionsRaw ?? false }
 
     enum CodingKeys: String, CodingKey {
         case id, name, embedded, embeddeds
@@ -140,6 +149,7 @@ struct VendingMachine: Codable, Identifiable, Equatable {
         case formattedAddress = "formatted_address"
         case nayaxMachineId = "nayax_machine_id"
         case publicListing = "public_listing"
+        case linkedSelectionsRaw = "linked_selections"
     }
 
     /// Explicit memberwise initializer. `let` properties that carry a default
@@ -162,7 +172,8 @@ struct VendingMachine: Codable, Identifiable, Equatable {
         addressCity: String? = nil,
         formattedAddress: String? = nil,
         nayaxMachineId: String? = nil,
-        publicListing: Bool? = nil
+        publicListing: Bool? = nil,
+        linkedSelections: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -178,6 +189,7 @@ struct VendingMachine: Codable, Identifiable, Equatable {
         self.formattedAddress = formattedAddress
         self.nayaxMachineId = nayaxMachineId
         self.publicListing = publicListing
+        self.linkedSelectionsRaw = linkedSelections
     }
 
     /// Display name, falling back to "Unnamed Machine".

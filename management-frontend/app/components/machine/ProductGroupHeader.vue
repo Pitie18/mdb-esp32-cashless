@@ -11,6 +11,8 @@ const props = defineProps<{
   name: string
   imageUrl?: string | null
   needsRefill: boolean
+  /** False for machines with linked selections, where an empty slot doesn't matter. */
+  showEmptySlots?: boolean
 }>()
 
 const { t } = useI18n()
@@ -51,7 +53,7 @@ const barColor = computed(() => {
         <div class="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
           <span class="tabular-nums"><span class="font-semibold text-foreground">{{ group.current_stock }}</span> / {{ group.capacity }}</span>
           <span v-if="group.deficit > 0" class="tabular-nums">{{ t('machineDetail.groupMissing', { count: group.deficit }) }}</span>
-          <span v-if="group.emptySlots > 0 && !needsRefill">{{ t('machineDetail.groupEmptySlots', { count: group.emptySlots }, group.emptySlots) }}</span>
+          <span v-if="group.emptySlots > 0 && !needsRefill && showEmptySlots !== false">{{ t('machineDetail.groupEmptySlots', { count: group.emptySlots }, group.emptySlots) }}</span>
         </div>
       </div>
       <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" :class="status.cls">{{ status.label }}</span>

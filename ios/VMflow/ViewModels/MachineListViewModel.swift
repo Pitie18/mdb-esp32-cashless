@@ -29,7 +29,7 @@ final class MachineListViewModel: ObservableObject {
             // 1. Fetch machines with embedded relation
             let machines: [VendingMachine] = try await client
                 .from("vendingMachine")
-                .select("id, name, location_lat, location_lon, embedded, country_code, address_street, address_house_number, address_postal_code, address_city, formatted_address, nayax_machine_id, public_listing, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, firmware_build_date, mdb_address, mdb_diagnostics, last_restart_reason, last_restart_at, online_since)")
+                .select("id, name, location_lat, location_lon, embedded, country_code, address_street, address_house_number, address_postal_code, address_city, formatted_address, nayax_machine_id, public_listing, linked_selections, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, firmware_build_date, mdb_address, mdb_diagnostics, last_restart_reason, last_restart_at, online_since)")
                 .execute()
                 .value
 
@@ -150,7 +150,8 @@ final class MachineListViewModel: ObservableObject {
                 var lowProducts = 0
                 var emptySlotsWithStock = 0
 
-                for group in MachineStockHealth.groupTraysByProduct(machineTrays) {
+                let linked: Set<UUID> = machine.linkedSelections ? [machine.id] : []
+                for group in MachineStockHealth.groupTraysByProduct(machineTrays, linkedMachineIds: linked) {
                     guard group.needsRefill else {
                         emptySlotsWithStock += group.emptySlots
                         continue
