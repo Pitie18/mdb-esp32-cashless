@@ -97,11 +97,18 @@ mdb_slave_esp32s3-wroom-1u/
 ├── mdb_slave_esp32s3-wroom-1u.kicad_pcb   PCB layout (routed, rev 1.4.1)
 ├── LICENSE                                CERN-OHL-S v2
 ├── gerber_to_order/                       Fabrication Gerbers per vendor (JLCPCB, PCBWay) — versioned
+├── bom/ibom.html                          Interactive BOM (InteractiveHtmlBom export) — versioned
 └── production/                            BOM, CPL, netlist (generated locally, not versioned)
 ```
 
-The `.kicad_pro` / `.kicad_sch` / `.kicad_pcb` files, this README, and `gerber_to_order/` are
-version-controlled — see `.gitignore`.
+The `.kicad_pro` / `.kicad_sch` / `.kicad_pcb` files, this README, `LICENSE`, `gerber_to_order/`,
+and `bom/ibom.html` are version-controlled — see `.gitignore`.
+
+## Browsing the board without KiCad
+
+Open `bom/ibom.html` in any browser for an interactive BOM: it highlights each component on the
+PCB (top/bottom view) when selected, lists references/values/footprints, and supports search and
+filtering — useful for assembly checks or reviewing the design without installing KiCad.
 
 ## Tools
 
