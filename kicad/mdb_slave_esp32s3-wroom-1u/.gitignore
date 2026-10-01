@@ -10,6 +10,9 @@
 # Keep this .gitignore
 !.gitignore
 
+# Keep the licence
+!LICENSE
+
 # Keep the fabrication Gerber archives
 !gerber_to_order/
 !gerber_to_order/**

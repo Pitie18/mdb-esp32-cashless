@@ -49,7 +49,7 @@ Two 15A-class SPDT relays (K2, K3 — SRD-03VDC-SL-C, 3V coil on the +3V3 rail),
 - P8: Relay #1 — K2 / Q2 / U3, driven from GPIO1
 - P9: Relay #2 — K3 / Q3 / U4, driven from GPIO2
 
-⚠️ Known open point: with the current TLP785 pull-up/pull-down arrangement, drive logic is inverted (GPIO low, or floating at boot, = relay energized; GPIO high = relay de-energized). Confirm this matches firmware expectations, or flip the pull-up/pull-down before ordering if a fail-safe de-energized default is required.
+⚠️ Note (intentional design choice): with the current TLP785 pull-up/pull-down arrangement, drive logic is inverted (GPIO low, or floating at boot, = relay energized; GPIO high = relay de-energized). This matches this board's firmware. If you reuse this design, or adapt a different firmware to it, update the GPIO drive logic accordingly — or flip the pull-up/pull-down if a fail-safe de-energized boot default is required.
 
 **1-Wire buses — P4, P5, P6**
 Two 1-Wire interfaces plus a spare/parallel header, each with a pull-up resistor:
@@ -95,6 +95,7 @@ mdb_slave_esp32s3-wroom-1u/
 ├── mdb_slave_esp32s3-wroom-1u.kicad_pro   KiCad project
 ├── mdb_slave_esp32s3-wroom-1u.kicad_sch   Schematic
 ├── mdb_slave_esp32s3-wroom-1u.kicad_pcb   PCB layout (routed, rev 1.4.1)
+├── LICENSE                                CERN-OHL-S v2
 ├── gerber_to_order/                       Fabrication Gerbers per vendor (JLCPCB, PCBWay) — versioned
 └── production/                            BOM, CPL, netlist (generated locally, not versioned)
 ```
@@ -109,4 +110,4 @@ version-controlled — see `.gitignore`.
 
 ## License
 
-*(add license — e.g. CERN-OHL-S, MIT for firmware, etc.)*
+[CERN-OHL-S v2](https://choosealicense.com/licenses/cern-ohl-s-2.0/) — see `LICENSE`.
