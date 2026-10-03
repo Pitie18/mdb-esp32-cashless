@@ -3638,7 +3638,8 @@ static void publish_pulse_event(uint32_t count, time_t ts) {
     mqtt_publish_safe(mqttClient, topic, msg, 0, 1, 0);
 }
 
-static void pulse_input_task(void *arg) {
+/* Unused when the RFID reader claims GPIO13 (the default), see app_main. */
+static __attribute__((unused)) void pulse_input_task(void *arg) {
     pcnt_unit_config_t unit_config = {
         .low_limit  = -1,
         .high_limit = 10000, // arbitrary safe ceiling well above any plausible burst; drained every 200ms
