@@ -4333,6 +4333,13 @@ void app_main(void) {
 	/* Serial RFID reader on the pulse input. Cards are published to the
 	 * /card topic; the backend answers on /credit with the balance of the
 	 * matching card account, which is the same path send-credit uses. */
+#if CONFIG_RFID_READER_ENABLE
+	/* No pulse circuit on WROOM-1U: the reader sits on the J1 UART
+	 * header's RXD pin instead (CONFIG_RFID_RX_GPIO_WROOM_1U). */
+	if (g_board_is_wroom_1u) {
+		rfid_reader_set_rx_gpio(CONFIG_RFID_RX_GPIO_WROOM_1U);
+	}
+#endif
 	rfid_reader_start(rfid_card_handler, NULL);
 
     // vTaskBitEvent was already started right after the LED strip driver

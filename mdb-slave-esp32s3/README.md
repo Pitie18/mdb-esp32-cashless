@@ -54,12 +54,15 @@ board unchanged):
 | 16 | 1-Wire bus 2 (J5/J6) | `PIN_ONEWIRE_2` | driver done — boot scan + 5min DS18B20 tracking |
 | 17 | Custom input 2 (J13) | `PIN_CUSTOM_INPUT2` | driver done — debounced, published on `/input` |
 | 18 | Custom input 3 (J14) | `PIN_CUSTOM_INPUT3` | driver done — debounced, published on `/input` |
+| 44 | RFID reader RX (J1 `RXD`) | `CONFIG_RFID_RX_GPIO_WROOM_1U` | serial RFID reader input — see "RFID card reader" below |
 | 46, 47, 48 | free | — | unused on this PCB revision |
 
 GPIO13 (`PIN_PULSE_1`, J8) exists only on the **original** board — the
 pulse circuit has been desoldered on the WROOM-1U PCB revision, so this
 pin is free/unused there. On the original board it's now a live input —
-see "Pulse input" under "Board-specific drivers" below.
+see "Pulse input" under "Board-specific drivers" below. The serial RFID
+reader, which uses GPIO13 on the original board, moves to the J1 UART
+header on WROOM-1U (GPIO44, see "RFID card reader on the pulse input").
 
 WiFi-only board, confirmed no GPS/LTE-M/NB-IoT — `network.c`'s existing
 "no modem → WiFi-only boot" path is used as-is, and `modem.c`/
@@ -183,6 +186,21 @@ balance of that card's account as MDB credit; the vend that follows is
 charged back to the account. Settings live under
 `idf.py menuconfig` → **RFID card reader**; the driver is
 `main/rfid_reader.c` with a host-side test in `test/rfid/run.sh`.
+
+### On the ESP32-S3-WROOM-1U board
+
+The WROOM-1U PCB has no pulse circuit, so the same reader goes on the
+**`RXD` pin of the J1 UART header (GPIO 44)** instead — reader TX to `RXD`,
+plus `GND` and `+3V3` from the same header. GPIO 44 is UART0's own RX pad,
+and J1 is free at runtime because the board is flashed and logged over USB
+(USB-Serial-JTAG), not over that UART. The firmware picks the pin at boot
+from the GPIO3 board-ID strap: `CONFIG_RFID_RX_GPIO` (13) on the original
+board, `CONFIG_RFID_RX_GPIO_WROOM_1U` (44 by default) on WROOM-1U. Driver,
+frame format and backend flow are identical on both boards. A 5 V reader
+still needs a divider on its TX line.
+
+This was added at the request of a WROOM-1U board user, who had opened
+their own PR to get the RFID reader working on this board.
 
 Full write-up, including the frame format and the backend flow:
 [`docs/integrations/rfid-card-reader.md`](../docs/integrations/rfid-card-reader.md).
