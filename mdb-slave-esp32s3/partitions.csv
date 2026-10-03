@@ -1,0 +1,12 @@
+# Name,     Type, SubType,  Offset,   Size,    Flags
+# Same nvs/otadata/phy_init/ota_0/ota_1 layout as the stock ESP-IDF
+# partitions_two_ota_large.csv this project used before (that table only
+# accounts for ~3MB, so the rest of this board's 16MB flash was invisible
+# to the firmware). Adding a real custom table both frees up "dbglog" and
+# stops leaving ~12MB of the WROOM-1U-N16R2's flash unpartitioned.
+nvs,        data, nvs,      0x9000,   0x6000,
+otadata,    data, ota,      0xf000,   0x2000,
+phy_init,   data, phy,      0x11000,  0x1000,
+ota_0,      app,  ota_0,    0x20000,  1500K,
+ota_1,      app,  ota_1,    ,         1500K,
+dbglog,     data, 0x40,     ,         800K,
