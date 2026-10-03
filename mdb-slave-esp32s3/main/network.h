@@ -93,6 +93,12 @@ typedef void (*network_event_cb_t)(network_event_t event, void *user_data);
  */
 void network_init(void);
 
+/* Tell network_init() this board has no cellular modem fitted, so it
+ * takes the WiFi branch without running modem_probe(). The probe drives
+ * the modem UART/PWRKEY pins (GPIO17/18/14), which other boards reuse for
+ * unrelated I/O. Must be called before network_init(). */
+void network_disable_modem_probe(void);
+
 network_state_t network_get_state(void);
 
 /* Refresh and return current network status. Cheap to call. */
@@ -148,6 +154,41 @@ bool network_modem_probe_complete(void);
  * branch was already taken.
  */
 esp_err_t network_skip_modem_probe(void);
+
+/*
+ * Runtime uplink switch for a modem-equipped board (Option A: WiFi
+ * *instead of* cellular, never both at once — see network_init()'s
+ * single boot-time branch). Persists the preference to NVS and, when
+ * prefer_wifi is true and ssid is non-NULL, also saves WiFi credentials
+ * via esp_wifi_set_config so the very next boot can connect immediately
+ * instead of needing a second SoftAP round-trip. Does NOT apply live —
+ * network_init() only branches once at boot, so the caller must reboot
+ * the device (webui_server.c's handler does this via tracked_restart)
+ * for the switch to take effect.
+ *
+ * Returns ESP_ERR_NOT_SUPPORTED if this board has never confirmed modem
+ * hardware present (see network_has_cellular_hw) — the switch is
+ * meaningless on a true WiFi-only board.
+ */
+esp_err_t network_set_uplink_preference(bool prefer_wifi, const char *ssid, const char *password);
+
+/* Persisted preference as last set by network_set_uplink_preference.
+ * false (cellular/default) if never set. Only meaningful together with
+ * network_has_cellular_hw() — check both to know what a modem-equipped
+ * board will do on its next boot. */
+bool network_get_uplink_preference(void);
+
+/*
+ * True if this device has EVER confirmed a SIM7080G present via
+ * modem_probe(), regardless of the current boot's uplink choice. Needed
+ * because switching to WiFi mode skips modem_probe() on subsequent
+ * boots — modem_is_present() alone would then read false and the
+ * captive portal couldn't tell "genuinely WiFi-only hardware" from "a
+ * cellular board currently running in WiFi mode." Persisted in NVS,
+ * set once the first time a probe succeeds, never cleared (short of a
+ * factory reset).
+ */
+bool network_has_cellular_hw(void);
 
 /*
  * Quick TCP-connect probe. Returns true if SYN-ACK comes back from

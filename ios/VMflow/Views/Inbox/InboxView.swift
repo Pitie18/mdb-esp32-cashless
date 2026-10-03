@@ -47,7 +47,7 @@ struct InboxView: View {
                 .frame(maxWidth: 160)
             }
         }
-        .refreshable { await viewModel.load() }
+        .dataRefreshable { await viewModel.load() }
         .task { await viewModel.load() }
         .alert("Error", isPresented: .init(
             get: { viewModel.error != nil },
@@ -136,7 +136,9 @@ struct InboxView: View {
             Image(systemName: "tray")
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
-            Text(viewModel.showOnlyOpen ? "No open items" : "Inbox is empty")
+            Text(viewModel.showOnlyOpen
+                 ? String(localized: "No open items", comment: "Empty state title on the Inbox screen when filtered to open items only")
+                 : String(localized: "Inbox is empty", comment: "Empty state title on the Inbox screen when showing all items (not filtered to open only)"))
                 .font(.title3.weight(.semibold))
             Text("When customers report a problem, leave feedback or submit a product wish from a machine page, it will appear here.")
                 .font(.subheadline)
@@ -157,6 +159,8 @@ private struct InboxRow: View {
     let onDismiss: () -> Void
     let onReopen: () -> Void
     let onDelete: () -> Void
+
+    @State private var confirmDelete = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -192,7 +196,7 @@ private struct InboxRow: View {
             }
         }
         .opacity(item.isOpen ? 1.0 : 0.55)
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+        .swipeActions(edge: .trailing, allowsFullSwipe: item.isOpen) {
             if item.isOpen {
                 Button(role: .destructive, action: onDismiss) {
                     Label("Dismiss", systemImage: "xmark.circle")
@@ -202,7 +206,9 @@ private struct InboxRow: View {
                 }
                 .tint(.green)
             } else {
-                Button(role: .destructive, action: onDelete) {
+                Button(role: .destructive) {
+                    confirmDelete = true
+                } label: {
                     Label("Delete", systemImage: "trash")
                 }
                 Button(action: onReopen) {
@@ -212,6 +218,14 @@ private struct InboxRow: View {
             }
         }
         .disabled(isUpdating)
+        .confirmationDialog(
+            Text("Delete Notification", comment: "Confirmation dialog title before deleting an inbox notification"),
+            isPresented: $confirmDelete,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "Delete", comment: "Confirm inbox item deletion button"), role: .destructive, action: onDelete)
+            Button(String(localized: "Cancel", comment: "Cancel inbox item deletion button"), role: .cancel) {}
+        }
     }
 
     private var emailSubject: String {

@@ -108,11 +108,22 @@ async function loadWarehouseData() {
 
 const showDiscontinued = ref(true)
 const showUnassigned = ref(true)
+/**
+ * When false (the default), zero-stock products are hidden **unless the product
+ * still occupies a machine slot** — there a zero warehouse stock is the
+ * actionable signal (the slot needs refilling and there is nothing to refill it
+ * with). Zero-stock products in no machine are catalogue noise. Mirrors the iOS
+ * warehouse tab.
+ */
+const showAllOutOfStock = ref(false)
 
 const activeProductSummaries = computed(() => {
   let items = productSummaries.value
   if (!showDiscontinued.value) items = items.filter(p => !p.discontinued)
   if (!showUnassigned.value) items = items.filter(p => assignedProductIds.value.has(p.product_id))
+  if (!showAllOutOfStock.value) {
+    items = items.filter(p => p.total_quantity > 0 || assignedProductIds.value.has(p.product_id))
+  }
   return items
 })
 
@@ -183,6 +194,7 @@ function toggleExpand(productId: string) {
 }
 
 import { fuzzyFilter } from '@/lib/fuzzySearch'
+import { moveProductPosition, productsInGroup, revertSortableMove } from '@/lib/warehousePositions'
 
 const filteredSummaries = computed(() => {
   let items = activeProductSummaries.value
@@ -284,8 +296,8 @@ onUnmounted(() => destroySortables())
 
 const positionedItems = computed(() => positions.value.filter(p => p.sort_order >= 0))
 const unpositionedItems = computed(() => positions.value.filter(p => p.sort_order < 0))
-const rootProducts = computed(() => positionedItems.value.filter(p => !p.group_id))
-const ungroupedPositioned = computed(() => positionedItems.value.filter(p => !p.group_id))
+const rootProducts = computed(() => productsInGroup(positions.value, null))
+const ungroupedPositioned = computed(() => productsInGroup(positions.value, null))
 
 // Flat list of all groups for move-to-group dropdown
 const allGroupsFlat = computed(() => {
@@ -469,7 +481,8 @@ function rebuildGroupProducts() {
     }
   }
   collect(groups.value)
-  for (const pos of positionedItems.value) {
+  // In sort_order, not array order: `positions` isn't re-sorted after a move.
+  for (const pos of [...positionedItems.value].sort((a, b) => a.sort_order - b.sort_order)) {
     if (pos.group_id && groupMap.has(pos.group_id)) {
       groupMap.get(pos.group_id)!.products.push(pos)
     }
@@ -477,9 +490,12 @@ function rebuildGroupProducts() {
 }
 
 async function moveSelectedToGroup(groupId: string | null) {
-  for (const pid of selectedProducts.value) {
-    const item = positionedItems.value.find(p => p.product_id === pid)
-    if (item) item.group_id = groupId
+  // Append to the end of the target group, keeping the selection's display order.
+  const selected = positionedItems.value
+    .filter(p => selectedProducts.value.has(p.product_id))
+    .sort((a, b) => a.sort_order - b.sort_order)
+  for (const item of selected) {
+    moveProductPosition(positions.value, item.product_id, groupId, Number.MAX_SAFE_INTEGER)
   }
   rebuildGroupProducts()
   deselectAll()
@@ -489,26 +505,27 @@ async function moveSelectedToGroup(groupId: string | null) {
 
 // ── Sortable.js integration ─────────────────────────────────────────────
 
-const sortableInstances = ref<any[]>([])
+// Product lists and the group list are separate instances: expanding or
+// collapsing a group re-creates only the product lists (their containers are
+// v-if'd). Destroying everything there used to kill group dragging for good.
+let productSortables: any[] = []
+let groupSortables: any[] = []
 
 function destroySortables() {
-  for (const s of sortableInstances.value) s.destroy()
-  sortableInstances.value = []
+  for (const s of [...productSortables, ...groupSortables]) s.destroy()
+  productSortables = []
+  groupSortables = []
 }
 
 function initSortables() {
   if (import.meta.server) return
-  destroySortables()
+  for (const s of productSortables) s.destroy()
+  productSortables = []
 
   nextTick(() => {
-    // Init sortable on each product list container
-    const containers = document.querySelectorAll('[data-sortable-group]')
-    for (const el of containers) {
-      const groupId = el.getAttribute('data-sortable-group') || null
-      const resolvedGroupId = groupId === '__root__' ? null : groupId
-
-      if (!_Sortable) return
-      const instance = _Sortable.create(el as HTMLElement, {
+    if (!_Sortable) return
+    for (const el of document.querySelectorAll('[data-sortable-group]')) {
+      productSortables.push(_Sortable.create(el as HTMLElement, {
         group: 'products', // allows cross-group dragging
         handle: '.drag-handle',
         animation: 150,
@@ -516,31 +533,22 @@ function initSortables() {
         dragClass: 'shadow-lg',
         onEnd(evt) {
           const productId = evt.item.getAttribute('data-product-id')
-          if (!productId) return
+          if (!productId || evt.newIndex === undefined) return
+          if (evt.from === evt.to && evt.oldIndex === evt.newIndex) return
 
           const toGroupId = evt.to.getAttribute('data-sortable-group')
           const targetGroupId = !toGroupId || toGroupId === '__root__' ? null : toGroupId
 
-          // Update group_id if moved between groups
-          const item = positionedItems.value.find(p => p.product_id === productId)
-          if (item) {
-            item.group_id = targetGroupId
-
-            // Reorder within target group based on new DOM order
-            const targetContainer = evt.to
-            const children = targetContainer.querySelectorAll('[data-product-id]')
-            children.forEach((child, idx) => {
-              const pid = child.getAttribute('data-product-id')
-              const pos = positionedItems.value.find(p => p.product_id === pid)
-              if (pos) pos.sort_order = idx + 1
-            })
-
-            rebuildGroupProducts()
-            debouncedSavePositions()
-          }
+          // SortableJS already moved the row in the DOM. Put it back and let
+          // Vue render the move from the data — otherwise Vue patches a DOM it
+          // no longer owns and the row jumps (to its old array position when
+          // moved into another group).
+          revertSortableMove(evt as { item: HTMLElement; from: HTMLElement; oldIndex?: number })
+          moveProductPosition(positions.value, productId, targetGroupId, evt.newIndex)
+          rebuildGroupProducts()
+          debouncedSavePositions()
         },
-      })
-      sortableInstances.value.push(instance)
+      }))
     }
   })
 }
@@ -549,18 +557,19 @@ function initSortables() {
 
 function initGroupSortable() {
   if (import.meta.server) return
+  for (const s of groupSortables) s.destroy()
+  groupSortables = []
   nextTick(() => {
     const container = document.querySelector('[data-sortable-groups]')
-    if (!container) return
-
-    if (!_Sortable) return
-    const instance = _Sortable.create(container as HTMLElement, {
+    if (!container || !_Sortable) return
+    groupSortables.push(_Sortable.create(container as HTMLElement, {
       handle: '.group-drag-handle',
       animation: 150,
       ghostClass: 'opacity-30',
       onEnd(evt) {
         if (evt.oldIndex === undefined || evt.newIndex === undefined) return
         if (evt.oldIndex === evt.newIndex) return
+        revertSortableMove(evt as { item: HTMLElement; from: HTMLElement; oldIndex?: number })
         const list = [...groups.value]
         const [moved] = list.splice(evt.oldIndex, 1)
         list.splice(evt.newIndex, 0, moved!)
@@ -576,8 +585,7 @@ function initGroupSortable() {
           }))).catch(e => console.error('Failed to save group order', e))
         }
       },
-    })
-    sortableInstances.value.push(instance)
+    }))
   })
 }
 
@@ -1204,6 +1212,10 @@ async function onVelocityDaysChange(e: Event) {
               <input type="checkbox" v-model="showDiscontinued" class="rounded border-input" />
               {{ t('warehouse.showDiscontinued') }}
             </label>
+            <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+              <input type="checkbox" v-model="showAllOutOfStock" class="rounded border-input" />
+              {{ t('warehouse.showAllOutOfStock') }}
+            </label>
           </div>
 
           <!-- Product summary table -->
@@ -1367,6 +1379,12 @@ async function onVelocityDaysChange(e: Event) {
               <label class="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
                 <input type="checkbox" v-model="showDiscontinued" class="rounded border-input" />
                 {{ t('warehouse.showDiscontinued') }}
+              </label>
+              <!-- Off by default; zero-stock products still sitting in a
+                   machine slot are shown regardless — hence "all". -->
+              <label class="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
+                <input type="checkbox" v-model="showAllOutOfStock" class="rounded border-input" />
+                {{ t('warehouse.showAllOutOfStock') }}
               </label>
             </div>
             <button

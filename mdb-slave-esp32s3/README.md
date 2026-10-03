@@ -65,13 +65,11 @@ WiFi-only board, confirmed no GPS/LTE-M/NB-IoT — `network.c`'s existing
 "no modem → WiFi-only boot" path is used as-is, and `modem.c`/
 `modem_https.c` stay fully inert via the existing `modem_probe()` fallback.
 
-**Cellular (SIM7080G) board note**: `modem.c`'s pins target the LilyGo
-T-SIM7080G-S3 devkit used for bring-up, not the custom
-`kicad/mdb-slave-esp32s3-sim7080g` PCB — the two use different, colliding
-GPIOs (that PCB's modem UART shares GPIO4/5 with the MDB bus in this
-firmware's current pin map). Not plug-and-play yet; see
-`kicad/mdb-slave-esp32s3-sim7080g/README.md` for the confirmed pin
-mapping and what's needed to reconcile them.
+**Cellular (SIM7080G) board note**: `modem.c` drives the modem UART/PWRKEY
+on GPIO18/17/14, the pins of the custom `kicad/mdb-slave-esp32s3-sim7080g`
+PCB. On WROOM-1U those GPIOs carry custom inputs 2/3, so `app_main` calls
+`network_disable_modem_probe()` before `network_init()` on that board: it
+goes straight to the WiFi branch and the probe never touches GPIO17/18.
 
 ### Board-specific drivers (relay / custom input / 1-Wire / pulse / buzzer)
 
@@ -101,6 +99,12 @@ original board, which is the only one with that circuit populated:
   there's no confirmed pulse-value/timing spec for this connector, so
   this is raw telemetry only for now; converting counts into actual
   credit is follow-up work once the protocol is confirmed on hardware.
+  **Off by default while the RFID reader uses GPIO13**: the serial RFID
+  reader (see "RFID card reader on the pulse input" below) listens on the
+  same pin by default (`CONFIG_RFID_RX_GPIO=13`), and PCNT would count
+  its UART frames as pulses. The pulse task only starts when
+  `CONFIG_RFID_READER_ENABLE` is off or the reader is moved to another
+  GPIO.
 - **Buzzer** (`PIN_BUZZER_PWR`): WROOM-1U's buzzer is an MLT-8530
   electro-magnetic transducer, which per its datasheet needs an
   oscillating drive at its 2700Hz resonant frequency (50% duty square
@@ -165,3 +169,20 @@ Offline-safe diagnostic buffer, separate from the sales queue
   but **not yet exercised on real WROOM-1U hardware** — the PCB bring-up
   was still in progress as of this consolidation. Confirm behavior on a
   real board before relying on them in production.
+
+## RFID card reader on the pulse input
+
+A serial RFID reader (F02DC and compatibles) can be wired to the board's
+pulse input — reader TX to GPIO 13, plus GND and power — and turns the
+machine into a prepaid-card reader. No hardware change: the pin is routed
+through the GPIO matrix to UART0, which is free because the console runs
+over USB-Serial-JTAG.
+
+Presenting a card sends its serial to the backend, which answers with the
+balance of that card's account as MDB credit; the vend that follows is
+charged back to the account. Settings live under
+`idf.py menuconfig` → **RFID card reader**; the driver is
+`main/rfid_reader.c` with a host-side test in `test/rfid/run.sh`.
+
+Full write-up, including the frame format and the backend flow:
+[`docs/integrations/rfid-card-reader.md`](../docs/integrations/rfid-card-reader.md).

@@ -34,7 +34,7 @@ const sizeClasses: Record<string, string> = {
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent :class="cn(sizeClasses[size])">
+    <DialogContent :class="cn('max-h-[90vh] overflow-y-auto', sizeClasses[size])">
       <DialogHeader>
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription v-if="description">{{ description }}</DialogDescription>

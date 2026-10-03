@@ -1,0 +1,13 @@
+New
+• Localize the review step and layout grid
+• The replacement product picker
+
+Fixed
+• Page the third company-wide tray read, and correct my survey
+• Page the company-wide tray reads instead of trusting one request
+• Stop writing "null" as the author of an audit row
+• Never render an empty review, never latch it off
+• Restore MDB status and real uptime on Device Health
+• Make refill grid fill state visible over product photos
+
+…and 26 smaller changes.

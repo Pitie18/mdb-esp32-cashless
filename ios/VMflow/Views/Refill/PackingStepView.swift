@@ -491,6 +491,14 @@ private struct ChipBar: View {
         let isDone = viewModel.chipIsFullyPacked(chip)
         let name = viewModel.chipName(chip)
         let count = viewModel.chipItemCount(chip)
+        // Machine chips carry the tour health dot, like the PWA's machine
+        // cards (`effectiveStockHealth`): dimmed when the selected warehouse
+        // has none of the machine's products.
+        let health: StockHealth? = {
+            guard case .machine(let id) = chip,
+                  let machine = viewModel.machines.first(where: { $0.id == id }) else { return nil }
+            return viewModel.effectiveStockHealth(machine)
+        }()
 
         let bg: Color = {
             if isActive && isDone { return .green }
@@ -511,6 +519,11 @@ private struct ChipBar: View {
             }
         } label: {
             HStack(spacing: 4) {
+                if let health, !isDone {
+                    Circle()
+                        .fill(Self.healthColor(health))
+                        .frame(width: 7, height: 7)
+                }
                 Text(name)
                     .font(.caption.weight(isActive ? .semibold : .regular))
                 if isDone {
@@ -530,8 +543,18 @@ private struct ChipBar: View {
             .foregroundStyle(fg)
             .overlay(Capsule().stroke(.black.opacity(0.06), lineWidth: 0.5))
             .shadow(color: .black.opacity(isActive ? 0.15 : 0.05), radius: isActive ? 4 : 2, y: 1)
+            .opacity(health == .ok && !isActive ? 0.4 : 1)
         }
         .buttonStyle(.plain)
+    }
+
+    private static func healthColor(_ health: StockHealth) -> Color {
+        switch health {
+        case .critical: return .red
+        case .low: return .orange
+        case .fill: return .blue
+        case .ok: return .green
+        }
     }
 }
 

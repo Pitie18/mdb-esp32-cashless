@@ -45,3 +45,13 @@ scripts/sync-prod-to-dev.env
 # Prod→test data sync (scripts/sync-prod-to-test.sh)
 tmp/sync-test/
 scripts/sync-prod-to-test.env
+
+# Signing keys and certificates — never commit these.
+# ios/AuthKey_*.p8 is the APNs signing key: one `git add -A` would put it in
+# the history, and getting it back out means a rewrite plus key rotation.
+*.p8
+*.p12
+*.pem
+*.jks
+*.keystore
+*.mobileprovision

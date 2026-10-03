@@ -210,7 +210,11 @@
       "activity": "Activity",
       "noCompanies": "No companies yet"
     },
-    "activity": { "active": "Active", "idle": "Idle", "dead": "Inactive" },
+    "activity": {
+      "active": "Active",
+      "idle": "Idle",
+      "dead": "Inactive"
+    },
     "detail": {
       "back": "Back to overview",
       "members": "Members",
@@ -324,9 +328,11 @@
     "groupTechnical": "Technical",
     "reports": "Reports",
     "cashBook": "Cash Book",
+    "cardAccounts": "Card accounts",
     "inbox": "Inbox",
     "mobileApp": "Mobile App",
-    "deals": "Deals"
+    "deals": "Deals",
+    "analytics": "Analytics"
   },
   "auth": {
     "signIn": "Sign in",
@@ -430,6 +436,8 @@
     "swapNeeded": "{count} swap product",
     "refillNeeded": "{count} refill needed",
     "noWarehouseStock": "{count} no stock",
+    "topoffRecommended": "{count} recommended to top off",
+    "emptySlotsWithStock": "{count} slot empty, product in another slot | {count} slots empty, product in another slot",
     "inStock": "in stock",
     "noStock": "no stock",
     "swap": "swap",
@@ -443,7 +451,8 @@
     "insufficientStock": "Insufficient warehouse stock",
     "deductionFailed": "Deduction failed",
     "startRefillTour": "Start Refill Tour",
-    "stockHealth": "Stock Health"
+    "stockHealth": "Stock Health",
+    "posterOutdated": "Sign out of date"
   },
   "refill": {
     "title": "Refill Tour",
@@ -499,6 +508,19 @@
   "machineDetail": {
     "sales": "Sales",
     "traysAndStock": "Trays & Stock",
+    "viewByProduct": "By product",
+    "viewBySlot": "By slot",
+    "stockMap": "Layout",
+    "groupSlots": "{count} slot | {count} slots",
+    "groupMissing": "{count} missing",
+    "groupEmptySlots": "{count} slot empty | {count} slots empty",
+    "slotEmptyElsewhere": "Slot empty, product in another slot",
+    "groupStateCritical": "Sold out",
+    "groupStateLow": "Low",
+    "groupStateFill": "Top off",
+    "groupStateOk": "OK",
+    "selectedProductSummary": "{name} · {slots} · {stock}/{capacity}",
+    "clearSelection": "Clear selection",
     "analysis": "Analysis",
     "mdb": "MDB",
     "dailyRevenue": "Daily revenue (last 30 days)",
@@ -526,6 +548,14 @@
     "polls": "Polls",
     "checksumErrors": "Checksum Errors",
     "lastCommand": "Last Command",
+    "rfidReader": "RFID reader",
+    "rfidCards": "Cards",
+    "rfidFrames": "Frames",
+    "rfidBad": "Bad frames",
+    "rfidRepeats": "Repeats",
+    "rfidBytes": "Bytes read",
+    "rfidNoBytes": "Nothing has arrived from the reader — check the wiring, its power and the baud rate.",
+    "rfidNoFrames": "Bytes arrive but nothing parses — check the baud rate, the inverted-line setting and the reader's frame format.",
     "vmcLevel": "VMC Level",
     "macAddress": "MAC Address",
     "subdomain": "Subdomain",
@@ -544,6 +574,14 @@
     "price": "Price",
     "failedToLoad": "Failed to load machine",
     "slotMustBePositive": "Slot number must be 0 or greater",
+    "internalSlot": "Internal #",
+    "internalSlotTooltip": "Number the machine reports for this tray, if it differs from the slot number. Sales reported with it are booked on this slot — from now on; sales already recorded keep their slot. Leave empty if both numbers match.",
+    "internalSlotLabel": "Internal tray number (optional)",
+    "internalSlotPlaceholder": "Same as slot",
+    "internalSlotHint": "Only needed if the machine reports a different number for this tray than the one shown on it. Leave empty otherwise.",
+    "internalSlotInvalid": "Internal tray number must be a whole number from 0 to {max}",
+    "internalSlotTaken": "Internal tray number {number} is already used by slot {slot}",
+    "internalSlotShadowed": "Sales reported as {number} go to slot {slot}",
     "capacityAtLeastOne": "Capacity must be at least 1",
     "stockCannotExceed": "Stock cannot exceed capacity",
     "countAtLeastOne": "Count must be at least 1",
@@ -667,7 +705,10 @@
     "reasonClockUnsynced": "Clock not synced",
     "reasonNoClock": "Device had no clock",
     "reasonGapEarlier": "identical sale {n}s earlier",
-    "reasonNearDup": "near-duplicate of a recent sale"
+    "reasonNearDup": "near-duplicate of a recent sale",
+    "printPoster": "Print a sign",
+    "posterOutdatedTitle": "The printed sign no longer shows the current contact details",
+    "posterOutdatedBody": "The contact details changed after the last print. Reprint it and swap the sheet."
   },
   "machineSettings": {
     "title": "Machine settings",
@@ -691,8 +732,21 @@
     "nayaxMachineId": "Nayax Machine ID",
     "nayaxMachineIdPlaceholder": "e.g. 92700604",
     "nayaxMachineIdHint": "Required for Nayax sales reconciliation. You can find this ID in your Nayax back-office.",
+    "itemNumberOffset": "Slot number offset",
+    "itemNumberOffsetPlaceholder": "0",
+    "itemNumberOffsetHint": "Added to the slot number the machine reports. If the machine reports 1 where the slot is labelled 10, enter 9. Takes effect on save — sales already recorded are left untouched.",
+    "itemNumberOffsetWarning": "Check first that your trays here use the numbers from the label (10, 11, …) and not the machine's raw numbers.",
+    "linkedSelections": "Same products are linked",
+    "linkedSelectionsHint": "The machine vends a product from another slot on its own when one slot is empty. An empty slot is then no longer shown as a hint while the product is still in another slot.",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "contactOverrides": "Different contact details",
+    "contactOverridesHint": "For printed signs only. Empty fields use the company details.",
+    "contactOverrideActive": "active",
+    "contactPhone": "Support phone",
+    "contactWhatsapp": "WhatsApp",
+    "contactHours": "Availability",
+    "contactEmail": "Contact email"
   },
   "insights": {
     "productSwap": "Product Swap",
@@ -1030,6 +1084,7 @@
     "showDiscontinued": "Show discontinued",
     "notAssignedBadge": "Not assigned",
     "showUnassigned": "Show unassigned",
+    "showAllOutOfStock": "Show all out of stock",
     "outOfStock": "Out of stock",
     "outOfStockCount": "Out of stock",
     "reorderNeeded": "Reorder needed",
@@ -1054,6 +1109,10 @@
     "generateCode": "Generate Code",
     "subdomainCol": "Subdomain",
     "macAddressCol": "MAC Address",
+    "nameCol": "Name",
+    "addName": "Add name",
+    "deviceName": "Device Name (optional)",
+    "deviceNamePlaceholder": "e.g. Rev B – blue crate",
     "statusCol": "Status",
     "firmwareCol": "Firmware",
     "assignedMachine": "Assigned Machine",
@@ -1380,7 +1439,14 @@
     "timezoneContextHint": "Send time is in {tz}. Change it under operator information.",
     "dealsProvidersTitle": "Deal sources",
     "dealsProvidersHint": "Deals need at least one active source. Marktguru is enabled automatically when you turn deals on.",
-    "dealsProvidersLink": "Manage deal sources"
+    "dealsProvidersLink": "Manage deal sources",
+    "imprintWhatsapp": "WhatsApp number",
+    "imprintWhatsappHint": "For the WhatsApp QR on printed signs. Often a different, mobile number.",
+    "imprintSupportHours": "Availability",
+    "imprintSupportHoursPlaceholder": "Mon–Fri 8am–6pm",
+    "imprintLogo": "Company logo",
+    "imprintLogoHint": "PNG, JPEG or WebP, max 2 MB. Appears on printed signs.",
+    "imprintLogoRemove": "Remove logo"
   },
   "softap": {
     "title": "WiFi access (SoftAP)",
@@ -1442,7 +1508,8 @@
       "cash_book_entry_created": "Cash book entry",
       "machine_assigned_to_cash_book": "Machine assigned to cash book",
       "machine_unassigned_from_cash_book": "Machine removed from cash book",
-      "cash_book_settings_updated": "Cash book settings updated"
+      "cash_book_settings_updated": "Cash book settings updated",
+      "poster_printed": "Sign printed"
     },
     "field": {
       "machine": "Machine",
@@ -1472,7 +1539,9 @@
       "minStock": "Min stock",
       "capacity": "Capacity",
       "saleSeq": "Sequence number",
-      "timeUncertain": "Timestamp status"
+      "timeUncertain": "Timestamp status",
+      "motif": "Design",
+      "format": "Format"
     }
   },
   "deals": {
@@ -1517,11 +1586,19 @@
     "matchedProductCount": "{n} matched products",
     "matchedProductsTitle": "{n} matched products",
     "matchedKeywords": "Matched keyword groups",
-    "startsIn": "starts in {days}d",
     "activeNow": "active",
     "daysLeft": "{days}d left",
     "lastDay": "last day!",
     "expired": "expired",
+    "byValidity": "By validity",
+    "validNowGroup": "Valid now",
+    "expiredGroup": "Expired",
+    "validFromDate": "valid from {date}",
+    "validUntilDate": "until {date}",
+    "startsInRel": "tomorrow | in {count} days",
+    "upcomingCountHint": "{n} not valid yet",
+    "notYetValidTitle": "Not valid yet",
+    "notYetValidBody": "This offer only starts on {date} ({rel}). The store won't have this price before then.",
     "requiresApp": "This price requires the {retailer} app.",
     "match": "match",
     "detailTitle": "Offer Details",
@@ -1849,6 +1926,38 @@
     "trackPerMachine": "Track per machine",
     "trackPerMachineHint": "Pick the source machine on every withdrawal. Usually not useful when collecting from multiple machines on one tour."
   },
+  "cardAccounts": {
+    "title": "Card accounts",
+    "description": "Prepaid balances for the RFID cards presented at a machine's card reader.",
+    "createAccount": "New account",
+    "editAccount": "Edit account",
+    "empty": "No card accounts yet. Present a card at a reader and an account is created automatically, starting at 0.",
+    "totalBalance": "Total balance",
+    "balance": "Balance",
+    "lastSeen": "Last used",
+    "active": "Active",
+    "blocked": "Blocked",
+    "activeLabel": "Card is active",
+    "topUp": "Top up",
+    "topUpTitle": "Top up {name}",
+    "amount": "Amount (EUR)",
+    "amountHint": "A positive amount tops the account up, a negative one corrects it. Every change is recorded.",
+    "amountRequired": "Enter an amount other than zero",
+    "history": "History",
+    "historyTitle": "History — {name}",
+    "namePlaceholder": "Jane Doe (04A1B2C3)",
+    "nameHint": "The name has to contain the card serial — that is how the reader finds this account.",
+    "renameWarning": "The card serial is no longer in the name. This card will stop finding this account and a new one will be created on the next tap.",
+    "deleteConfirm": "Delete the account “{name}”? Its balance and history go with it.",
+    "howItWorks": "How it works",
+    "howItWorksBody": "A card presented at the reader is sent to the backend, which looks for an account whose name contains that serial and hands the machine that balance as credit. Unknown cards get a new account at 0. Whatever the customer then buys is subtracted from the account.",
+    "tx": {
+      "topup": "Top-up",
+      "vend": "Purchase",
+      "adjustment": "Correction",
+      "refund": "Refund"
+    }
+  },
   "publicStorefront": {
     "online": "Online",
     "offline": "Offline",
@@ -2009,5 +2118,270 @@
       "tokenRequired": "Auth token is required",
       "configJsonInvalid": "Extra config must be a JSON object"
     }
+  },
+  "print": {
+    "pageTitle": "Print a sign",
+    "pageLead": "Contact details and QR codes for this machine.",
+    "backToMachine": "Back to the machine",
+    "motif": "Design",
+    "format": "Format",
+    "blocks": "Additional content",
+    "sheetLanguage": "Language on the sign",
+    "customText": "Extra line",
+    "customTextPlaceholder": "e.g. Location: 2nd floor next to the lift",
+    "moreMachines": "More machines",
+    "moreMachinesHint": "All selected machines go into one print job.",
+    "print": "Print sheet | Print {count} sheets",
+    "browserHint": "In the print dialog, turn off headers and footers and enable background graphics.",
+    "tiledHint": "One tile per selected machine (slightly smaller after cutting than the standalone format). The dashed lines show where to cut.",
+    "originWarnTitle": "QR codes point at an internal address",
+    "originWarnBody": "{origin} is not reachable from outside — printed codes will not work on a customer's phone. Set SITE_URL in the server configuration.",
+    "missingTitle": "This sign is missing data",
+    "missingLink": "Fill it in under settings",
+    "fallbackMachineName": "Machine",
+    "whatsappTemplate": "Hi, I have a problem with %machine%.",
+    "formats": {
+      "a4": "A4 (210 × 297 mm)",
+      "a5": "A5 (148 × 210 mm)",
+      "a6": "A6 (105 × 148 mm)",
+      "a5-2up": "2 × A5 on A4",
+      "a6-4up": "4 × A6 on A4",
+      "a7-8up": "8 × A7 on A4",
+      "sticker-sheet": "Labels 90 × 50 mm",
+      "sticker-sheet-small": "Labels 50 × 30 mm",
+      "sticker-sheet-strip": "Strip 148 × 40 mm"
+    },
+    "blockNames": {
+      "phone": "Phone number",
+      "imprint": "Imprint footer",
+      "url": "Link under the QR code"
+    },
+    "missingFields": {
+      "companyName": "Company name",
+      "phone": "Support phone number",
+      "whatsapp": "WhatsApp number",
+      "whatsappCountry": "Country for the WhatsApp number",
+      "email": "Contact email",
+      "address": "Postal address",
+      "customUrl": "Own link"
+    },
+    "motifShort": {
+      "klar": "Plain",
+      "kachel": "Tiles",
+      "qr-first": "QR first",
+      "dunkel": "Dark",
+      "sticker-problem": "Fault label",
+      "sticker-menu": "Range label",
+      "duo": "Split",
+      "signal": "Signal",
+      "klassisch": "Classic",
+      "sticker-duo": "Duo label",
+      "sticker-contact": "Contact label",
+      "sticker-mini": "Small label",
+      "sticker-service": "Service label",
+      "sticker-imprint": "Imprint label",
+      "sticker-strip": "Strip"
+    },
+    "motifs": {
+      "klar": {
+        "label": "Plain",
+        "description": "Large phone number, one QR at the bottom. Prints fine in black and white."
+      },
+      "kachel": {
+        "label": "Tiles",
+        "description": "Coloured header, labelled QR tiles for every channel."
+      },
+      "qrFirst": {
+        "label": "QR first",
+        "description": "One large QR to the machine page, phone number as a fallback."
+      },
+      "dunkel": {
+        "label": "Dark",
+        "description": "Dark background, premium look — needs toner and decent paper."
+      },
+      "stickerProblem": {
+        "label": "Label: fault",
+        "description": "90 × 50 mm for the dispensing flap. 8 per A4 sheet."
+      },
+      "stickerMenu": {
+        "label": "Label: range",
+        "description": "90 × 50 mm with a QR to the machine page."
+      },
+      "duo": {
+        "label": "Split",
+        "description": "The range large at the top, a narrow fault strip below. Help is there without claiming the machine breaks often."
+      },
+      "signal": {
+        "label": "Signal",
+        "description": "Full-bleed colour, phone number huge. Gets noticed across a corridor — and uses a lot of ink."
+      },
+      "klassisch": {
+        "label": "Classic",
+        "description": "Serif type, double border, restrained. For practices, hotels and offices that will not hang a colourful poster."
+      },
+      "stickerDuo": {
+        "label": "Label: duo",
+        "description": "90 × 50 mm with two codes — the range large, faults small beside it."
+      },
+      "stickerContact": {
+        "label": "Label: contact",
+        "description": "90 × 50 mm with no QR at all, just the number in large type. For places where nobody scans."
+      },
+      "stickerMini": {
+        "label": "Label: small",
+        "description": "50 × 30 mm, one code and one line. 24 per A4 sheet — for the coin return."
+      },
+      "stickerService": {
+        "label": "Label: service",
+        "description": "The classic machine label: the machine name large, so the caller knows what they are calling about. 90 × 50 mm."
+      },
+      "stickerImprint": {
+        "label": "Label: imprint",
+        "description": "The small operator plate. Quiet and text-first — it exists to be complete, not to be noticed."
+      },
+      "stickerStrip": {
+        "label": "Strip (landscape)",
+        "description": "148 × 40 mm to run across a machine front. 6 per A4 sheet, dark for contrast on light metal."
+      }
+    },
+    "poster": {
+      "problemTitle": "Trouble with this machine?",
+      "problemLead": "We'll sort it out. Just get in touch.",
+      "supportPhone": "Support phone",
+      "pageTitle": "Products · prices · payment",
+      "pageHint": "Scan the code to see everything about this machine",
+      "helpTitle": "Help with this machine",
+      "whatsappTitle": "WhatsApp",
+      "whatsappHint": "Message us directly",
+      "problemQrTitle": "Report a fault",
+      "problemQrHint": "Open the form",
+      "callDirect": "Call us",
+      "everythingTitle": "Everything about this machine",
+      "everythingLead": "Products, prices, availability and fault reports",
+      "ratherCall": "Rather call?",
+      "helpYouTitle": "We're here to help",
+      "helpYouLead": "Machine stuck? Money gone? Just let us know.",
+      "pageShort": "What's inside",
+      "locationLabel": "Location:",
+      "operatorLabel": "Operator:",
+      "callHint": "Scan the code to call",
+      "customTitle": "Find out more",
+      "customHint": "Scan the code",
+      "pageHintShort": "Prices and availability",
+      "callShort": "Call",
+      "callHintShort": "Scan or call",
+      "discoverTitle": "More about this machine — and never miss a thing",
+      "discoverLead": "See the range and prices, pay online, and get told when new products arrive."
+    },
+    "sticker": {
+      "problemTitle": "Report a fault",
+      "menuTitle": "See what's inside",
+      "contactTitle": "Questions about this machine?",
+      "serviceTitle": "When reporting a fault, please quote",
+      "imprintTitle": "Operator details",
+      "stripTitle": "Questions about this machine?"
+    },
+    "qrCodes": "QR codes",
+    "headlines": "Headlines",
+    "customLink": "Own link",
+    "customLinkPlaceholder": "https://…",
+    "customLinkHint": "Target for QR codes set to \"Own link\". https:// is added if you leave it out.",
+    "resetText": "Reset to default",
+    "resetAll": "Reset everything",
+    "save": "Save",
+    "saved": "Saved",
+    "saveSection": "Save configuration",
+    "sourceUnavailable": "not configured",
+    "customTextHint": "Applies to this print only and is not saved.",
+    "sources": {
+      "page": "Machine page",
+      "tel": "Phone call",
+      "whatsapp": "WhatsApp",
+      "problem": "Report a fault",
+      "custom": "Own link",
+      "none": "Leave empty"
+    },
+    "slots": {
+      "main": "QR code",
+      "tile1": "Tile 1",
+      "tile2": "Tile 2",
+      "tile3": "Tile 3",
+      "call": "Call panel",
+      "top": "Large QR at the top",
+      "bottom": "Fault strip at the bottom",
+      "left": "Large QR on the left",
+      "right": "Small QR on the right"
+    },
+    "texts": {
+      "title": "Headline",
+      "lead": "Subline",
+      "slotTitle": "Title",
+      "slotHint": "Hint"
+    },
+    "saveScope": {
+      "company": "For all machines",
+      "machine": "This machine only"
+    },
+    "saveState": {
+      "none": "Nothing saved yet — defaults apply.",
+      "company": "The saved company configuration is in use.",
+      "machine": "This machine has a configuration of its own saved."
+    },
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomFit": "Fit width"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Understand what sells, where and when",
+    "unsupported": "This server does not support analytics yet. Please update the backend.",
+    "revenue": "Revenue",
+    "units": "Units",
+    "grossProfit": "Gross profit",
+    "profit": "Profit",
+    "vsPrevious": "vs. {range}",
+    "costHint": "Gross profit is net of tax. {count} product has no purchase price and is excluded. | Gross profit is net of tax. {count} products have no purchase price and are excluded.",
+    "timeRange": "Time range",
+    "days7": "Last 7 days",
+    "days30": "Last 30 days",
+    "days90": "Last 90 days",
+    "thisMonth": "This month",
+    "lastMonth": "Last month",
+    "custom": "Custom range",
+    "from": "From",
+    "to": "To",
+    "apply": "Apply",
+    "machines": "Machines",
+    "allMachines": "All machines",
+    "nMachines": "{count} machine | {count} machines",
+    "categories": "Categories",
+    "allCategories": "All categories",
+    "nCategories": "{count} category | {count} categories",
+    "products": "Products",
+    "breakdown": "Breakdown",
+    "trend": "Trend",
+    "peakHours": "Peak hours",
+    "paymentMethods": "Payment methods",
+    "cash": "Cash",
+    "cashless": "Cashless",
+    "unknown": "Unknown",
+    "noSales": "No sales in this period.",
+    "noPurchasePrice": "no purchase price",
+    "perDay": "{value} /day",
+    "nPieces": "{count} pc | {count} pcs",
+    "nProducts": "{count} product | {count} products",
+    "perMachine": "Per machine",
+    "abcClass": "Class {class} · {share}% of revenue",
+    "stock": "Stock",
+    "stockOf": "stock {current}/{capacity}",
+    "empty": "empty",
+    "sellThrough": "Sell-through {value}%",
+    "daysOfSupply": "Lasts about {days} more days",
+    "sortDescending": "Highest first",
+    "sortAscending": "Lowest first",
+    "filtered": "Filtered",
+    "thisYear": "This year",
+    "lastYear": "Last year",
+    "allTime": "All time"
   }
 }

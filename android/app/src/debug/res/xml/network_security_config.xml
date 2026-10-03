@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug builds only. Self-hosted Supabase instances commonly run over plain
+  HTTP on a LAN address, and the emulator reaches the host at 10.0.2.2.
+  Release builds keep Android's strict default until that is decided
+  deliberately - see the release note in the server-selection design.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

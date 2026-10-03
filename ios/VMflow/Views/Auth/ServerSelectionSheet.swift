@@ -7,6 +7,7 @@ struct ServerSelectionSheet: View {
 
     @State private var showAddServer = false
     @State private var editingServer: ServerEntry?
+    @State private var serverPendingDelete: ServerEntry?
 
     var body: some View {
         NavigationStack {
@@ -19,7 +20,7 @@ struct ServerSelectionSheet: View {
                         for index in indexSet {
                             let server = serverStore.allServers[index]
                             if !server.isDefault {
-                                serverStore.deleteServer(server)
+                                serverPendingDelete = server
                             }
                         }
                     }
@@ -57,6 +58,28 @@ struct ServerSelectionSheet: View {
             .sheet(item: $editingServer) { server in
                 AddServerView(editing: server)
             }
+            .confirmationDialog(
+                Text("Delete Server", comment: "Confirmation dialog title before deleting a saved server"),
+                isPresented: Binding(
+                    get: { serverPendingDelete != nil },
+                    set: { if !$0 { serverPendingDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "Delete", comment: "Confirm server deletion button"), role: .destructive) {
+                    if let server = serverPendingDelete {
+                        serverStore.deleteServer(server)
+                    }
+                    serverPendingDelete = nil
+                }
+                Button(String(localized: "Cancel", comment: "Cancel server deletion button"), role: .cancel) {
+                    serverPendingDelete = nil
+                }
+            } message: {
+                if let server = serverPendingDelete {
+                    Text(server.name)
+                }
+            }
         }
     }
 
@@ -90,10 +113,10 @@ struct ServerSelectionSheet: View {
             }
         }
         .deleteDisabled(server.isDefault)
-        .swipeActions(edge: .trailing) {
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if !server.isDefault {
                 Button(role: .destructive) {
-                    serverStore.deleteServer(server)
+                    serverPendingDelete = server
                 } label: {
                     Label(String(localized: "Delete", comment: "Delete server action"), systemImage: "trash")
                 }

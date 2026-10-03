@@ -20,7 +20,7 @@ const FOOD_QUERY_HINT = 'food product packaging'
 const OFF_PAGE_SIZE = 24
 const OFF_TIMEOUT_MS = 6000
 // Open Food Facts asks API clients to identify themselves.
-const OFF_USER_AGENT = 'VMflow - Vending management - https://github.com/Sharnobile/mdb-esp32-cashless'
+const OFF_USER_AGENT = 'VMflow - Vending management - https://github.com/lucienkerl/mdb-esp32-cashless'
 
 interface ImageResult {
   thumbnail: string

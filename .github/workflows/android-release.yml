@@ -1,0 +1,187 @@
+name: Android Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: "fastlane lane"
+        required: true
+        type: choice
+        options: [internal, release, promote, metadata, release_notes]
+        default: internal
+      notes:
+        description: "release lane — release notes source"
+        required: false
+        type: choice
+        options:
+          - auto # regenerate from the commits since the last android-v* tag
+          - keep # upload metadata/android/<locale>/changelogs/default.txt as committed
+        default: auto
+      notes_since:
+        description: "Optional git ref to generate the notes against (default: last android-v* tag)"
+        required: false
+        type: string
+      rollout:
+        description: "release/promote — staged rollout fraction, e.g. 0.2 for 20% (empty = everyone)"
+        required: false
+        type: string
+      version_code:
+        description: "promote lane — versionCode to promote (empty = whatever is on the internal track)"
+        required: false
+        type: string
+
+permissions:
+  contents: write # the release lane pushes the android-v* tag it releases from
+
+jobs:
+  fastlane:
+    # Android needs no macOS, unlike the iOS pipeline — ubuntu is faster and
+    # an order of magnitude cheaper in Actions minutes.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # versionCode counts the day's commits (android/app/build.gradle) and
+          # the release notes are generated against the last android-v* tag.
+          # A shallow clone breaks both: the count comes out at 1 and the tag
+          # is missing, so every release would ship the fallback notes.
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: android
+
+      - name: Run fastlane lane
+        env:
+          # Service-account JSON for the Play Developer Publishing API, base64.
+          PLAY_JSON_KEY_BASE64: ${{ secrets.PLAY_JSON_KEY_BASE64 }}
+          # Upload keystore + its passwords. The Fastfile decodes the keystore
+          # to a temp file and points Gradle at it via ANDROID_KEYSTORE_PATH;
+          # Play App Signing holds the actual app signing key.
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # Referenced via the environment rather than interpolated into the
+          # script body, so a crafted ref can't become shell.
+          LANE: ${{ inputs.lane }}
+          NOTES: ${{ inputs.notes }}
+          NOTES_SINCE: ${{ inputs.notes_since }}
+          ROLLOUT: ${{ inputs.rollout }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          ARGS=()
+          case "$LANE" in
+            release)
+              ARGS+=("notes:$NOTES")
+              if [ -n "$NOTES_SINCE" ]; then ARGS+=("since:$NOTES_SINCE"); fi
+              if [ -n "$ROLLOUT" ]; then ARGS+=("rollout:$ROLLOUT"); fi
+              ;;
+            promote)
+              if [ -n "$ROLLOUT" ]; then ARGS+=("rollout:$ROLLOUT"); fi
+              if [ -n "$VERSION_CODE" ]; then ARGS+=("version_code:$VERSION_CODE"); fi
+              ;;
+            release_notes)
+              if [ -n "$NOTES_SINCE" ]; then ARGS+=("since:$NOTES_SINCE"); fi
+              ;;
+          esac
+          bundle exec fastlane "$LANE" "${ARGS[@]}"
+
+      # Always keep the bundle, even on a failed upload — this is also how you
+      # get the very first .aab, which Play requires you to upload by hand
+      # through the console before the API will accept anything.
+      - name: Upload the built bundle
+        if: always() && (inputs.lane == 'internal' || inputs.lane == 'release')
+        uses: actions/upload-artifact@v5
+        with:
+          name: vmflow-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: ignore
+
+      # Same two things, in the same order, as the iOS pipeline:
+      #
+      # 1. Tag the commit that was built:
+      #
+      #      android-v<version>-<code>      went to the production track
+      #      android-build-<version>-<code> internal track only
+      #
+      #    The release-notes generator diffs against `android-v*`, so only a
+      #    build that actually shipped may move that anchor — otherwise the
+      #    commits in an internal build would silently vanish from the next
+      #    release's notes. The versionCode is part of both tags because the
+      #    marketing version is date-based and two builds on one day would
+      #    otherwise collide.
+      #
+      # 2. Commit the regenerated changelogs back — only for a production
+      #    release, since that is the run whose notes went live. Best-effort: a
+      #    protected branch or a concurrent push must not fail a release that
+      #    already shipped. The `chore(android):` subject keeps this commit out
+      #    of the next release's notes.
+      - name: Tag the built commit and persist its release notes
+        if: success() && (inputs.lane == 'release' || inputs.lane == 'internal')
+        env:
+          LANE: ${{ inputs.lane }}
+        run: |
+          # Read back what Gradle actually stamped rather than recomputing it —
+          # a recomputation could disagree if the day rolled over mid-build.
+          MANIFEST=$(find app/build/intermediates/merged_manifest/release -name AndroidManifest.xml | head -1)
+          if [ -z "$MANIFEST" ]; then
+            echo "::warning::No merged manifest found — skipping the tag"; exit 0
+          fi
+          VERSION=$(grep -o 'android:versionName="[^"]*"' "$MANIFEST" | head -1 | cut -d'"' -f2)
+          CODE=$(grep -o 'android:versionCode="[^"]*"' "$MANIFEST" | head -1 | cut -d'"' -f2)
+          if [ -z "$VERSION" ] || [ -z "$CODE" ]; then
+            echo "::warning::Could not read version/versionCode from $MANIFEST — skipping the tag"; exit 0
+          fi
+
+          if [ "$LANE" = "release" ]; then
+            TAG="android-v${VERSION}-${CODE}"
+            MSG="Android $VERSION (versionCode $CODE) released to production"
+          else
+            TAG="android-build-${VERSION}-${CODE}"
+            MSG="Android $VERSION (versionCode $CODE) uploaded to the internal track"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::warning::Tag $TAG already exists — leaving it alone"
+          else
+            git tag -a "$TAG" -m "$MSG"
+            git push origin "$TAG"
+            echo "Tagged \`$TAG\` at \`$(git rev-parse --short HEAD)\` — $MSG" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "$LANE" = "release" ] && [ -n "$(git status --porcelain -- fastlane/metadata)" ]; then
+            git add fastlane/metadata
+            git commit -m "chore(android): release notes for $VERSION (versionCode $CODE)"
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "Committed the generated release notes to \`${GITHUB_REF_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::Could not push the release-notes commit to ${GITHUB_REF_NAME} — commit android/fastlane/metadata by hand so the metadata lane stays in sync"
+            fi
+          fi
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: fastlane-logs
+          path: |
+            android/fastlane/report.xml
+            android/app/build/reports
+          if-no-files-found: ignore

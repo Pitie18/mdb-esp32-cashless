@@ -70,7 +70,7 @@ struct ProductDetailSheet: View {
                 _ = await (detailTask, categoriesTask)
                 await loadEkSummary()
             }
-            .refreshable {
+            .dataRefreshable {
                 await viewModel.load(productId: productId)
             }
             .sheet(isPresented: $showEditSheet) {

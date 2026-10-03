@@ -1,0 +1,169 @@
+<script setup lang="ts">
+import { IconBuildingStore, IconCalendar, IconCategory, IconCheck, IconX } from '@tabler/icons-vue'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import type { RangePreset } from '~/lib/analytics'
+
+const { t } = useI18n()
+const {
+  preset, customFrom, customTo, machineIds, categoryIds,
+  machines, categories, rangeLabel, loadAll,
+  activeMachineLabel, activeCategoryLabel, clearMachineFilter, clearCategoryFilter,
+} = useAnalytics()
+
+const presets: RangePreset[] = [
+  'days7', 'days30', 'days90',
+  'thisMonth', 'lastMonth',
+  'thisYear', 'lastYear',
+  'allTime',
+]
+
+const machineLabel = computed(() => {
+  if (!machineIds.value.length) return t('analytics.allMachines')
+  if (machineIds.value.length > 1) return t('analytics.nMachines', machineIds.value.length)
+  return activeMachineLabel.value || t('analytics.allMachines')
+})
+
+const categoryLabel = computed(() => {
+  if (!categoryIds.value.length) return t('analytics.allCategories')
+  if (categoryIds.value.length > 1) return t('analytics.nCategories', categoryIds.value.length)
+  return activeCategoryLabel.value || t('analytics.allCategories')
+})
+
+function toggle(list: string[], id: string) {
+  const i = list.indexOf(id)
+  if (i >= 0) list.splice(i, 1)
+  else list.push(id)
+}
+
+function applyPreset(p: RangePreset) {
+  preset.value = p
+  loadAll()
+}
+
+function applyCustom() {
+  if (!customFrom.value || !customTo.value) return
+  preset.value = 'custom'
+  loadAll()
+}
+
+/** Multi-selects reload on close, so picking four machines costs one round
+ *  trip rather than four. */
+function onMenuToggle(open: boolean) {
+  if (!open) loadAll()
+}
+
+
+</script>
+
+<template>
+  <div class="flex flex-wrap items-center gap-2">
+    <DropdownMenu>
+      <DropdownMenuTrigger as-child>
+        <Button variant="outline" size="sm" class="gap-2">
+          <IconCalendar class="size-4" />
+          {{ rangeLabel }}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" class="w-64">
+        <DropdownMenuItem v-for="p in presets" :key="p" @click="applyPreset(p)">
+          {{ t(`analytics.${p}`) }}
+          <IconCheck v-if="preset === p" class="ml-auto size-4" />
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <div class="space-y-2 p-2">
+          <p class="text-muted-foreground text-xs">{{ t('analytics.custom') }}</p>
+          <input
+            v-model="customFrom" type="date" :aria-label="t('analytics.from')"
+            class="w-full rounded border px-2 py-1 text-sm"
+          >
+          <input
+            v-model="customTo" type="date" :aria-label="t('analytics.to')"
+            class="w-full rounded border px-2 py-1 text-sm"
+          >
+          <Button size="sm" class="w-full" @click="applyCustom">{{ t('analytics.apply') }}</Button>
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+
+    <div class="flex items-center">
+    <DropdownMenu @update:open="onMenuToggle">
+      <DropdownMenuTrigger as-child>
+        <Button
+          :variant="machineIds.length ? 'default' : 'outline'" size="sm"
+          class="gap-2" :class="machineIds.length ? 'rounded-r-none font-semibold' : ''"
+        >
+          <IconBuildingStore class="size-4" />
+          {{ machineLabel }}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" class="max-h-80 w-64 overflow-y-auto">
+        <DropdownMenuItem @select.prevent="machineIds = []">
+          {{ t('analytics.allMachines') }}
+          <IconCheck v-if="!machineIds.length" class="ml-auto size-4" />
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          v-for="m in machines" :key="m.id"
+          @select.prevent="toggle(machineIds, m.id)"
+        >
+          {{ m.name }}
+          <IconCheck v-if="machineIds.includes(m.id)" class="ml-auto size-4" />
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <!-- Clearing an active filter without reopening the menu — the fastest way
+         back out of a drill-down. -->
+    <Button
+      v-if="machineIds.length" variant="default" size="sm"
+      class="border-background/30 rounded-l-none border-l px-2"
+      :aria-label="t('analytics.allMachines')"
+      @click="clearMachineFilter"
+    >
+      <IconX class="size-3.5" />
+    </Button>
+    </div>
+
+    <div class="flex items-center">
+    <DropdownMenu @update:open="onMenuToggle">
+      <DropdownMenuTrigger as-child>
+        <Button
+          :variant="categoryIds.length ? 'default' : 'outline'" size="sm"
+          class="gap-2" :class="categoryIds.length ? 'rounded-r-none font-semibold' : ''"
+        >
+          <IconCategory class="size-4" />
+          {{ categoryLabel }}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" class="max-h-80 w-64 overflow-y-auto">
+        <DropdownMenuItem @select.prevent="categoryIds = []">
+          {{ t('analytics.allCategories') }}
+          <IconCheck v-if="!categoryIds.length" class="ml-auto size-4" />
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          v-for="c in categories" :key="c.id"
+          @select.prevent="toggle(categoryIds, c.id)"
+        >
+          {{ c.name }}
+          <IconCheck v-if="categoryIds.includes(c.id)" class="ml-auto size-4" />
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <Button
+      v-if="categoryIds.length" variant="default" size="sm"
+      class="border-background/30 rounded-l-none border-l px-2"
+      :aria-label="t('analytics.allCategories')"
+      @click="clearCategoryFilter"
+    >
+      <IconX class="size-3.5" />
+    </Button>
+    </div>
+  </div>
+</template>

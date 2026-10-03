@@ -41,10 +41,10 @@ PWRKEY, and attempts PMU setup against hardware that isn't there.
 ## What plug-and-play support would need
 
 - Make `MODEM_PIN_RX`/`MODEM_PIN_TX`/`MODEM_PIN_PWR` in `modem.c`
-  configurable per board (Kconfig, or a runtime board-variant gate like
-  the WROOM-1U GPIO3 strap) instead of hardcoded to the LilyGo values —
-  this board would use GPIO18/17/14, matching the already-present
-  (currently dead) `PIN_SIM7080G_*` defines.
+  configurable per board (Kconfig, or a runtime board-detection gate)
+  instead of hardcoded to the LilyGo values — this board would use
+  GPIO18/17/14, matching the already-present (currently dead)
+  `PIN_SIM7080G_*` defines.
 - Make `modem_enable_pmu_rails()` conditional on boards that actually
   have an AXP2101, skipping it here.
 - The `MODEM_PWRKEY_INVERTED` polarity convention already matches this

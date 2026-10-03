@@ -85,7 +85,7 @@ struct WarehouseView: View {
         .onChange(of: realtime.warehouseVersion) { _, _ in
             Task { await viewModel.loadAll() }
         }
-        .refreshable {
+        .dataRefreshable {
             await viewModel.loadAll()
         }
         .sheet(isPresented: $showScanner) {
@@ -177,8 +177,11 @@ struct WarehouseView: View {
 
     private var stockFilterMenu: some View {
         Menu {
-            Toggle("Show out of stock", isOn: $viewModel.includeOutOfStock)
+            // Off by default, but zero-stock products that still occupy a
+            // machine slot are shown regardless — hence "all".
+            Toggle("Show all out of stock", isOn: $viewModel.includeOutOfStock)
             Toggle("Show archived", isOn: $viewModel.includeArchived)
+            Toggle("Sort by shortest reach", isOn: $viewModel.sortByReach)
 
             Picker("Expiration", selection: $viewModel.expirationFilter) {
                 ForEach(WarehouseViewModel.ExpirationFilterOption.allCases) { option in
@@ -192,6 +195,7 @@ struct WarehouseView: View {
                     viewModel.includeOutOfStock = false
                     viewModel.includeArchived = false
                     viewModel.expirationFilter = .all
+                    viewModel.sortByReach = false
                 }
             }
         } label: {
@@ -617,9 +621,10 @@ struct StockSummaryRow: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text(String(format: NSLocalizedString("warehouse_batch_count", comment: ""), summary.batchCount))
+                    Text(verbatim: "\(throughputText) · \(String(format: NSLocalizedString("warehouse_batch_count", comment: ""), summary.batchCount))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
 
                     if let exp = summary.earliestExpiration {
                         expirationBadge(exp)
@@ -642,6 +647,13 @@ struct StockSummaryRow: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(.red, in: Capsule())
+                } else if let days = summary.daysRemaining {
+                    Text(reachText(days))
+                        .font(.caption2.bold())
+                        .foregroundStyle(reachColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(reachColor.opacity(0.15), in: Capsule())
                 } else if summary.isLow {
                     Text("Low")
                         .font(.caption2.bold())
@@ -657,6 +669,29 @@ struct StockSummaryRow: View {
         // Data-dependent UI-test anchor: only exists once warehouse stock
         // summaries have loaded.
         .accessibilityIdentifier("warehouse-stock-row")
+    }
+
+    /// "1.2 / day" (locale-formatted), or "No sales" when the product didn't sell in the window.
+    private var throughputText: String {
+        guard summary.avgDailySales > 0 else { return String(localized: "No sales") }
+        let rate = summary.avgDailySales.formatted(.number.precision(.fractionLength(1)))
+        return String(localized: "\(rate) / day")
+    }
+
+    /// "~12 days", "<1 day", or ">90 days" above the display cap.
+    private func reachText(_ days: Int) -> String {
+        if days < 1 { return String(localized: "<1 day") }
+        let cap = WarehouseProductSummary.reachDisplayCapDays
+        if days > cap { return String(localized: ">\(cap) days") }
+        return String(localized: "~\(days) days")
+    }
+
+    private var reachColor: Color {
+        switch summary.reachLevel {
+        case .critical: return .red
+        case .warning: return .orange
+        case .ok, .unknown: return .green
+        }
     }
 
     private var quantityColor: Color {

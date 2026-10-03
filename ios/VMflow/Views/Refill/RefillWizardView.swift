@@ -48,6 +48,11 @@ struct RefillWizardView: View {
         .navigationTitle("Refill Tour")
         .navigationBarTitleDisplayMode(.inline)
         .task {
+            // `.task` re-fires on every return to the Refill tab (TabView drives
+            // appear/disappear). Run the resume-vs-load decision only on the
+            // first entry — re-running it mid-tour would re-offer "Resume Tour?"
+            // and overwrite live stock with the saved tour-start snapshot.
+            guard viewModel.beginInitialLoadIfNeeded() else { return }
             // Check for a saved tour before loading fresh data
             viewModel.checkForSavedTour()
             if viewModel.hasSavedTour {
@@ -63,7 +68,13 @@ struct RefillWizardView: View {
         }
         .alert("Resume Tour?", isPresented: $showResumeAlert) {
             Button("Resume") {
-                let _ = viewModel.resumeTour()
+                // Restore the snapshot, then immediately pull live tray stock so
+                // the resumed tour reflects sales that happened while away
+                // (the snapshot holds tour-start stock) and re-flags the
+                // "sold during tour" badges against the live baseline.
+                if viewModel.resumeTour() {
+                    Task { await viewModel.refreshFromRealtime() }
+                }
             }
             Button("New Tour", role: .destructive) {
                 RefillWizardViewModel.clearSavedTour()

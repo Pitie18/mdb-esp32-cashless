@@ -1,0 +1,655 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation bar -->
+    <string name="nav_dashboard">Übersicht</string>
+    <string name="nav_machines">Automaten</string>
+    <string name="nav_refill">Befüllen</string>
+    <string name="nav_warehouse">Lager</string>
+    <string name="action_back">Zurück</string>
+
+    <!-- Lager-Screen -->
+    <string name="warehouse_screen_title">Lager</string>
+    <string name="warehouse_picker_label">Lager</string>
+    <string name="warehouse_tab_stock">Bestand</string>
+    <string name="warehouse_tab_incoming">Wareneingang</string>
+    <string name="warehouse_empty_state">Noch kein Lager angelegt</string>
+
+    <!-- Bestand-Tab -->
+    <string name="warehouse_stock_search_hint">Produkte suchen</string>
+    <string name="warehouse_stock_search_clear">Suche leeren</string>
+    <string name="warehouse_stock_out_of_stock">Nicht auf Lager</string>
+    <string name="warehouse_stock_filter_archived">Archiviert</string>
+    <string name="warehouse_stock_filter_expiring_soon">Läuft bald ab</string>
+    <string name="warehouse_stock_filter_critical">Kritisch</string>
+    <string name="warehouse_stock_low">Niedrig</string>
+    <string name="warehouse_stock_per_day">%1$s / Tag</string>
+    <string name="warehouse_stock_no_sales">Kein Absatz</string>
+    <plurals name="warehouse_stock_reach_days">
+        <item quantity="one">~%1$d Tag</item>
+        <item quantity="other">~%1$d Tage</item>
+    </plurals>
+    <string name="warehouse_stock_reach_under_one">&lt;1 Tag</string>
+    <string name="warehouse_stock_reach_over">&gt;%1$d Tage</string>
+    <string name="warehouse_stock_sort_reach">Kürzeste Reichweite</string>
+    <string name="warehouse_stock_empty_no_stock">Kein Bestand in diesem Lager</string>
+    <string name="warehouse_stock_empty_search">Keine Produkte für „%1$s“</string>
+    <string name="warehouse_stock_empty_filtered">Keine Produkte entsprechen den aktuellen Filtern</string>
+    <plurals name="warehouse_batch_count">
+        <item quantity="one">%1$d Charge</item>
+        <item quantity="other">%1$d Chargen</item>
+    </plurals>
+
+    <!-- Wareneingang-Tab -->
+    <string name="warehouse_intake_form_header">Wareneingang buchen</string>
+    <string name="warehouse_intake_product_label">Produkt</string>
+    <string name="warehouse_intake_product_empty">Keine passenden Produkte</string>
+    <string name="warehouse_intake_product_change">Produkt ändern</string>
+    <string name="warehouse_intake_scan_button">Barcode scannen</string>
+    <string name="warehouse_intake_scan_title">Barcode scannen</string>
+    <string name="warehouse_intake_scan_hint">Richte die Kamera auf den Barcode des Produkts</string>
+    <string name="warehouse_intake_scan_not_found">Kein Produkt für diesen Barcode gefunden</string>
+    <string name="warehouse_intake_quantity_label">Menge</string>
+    <string name="warehouse_intake_quantity_hint">z. B. 2*12</string>
+    <string name="warehouse_intake_quantity_preview">= %1$d</string>
+    <string name="warehouse_intake_batch_label">Chargennummer</string>
+    <string name="warehouse_intake_optional_hint">Optional</string>
+    <string name="warehouse_intake_expiration_label">Mindesthaltbarkeit</string>
+    <string name="warehouse_intake_expiration_clear">Ablaufdatum entfernen</string>
+    <string name="warehouse_intake_supplier_label">Lieferant</string>
+    <string name="warehouse_intake_submit">Wareneingang buchen</string>
+    <string name="warehouse_intake_recent_header">Letzte Wareneingänge</string>
+    <string name="warehouse_intake_recent_empty">Noch keine Wareneingänge</string>
+
+    <!-- Warehouse batch drilldown sheet -->
+    <string name="warehouse_batch_drilldown_loading">Chargen werden geladen…</string>
+    <string name="warehouse_batch_drilldown_empty">Kein Bestand für dieses Produkt</string>
+    <string name="warehouse_batch_no_number">Keine Charge</string>
+
+    <!-- Warehouse batch adjust sheet -->
+    <string name="warehouse_adjust_title">Bestand korrigieren</string>
+    <string name="warehouse_adjust_current_stock_label">Aktueller Bestand</string>
+    <string name="warehouse_adjust_direction_remove">Entnehmen</string>
+    <string name="warehouse_adjust_direction_add">Hinzufügen</string>
+    <string name="warehouse_adjust_quantity_remove_label">Zu entnehmende Menge</string>
+    <string name="warehouse_adjust_quantity_add_label">Hinzuzufügende Menge</string>
+    <string name="warehouse_adjust_exceeds_stock">Nur %1$d verfügbar</string>
+    <string name="warehouse_adjust_reason_label">Grund</string>
+    <string name="warehouse_adjust_reason_damage">Beschädigt</string>
+    <string name="warehouse_adjust_reason_expired">Abgelaufen</string>
+    <string name="warehouse_adjust_reason_correction">Bestandskorrektur</string>
+    <string name="warehouse_adjust_reason_refill_return">Rückgabe nach Befüllung</string>
+    <string name="warehouse_adjust_notes_label">Notizen</string>
+    <string name="warehouse_adjust_submit_remove">Bestand entnehmen</string>
+    <string name="warehouse_adjust_submit_add">Bestand hinzufügen</string>
+
+    <!-- StockBar accessibility -->
+    <string name="stock_bar_description">Bestand %1$d von %2$d</string>
+
+    <!-- Serverauswahl -->
+    <string name="server_selected">Server: %1$s</string>
+    <string name="server_select_title">Server wählen</string>
+    <string name="server_add">Eigenen Server hinzufügen</string>
+    <string name="server_edit">Server bearbeiten</string>
+    <string name="server_delete">Server löschen</string>
+    <string name="server_delete_confirm">„%1$s“ löschen?</string>
+    <string name="server_name">Name</string>
+    <string name="server_url">Supabase-URL</string>
+    <string name="server_anon_key">Anon-Key</string>
+    <string name="server_name_hint">Mein Server</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_done">Fertig</string>
+
+    <!-- QR-Scan -->
+    <string name="qr_scan">QR-Code scannen</string>
+    <string name="qr_scan_hint">Scanne den Code aus deinem Web-Dashboard</string>
+    <string name="qr_invalid">Dieser QR-Code ist keine Serverkonfiguration</string>
+    <string name="qr_permission_needed">Für den Scan wird Kamerazugriff gebraucht</string>
+    <string name="qr_grant_permission">Kamera erlauben</string>
+    <string name="action_sign_out">Abmelden</string>
+
+    <!-- Dashboard: Banner für neue Angebote -->
+    <plurals name="dashboard_new_deals">
+        <item quantity="one">%1$d neues Angebot</item>
+        <item quantity="other">%1$d neue Angebote</item>
+    </plurals>
+
+    <!-- Dashboard: KPI-Karten -->
+    <string name="dashboard_kpi_today">Heute</string>
+    <string name="dashboard_kpi_yesterday">Gestern</string>
+    <string name="dashboard_kpi_this_week">Diese Woche</string>
+    <string name="dashboard_kpi_last_week">Letzte Woche</string>
+    <string name="dashboard_kpi_this_month">Dieser Monat</string>
+    <string name="dashboard_kpi_last_month">Letzter Monat</string>
+    <plurals name="dashboard_sales_count">
+        <item quantity="one">%1$d Verkauf</item>
+        <item quantity="other">%1$d Verkäufe</item>
+    </plurals>
+    <string name="dashboard_kpi_stock_title">Bestand</string>
+    <string name="dashboard_kpi_stock_ok">OK</string>
+    <string name="dashboard_kpi_stock_all_ok">Alle Automaten aufgefüllt</string>
+    <plurals name="dashboard_alerts_count">
+        <item quantity="one">%1$d Warnung</item>
+        <item quantity="other">%1$d Warnungen</item>
+    </plurals>
+    <string name="dashboard_machines_online">Automaten online</string>
+
+    <!-- Dashboard: Umsatz-Chart -->
+    <string name="dashboard_chart_title">Umsatz (30 Tage)</string>
+    <string name="dashboard_chart_empty">Keine Verkaufsdaten</string>
+    <string name="dashboard_chart_average">Ø %1$s</string>
+
+    <!-- Dashboard: Kassenbuch-Kachel -->
+    <string name="dashboard_cash_book_title">Kassenbuch</string>
+    <string name="dashboard_cash_book_setup_hint">Im Web-Dashboard ein Kassenbuch anlegen</string>
+    <string name="dashboard_cash_book_in_box">In der Kasse</string>
+    <string name="dashboard_cash_book_in_machines">In Automaten</string>
+    <string name="dashboard_cash_book_last_deposit">Letzte Bankeinzahlung</string>
+    <string name="dashboard_cash_book_no_deposit">Noch keine</string>
+    <string name="dashboard_cash_book_deposit_today">Heute</string>
+    <plurals name="dashboard_cash_book_deposit_days_ago">
+        <item quantity="one">Vor %1$d Tag</item>
+        <item quantity="other">Vor %1$d Tagen</item>
+    </plurals>
+
+    <!-- Dashboard: Braucht Aufmerksamkeit -->
+    <string name="dashboard_needs_attention_title">Braucht Aufmerksamkeit</string>
+    <plurals name="dashboard_trays_need_refill">
+        <item quantity="one">%1$d Produkt muss aufgefüllt werden</item>
+        <item quantity="other">%1$d Produkte müssen aufgefüllt werden</item>
+    </plurals>
+
+    <!-- Dashboard: Aktivitäts-Feed -->
+    <string name="dashboard_recent_activity_title">Letzte Aktivität</string>
+    <string name="dashboard_no_recent_activity">Keine Aktivität</string>
+    <string name="dashboard_day_today">Heute</string>
+    <string name="dashboard_day_yesterday">Gestern</string>
+    <plurals name="dashboard_entries_count">
+        <item quantity="one">%1$d Eintrag</item>
+        <item quantity="other">%1$d Einträge</item>
+    </plurals>
+    <string name="dashboard_retry">Erneut versuchen</string>
+    <string name="dashboard_tour_started">Tour gestartet</string>
+    <string name="dashboard_stock_intake">Ware eingebucht</string>
+    <string name="dashboard_filled_by">Gefüllt von %1$s</string>
+    <plurals name="dashboard_items_count">
+        <item quantity="one">%1$d Artikel</item>
+        <item quantity="other">%1$d Artikel</item>
+    </plurals>
+    <plurals name="dashboard_machines_count">
+        <item quantity="one">%1$d Automat</item>
+        <item quantity="other">%1$d Automaten</item>
+    </plurals>
+    <plurals name="dashboard_products_count">
+        <item quantity="one">%1$d Produkt</item>
+        <item quantity="other">%1$d Produkte</item>
+    </plurals>
+
+    <!-- Kassenbuch-Eintragstypen (Feed-Zeilen) -->
+    <string name="cash_book_type_initial">Anfangsbestand</string>
+    <string name="cash_book_type_withdrawal">Aus Automat</string>
+    <string name="cash_book_type_correction">Korrektur</string>
+    <string name="cash_book_type_payout">Bankeinzahlung</string>
+    <string name="cash_book_type_expense">Ausgabe</string>
+    <string name="cash_book_type_reversal">Storno</string>
+    <string name="cash_book_type_unknown">Sonstige</string>
+    <string name="cash_book_category_rent">Miete</string>
+    <string name="cash_book_category_goods">Wareneinkauf</string>
+    <string name="cash_book_category_cleaning">Reinigung</string>
+    <string name="cash_book_category_fees">Gebühren</string>
+    <string name="cash_book_category_other">Sonstiges</string>
+
+    <!-- Maschinenliste: Lagerverfügbarkeit pro Produkt (MachineCard) — Wortwahl an ios/VMflow/Resources/Localizable.xcstrings angeglichen -->
+    <string name="machine_card_badge_empty">%1$d ausverkauft</string>
+    <string name="machine_card_badge_low">%1$d Refill nötig</string>
+    <string name="machine_card_badge_swap">%1$d Produkt wechseln</string>
+    <string name="machine_card_badge_no_stock">%1$d kein Lager</string>
+    <string name="machine_card_badge_topoff">%1$d Auffüllen empfohlen</string>
+    <string name="machine_card_no_trays">Keine Fächer konfiguriert</string>
+    <plurals name="machine_card_all_stocked">
+        <item quantity="one">Vollständig bestückt (%1$d Fach)</item>
+        <item quantity="other">Vollständig bestückt (%1$d Fächer)</item>
+    </plurals>
+    <string name="machine_card_deficit_amount">(-%1$d)</string>
+    <string name="machine_card_deficit_discontinued">DC</string>
+    <string name="machine_card_deficit_in_stock">auf Lager</string>
+    <string name="machine_card_deficit_needs_swap">wechseln</string>
+    <string name="machine_card_deficit_no_stock">kein Lager</string>
+    <string name="machine_card_deficit_show_more">+%1$d weitere</string>
+    <string name="machine_card_deficit_show_less">Weniger anzeigen</string>
+    <string name="machine_card_unassigned_slot">Fach %1$d</string>
+    <plurals name="machine_card_empty_slots_with_stock">
+        <item quantity="one">%1$d Fach leer, Produkt in anderem Fach</item>
+        <item quantity="other">%1$d Fächer leer, Produkt in anderem Fach</item>
+    </plurals>
+
+    <!-- Analyse-Tab -->
+    <string name="analysis_tab_title">Analyse</string>
+    <string name="analysis_loading">Analysiere…</string>
+    <string name="analysis_empty_title">Keine Fächer konfiguriert</string>
+    <string name="analysis_window_label">Zeitraum</string>
+    <string name="analysis_window_7d">7T</string>
+    <string name="analysis_window_30d">30T</string>
+    <string name="analysis_window_90d">90T</string>
+    <string name="analysis_layout_title">Automatenbelegung</string>
+    <string name="analysis_legend_strong">Stark</string>
+    <string name="analysis_legend_ok">OK</string>
+    <string name="analysis_legend_testing">Testphase</string>
+    <string name="analysis_legend_weak">Schwach</string>
+    <string name="analysis_legend_dead">Tot</string>
+    <string name="analysis_legend_empty">Leer</string>
+    <string name="analysis_products_to_review">Zu prüfende Produkte</string>
+    <string name="analysis_sell_through_sold">%1$d %% Abverkauf · %2$d verkauft</string>
+    <string name="analysis_tenure_suffix">" · %1$d T im Automat"</string>
+    <string name="analysis_try_instead">Stattdessen versuchen: %1$s</string>
+    <string name="analysis_slot_empty">Fach %1$d, leer</string>
+    <string name="analysis_replace_title">Produkt ersetzen</string>
+    <string name="analysis_replace_suggestions">Vorschläge</string>
+    <string name="analysis_replace_search">Katalog durchsuchen</string>
+    <string name="analysis_replace_search_hint">Produkte suchen</string>
+    <string name="analysis_replace_no_matches">Keine Treffer</string>
+    <string name="analysis_replace_bestseller">Flotten-Bestseller</string>
+    <string name="analysis_replace_newcomer">Noch nie verkauft — Testkandidat</string>
+    <string name="analysis_confirm_title">Produkt ersetzen?</string>
+    <string name="analysis_confirm_message">„%1$s“ in Fach %2$d durch „%3$s“ ersetzen? Der Bestand dieses Fachs wird auf 0 zurückgesetzt.</string>
+    <string name="analysis_confirm_message_empty">„%1$s“ dem leeren Fach %2$d zuweisen?</string>
+    <string name="analysis_error_title">Fehler</string>
+    <string name="action_replace">Ersetzen</string>
+    <string name="product_unnamed">Unbenannt</string>
+
+    <!-- Maschinendetail: Verkäufe-Tab (Tagesgruppen mit unterdrückten Zeilen) -->
+    <string name="sales_tab_empty">Noch keine Verkäufe erfasst</string>
+    <string name="sales_item_slot">Fach %1$d</string>
+    <string name="sales_item_generic">Verkauf</string>
+    <string name="suppressed_badge_auto_removed">Automatisch entfernt</string>
+    <string name="suppressed_reason_clock_unsynced">Uhr nicht synchron</string>
+    <string name="suppressed_reason_no_clock">Gerät hatte keine Uhr</string>
+    <string name="suppressed_reason_gap">identischer Verkauf %1$d s zuvor</string>
+    <string name="suppressed_reason_near_duplicate">Beinah-Duplikat eines kürzlichen Verkaufs</string>
+    <string name="restore_sale_action">Als Verkauf übernehmen</string>
+    <string name="restore_sale_dialog_title">Als echten Verkauf übernehmen?</string>
+    <string name="restore_sale_dialog_message">Fügt einen echten Verkauf hinzu und reduziert den Bestand um 1.</string>
+
+    <!-- Maschinendetail: Fächer-Tab -->
+    <string name="tray_fill_action">Bis zur Kapazität auffüllen</string>
+    <string name="tray_delete_action">Fach löschen</string>
+    <string name="machine_detail_title_fallback">Automat</string>
+
+    <!-- Maschinendetail: Guthaben-senden-Sheet -->
+    <string name="send_credit_action">Guthaben senden</string>
+    <string name="send_credit_title">Guthaben senden</string>
+    <string name="send_credit_amount_label">Betrag</string>
+    <string name="send_credit_amount_placeholder">0,00</string>
+    <string name="send_credit_currency_suffix">€</string>
+    <string name="send_credit_footer">Schreibt dem Automaten Guthaben gut, als wäre eine Münz- oder Kartenzahlung erfolgt. Ein Verkauf wird erst erfasst, wenn der Automat einen Warenausgabe meldet.</string>
+    <string name="send_credit_no_device_error">Diesem Automaten ist kein Gerät zugeordnet.</string>
+    <string name="send_credit_generic_error">Guthaben konnte nicht gesendet werden.</string>
+    <string name="send_credit_confirm_title">Guthaben senden?</string>
+    <string name="send_credit_confirm_message">%1$s Guthaben an „%2$s“ senden?</string>
+    <string name="action_send">Senden</string>
+
+    <!-- Maschinendetail: Gerätezustand-Sheet -->
+    <string name="device_health_action">Gerätezustand</string>
+    <string name="device_health_title">Gerätezustand</string>
+    <string name="device_health_section_uptime">Laufzeit</string>
+    <string name="device_health_offline">Offline</string>
+    <string name="device_health_last_restart_summary">%1$s · %2$s</string>
+    <string name="device_health_section_mdb_status">MDB-Status</string>
+    <string name="device_health_no_mdb_diagnostics">Noch keine MDB-Diagnosedaten.</string>
+    <string name="device_health_mdb_state">Zustand</string>
+    <string name="device_health_mdb_address">Adresse</string>
+    <string name="device_health_mdb_vmc_level">VMC-Level</string>
+    <string name="device_health_mdb_polls">Abfragen</string>
+    <string name="device_health_mdb_checksum_errors">Prüfsummenfehler</string>
+    <string name="device_health_mdb_last_command">Letzter Befehl</string>
+    <string name="device_health_mdb_updated">Aktualisiert: %1$s</string>
+    <string name="device_health_section_restart_history">Neustartverlauf</string>
+    <string name="device_health_no_restarts">Keine Neustarts erfasst.</string>
+    <string name="device_health_restart_uptime">%1$s gelaufen</string>
+    <string name="device_health_section_mdb_state_changes">MDB-Zustandsänderungen</string>
+    <string name="device_health_no_state_changes">Keine Zustandsänderungen erfasst.</string>
+    <string name="device_health_state_transition">%1$s → %2$s</string>
+    <string name="device_health_state_initial">Anfangszustand: %1$s</string>
+    <string name="device_health_state_cmd">Befehl: %1$s</string>
+    <plurals name="device_health_polls_count">
+        <item quantity="one">%1$d Abfrage</item>
+        <item quantity="other">%1$d Abfragen</item>
+    </plurals>
+    <string name="device_health_section_duplicates">Automatisch entfernte Duplikate</string>
+    <string name="device_health_no_duplicates">Keine — es wurden keine Duplikate automatisch entfernt.</string>
+    <string name="device_health_duplicates_footer">Verkäufe, die als vermutete Brownout-Wiedermeldungen automatisch verworfen wurden.</string>
+    <string name="device_health_reason_mqtt_watchdog">MQTT-Watchdog</string>
+    <string name="device_health_reason_ota">OTA-Update</string>
+    <string name="device_health_reason_config">Konfigurationsänderung</string>
+    <string name="device_health_reason_provisioning">Bereitstellung</string>
+    <string name="device_health_reason_factory_reset">Werksreset</string>
+    <string name="device_health_reason_power_on">Einschalten</string>
+    <string name="device_health_reason_panic">Absturz</string>
+    <string name="device_health_reason_brownout">Spannungseinbruch</string>
+    <string name="device_health_reason_hw_watchdog">Hardware-Watchdog</string>
+    <string name="device_health_unknown">Unbekannt</string>
+    <string name="device_health_just_now">Gerade eben</string>
+    <plurals name="device_health_minutes_ago">
+        <item quantity="one">vor %1$d Minute</item>
+        <item quantity="other">vor %1$d Minuten</item>
+    </plurals>
+    <plurals name="device_health_hours_ago">
+        <item quantity="one">vor %1$d Stunde</item>
+        <item quantity="other">vor %1$d Stunden</item>
+    </plurals>
+    <plurals name="device_health_days_ago">
+        <item quantity="one">vor %1$d Tag</item>
+        <item quantity="other">vor %1$d Tagen</item>
+    </plurals>
+
+    <!-- Maschinendetail: Maschineneinstellungen-Sheet -->
+    <string name="machine_settings_action">Maschineneinstellungen</string>
+    <string name="machine_settings_title">Maschineneinstellungen</string>
+    <string name="machine_settings_section_nayax">Nayax</string>
+    <string name="machine_settings_nayax_label">Nayax-Automaten-ID</string>
+    <string name="machine_settings_section_country">Land</string>
+    <string name="machine_settings_country_none">Keine</string>
+    <string name="machine_settings_section_location">Standort</string>
+    <string name="machine_settings_location_footer">Verwende deine aktuelle Position, um diesen Automaten zu platzieren.</string>
+    <string name="machine_settings_use_location">Meinen Standort verwenden</string>
+    <string name="machine_settings_clear_location">Standort löschen</string>
+    <string name="machine_settings_location_error">Standort konnte nicht ermittelt werden.</string>
+    <string name="machine_settings_location_permission_denied">Standortzugriff wird benötigt, um deine aktuelle Position zu verwenden.</string>
+    <string name="machine_settings_grant_location_permission">Standortzugriff erlauben</string>
+    <string name="machine_settings_section_public">Öffentliche Statusseite</string>
+    <string name="machine_settings_public_toggle">Öffentliche Statusseite</string>
+    <string name="machine_settings_public_origin_label">Öffentliche URL</string>
+    <string name="machine_settings_public_footer">Jeder mit diesem Link kann den Live-Status dieses Automaten sehen, ohne sich anzumelden.</string>
+    <string name="machine_settings_qr_content_description">QR-Code für die öffentliche Statusseite</string>
+    <string name="machine_settings_save_error">Einstellungen konnten nicht gespeichert werden.</string>
+    <!-- Nachfüll-Assistent — Pack-Schritt (Phase 5, Task 10) -->
+    <string name="refill_pack_unknown_product">Unbekanntes Produkt</string>
+    <string name="refill_pack_stock_unavailable_title">Lagerbestand nicht verfügbar</string>
+    <string name="refill_pack_stock_unavailable_body">Die Packmengen sind gerade nicht durch den Bestand begrenzt.</string>
+    <string name="refill_pack_stock_retry">Neu laden</string>
+    <string name="refill_pack_chip_all">Alle</string>
+    <string name="refill_pack_chip_count">· %1$d</string>
+    <string name="refill_pack_header_all">Alle Automaten</string>
+    <string name="refill_pack_status_complete">Box komplett</string>
+    <string name="refill_pack_status_partial">Box teilweise</string>
+    <string name="refill_pack_status_pending">Noch nichts gepackt</string>
+    <plurals name="refill_pack_items">
+        <item quantity="one">%1$d Artikel</item>
+        <item quantity="other">%1$d Artikel</item>
+    </plurals>
+    <plurals name="refill_pack_short">
+        <item quantity="one">%1$d fehlt</item>
+        <item quantity="other">%1$d fehlen</item>
+    </plurals>
+    <plurals name="refill_pack_machines_packed">
+        <item quantity="one">%1$d von %2$d Automat gepackt</item>
+        <item quantity="other">%1$d von %2$d Automaten gepackt</item>
+    </plurals>
+    <string name="refill_pack_toggle_all_machines">%1$s für alle Automaten packen</string>
+    <string name="refill_pack_toggle_machine">Für %1$s packen</string>
+    <string name="refill_pack_total_quantity">%1$d×</string>
+    <string name="refill_pack_stock_none">Nicht im Lager</string>
+    <string name="refill_pack_stock_committed">%1$d von %2$d verplant</string>
+    <string name="refill_pack_stock_left">%1$d im Lager · %2$d frei</string>
+    <string name="refill_pack_stock_in">%1$d im Lager</string>
+    <string name="refill_pack_need">benötigt %1$d / %2$d</string>
+    <string name="refill_pack_badge_no_stock">Kein Bestand</string>
+    <string name="refill_pack_badge_partial">Teilweise</string>
+    <string name="refill_pack_decrement">Menge für %1$s verringern</string>
+    <string name="refill_pack_increment">Menge für %1$s erhöhen</string>
+    <string name="refill_pack_pack_all">Alles packen</string>
+    <string name="refill_pack_pack_all_for">Alles für %1$s packen</string>
+    <string name="refill_pack_start_tour">Tour starten</string>
+    <string name="refill_pack_empty_title">Alles aufgefüllt!</string>
+    <string name="refill_pack_empty_body">Gerade braucht kein Automat Nachschub.</string>
+    <string name="refill_pack_empty_machine">Für diesen Automaten ist nichts zu packen.</string>
+    <!-- Nachfüll-Assistent — Befüllen-Schritt + Assistenten-Hülle (Phase 5, Task 11) -->
+    <string name="refill_wizard_title">Befüllungstour</string>
+    <string name="refill_step_title_review">Prüfen</string>
+    <string name="refill_step_title_packing">Packen</string>
+    <string name="refill_step_title_refill">Befüllen</string>
+    <string name="refill_step_title_summary">Zusammenfassung</string>
+    <string name="refill_step_completed">Erledigt</string>
+    <string name="refill_loading_machines">Lade Automaten…</string>
+    <string name="refill_finishing_up">Wird abgeschlossen…</string>
+    <string name="refill_resume_title">Tour fortsetzen?</string>
+    <string name="refill_resume_message">Du hast eine unvollständige Befüllungstour. Möchtest du dort weitermachen, wo du aufgehört hast?</string>
+    <string name="refill_resume_confirm">Fortsetzen</string>
+    <string name="refill_resume_discard">Neue Tour</string>
+    <string name="refill_step_machine_progress">Automat %1$d von %2$d</string>
+    <plurals name="refill_step_trays_to_refill">
+        <item quantity="one">%1$d Fach auffüllen</item>
+        <item quantity="other">%1$d Fächer auffüllen</item>
+    </plurals>
+    <string name="refill_step_change_machine">Automat wechseln</string>
+    <string name="refill_step_picker_title">Automat auswählen</string>
+    <string name="refill_step_picker_summary">%1$d Fächer · %2$d Artikel</string>
+    <string name="refill_step_picker_current">Aktueller Automat</string>
+    <string name="refill_step_fill_all">Alle auf Kapazität füllen</string>
+    <string name="refill_step_fill_max">Max</string>
+    <string name="refill_step_fill_amount">+%1$d</string>
+    <plurals name="refill_step_fill_unit">
+        <item quantity="one">Artikel</item>
+        <item quantity="other">Artikel</item>
+    </plurals>
+    <string name="refill_step_of_capacity">/ %1$d</string>
+    <string name="refill_step_decrement">Einen Artikel weniger in %1$s füllen</string>
+    <string name="refill_step_increment">Einen Artikel mehr in %1$s füllen</string>
+    <plurals name="refill_step_full_trays">
+        <item quantity="one">%1$d Fach bereits voll</item>
+        <item quantity="other">%1$d Fächer bereits voll</item>
+    </plurals>
+    <string name="refill_step_full_trays_expand">Volle Fächer anzeigen</string>
+    <string name="refill_step_full_trays_collapse">Volle Fächer ausblenden</string>
+    <string name="refill_step_no_trays">An diesem Automaten ist nichts zu füllen.</string>
+    <!-- Befüllen-Schritt — Automaten-Layout (Phase 5b, Task 7) -->
+    <string name="refill_step_layout_title">Automaten-Layout</string>
+    <string name="refill_step_layout_hint">Tippe ein Fach an, um zu seiner Karte zu springen.</string>
+    <string name="refill_step_layout_slot">Fach %1$d, %2$s, %3$s</string>
+    <string name="refill_step_layout_slot_empty">Fach %1$d, kein Produkt, %2$s</string>
+    <string name="refill_step_layout_slot_selected">%1$s, ausgewählt</string>
+    <string name="refill_step_layout_state_not_in_tour">nicht in dieser Tour</string>
+    <string name="refill_step_layout_state_filling">%1$d einfüllen</string>
+    <string name="refill_step_layout_state_empty">leer</string>
+    <string name="refill_step_layout_state_low">niedrig</string>
+    <string name="refill_step_layout_state_full">gefüllt</string>
+    <string name="refill_step_skip">Überspringen</string>
+    <string name="refill_step_confirm">Befüllung bestätigen</string>
+    <string name="refill_step_saving">Wird gespeichert…</string>
+    <string name="refill_error_unknown">unbekannter Fehler</string>
+    <plurals name="refill_error_max_attempts">
+        <item quantity="one">Die Befüllung konnte nach %1$d Versuch nicht gespeichert werden: %2$s. Bitte versuche es erneut.</item>
+        <item quantity="other">Die Befüllung konnte nach %1$d Versuchen nicht gespeichert werden: %2$s. Bitte versuche es erneut.</item>
+    </plurals>
+    <!-- Nachfüll-Assistent — Lagerabgang, der nicht verbucht wurde (Fix aus dem Abschluss-Review 2) -->
+    <plurals name="refill_deduction_failed">
+        <item quantity="one">%1$d Lagerabgang wurde nicht verbucht. Die Ware hat das Lager verlassen — bitte den Bestand manuell korrigieren.</item>
+        <item quantity="other">%1$d Lagerabgänge wurden nicht verbucht. Die Ware hat das Lager verlassen — bitte den Bestand manuell korrigieren.</item>
+    </plurals>
+    <!-- Nachfüll-Assistent — Zusammenfassung (Phase 5, Task 12) -->
+    <string name="refill_summary_title">Tour abgeschlossen!</string>
+    <string name="refill_summary_subtitle_all_done">Alle Automaten wurden befüllt</string>
+    <plurals name="refill_summary_subtitle_partial">
+        <item quantity="one">%1$d von %2$d Automat befüllt</item>
+        <item quantity="other">%1$d von %2$d Automaten befüllt</item>
+    </plurals>
+    <string name="refill_summary_stat_machines_visited">Besuchte Automaten</string>
+    <string name="refill_summary_stat_trays_refilled">Befüllte Fächer</string>
+    <string name="refill_summary_stat_items_added">Hinzugefügte Artikel</string>
+    <string name="refill_summary_stat_machines_skipped">Übersprungene Automaten</string>
+    <string name="refill_summary_machines_header">Automaten</string>
+    <plurals name="refill_summary_row_trays">
+        <item quantity="one">%1$d Fach</item>
+        <item quantity="other">%1$d Fächer</item>
+    </plurals>
+    <string name="refill_summary_row_contribution">%1$s · %2$s</string>
+    <string name="refill_summary_row_skipped">Übersprungen</string>
+    <!-- Nachfüll-Assistent — Prüf-Schritt (Phase 5b, Task 5) -->
+    <string name="refill_review_title">Produktprüfung</string>
+    <string name="refill_review_subtitle">Diese Fächer brauchen Aufmerksamkeit — eingestellte, abgelaufene, ausverkaufte oder nicht zugewiesene Produkte. Wähle einen Ersatz oder überspringe.</string>
+    <string name="refill_review_reason_discontinued">Eingestellt</string>
+    <string name="refill_review_reason_expired">Abgelaufen</string>
+    <string name="refill_review_reason_no_stock">Kein Lager</string>
+    <string name="refill_review_reason_unassigned">Nicht zugewiesen</string>
+    <plurals name="refill_review_stock_remaining">
+        <item quantity="one">%1$d Artikel noch im Automaten</item>
+        <item quantity="other">%1$d Artikel noch im Automaten</item>
+    </plurals>
+    <string name="refill_review_stock_empty">0 Artikel im Automaten</string>
+    <string name="refill_review_applied">Ersetzt — bereits gespeichert</string>
+    <string name="refill_review_skipped_keeping">Übersprungen — aktuelles Produkt beibehalten</string>
+    <string name="refill_review_skipped_unassigned">Übersprungen — Fach bleibt nicht zugewiesen</string>
+    <string name="refill_review_action_replace">Ersetzen</string>
+    <string name="refill_review_action_assign">Zuweisen</string>
+    <string name="refill_review_action_change">Ändern</string>
+    <string name="refill_review_action_choose">Ersatz wählen</string>
+    <string name="refill_review_action_skip">Überspringen</string>
+    <string name="refill_review_skip_all">Rest überspringen</string>
+    <string name="refill_review_continue">Weiter</string>
+    <string name="refill_review_apply_continue">Anwenden &amp; weiter</string>
+    <!-- Refill wizard — replacement product picker (Phase 5b Task 6) -->
+    <string name="refill_picker_title">Ersatz auswählen</string>
+    <string name="refill_picker_for_slot">Fach %1$d · %2$s</string>
+    <string name="refill_picker_search_hint">Produkte suchen</string>
+    <string name="refill_picker_search_clear">Suche löschen</string>
+    <string name="refill_picker_bucket_in_stock">Auf Lager</string>
+    <string name="refill_picker_bucket_out_of_stock">Nicht auf Lager</string>
+    <string name="refill_picker_uncategorized">Ohne Kategorie</string>
+    <string name="refill_picker_category_current">%1$s · aktuell</string>
+    <plurals name="refill_picker_stock">
+        <item quantity="one">%1$d auf Lager</item>
+        <item quantity="other">%1$d auf Lager</item>
+    </plurals>
+    <plurals name="refill_picker_product_count">
+        <item quantity="one">%1$d Produkt</item>
+        <item quantity="other">%1$d Produkte</item>
+    </plurals>
+    <string name="refill_picker_slot_badge">Fach %1$s</string>
+    <string name="refill_picker_slot_badge_overflow">Fach %1$s +%2$d</string>
+    <plurals name="refill_picker_slot_badge_a11y">
+        <item quantity="one">Liegt schon in Fach %1$s</item>
+        <item quantity="other">Liegt schon in Fächern %1$s</item>
+    </plurals>
+    <string name="refill_picker_expand_group">Gruppe ausklappen</string>
+    <string name="refill_picker_collapse_group">Gruppe einklappen</string>
+    <string name="refill_picker_selected">Ausgewählt</string>
+    <string name="refill_picker_no_matches">Keine Produkte für „%1$s“</string>
+    <string name="refill_picker_empty">Keine Produkte verfügbar</string>
+    <!-- Angebote -->
+    <string name="deals_title">Angebote</string>
+    <string name="deals_open">Angebote öffnen</string>
+    <string name="deals_refresh">Aktualisieren</string>
+    <string name="deals_close">Schließen</string>
+    <string name="deals_list_active">Aktiv</string>
+    <string name="deals_list_archived">Archiviert</string>
+    <string name="deals_list_archived_count">Archiviert (%1$d)</string>
+    <string name="deals_group_validity">Gültigkeit</string>
+    <string name="deals_group_retailer">Händler</string>
+    <string name="deals_group_product">Produkt</string>
+    <string name="deals_search_hint">Angebote suchen…</string>
+    <string name="deals_section_pinned">Angepinnt</string>
+    <string name="deals_section_valid_now">Jetzt gültig</string>
+    <string name="deals_section_expired">Abgelaufen</string>
+    <string name="deals_valid_from">ab %1$s gültig</string>
+    <plurals name="deals_starts_in_days">
+        <item quantity="one">morgen</item>
+        <item quantity="other">in %1$d Tagen</item>
+    </plurals>
+    <string name="deals_valid_until">bis %1$s</string>
+    <plurals name="deals_days_left">
+        <item quantity="one">noch %1$d Tag</item>
+        <item quantity="other">noch %1$d Tage</item>
+    </plurals>
+    <string name="deals_last_day">letzter Tag!</string>
+    <string name="deals_status_active">Gültig</string>
+    <string name="deals_status_expired">Abgelaufen</string>
+    <string name="deals_not_valid_yet">Noch nicht gültig</string>
+    <string name="deals_not_valid_yet_body">Dieses Angebot gilt erst ab %1$s (%2$s). Vorher gibt es den Preis im Markt noch nicht.</string>
+    <plurals name="deals_count">
+        <item quantity="one">%1$d Angebot</item>
+        <item quantity="other">%1$d Angebote</item>
+    </plurals>
+    <string name="deals_avg_discount">Ø −%1$d%%</string>
+    <plurals name="deals_upcoming_hint">
+        <item quantity="one">davon %1$d noch nicht gültig</item>
+        <item quantity="other">davon %1$d noch nicht gültig</item>
+    </plurals>
+    <string name="deals_new">NEU</string>
+    <string name="deals_app">App</string>
+    <string name="deals_pin">Anpinnen</string>
+    <string name="deals_unpin">Lösen</string>
+    <string name="deals_archive">Archivieren</string>
+    <string name="deals_restore">Wiederherstellen</string>
+    <plurals name="deals_matched_products_count">
+        <item quantity="one">%1$d gematchtes Produkt</item>
+        <item quantity="other">%1$d gematchte Produkte</item>
+    </plurals>
+    <string name="deals_ek_below_pct">%1$d%% unter deinem EK</string>
+    <string name="deals_ek_below">unter deinem EK</string>
+    <string name="deals_ek_similar">≈ wie dein EK</string>
+    <string name="deals_ek_above_pct">%1$d%% über deinem EK</string>
+    <string name="deals_ek_above">über deinem EK</string>
+    <string name="deals_ek_cost">EK %1$s</string>
+    <plurals name="deals_ek_hidden">
+        <item quantity="one">%1$d ausgeblendet — über deinem höchsten EK</item>
+        <item quantity="other">%1$d ausgeblendet — über deinem höchsten EK</item>
+    </plurals>
+    <string name="deals_ek_likely_mismatch">evtl. Fehl-Match</string>
+    <string name="deals_ek_offer_vs_usual">Angebot %1$s vs. üblicher EK %2$s</string>
+    <string name="deals_ek_margin">Spanne %1$d%% → %2$d%%</string>
+    <string name="deals_from_cache">Aus dem Cache geladen</string>
+    <string name="deals_low_confidence">Unsicherer Treffer</string>
+    <string name="deals_disabled_title">Angebotssuche ist deaktiviert</string>
+    <string name="deals_disabled_body">Aktiviere die Angebotssuche in den Einstellungen der Web-App, um Händler-Angebote für deine Produkte zu finden.</string>
+    <string name="deals_no_providers_title">Keine Angebotsquelle eingerichtet</string>
+    <string name="deals_no_providers_body">Ein Admin muss in den Einstellungen der Web-App eine Angebotsquelle aktivieren.</string>
+    <string name="deals_empty_active">Keine Angebote gefunden</string>
+    <string name="deals_empty_archived">Keine archivierten Angebote</string>
+    <string name="deals_empty_search">Versuch es mit einem anderen Suchbegriff.</string>
+    <string name="deals_empty_active_hint">Zum Aktualisieren nach unten ziehen.</string>
+    <string name="deals_empty_archived_hint">Archiviere uninteressante Angebote, damit die Liste übersichtlich bleibt.</string>
+    <string name="deals_detail_validity">Gültigkeit</string>
+    <string name="deals_requires_app_title">Nur mit Kunden-App</string>
+    <string name="deals_requires_app_body">Dieser Preis gilt evtl. nur mit der Kunden-App oder Kundenkarte des Händlers.</string>
+    <string name="deals_keywords_title">Gematchte Schlagwort-Gruppen</string>
+    <string name="deals_matched_via">erkannt via „%1$s“</string>
+    <string name="deals_keyword_no_products">Noch keine Produkte verknüpft</string>
+    <plurals name="deals_matched_products_title">
+        <item quantity="one">Gematchtes Produkt</item>
+        <item quantity="other">%1$d gematchte Produkte</item>
+    </plurals>
+    <string name="deals_view_prospekt">Prospekt ansehen</string>
+    <string name="deals_view_all_offers">Alle Angebote ansehen</string>
+    <string name="deals_stock_warehouse">Im Lager</string>
+    <string name="deals_stock_machines">In Automaten</string>
+    <!-- Maschinendetail: Fächerliste nach Produkt gruppiert (wie PWA machineDetail.*) -->
+    <string name="tray_view_by_product">Nach Produkt</string>
+    <string name="tray_view_by_slot">Nach Fach</string>
+    <plurals name="tray_group_slots">
+        <item quantity="one">%d Fach</item>
+        <item quantity="other">%d Fächer</item>
+    </plurals>
+    <plurals name="tray_group_missing">
+        <item quantity="one">fehlt %d</item>
+        <item quantity="other">fehlen %d</item>
+    </plurals>
+    <plurals name="tray_group_empty_slots">
+        <item quantity="one">%d Fach leer</item>
+        <item quantity="other">%d Fächer leer</item>
+    </plurals>
+    <string name="tray_slot_empty_elsewhere">Fach leer, Produkt in anderem Fach</string>
+    <string name="tray_group_state_critical">Ausverkauft</string>
+    <string name="tray_group_state_low">Knapp</string>
+    <string name="tray_group_state_fill">Auffüllen</string>
+    <string name="tray_group_state_ok">OK</string>
+    <string name="tray_unassigned">Kein Produkt</string>
+    <string name="machine_detail_products_sold_out">Ausverkaufte Produkte</string>
+    <string name="machine_detail_products_low">Knappe Produkte</string>
+    <string name="machine_detail_products_fill">Aufzufüllende Produkte</string>
+    <string name="machine_detail_stock_summary">Bestandsübersicht</string>
+    <string name="machine_detail_total_stock">Gesamtbestand</string>
+    <string name="machine_detail_stock_of_capacity">%1$d / %2$d</string>
+    <string name="machine_detail_tray_count">Fächer</string>
+    <string name="tray_search_hint">Suchen…</string>
+</resources>

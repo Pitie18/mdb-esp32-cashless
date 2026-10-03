@@ -210,7 +210,11 @@
       "activity": "Aktivität",
       "noCompanies": "Noch keine Firmen"
     },
-    "activity": { "active": "Aktiv", "idle": "Inaktiv", "dead": "Tot" },
+    "activity": {
+      "active": "Aktiv",
+      "idle": "Inaktiv",
+      "dead": "Tot"
+    },
     "detail": {
       "back": "Zurück zur Übersicht",
       "members": "Mitglieder",
@@ -324,9 +328,11 @@
     "groupTechnical": "Technik",
     "reports": "Berichte",
     "cashBook": "Kassenbuch",
+    "cardAccounts": "Kartenkonten",
     "inbox": "Posteingang",
     "mobileApp": "Mobile App",
-    "deals": "Angebote"
+    "deals": "Angebote",
+    "analytics": "Auswertung"
   },
   "auth": {
     "signIn": "Anmelden",
@@ -430,6 +436,8 @@
     "swapNeeded": "{count} Produkt wechseln",
     "refillNeeded": "{count} Refill nötig",
     "noWarehouseStock": "{count} kein Lager",
+    "topoffRecommended": "{count} Auffüllen empfohlen",
+    "emptySlotsWithStock": "{count} Fach leer, Produkt in anderem Fach | {count} Fächer leer, Produkt in anderem Fach",
     "inStock": "auf Lager",
     "noStock": "kein Lager",
     "swap": "wechseln",
@@ -443,7 +451,8 @@
     "insufficientStock": "Unzureichender Lagerbestand",
     "deductionFailed": "Abzug fehlgeschlagen",
     "startRefillTour": "Befüllungstour starten",
-    "stockHealth": "Füllstand"
+    "stockHealth": "Füllstand",
+    "posterOutdated": "Aushang veraltet"
   },
   "refill": {
     "title": "Befüllungstour",
@@ -499,6 +508,19 @@
   "machineDetail": {
     "sales": "Verkäufe",
     "traysAndStock": "Fächer & Bestand",
+    "viewByProduct": "Nach Produkt",
+    "viewBySlot": "Nach Fach",
+    "stockMap": "Belegung",
+    "groupSlots": "{count} Fach | {count} Fächer",
+    "groupMissing": "fehlen {count}",
+    "groupEmptySlots": "{count} Fach leer | {count} Fächer leer",
+    "slotEmptyElsewhere": "Fach leer, Produkt in anderem Fach",
+    "groupStateCritical": "Ausverkauft",
+    "groupStateLow": "Knapp",
+    "groupStateFill": "Auffüllen",
+    "groupStateOk": "OK",
+    "selectedProductSummary": "{name} · {slots} · {stock}/{capacity}",
+    "clearSelection": "Auswahl aufheben",
     "analysis": "Analyse",
     "mdb": "MDB",
     "dailyRevenue": "Tagesumsatz (letzte 30 Tage)",
@@ -526,6 +548,14 @@
     "polls": "Abfragen",
     "checksumErrors": "Prüfsummenfehler",
     "lastCommand": "Letzter Befehl",
+    "rfidReader": "RFID-Leser",
+    "rfidCards": "Karten",
+    "rfidFrames": "Frames",
+    "rfidBad": "Fehlerhafte Frames",
+    "rfidRepeats": "Wiederholungen",
+    "rfidBytes": "Gelesene Bytes",
+    "rfidNoBytes": "Vom Leser kommt nichts an — Verkabelung, Stromversorgung und Baudrate prüfen.",
+    "rfidNoFrames": "Es kommen Bytes an, aber nichts lässt sich auswerten — Baudrate, invertierte Leitung und Frame-Format des Lesers prüfen.",
     "vmcLevel": "VMC-Level",
     "macAddress": "MAC-Adresse",
     "subdomain": "Subdomain",
@@ -544,6 +574,14 @@
     "price": "Preis",
     "failedToLoad": "Automat konnte nicht geladen werden",
     "slotMustBePositive": "Fachnummer muss 0 oder größer sein",
+    "internalSlot": "Intern #",
+    "internalSlotTooltip": "Nummer, die der Automat für dieses Fach meldet, falls sie von der Fachnummer abweicht. Verkäufe mit dieser Nummer werden diesem Fach zugeordnet – ab jetzt; bereits erfasste Verkäufe bleiben unverändert. Leer lassen, wenn beide Nummern übereinstimmen.",
+    "internalSlotLabel": "Interne Fachnummer (optional)",
+    "internalSlotPlaceholder": "Wie Fachnummer",
+    "internalSlotHint": "Nur nötig, wenn der Automat für dieses Fach eine andere Nummer meldet als die, die am Fach steht. Sonst leer lassen.",
+    "internalSlotInvalid": "Interne Fachnummer muss eine ganze Zahl von 0 bis {max} sein",
+    "internalSlotTaken": "Interne Fachnummer {number} ist bereits Fach {slot} zugeordnet",
+    "internalSlotShadowed": "Verkäufe mit Nummer {number} gehen an Fach {slot}",
     "capacityAtLeastOne": "Kapazität muss mindestens 1 sein",
     "stockCannotExceed": "Bestand kann Kapazität nicht überschreiten",
     "countAtLeastOne": "Anzahl muss mindestens 1 sein",
@@ -667,7 +705,10 @@
     "reasonClockUnsynced": "Uhr nicht synchronisiert",
     "reasonNoClock": "Gerät hatte keine Uhr",
     "reasonGapEarlier": "identischer Verkauf {n}s früher",
-    "reasonNearDup": "Beinahe-Duplikat eines kürzlichen Verkaufs"
+    "reasonNearDup": "Beinahe-Duplikat eines kürzlichen Verkaufs",
+    "printPoster": "Aushang drucken",
+    "posterOutdatedTitle": "Der Aushang zeigt nicht mehr die aktuellen Kontaktdaten",
+    "posterOutdatedBody": "Seit dem letzten Druck haben sich die Kontaktdaten geändert. Neu drucken und austauschen."
   },
   "machineSettings": {
     "title": "Automat-Einstellungen",
@@ -691,8 +732,21 @@
     "nayaxMachineId": "Nayax-Maschinen-ID",
     "nayaxMachineIdPlaceholder": "z. B. 92700604",
     "nayaxMachineIdHint": "Erforderlich für den Nayax-Verkaufsabgleich. Diese ID findest du in deinem Nayax-Backoffice.",
+    "itemNumberOffset": "Fachnummer-Offset",
+    "itemNumberOffsetPlaceholder": "0",
+    "itemNumberOffsetHint": "Wird auf die vom Automaten gemeldete Fachnummer addiert. Meldet der Automat 1, wo das Fach mit 10 beschriftet ist, trag 9 ein. Gilt erst ab dem Speichern — bereits erfasste Verkäufe bleiben unverändert.",
+    "itemNumberOffsetWarning": "Prüfe vorher, dass deine Fächer hier mit den Nummern vom Aufkleber angelegt sind (10, 11, …) und nicht mit den rohen Nummern des Automaten.",
+    "linkedSelections": "Gleiche Produkte sind verknüpft",
+    "linkedSelectionsHint": "Der Automat gibt ein Produkt automatisch aus einem anderen Fach aus, wenn ein Fach leer ist. Dann wird ein leeres Fach nicht mehr als Hinweis angezeigt, solange das Produkt noch in einem anderen Fach liegt.",
     "save": "Speichern",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "contactOverrides": "Abweichende Kontaktdaten",
+    "contactOverridesHint": "Nur für gedruckte Aushänge. Leere Felder verwenden die Firmendaten.",
+    "contactOverrideActive": "aktiv",
+    "contactPhone": "Support-Telefon",
+    "contactWhatsapp": "WhatsApp",
+    "contactHours": "Erreichbarkeit",
+    "contactEmail": "Kontakt-E-Mail"
   },
   "insights": {
     "productSwap": "Produktwechsel",
@@ -1030,6 +1084,7 @@
     "showDiscontinued": "Auslaufartikel anzeigen",
     "notAssignedBadge": "Nicht zugewiesen",
     "showUnassigned": "Nicht zugewiesene anzeigen",
+    "showAllOutOfStock": "Alle nicht vorrätigen anzeigen",
     "outOfStock": "Nicht vorrätig",
     "outOfStockCount": "Nicht vorrätig",
     "reorderNeeded": "Nachbestellung nötig",
@@ -1054,6 +1109,10 @@
     "generateCode": "Code generieren",
     "subdomainCol": "Subdomain",
     "macAddressCol": "MAC-Adresse",
+    "nameCol": "Name",
+    "addName": "Namen hinzufügen",
+    "deviceName": "Gerätename (optional)",
+    "deviceNamePlaceholder": "z. B. Rev B – blaue Kiste",
     "statusCol": "Status",
     "firmwareCol": "Firmware",
     "assignedMachine": "Zugewiesener Automat",
@@ -1380,7 +1439,14 @@
     "timezoneContextHint": "Sendezeit in {tz}. Änderbar unter Betreiberinformationen.",
     "dealsProvidersTitle": "Angebotsquellen",
     "dealsProvidersHint": "Angebote brauchen mindestens eine aktive Quelle. Marktguru wird automatisch aktiviert, sobald du Angebote einschaltest.",
-    "dealsProvidersLink": "Angebotsquellen verwalten"
+    "dealsProvidersLink": "Angebotsquellen verwalten",
+    "imprintWhatsapp": "WhatsApp-Nummer",
+    "imprintWhatsappHint": "Für den WhatsApp-QR auf gedruckten Aushängen. Oft eine andere, mobile Nummer.",
+    "imprintSupportHours": "Erreichbarkeit",
+    "imprintSupportHoursPlaceholder": "Mo–Fr 8–18 Uhr",
+    "imprintLogo": "Firmenlogo",
+    "imprintLogoHint": "PNG, JPEG oder WebP, max. 2 MB. Erscheint auf gedruckten Aushängen.",
+    "imprintLogoRemove": "Logo entfernen"
   },
   "softap": {
     "title": "WLAN-Zugang (SoftAP)",
@@ -1442,7 +1508,8 @@
       "cash_book_entry_created": "Kassenbuch-Eintrag",
       "machine_assigned_to_cash_book": "Automat dem Kassenbuch zugewiesen",
       "machine_unassigned_from_cash_book": "Automat aus Kassenbuch entfernt",
-      "cash_book_settings_updated": "Kassenbuch-Einstellungen geändert"
+      "cash_book_settings_updated": "Kassenbuch-Einstellungen geändert",
+      "poster_printed": "Aushang gedruckt"
     },
     "field": {
       "machine": "Automat",
@@ -1472,7 +1539,9 @@
       "minStock": "Mindestbestand",
       "capacity": "Kapazität",
       "saleSeq": "Sequenznummer",
-      "timeUncertain": "Zeitstempel-Status"
+      "timeUncertain": "Zeitstempel-Status",
+      "motif": "Motiv",
+      "format": "Format"
     }
   },
   "deals": {
@@ -1517,11 +1586,19 @@
     "matchedProductCount": "{n} Produkte gematched",
     "matchedProductsTitle": "{n} gematchte Produkte",
     "matchedKeywords": "Gematchte Schlagwort-Gruppen",
-    "startsIn": "startet in {days}T",
     "activeNow": "aktiv",
     "daysLeft": "noch {days}T",
     "lastDay": "letzter Tag!",
     "expired": "abgelaufen",
+    "byValidity": "Nach Gültigkeit",
+    "validNowGroup": "Jetzt gültig",
+    "expiredGroup": "Abgelaufen",
+    "validFromDate": "ab {date} gültig",
+    "validUntilDate": "bis {date}",
+    "startsInRel": "morgen | in {count} Tagen",
+    "upcomingCountHint": "davon {n} noch nicht gültig",
+    "notYetValidTitle": "Noch nicht gültig",
+    "notYetValidBody": "Dieses Angebot gilt erst ab {date} ({rel}). Vorher gibt es den Preis im Markt noch nicht.",
     "requiresApp": "Dieser Preis gilt nur mit der {retailer}-App.",
     "match": "Treffer",
     "detailTitle": "Angebotsdetails",
@@ -1849,6 +1926,38 @@
     "trackPerMachine": "Pro Automat erfassen",
     "trackPerMachineHint": "Bei jeder Entnahme den Automaten auswählen, von dem das Geld stammt. Bei Touren über mehrere Automaten i.d.R. nicht sinnvoll."
   },
+  "cardAccounts": {
+    "title": "Kartenkonten",
+    "description": "Guthaben der RFID-Karten, die am Kartenleser eines Automaten vorgehalten werden.",
+    "createAccount": "Neues Konto",
+    "editAccount": "Konto bearbeiten",
+    "empty": "Noch keine Kartenkonten. Sobald eine Karte am Leser vorgehalten wird, entsteht automatisch ein Konto mit 0 Guthaben.",
+    "totalBalance": "Gesamtguthaben",
+    "balance": "Guthaben",
+    "lastSeen": "Zuletzt genutzt",
+    "active": "Aktiv",
+    "blocked": "Gesperrt",
+    "activeLabel": "Karte ist aktiv",
+    "topUp": "Aufladen",
+    "topUpTitle": "{name} aufladen",
+    "amount": "Betrag (EUR)",
+    "amountHint": "Ein positiver Betrag lädt auf, ein negativer korrigiert. Jede Änderung wird protokolliert.",
+    "amountRequired": "Bitte einen Betrag ungleich null eingeben",
+    "history": "Verlauf",
+    "historyTitle": "Verlauf — {name}",
+    "namePlaceholder": "Erika Mustermann (04A1B2C3)",
+    "nameHint": "Der Name muss die Kartennummer enthalten — daran findet der Leser dieses Konto.",
+    "renameWarning": "Die Kartennummer steht nicht mehr im Namen. Diese Karte findet das Konto nicht mehr und legt beim nächsten Vorhalten ein neues an.",
+    "deleteConfirm": "Konto „{name}“ löschen? Guthaben und Verlauf werden mitgelöscht.",
+    "howItWorks": "So funktioniert es",
+    "howItWorksBody": "Eine am Leser vorgehaltene Karte geht ans Backend. Dort wird das Konto gesucht, dessen Name diese Kartennummer enthält, und dessen Guthaben als Kredit an den Automaten geschickt. Unbekannte Karten bekommen ein neues Konto mit 0. Was der Kunde dann kauft, wird vom Konto abgezogen.",
+    "tx": {
+      "topup": "Aufladung",
+      "vend": "Kauf",
+      "adjustment": "Korrektur",
+      "refund": "Erstattung"
+    }
+  },
   "publicStorefront": {
     "online": "Online",
     "offline": "Offline",
@@ -2009,5 +2118,270 @@
       "tokenRequired": "Auth-Token ist erforderlich",
       "configJsonInvalid": "Zusätzliche Config muss ein JSON-Objekt sein"
     }
+  },
+  "print": {
+    "pageTitle": "Aushang drucken",
+    "pageLead": "Kontaktdaten und QR-Codes für diesen Automaten.",
+    "backToMachine": "Zurück zum Automaten",
+    "motif": "Motiv",
+    "format": "Format",
+    "blocks": "Weitere Inhalte",
+    "sheetLanguage": "Sprache des Aushangs",
+    "customText": "Zusatztext",
+    "customTextPlaceholder": "z. B. Standort: 2. OG neben dem Aufzug",
+    "moreMachines": "Weitere Automaten",
+    "moreMachinesHint": "Alle ausgewählten Automaten laufen in einem Druckauftrag.",
+    "print": "Seite drucken | {count} Seiten drucken",
+    "browserHint": "Im Druckdialog Kopf- und Fußzeilen abschalten und Hintergrundgrafiken aktivieren.",
+    "tiledHint": "Eine Kachel je ausgewähltem Automaten (nach dem Schnitt etwas kleiner als das eigenständige Format). Die gestrichelten Linien sind die Schnitthilfe.",
+    "originWarnTitle": "QR-Codes zeigen auf eine interne Adresse",
+    "originWarnBody": "{origin} ist von außen nicht erreichbar — gedruckte Codes funktionieren auf Kundenhandys nicht. SITE_URL in der Server-Konfiguration setzen.",
+    "missingTitle": "Für diesen Aushang fehlen Daten",
+    "missingLink": "In den Einstellungen ergänzen",
+    "fallbackMachineName": "Automat",
+    "whatsappTemplate": "Hallo, ich habe ein Problem am %machine%.",
+    "formats": {
+      "a4": "A4 (210 × 297 mm)",
+      "a5": "A5 (148 × 210 mm)",
+      "a6": "A6 (105 × 148 mm)",
+      "a5-2up": "2 × A5 auf A4",
+      "a6-4up": "4 × A6 auf A4",
+      "a7-8up": "8 × A7 auf A4",
+      "sticker-sheet": "Aufkleber 90 × 50 mm",
+      "sticker-sheet-small": "Aufkleber 50 × 30 mm",
+      "sticker-sheet-strip": "Streifen 148 × 40 mm"
+    },
+    "blockNames": {
+      "phone": "Telefonnummer",
+      "imprint": "Impressum-Fußzeile",
+      "url": "Link unter dem QR-Code"
+    },
+    "missingFields": {
+      "companyName": "Firmenname",
+      "phone": "Support-Telefonnummer",
+      "whatsapp": "WhatsApp-Nummer",
+      "whatsappCountry": "Land für die WhatsApp-Nummer",
+      "email": "Kontakt-E-Mail",
+      "address": "Anschrift",
+      "customUrl": "Eigener Link"
+    },
+    "motifShort": {
+      "klar": "Klar",
+      "kachel": "Kachel",
+      "qr-first": "QR zuerst",
+      "dunkel": "Dunkel",
+      "sticker-problem": "Aufkleber Störung",
+      "sticker-menu": "Aufkleber Sortiment",
+      "duo": "Zweigeteilt",
+      "signal": "Signal",
+      "klassisch": "Klassisch",
+      "sticker-duo": "Aufkleber Duo",
+      "sticker-contact": "Aufkleber Kontakt",
+      "sticker-mini": "Aufkleber klein",
+      "sticker-service": "Aufkleber Service",
+      "sticker-imprint": "Aufkleber Impressum",
+      "sticker-strip": "Streifen"
+    },
+    "motifs": {
+      "klar": {
+        "label": "Klar",
+        "description": "Telefonnummer groß, ein QR unten. Druckt auch in Schwarz-Weiß gut."
+      },
+      "kachel": {
+        "label": "Kachel",
+        "description": "Farbiger Kopf, beschriftete QR-Kacheln für alle Kanäle."
+      },
+      "qrFirst": {
+        "label": "QR zuerst",
+        "description": "Ein großer QR auf die Automatenseite, Nummer als Rückfallweg."
+      },
+      "dunkel": {
+        "label": "Dunkel",
+        "description": "Dunkler Grund, hochwertige Optik — braucht Toner und gutes Papier."
+      },
+      "stickerProblem": {
+        "label": "Aufkleber: Störung",
+        "description": "90 × 50 mm fürs Auswurffach. 8 pro A4-Bogen."
+      },
+      "stickerMenu": {
+        "label": "Aufkleber: Sortiment",
+        "description": "90 × 50 mm mit QR auf die Automatenseite."
+      },
+      "duo": {
+        "label": "Zweigeteilt",
+        "description": "Oben groß das Sortiment, unten ein schmaler Störungs-Streifen. Hilfe ist da, drängt sich aber nicht auf."
+      },
+      "signal": {
+        "label": "Signal",
+        "description": "Vollflächig farbig, Telefonnummer riesig. Fällt im Gang auf — kostet aber ordentlich Tinte."
+      },
+      "klassisch": {
+        "label": "Klassisch",
+        "description": "Serifen, doppelter Rahmen, zurückhaltend. Für Praxen, Hotels und Büros, die kein buntes Plakat dulden."
+      },
+      "stickerDuo": {
+        "label": "Aufkleber: Duo",
+        "description": "90 × 50 mm mit zwei Codes — Sortiment groß, Störung klein daneben."
+      },
+      "stickerContact": {
+        "label": "Aufkleber: Kontakt",
+        "description": "90 × 50 mm ganz ohne QR, nur die Nummer groß. Für Standorte, an denen niemand scannt."
+      },
+      "stickerMini": {
+        "label": "Aufkleber: klein",
+        "description": "50 × 30 mm, ein Code und eine Zeile. 24 pro A4-Bogen — fürs Münzrückgabefeld."
+      },
+      "stickerService": {
+        "label": "Aufkleber: Service",
+        "description": "Der Klassiker am Automaten: Gerätename groß, damit der Anrufer weiß, worüber er spricht. 90 × 50 mm."
+      },
+      "stickerImprint": {
+        "label": "Aufkleber: Impressum",
+        "description": "Kleine Betreiberplakette nach §5 TMG. Leise und textlastig — sie soll vollständig sein, nicht auffallen."
+      },
+      "stickerStrip": {
+        "label": "Streifen (quer)",
+        "description": "148 × 40 mm für quer über die Automatenfront. 6 pro A4-Bogen, dunkel für Kontrast auf hellem Blech."
+      }
+    },
+    "poster": {
+      "problemTitle": "Problem mit dem Automaten?",
+      "problemLead": "Wir kümmern uns darum. Melde dich einfach bei uns.",
+      "supportPhone": "Support-Telefon",
+      "pageTitle": "Produkte · Preise · Zahlen",
+      "pageHint": "Code scannen und alles zu diesem Automaten sehen",
+      "helpTitle": "Hilfe zu diesem Automaten",
+      "whatsappTitle": "WhatsApp",
+      "whatsappHint": "Direkt schreiben",
+      "problemQrTitle": "Störung melden",
+      "problemQrHint": "Formular öffnen",
+      "callDirect": "Direkt anrufen",
+      "everythingTitle": "Alles zu diesem Automaten",
+      "everythingLead": "Produkte, Preise, Verfügbarkeit und Störung melden",
+      "ratherCall": "Lieber anrufen?",
+      "helpYouTitle": "Wir helfen dir weiter",
+      "helpYouLead": "Automat läuft nicht? Geld weg? Melde dich kurz.",
+      "pageShort": "Sortiment",
+      "locationLabel": "Standort:",
+      "operatorLabel": "Betreiber:",
+      "callHint": "Code scannen und anrufen",
+      "customTitle": "Mehr erfahren",
+      "customHint": "Code scannen",
+      "pageHintShort": "Preise und Verfügbarkeit",
+      "callShort": "Anruf",
+      "callHintShort": "Scannen oder anrufen",
+      "discoverTitle": "Mehr über diesen Automaten und nichts mehr verpassen",
+      "discoverLead": "Sortiment und Preise ansehen, online zahlen und bei neuen Produkten benachrichtigt werden."
+    },
+    "sticker": {
+      "problemTitle": "Störung melden",
+      "menuTitle": "Sortiment ansehen",
+      "contactTitle": "Fragen zum Automaten?",
+      "serviceTitle": "Bei Störung bitte angeben",
+      "imprintTitle": "Betreiberinformationen",
+      "stripTitle": "Fragen zum Automaten?"
+    },
+    "qrCodes": "QR-Codes",
+    "headlines": "Überschriften",
+    "customLink": "Eigener Link",
+    "customLinkPlaceholder": "https://…",
+    "customLinkHint": "Ziel für QR-Codes, die auf „Eigener Link“ gestellt sind. Ohne https:// wird es ergänzt.",
+    "resetText": "Auf Standard zurücksetzen",
+    "resetAll": "Alles zurücksetzen",
+    "save": "Speichern",
+    "saved": "Gespeichert",
+    "saveSection": "Konfiguration speichern",
+    "sourceUnavailable": "nicht hinterlegt",
+    "customTextHint": "Gilt nur für diesen Druck und wird nicht gespeichert.",
+    "sources": {
+      "page": "Automatenseite",
+      "tel": "Anruf",
+      "whatsapp": "WhatsApp",
+      "problem": "Störung melden",
+      "custom": "Eigener Link",
+      "none": "Leer lassen"
+    },
+    "slots": {
+      "main": "QR-Code",
+      "tile1": "Kachel 1",
+      "tile2": "Kachel 2",
+      "tile3": "Kachel 3",
+      "call": "Anruf-Feld",
+      "top": "Großer QR oben",
+      "bottom": "Störungs-Streifen unten",
+      "left": "Großer QR links",
+      "right": "Kleiner QR rechts"
+    },
+    "texts": {
+      "title": "Überschrift",
+      "lead": "Unterzeile",
+      "slotTitle": "Titel",
+      "slotHint": "Hinweis"
+    },
+    "saveScope": {
+      "company": "Für alle Automaten",
+      "machine": "Nur dieser Automat"
+    },
+    "saveState": {
+      "none": "Noch nichts gespeichert — es gelten die Standardwerte.",
+      "company": "Es gilt die gespeicherte Konfiguration der Firma.",
+      "machine": "Für diesen Automaten ist eine eigene Konfiguration gespeichert."
+    },
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "zoomFit": "Einpassen"
+  },
+  "analytics": {
+    "title": "Auswertung",
+    "subtitle": "Verstehen, was sich wo und wann verkauft",
+    "unsupported": "Dieser Server unterstützt die Auswertung noch nicht. Bitte aktualisiere das Backend.",
+    "revenue": "Umsatz",
+    "units": "Stück",
+    "grossProfit": "Rohertrag",
+    "profit": "Rohertrag",
+    "vsPrevious": "vs. {range}",
+    "costHint": "Rohertrag netto. {count} Artikel ohne EK-Preis ist nicht enthalten. | Rohertrag netto. {count} Artikel ohne EK-Preis sind nicht enthalten.",
+    "timeRange": "Zeitraum",
+    "days7": "Letzte 7 Tage",
+    "days30": "Letzte 30 Tage",
+    "days90": "Letzte 90 Tage",
+    "thisMonth": "Dieser Monat",
+    "lastMonth": "Letzter Monat",
+    "custom": "Eigener Zeitraum",
+    "from": "Von",
+    "to": "Bis",
+    "apply": "Übernehmen",
+    "machines": "Automaten",
+    "allMachines": "Alle Automaten",
+    "nMachines": "{count} Automat | {count} Automaten",
+    "categories": "Kategorien",
+    "allCategories": "Alle Kategorien",
+    "nCategories": "{count} Kategorie | {count} Kategorien",
+    "products": "Artikel",
+    "breakdown": "Aufschlüsselung",
+    "trend": "Verlauf",
+    "peakHours": "Stoßzeiten",
+    "paymentMethods": "Zahlungsarten",
+    "cash": "Bar",
+    "cashless": "Bargeldlos",
+    "unknown": "Unbekannt",
+    "noSales": "Keine Verkäufe in diesem Zeitraum.",
+    "noPurchasePrice": "kein EK-Preis",
+    "perDay": "{value} /Tag",
+    "nPieces": "{count} Stk | {count} Stk",
+    "nProducts": "{count} Artikel | {count} Artikel",
+    "perMachine": "Je Automat",
+    "abcClass": "Klasse {class} · {share} % vom Umsatz",
+    "stock": "Bestand",
+    "stockOf": "Bestand {current}/{capacity}",
+    "empty": "leer",
+    "sellThrough": "Abverkauf {value} %",
+    "daysOfSupply": "Reicht noch etwa {days} Tage",
+    "sortDescending": "Größte zuerst",
+    "sortAscending": "Kleinste zuerst",
+    "filtered": "Gefiltert",
+    "thisYear": "Dieses Jahr",
+    "lastYear": "Letztes Jahr",
+    "allTime": "Gesamte Zeit"
   }
 }

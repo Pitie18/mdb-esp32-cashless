@@ -152,6 +152,18 @@ struct SettingsView: View {
             } footer: {
                 Text("Permanently delete your account and, if you are the last admin, your organization's data.")
             }
+
+            // MARK: - About Section
+            Section {
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text(AppVersion.current)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Label("About", systemImage: "info.circle")
+            }
         }
         .navigationTitle("Settings")
         .task {
@@ -301,6 +313,27 @@ struct SettingsView: View {
             }
         }
         .disabled(isSendingTest)
+    }
+}
+
+/// Converts the stamped short-version string ("1.0.260727") into the
+/// human-facing display form ("1.0.7.27"). Falls back to the raw input if the
+/// last component is not a 6-digit YYMMDD date.
+enum AppVersion {
+    static func display(from shortVersion: String) -> String {
+        let parts = shortVersion.split(separator: ".").map(String.init)
+        guard let last = parts.last, last.count == 6, Int(last) != nil else {
+            return shortVersion
+        }
+        let base = parts.dropLast().joined(separator: ".")
+        let mm = Int(last.dropFirst(2).prefix(2)) ?? 0
+        let dd = Int(last.suffix(2)) ?? 0
+        return "\(base).\(mm).\(dd)"
+    }
+
+    static var current: String {
+        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        return display(from: short)
     }
 }
 

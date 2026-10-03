@@ -11,17 +11,24 @@ struct Embedded: Codable, Identifiable, Equatable {
     /// Additive fields for Device Health / MDB diagnostics — all optional with a
     /// default so existing call sites (previews) that construct `Embedded`
     /// directly keep compiling unchanged.
-    let firmwareBuildDate: Date? = nil
-    let mdbAddress: Int? = nil
+    ///
+    /// These MUST stay `var`: Swift's synthesized `init(from:)` silently skips
+    /// a `let` property that already has an initial value, so declaring them
+    /// `let … = nil` leaves them permanently `nil` no matter what the server
+    /// sent (the explicit `CodingKeys` below even suppresses the compiler
+    /// warning that would otherwise flag it). That bug blanked the whole MDB
+    /// Status card and made uptime fall back to `statusAt`.
+    var firmwareBuildDate: Date? = nil
+    var mdbAddress: Int? = nil
     /// Live MDB status snapshot published by the firmware. `nil` until the
     /// device has reported at least once.
-    let mdbDiagnostics: MdbDiagnostics? = nil
-    let lastRestartReason: String? = nil
-    let lastRestartAt: Date? = nil
+    var mdbDiagnostics: MdbDiagnostics? = nil
+    var lastRestartReason: String? = nil
+    var lastRestartAt: Date? = nil
     /// Timestamp the device last transitioned to "online" — start of the
     /// current uptime run, distinct from `statusAt` (last status write of any
     /// kind).
-    let onlineSince: Date? = nil
+    var onlineSince: Date? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, status, subdomain
@@ -120,6 +127,15 @@ struct VendingMachine: Codable, Identifiable, Equatable {
     let formattedAddress: String?
     let nayaxMachineId: String?
     let publicListing: Bool?
+    /// Raw `linked_selections` column; read ``linkedSelections`` instead.
+    /// Optional so the synthesized decoder uses `decodeIfPresent` and a
+    /// select (or fixture, or older server) without the column still decodes.
+    let linkedSelectionsRaw: Bool?
+
+    /// The machine vends from a sibling slot when one of a product's slots is
+    /// empty, so the "slot empty, product in another slot" hint is hidden.
+    /// Display only; edited in the web app.
+    var linkedSelections: Bool { linkedSelectionsRaw ?? false }
 
     enum CodingKeys: String, CodingKey {
         case id, name, embedded, embeddeds
@@ -133,6 +149,7 @@ struct VendingMachine: Codable, Identifiable, Equatable {
         case formattedAddress = "formatted_address"
         case nayaxMachineId = "nayax_machine_id"
         case publicListing = "public_listing"
+        case linkedSelectionsRaw = "linked_selections"
     }
 
     /// Explicit memberwise initializer. `let` properties that carry a default
@@ -155,7 +172,8 @@ struct VendingMachine: Codable, Identifiable, Equatable {
         addressCity: String? = nil,
         formattedAddress: String? = nil,
         nayaxMachineId: String? = nil,
-        publicListing: Bool? = nil
+        publicListing: Bool? = nil,
+        linkedSelections: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -171,6 +189,7 @@ struct VendingMachine: Codable, Identifiable, Equatable {
         self.formattedAddress = formattedAddress
         self.nayaxMachineId = nayaxMachineId
         self.publicListing = publicListing
+        self.linkedSelectionsRaw = linkedSelections
     }
 
     /// Display name, falling back to "Unnamed Machine".
@@ -199,41 +218,149 @@ struct MachineStats: Identifiable, Equatable {
     var lastWeekSalesCount: Int = 0
     var paxcounterCount: Int?
 
-    // Stock health
+    // Stock health, warehouse-aware like the PWA's machine card
+    // (`useMachines.ts`). `emptyTrays`/`lowTrays`/`fillTrays` count
+    // **products** (all slots of a product form one group, see
+    // `MachineStockHealth`) that need a refill *and* that the warehouse can
+    // refill (every product counts as refillable when the company has no
+    // warehouse stock at all). `lowTrays` is low-only, not low + empty.
+    // `totalTrays` counts slots, unassigned ones included. Names kept for
+    // compatibility.
     var totalTrays: Int = 0
     var lowTrays: Int = 0
     var emptyTrays: Int = 0
+    var fillTrays: Int = 0
+    /// Σ stock / Σ capacity over all slots (0…1); 0 when there is no capacity.
     var stockPercent: Double = 0
+    /// Empty slots whose product is still stocked in another slot — a hint only.
+    var emptySlotsWithStock: Int = 0
 
-    // Warehouse-aware stock counts
-    var swapNeededCount: Int = 0   // empty trays with no warehouse stock
-    var noStockCount: Int = 0      // low trays with no warehouse stock
+    // Products needing a refill the warehouse has no stock of — they never
+    // drive `stockHealth`.
+    var swapNeededCount: Int = 0   // sold out in every slot → swap the product
+    var noStockCount: Int = 0      // low / top-off only
 
-    // Per-product deficit info for card display
+    /// Product ids with a positive batch in any warehouse, and whether any
+    /// batch exists at all — the inputs of `applyStock(trays:)`.
+    var warehouseProductIds: Set<UUID> = []
+    var hasWarehouses = false
+
+    // Per-product deficit info for card display: refillable products, then
+    // swap candidates, then no-stock products.
     var trayDeficits: [TrayDeficit] = []
 
     var id: UUID { machine.id }
 
-    /// Overall stock health classification.
+    /// Overall stock health: critical > low > fill > ok, driven only by
+    /// refillable products.
     var stockHealth: StockHealth {
         if emptyTrays > 0 { return .critical }
         if lowTrays > 0 { return .low }
+        if fillTrays > 0 { return .fill }
         return .ok
     }
 
-    /// Sort priority: critical first, then low, then ok. Within same health, more low trays first.
+    /// Sort priority: critical, low, fill, ok; within the same health more
+    /// low + empty products first. Mirrors the PWA's machine list sort.
     var sortPriority: Int {
+        let urgent = min(emptyTrays + lowTrays, 999)
         switch stockHealth {
-        case .critical: return 0
-        case .low: return 1000 - lowTrays
-        case .ok: return 2000
+        case .critical: return 1000 - urgent
+        case .low: return 2000 - urgent
+        case .fill: return 3000 - urgent
+        case .ok: return 4000 - urgent
         }
     }
 }
 
-/// Stock health levels with associated colors.
-enum StockHealth: String, Equatable {
+// MARK: - Stock roll-up (machine card + machine detail tile)
+
+extension MachineStats {
+    /// Recompute every stock field from the machine's trays. The single
+    /// computation behind the machine card **and** the machine detail stock
+    /// tile, so the two can never disagree. Uses `warehouseProductIds` /
+    /// `hasWarehouses`, which the machine list fills in.
+    mutating func applyStock(trays: [Tray]) {
+        totalTrays = 0; lowTrays = 0; emptyTrays = 0; fillTrays = 0
+        emptySlotsWithStock = 0; swapNeededCount = 0; noStockCount = 0
+        trayDeficits = []
+
+        // Trays / stock — judged per product, not per slot: all slots
+        // of a product form one group (see `MachineStockHealth`), so a
+        // product empty in one spiral but stocked in another is not
+        // "out of stock". Warehouse-aware like the PWA's
+        // `useMachines.ts`: only products the warehouse can refill
+        // count towards Empty/Low/Top-off and the machine's colour;
+        // the rest land in the no-stock list. Unassigned slots only
+        // count towards the slot total and the stock percentage.
+        totalTrays = trays.count
+
+        let totalCapacity = trays.reduce(0) { $0 + $1.capacity }
+        let totalStock = trays.reduce(0) { $0 + $1.currentStock }
+        stockPercent = totalCapacity > 0 ? Double(totalStock) / Double(totalCapacity) : 0
+
+        var refillDeficits: [TrayDeficit] = []
+        var noStockDeficits: [TrayDeficit] = []
+
+        let linked: Set<UUID> = machine.linkedSelections ? [machine.id] : []
+        for group in MachineStockHealth.groupTraysByProduct(trays, linkedMachineIds: linked) {
+            guard group.needsRefill else {
+                emptySlotsWithStock += group.emptySlots
+                continue
+            }
+
+            let severity: StockSeverity
+            switch group.state {
+            case .critical: severity = .critical
+            case .low: severity = .low
+            default: severity = .fillBelow
+            }
+
+            let refillable = MachineStockHealth.isProductRefillable(
+                productId: group.productId,
+                warehouseProductIds: warehouseProductIds,
+                hasWarehouses: hasWarehouses
+            )
+
+            let first = group.trays[0]
+            let deficit = TrayDeficit(
+                productName: first.productName,
+                imagePath: first.products?.imagePath,
+                deficit: group.deficit,
+                severity: severity,
+                isDiscontinued: first.isDiscontinued,
+                warehouseAvailability: refillable
+                    ? .inStock
+                    : (severity == .critical ? .needsSwap : .noStock)
+            )
+
+            if refillable {
+                switch severity {
+                case .critical: emptyTrays += 1
+                case .low: lowTrays += 1
+                case .fillBelow: fillTrays += 1
+                }
+                refillDeficits.append(deficit)
+            } else {
+                if severity == .critical { swapNeededCount += 1 } else { noStockCount += 1 }
+                noStockDeficits.append(deficit)
+            }
+        }
+
+        // Card order as in the PWA: refillable products, then swap
+        // candidates, then dimmed no-stock products — each by deficit.
+        let byDeficit: (TrayDeficit, TrayDeficit) -> Bool = { $0.deficit > $1.deficit }
+        trayDeficits = refillDeficits.sorted(by: byDeficit)
+            + noStockDeficits.filter { $0.warehouseAvailability == .needsSwap }.sorted(by: byDeficit)
+            + noStockDeficits.filter { $0.warehouseAvailability != .needsSwap }.sorted(by: byDeficit)
+    }
+}
+
+/// Machine stock health levels with associated colors. `fill` = only
+/// top-off recommendations left (below `fill_when_below`).
+enum StockHealth: String, Equatable, Codable {
     case ok
+    case fill
     case low
     case critical
 }

@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Horizontal progress bar showing stock level with color coding.
-/// Green (> 50%), Yellow (20-50%), Red (< 20%).
+/// Green (> 50%), Yellow (20-50%), Red (< 20%) — unless `tint` overrides it
+/// (the machine detail list colours a slot by its product's status).
 struct StockBar: View {
     let current: Int
     let capacity: Int
@@ -11,6 +12,8 @@ struct StockBar: View {
     var minStock: Int? = nil
     /// Optional fill_when_below threshold marker (blue line).
     var fillWhenBelow: Int? = nil
+    /// Fixed bar colour instead of the ratio-based one.
+    var tint: Color? = nil
 
     private var ratio: Double {
         guard capacity > 0 else { return 0 }
@@ -18,6 +21,7 @@ struct StockBar: View {
     }
 
     private var color: Color {
+        if let tint { return tint }
         if ratio > 0.5 { return .green }
         if ratio > 0.2 { return .yellow }
         return .red
@@ -89,6 +93,7 @@ struct StockHealthIndicator: View {
     private var localizedLabel: LocalizedStringKey {
         switch health {
         case .ok: return "Ok"
+        case .fill: return "Top off"
         case .low: return "Low"
         case .critical: return "Critical"
         }
@@ -97,6 +102,7 @@ struct StockHealthIndicator: View {
     private var color: Color {
         switch health {
         case .ok: return .green
+        case .fill: return .blue
         case .low: return .yellow
         case .critical: return .red
         }
@@ -105,6 +111,7 @@ struct StockHealthIndicator: View {
     private var iconName: String {
         switch health {
         case .ok: return "checkmark.circle.fill"
+        case .fill: return "arrow.up.circle.fill"
         case .low: return "exclamationmark.triangle.fill"
         case .critical: return "xmark.octagon.fill"
         }
@@ -120,6 +127,7 @@ struct StockHealthIndicator: View {
 
         HStack(spacing: 16) {
             StockHealthIndicator(health: .ok)
+            StockHealthIndicator(health: .fill)
             StockHealthIndicator(health: .low)
             StockHealthIndicator(health: .critical)
         }

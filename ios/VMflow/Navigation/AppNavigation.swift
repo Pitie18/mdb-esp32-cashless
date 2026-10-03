@@ -3,6 +3,7 @@ import SwiftUI
 /// Unified navigation item for both sidebar (iPad/Mac) and tab bar (iPhone).
 enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
     case dashboard
+    case analytics
     case machines
     case refill
     case inbox
@@ -17,6 +18,7 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .dashboard: "Dashboard"
+        case .analytics: NSLocalizedString("Analytics", comment: "")
         case .machines: "Machines"
         case .refill: "Refill"
         case .inbox: "Inbox"
@@ -31,6 +33,7 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .dashboard: "chart.bar.fill"
+        case .analytics: "chart.xyaxis.line"
         case .machines: "storefront.fill"
         case .refill: "arrow.clockwise.circle.fill"
         case .inbox: "tray.fill"
@@ -49,7 +52,7 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
         case .machines: .machines
         case .refill: .refill
         case .warehouse: .warehouse
-        default: nil  // inbox, cashBook, products, deals, settings → More tab
+        default: nil  // analytics, inbox, cashBook, products, deals, settings → More tab
         }
     }
 }

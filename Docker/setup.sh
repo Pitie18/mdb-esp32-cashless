@@ -218,7 +218,14 @@ echo
 
 SUPABASE_HOST=$(prompt_with_default "Supabase API hostname" "supabase.vmflow.xyz")
 APP_HOST=$(prompt_with_default "Frontend app hostname" "app.vmflow.xyz")
-MQTT_HOST=$(prompt_with_default "MQTT broker hostname (reachable by ESP32 devices)" "mqtt.vmflow.xyz")
+# The broker address the ESP32s dial. claim-device hands this value to every
+# device at claim time and it is stored in the device's NVS, so it has to
+# resolve from out in the field -- not from inside the Docker network. The
+# server-side name is a different question and is never asked: the forwarder
+# and the edge functions always reach the broker as the compose service
+# `broker`, over the internal Docker network.
+MQTT_PUBLIC_HOST=$(prompt_with_default "MQTT broker hostname (reachable by ESP32 devices)" "mqtt.vmflow.xyz")
+MQTT_PUBLIC_PORT=$(prompt_with_default "MQTT broker port (published on this host, handed to devices)" "1883")
 
 SUPABASE_PUBLIC_URL="https://${SUPABASE_HOST}"
 API_EXTERNAL_URL="https://${SUPABASE_HOST}"
@@ -228,7 +235,11 @@ echo
 info "URLs:"
 echo -e "  Supabase API:  ${GREEN}${SUPABASE_PUBLIC_URL}${NC}"
 echo -e "  Frontend:      ${GREEN}${SITE_URL}${NC}"
-echo -e "  MQTT broker:   ${GREEN}${MQTT_HOST}${NC}"
+info "The frontend URL is encoded into the QR codes on printed machine signs,"
+info "so it must be the address customers can reach from outside."
+echo -e "  MQTT broker:   ${GREEN}${MQTT_PUBLIC_HOST}:${MQTT_PUBLIC_PORT}${NC}"
+info "This is the address baked into every device at claim time, so it must be"
+info "reachable from wherever the machines stand."
 
 # ─── SMTP (optional) ──────────────────────────────────────────────────────────
 echo -e "\n${BOLD}Email / SMTP${NC}"
@@ -484,10 +495,23 @@ GOOGLE_PROJECT_NUMBER=GOOGLE_PROJECT_NUMBER
 # MQTT
 #########
 
-MQTT_HOST=${MQTT_HOST}
+# How the SERVER reaches the broker: the compose service name, resolved over
+# the internal Docker network. Never a public hostname -- that would send the
+# traffic out to the reverse proxy and back in for no reason, and would break
+# outright wherever public DNS does not resolve inside a container.
+# docker-compose.yml pins this per service anyway; the line is kept so the
+# file documents the split and so tooling reading .env sees the real value.
+MQTT_HOST=broker
+MQTT_WS_PORT=9001
 MQTT_WEBHOOK_SECRET=${MQTT_WEBHOOK_SECRET}
 MQTT_ADMIN_USER=admin
 MQTT_ADMIN_PASS=${MQTT_ADMIN_PASS}
+
+# How the DEVICES reach the broker: handed out by claim-device and written to
+# the ESP32's NVS. Must resolve from the field. MQTT_PUBLIC_PORT doubles as
+# the port the broker is published on by docker-compose.
+MQTT_PUBLIC_HOST=${MQTT_PUBLIC_HOST}
+MQTT_PUBLIC_PORT=${MQTT_PUBLIC_PORT}
 
 ##########
 # Push Notifications (VAPID)
@@ -554,6 +578,33 @@ step "3/5 — Starting Docker Stack"
 info "Pulling pre-built frontend image..."
 docker compose pull frontend 2>/dev/null && success "Frontend image pulled" || warn "Could not pull frontend image — will build locally"
 
+# ─────────────────────────────────────────────────────────────
+# Pre-flight: every db init script mounted by docker-compose.yml
+# must exist as a real file.
+# ─────────────────────────────────────────────────────────────
+# Docker materialises a missing bind-mount source as an empty DIRECTORY.
+# The image's migrate.sh then hits `psql -f <dir>` -> "Is a directory",
+# and because it runs under `set -e` the whole init run aborts — every
+# later script (99-roles.sql!) never executes, so authenticator,
+# supabase_auth_admin and supabase_storage_admin end up without a
+# password. The container restarts, finds PGDATA initialised, skips init
+# for good and looks perfectly healthy. Catch it before it happens.
+info "Verifying database init scripts..."
+INIT_BAD=""
+for rel in $(grep -oE '\./volumes/db/[A-Za-z0-9_.-]+\.sql' docker-compose.yml | sort -u); do
+    if [ -d "$rel" ]; then
+        warn "  ${rel} is a DIRECTORY — leftover from an earlier broken start, delete it"
+        INIT_BAD="yes"
+    elif [ ! -f "$rel" ]; then
+        warn "  ${rel} is missing from the repo"
+        INIT_BAD="yes"
+    fi
+done
+if [ -n "$INIT_BAD" ]; then
+    error "Database init scripts are not intact — fix the paths above before starting, otherwise Postgres comes up with password-less roles and rest/auth/storage can never connect."
+fi
+success "All database init scripts present"
+
 info "Starting all services..."
 docker compose up -d
 
@@ -581,6 +632,30 @@ fi
 # (roles, JWT, webhooks, etc. run via /docker-entrypoint-initdb.d/)
 info "Waiting for Supabase initialization to complete..."
 sleep 5
+
+# ─────────────────────────────────────────────────────────────
+# Guard: did 99-roles.sql actually run?
+# ─────────────────────────────────────────────────────────────
+# pg_isready says nothing about the init scripts — a container whose
+# init run aborted restarts and reports "ready to accept connections"
+# all the same. Ask Postgres directly instead of reporting success and
+# leaving the operator to discover it from auth failures in the logs.
+ROLES_NO_PASSWORD=$(docker compose exec -T db psql -U postgres -d postgres -Atc \
+    "SELECT coalesce(string_agg(rolname, ', ' ORDER BY rolname), '')
+       FROM pg_authid
+      WHERE rolname IN ('authenticator','pgbouncer','supabase_admin','supabase_auth_admin','supabase_functions_admin','supabase_storage_admin')
+        AND rolpassword IS NULL" 2>/dev/null || echo "QUERY_FAILED")
+
+if [ "$ROLES_NO_PASSWORD" = "QUERY_FAILED" ]; then
+    error "Could not query role state. Check logs: docker compose logs db"
+elif [ -n "$ROLES_NO_PASSWORD" ]; then
+    warn "These roles have no password: ${ROLES_NO_PASSWORD}"
+    warn "The Postgres init run aborted — check: docker compose logs db | grep -i 'is a directory'"
+    warn "Init scripts do not re-run on restart. Since this is a fresh install with no data yet:"
+    warn "  docker compose down && rm -rf volumes/db/data && ./setup.sh"
+    error "Aborting — rest/auth/storage could not authenticate against this database."
+fi
+success "Database roles initialised"
 
 # ─────────────────────────────────────────────────────────────
 # Configure DB settings consumed by SECURITY DEFINER functions
@@ -633,7 +708,7 @@ echo -e "${BOLD}╠════════════════════�
 echo -e "${BOLD}║${NC}"
 echo -e "${BOLD}║${NC}  Supabase API:  ${GREEN}${SUPABASE_PUBLIC_URL}${NC}"
 echo -e "${BOLD}║${NC}  Frontend:      ${GREEN}${SITE_URL}${NC}"
-echo -e "${BOLD}║${NC}  MQTT broker:   ${GREEN}${MQTT_HOST}:1883${NC}"
+echo -e "${BOLD}║${NC}  MQTT broker:   ${GREEN}${MQTT_PUBLIC_HOST}:${MQTT_PUBLIC_PORT}${NC}"
 echo -e "${BOLD}║${NC}"
 echo -e "${BOLD}║${NC}  Studio:        ${CYAN}${DASHBOARD_USERNAME}${NC} / ${CYAN}${DASHBOARD_PASSWORD}${NC}"
 if [ "$CONFIGURE_SMTP" = true ]; then

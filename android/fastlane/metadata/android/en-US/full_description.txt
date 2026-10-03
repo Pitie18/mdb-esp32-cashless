@@ -1,0 +1,23 @@
+VMflow is the operator's companion for running vending machines. Built for the field and for one-handed use, it puts your fleet's numbers and your day's work in one place.
+
+DASHBOARD
+See today's and this week's revenue and sales at a glance, a 30-day trend chart, low-stock alerts, and how many machines are online.
+
+MACHINES
+Every machine sorted by stock urgency, with revenue for today, yesterday, this week and last week, product deficits, and warehouse availability at a glance.
+
+TRAYS & STOCK
+Full control over each machine's slots: add slots singly or in batches, set products, capacities and refill thresholds, and adjust stock with quick +/- steppers.
+
+GUIDED REFILL
+A step-by-step refill tour optimised for the field: pack products across machines, pick your route, refill to capacity with automatic warehouse deduction, and review before you commit.
+
+WAREHOUSE
+FIFO stock batches with expiry tracking, barcode-assisted intake, transaction history, and minimum-stock alerts.
+
+PUSH NOTIFICATIONS
+Optional low-stock and event alerts so you know before a machine runs dry.
+
+VMflow connects to a self-hosted VMflow backend that you or your organisation operate. It is a tool for managing your own vending business — you sign in to your organisation's server; new team members join by invitation.
+
+You can delete your account at any time from within the app (Settings → Delete Account).

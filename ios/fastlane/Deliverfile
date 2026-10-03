@@ -9,10 +9,11 @@ privacy_url({
   "de-DE" => "https://app.kerl-handel.de/legal/privacy",
 })
 
-# Never auto-submit or auto-release — a human presses the button.
-submit_for_review(false)
-automatic_release(false)
-
+# Submission/release policy lives in the lanes, not here: `release` submits and
+# auto-releases, `metadata` never does. Values passed to an action always beat
+# Deliverfile values (FastlaneCore::Configuration#fetch checks @values first),
+# so duplicating them here would only be misleading.
+#
 # Export compliance is already answered in Info.plist
 # (ITSAppUsesNonExemptEncryption = false); no upload-time prompt.
 #

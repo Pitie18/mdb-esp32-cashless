@@ -48,20 +48,31 @@ struct MachineCard: View {
                 )
             }
 
-            // Summary badges (like web: "Out of Stock (2)", "Swap Needed (1)", etc.)
-            if stats.emptyTrays > 0 || stats.lowTrays > 0 || stats.swapNeededCount > 0 || stats.noStockCount > 0 {
+            // Summary badges — same set and order as the PWA machine card
+            // (`machines.outOfStock`, `refillNeeded`, `swapNeeded`,
+            // `noWarehouseStock`, `topoffRecommended`, `emptySlotsWithStock`).
+            if stats.emptyTrays > 0 || stats.lowTrays > 0 || stats.swapNeededCount > 0
+                || stats.noStockCount > 0 || stats.fillTrays > 0 || stats.emptySlotsWithStock > 0 {
                 FlowLayout(spacing: 6) {
                     if stats.emptyTrays > 0 {
-                        summaryBadge("\(stats.emptyTrays) Empty", bg: .red.opacity(0.1), fg: .red)
+                        summaryBadge("\(stats.emptyTrays) out of stock", bg: .red.opacity(0.1), fg: .red)
                     }
                     if stats.lowTrays > 0 {
-                        summaryBadge("\(stats.lowTrays) Low", bg: .orange.opacity(0.1), fg: .orange)
+                        summaryBadge("\(stats.lowTrays) refill needed", bg: .orange.opacity(0.1), fg: .orange)
                     }
                     if stats.swapNeededCount > 0 {
-                        summaryBadge("\(stats.swapNeededCount) Swap", bg: .orange.opacity(0.1), fg: .orange)
+                        summaryBadge("\(stats.swapNeededCount) swap product", bg: .orange.opacity(0.1), fg: .orange)
                     }
                     if stats.noStockCount > 0 {
-                        summaryBadge("\(stats.noStockCount) No Stock", bg: Color(.systemGray5), fg: .secondary)
+                        summaryBadge("\(stats.noStockCount) no stock", bg: Color(.systemGray5), fg: .secondary)
+                    }
+                    if stats.fillTrays > 0 {
+                        summaryBadge("\(stats.fillTrays) recommended to top off", bg: .blue.opacity(0.1), fg: .blue)
+                    }
+                    // Hint only: a slot is empty but its product is still
+                    // stocked in another slot — never counts as out of stock.
+                    if stats.emptySlotsWithStock > 0 {
+                        summaryBadge("\(stats.emptySlotsWithStock) slots empty, product in another slot", bg: Color(.systemGray5), fg: .secondary)
                     }
                 }
             }
@@ -107,13 +118,13 @@ struct MachineCard: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Text("\(Int(stats.stockPercent * 100))%")
+                        Text("\(stockPercentValue)%")
                             .font(.caption.weight(.medium))
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
                     StockBar(
-                        current: Int(stats.stockPercent * 100),
+                        current: stockPercentValue,
                         capacity: 100,
                         showLabel: false,
                         height: 6
@@ -128,6 +139,11 @@ struct MachineCard: View {
                 .shadow(color: .black.opacity(0.06), radius: 6, y: 2)
         }
         .hoverEffect(.highlight)
+    }
+
+    /// Rounded like the PWA (`Math.round`), not truncated.
+    private var stockPercentValue: Int {
+        Int((stats.stockPercent * 100).rounded())
     }
 
     private func salesStatCell(label: LocalizedStringKey, revenue: Double, count: Int) -> some View {

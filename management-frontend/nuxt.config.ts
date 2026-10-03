@@ -1,4 +1,14 @@
 import pkg from './package.json'
+import { baseFromSemver, formatVersion } from './app/lib/appVersion'
+
+const buildDateRaw = process.env.BUILD_DATE ?? ''
+const buildDateObj = buildDateRaw && !isNaN(new Date(buildDateRaw).getTime())
+  ? new Date(buildDateRaw)
+  : new Date()
+const { real: appVersionReal, display: appVersionDisplay } = formatVersion(
+  baseFromSemver(pkg.version),
+  buildDateObj,
+)
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -45,11 +55,18 @@ export default defineNuxtConfig({
     public: {
       vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? '',
       githubFirmwareRepo: process.env.GITHUB_FIRMWARE_REPO ?? '',
-      appVersion: pkg.version,
+      appVersion: appVersionReal,
+      appVersionDisplay: appVersionDisplay,
       gitHash: process.env.GIT_HASH ?? 'dev',
       buildDate: process.env.BUILD_DATE ?? '',
       envName: process.env.ENV_NAME ?? '',
       envColor: process.env.ENV_COLOR ?? 'amber',
+      // Publicly reachable frontend origin. Already maintained as SITE_URL in
+      // Docker/.env (setup.sh sets it to https://${APP_HOST}, GoTrue uses it
+      // for auth mails), so it is correct wherever password reset works.
+      // Printed QR codes must not fall back to a LAN origin — see
+      // isPublicOrigin() in app/lib/printSheet.ts.
+      siteUrl: process.env.SITE_URL ?? '',
     },
   },
   i18n: {

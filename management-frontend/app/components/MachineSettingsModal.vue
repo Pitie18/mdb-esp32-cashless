@@ -12,12 +12,13 @@ import { IconTrash } from '@tabler/icons-vue'
 import QRCode from 'qrcode'
 import LocationPicker, { type LocationModel } from '~/components/LocationPicker.vue'
 import { useMachines, type MachineSettingsPatch } from '~/composables/useMachines'
+import { useOrganization } from '~/composables/useOrganization'
 import { COUNTRY_OPTIONS } from '~/composables/useTaxSettings'
 
 const props = defineProps<{
   open: boolean
   machineId: string
-  initial: Partial<LocationModel & { nayax_machine_id: string | null }>
+  initial: Partial<LocationModel & { nayax_machine_id: string | null; item_number_offset: number; linked_selections: boolean }>
   publicListing: boolean
 }>()
 
@@ -30,7 +31,7 @@ const { t } = useI18n()
 const supabase = useSupabaseClient()
 const { updateMachineSettings } = useMachines()
 
-type MachineSettingsForm = LocationModel & { nayax_machine_id: string | null }
+type MachineSettingsForm = LocationModel & { nayax_machine_id: string | null; item_number_offset: number; linked_selections: boolean }
 
 const form = ref<MachineSettingsForm>(cloneInitial())
 const saving = ref(false)
@@ -49,6 +50,86 @@ const publicUrl = computed(() => {
   return `${publicPageOrigin.value}/m/${props.machineId}`
 })
 
+// ── Per-machine contact overrides (printed posters) ─────────────────────────
+// Empty means "inherit from the company", which is why the company value is
+// shown as the placeholder: the operator sees what will actually be printed
+// without having to open the settings page.
+interface ContactOverrides {
+  contact_phone: string
+  whatsapp_phone: string
+  support_hours: string
+  contact_email: string
+}
+
+const EMPTY_CONTACT: ContactOverrides = {
+  contact_phone: '',
+  whatsapp_phone: '',
+  support_hours: '',
+  contact_email: '',
+}
+
+const contact = ref<ContactOverrides>({ ...EMPTY_CONTACT })
+const companyContact = ref<ContactOverrides>({ ...EMPTY_CONTACT })
+const contactOpen = ref(false)
+
+const CONTACT_KEYS = Object.keys(EMPTY_CONTACT) as (keyof ContactOverrides)[]
+
+const hasContactOverride = computed(() =>
+  CONTACT_KEYS.some(k => contact.value[k].trim().length > 0),
+)
+
+async function loadContact() {
+  if (!props.machineId) return
+  const { organization } = useOrganization()
+  const companyId = organization.value?.id
+  const [machineRes, companyRes] = await Promise.all([
+    supabase
+      .from('vendingMachine')
+      .select('contact_phone, whatsapp_phone, support_hours, contact_email')
+      .eq('id', props.machineId)
+      .single(),
+    companyId
+      ? supabase
+          .from('companies')
+          .select('contact_phone, whatsapp_phone, support_hours, contact_email')
+          .eq('id', companyId)
+          .single()
+      : Promise.resolve({ data: null }),
+  ])
+  const m = machineRes.data as Partial<ContactOverrides> | null
+  const c = companyRes.data as Partial<ContactOverrides> | null
+  contact.value = {
+    contact_phone: m?.contact_phone ?? '',
+    whatsapp_phone: m?.whatsapp_phone ?? '',
+    support_hours: m?.support_hours ?? '',
+    contact_email: m?.contact_email ?? '',
+  }
+  companyContact.value = {
+    contact_phone: c?.contact_phone ?? '',
+    whatsapp_phone: c?.whatsapp_phone ?? '',
+    support_hours: c?.support_hours ?? '',
+    contact_email: c?.contact_email ?? '',
+  }
+  contactOpen.value = hasContactOverride.value
+}
+
+async function saveContact() {
+  const norm = (v: string) => {
+    const trimmed = v.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }
+  const { error } = await supabase
+    .from('vendingMachine')
+    .update({
+      contact_phone: norm(contact.value.contact_phone),
+      whatsapp_phone: norm(contact.value.whatsapp_phone),
+      support_hours: norm(contact.value.support_hours),
+      contact_email: norm(contact.value.contact_email),
+    } as never)
+    .eq('id', props.machineId)
+  if (error) throw error
+}
+
 function cloneInitial(): MachineSettingsForm {
   return {
     location_lat: props.initial.location_lat ?? null,
@@ -60,6 +141,8 @@ function cloneInitial(): MachineSettingsForm {
     formatted_address: props.initial.formatted_address ?? null,
     country_code: props.initial.country_code ?? null,
     nayax_machine_id: props.initial.nayax_machine_id ?? null,
+    item_number_offset: props.initial.item_number_offset ?? 0,
+    linked_selections: props.initial.linked_selections ?? false,
   }
 }
 
@@ -139,6 +222,7 @@ watch(
       if (publicListingValue.value && publicPageOrigin.value && !publicQrDataUrl.value) {
         generatePublicQr()
       }
+      loadContact()
     }
   },
 )
@@ -153,7 +237,11 @@ async function save() {
   errorMsg.value = null
   try {
     if (form.value.nayax_machine_id === '') form.value.nayax_machine_id = null
+    // An emptied number input yields '' / NaN; the column is NOT NULL.
+    const parsedOffset = Number(form.value.item_number_offset)
+    form.value.item_number_offset = Number.isFinite(parsedOffset) ? Math.trunc(parsedOffset) : 0
     await updateMachineSettings(props.machineId, form.value as MachineSettingsPatch)
+    await saveContact()
     emit('saved')
     emit('update:open', false)
   } catch (err) {
@@ -222,6 +310,94 @@ function cancel() {
             class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
           <p class="mt-1 text-[10px] text-muted-foreground">{{ t('machineSettings.nayaxMachineIdHint') }}</p>
+        </div>
+
+        <!-- MDB slot number offset -->
+        <div class="space-y-1">
+          <label class="text-xs font-medium text-muted-foreground">{{ t('machineSettings.itemNumberOffset') }}</label>
+          <input
+            v-model.number="form.item_number_offset"
+            type="number"
+            step="1"
+            inputmode="numeric"
+            :placeholder="t('machineSettings.itemNumberOffsetPlaceholder')"
+            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <p class="mt-1 text-[10px] text-muted-foreground">{{ t('machineSettings.itemNumberOffsetHint') }}</p>
+          <p v-if="form.item_number_offset !== 0" class="mt-1 rounded bg-amber-500/10 px-2 py-1 text-[10px] text-amber-700 dark:text-amber-400">
+            {{ t('machineSettings.itemNumberOffsetWarning') }}
+          </p>
+        </div>
+
+        <!-- Linked selections: the machine vends from a sibling slot when one is empty -->
+        <label for="machine-linked-selections" class="flex cursor-pointer items-start gap-3">
+          <input
+            id="machine-linked-selections"
+            v-model="form.linked_selections"
+            type="checkbox"
+            class="mt-0.5 h-4 w-4 shrink-0 rounded border-input accent-primary"
+          />
+          <span class="space-y-0.5">
+            <span class="block text-xs font-medium">{{ t('machineSettings.linkedSelections') }}</span>
+            <span class="block text-[10px] text-muted-foreground">{{ t('machineSettings.linkedSelectionsHint') }}</span>
+          </span>
+        </label>
+
+        <!-- ── Contact overrides for printed posters ─────────── -->
+        <div class="rounded-xl border bg-card p-4">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between text-left"
+            @click="contactOpen = !contactOpen"
+          >
+            <span>
+              <span class="text-sm font-medium">{{ t('machineSettings.contactOverrides') }}</span>
+              <span v-if="hasContactOverride" class="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                {{ t('machineSettings.contactOverrideActive') }}
+              </span>
+            </span>
+            <span class="text-xs text-muted-foreground">{{ contactOpen ? '−' : '+' }}</span>
+          </button>
+          <p class="mt-1 text-[10px] text-muted-foreground">{{ t('machineSettings.contactOverridesHint') }}</p>
+
+          <div v-if="contactOpen" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-muted-foreground">{{ t('machineSettings.contactPhone') }}</label>
+              <input
+                v-model="contact.contact_phone"
+                type="tel"
+                :placeholder="companyContact.contact_phone || '—'"
+                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-muted-foreground">{{ t('machineSettings.contactWhatsapp') }}</label>
+              <input
+                v-model="contact.whatsapp_phone"
+                type="tel"
+                :placeholder="companyContact.whatsapp_phone || '—'"
+                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-muted-foreground">{{ t('machineSettings.contactHours') }}</label>
+              <input
+                v-model="contact.support_hours"
+                type="text"
+                :placeholder="companyContact.support_hours || '—'"
+                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-medium text-muted-foreground">{{ t('machineSettings.contactEmail') }}</label>
+              <input
+                v-model="contact.contact_email"
+                type="email"
+                :placeholder="companyContact.contact_email || '—'"
+                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+          </div>
         </div>
 
         <p v-if="errorMsg" class="text-xs text-destructive">{{ errorMsg }}</p>

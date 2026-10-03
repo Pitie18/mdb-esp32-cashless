@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 /// Fetches all vending machines with per-machine statistics (revenue, stock health).
-/// Sorts machines by stock urgency: critical > low > ok.
+/// Sorts machines by stock urgency: critical > low > fill > ok.
 @MainActor
 final class MachineListViewModel: ObservableObject {
     @Published var machines: [MachineStats] = []
@@ -29,7 +29,7 @@ final class MachineListViewModel: ObservableObject {
             // 1. Fetch machines with embedded relation
             let machines: [VendingMachine] = try await client
                 .from("vendingMachine")
-                .select("id, name, location_lat, location_lon, embedded, country_code, address_street, address_house_number, address_postal_code, address_city, formatted_address, nayax_machine_id, public_listing, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, firmware_build_date, mdb_address, mdb_diagnostics, last_restart_reason, last_restart_at, online_since)")
+                .select("id, name, location_lat, location_lon, embedded, country_code, address_street, address_house_number, address_postal_code, address_city, formatted_address, nayax_machine_id, public_listing, linked_selections, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, firmware_build_date, mdb_address, mdb_diagnostics, last_restart_reason, last_restart_at, online_since)")
                 .execute()
                 .value
 
@@ -91,10 +91,10 @@ final class MachineListViewModel: ObservableObject {
                 .execute()
                 .value
 
-            var warehouseStockMap: [UUID: Int] = [:]
-            for batch in stockBatches {
-                warehouseStockMap[batch.productId, default: 0] += batch.quantity
-            }
+            // Presence check, like the PWA's `buildWarehouseStockInfo`: a
+            // product is refillable when any positive batch exists; with no
+            // batches at all every product counts as refillable.
+            let warehouseProductIds = Set(stockBatches.map(\.productId))
             let hasWarehouses = !stockBatches.isEmpty
 
             // 6. Build MachineStats
@@ -124,119 +124,11 @@ final class MachineListViewModel: ObservableObject {
                     }
                 }
 
-                // Trays / stock
-                let machineTrays = traysByMachine[machine.id] ?? []
-                ms.totalTrays = machineTrays.count
-                ms.emptyTrays = machineTrays.filter { $0.isEmpty }.count
-                ms.lowTrays = machineTrays.filter { $0.isBelowMinStock && !$0.isEmpty }.count
-
-                let totalCapacity = machineTrays.reduce(0) { $0 + $1.capacity }
-                let totalStock = machineTrays.reduce(0) { $0 + $1.currentStock }
-                ms.stockPercent = totalCapacity > 0 ? Double(totalStock) / Double(totalCapacity) : 1.0
-
-                // Build per-product deficit list
-                // Group trays by productId and aggregate deficit + worst severity
-                struct ProductDeficitAccum {
-                    var productName: String
-                    var imagePath: String?
-                    var totalDeficit: Int
-                    var worstSeverity: StockSeverity
-                    var isDiscontinued: Bool
-                    var hasEmptyTray: Bool  // at least one tray is empty
-                }
-
-                var deficitsByProduct: [UUID: ProductDeficitAccum] = [:]
-                var unassignedDeficits: [ProductDeficitAccum] = []
-
-                for tray in machineTrays {
-                    let severity: StockSeverity?
-                    if tray.isEmpty {
-                        severity = .critical
-                    } else if tray.isBelowMinStock {
-                        severity = .low
-                    } else if tray.isBelowFillThreshold {
-                        severity = .fillBelow
-                    } else {
-                        severity = nil
-                    }
-
-                    guard let sev = severity else { continue }
-
-                    if let pid = tray.productId {
-                        if var existing = deficitsByProduct[pid] {
-                            existing.totalDeficit += tray.deficit
-                            if sev < existing.worstSeverity { existing.worstSeverity = sev }
-                            if tray.isEmpty { existing.hasEmptyTray = true }
-                            deficitsByProduct[pid] = existing
-                        } else {
-                            deficitsByProduct[pid] = ProductDeficitAccum(
-                                productName: tray.productName,
-                                imagePath: tray.products?.imagePath,
-                                totalDeficit: tray.deficit,
-                                worstSeverity: sev,
-                                isDiscontinued: tray.isDiscontinued,
-                                hasEmptyTray: tray.isEmpty
-                            )
-                        }
-                    } else {
-                        unassignedDeficits.append(ProductDeficitAccum(
-                            productName: tray.productName,
-                            imagePath: nil,
-                            totalDeficit: tray.deficit,
-                            worstSeverity: sev,
-                            isDiscontinued: false,
-                            hasEmptyTray: tray.isEmpty
-                        ))
-                    }
-                }
-
-                // Classify warehouse availability per product
-                func warehouseAvail(for productId: UUID?, hasEmpty: Bool) -> WarehouseAvailability {
-                    guard hasWarehouses else { return .unknown }
-                    guard let pid = productId else { return .unknown }
-                    if warehouseStockMap[pid] != nil { return .inStock }
-                    return hasEmpty ? .needsSwap : .noStock
-                }
-
-                var allDeficits = deficitsByProduct.map { (pid, accum) in
-                    TrayDeficit(
-                        productName: accum.productName,
-                        imagePath: accum.imagePath,
-                        deficit: accum.totalDeficit,
-                        severity: accum.worstSeverity,
-                        isDiscontinued: accum.isDiscontinued,
-                        warehouseAvailability: warehouseAvail(for: pid, hasEmpty: accum.hasEmptyTray)
-                    )
-                }
-                allDeficits += unassignedDeficits.map { accum in
-                    TrayDeficit(
-                        productName: accum.productName,
-                        imagePath: accum.imagePath,
-                        deficit: accum.totalDeficit,
-                        severity: accum.worstSeverity,
-                        isDiscontinued: false,
-                        warehouseAvailability: .unknown
-                    )
-                }
-
-                // Sort: swap/noStock first (need attention), then by severity, then deficit
-                allDeficits.sort { lhs, rhs in
-                    let lhsSwap = lhs.warehouseAvailability == .needsSwap ? 0 : 1
-                    let rhsSwap = rhs.warehouseAvailability == .needsSwap ? 0 : 1
-                    if lhsSwap != rhsSwap { return lhsSwap < rhsSwap }
-                    if lhs.severity != rhs.severity { return lhs.severity < rhs.severity }
-                    return lhs.deficit > rhs.deficit
-                }
-
-                ms.trayDeficits = allDeficits
-
-                // Warehouse-aware counts
-                ms.swapNeededCount = deficitsByProduct.filter { (pid, accum) in
-                    hasWarehouses && warehouseStockMap[pid] == nil && accum.hasEmptyTray
-                }.count
-                ms.noStockCount = deficitsByProduct.filter { (pid, accum) in
-                    hasWarehouses && warehouseStockMap[pid] == nil && !accum.hasEmptyTray
-                }.count
+                // Stock: warehouse-aware per-product counts, shared with the
+                // machine detail tile (`MachineStats.applyStock`).
+                ms.warehouseProductIds = warehouseProductIds
+                ms.hasWarehouses = hasWarehouses
+                ms.applyStock(trays: traysByMachine[machine.id] ?? [])
 
                 // Paxcounter
                 if let embeddedId = machine.embedded {
@@ -246,8 +138,12 @@ final class MachineListViewModel: ObservableObject {
                 stats.append(ms)
             }
 
-            // Sort by urgency
-            self.machines = stats.sorted { $0.sortPriority < $1.sortPriority }
+            // Sort by urgency (critical, low, fill, ok; then more low+empty
+            // products first). Stable, so ties keep the fetch order like the PWA.
+            self.machines = stats.enumerated().sorted { a, b in
+                let pa = a.element.sortPriority, pb = b.element.sortPriority
+                return pa != pb ? pa < pb : a.offset < b.offset
+            }.map(\.element)
 
         } catch is CancellationError {
             // Ignore — SwiftUI cancels refreshable tasks routinely

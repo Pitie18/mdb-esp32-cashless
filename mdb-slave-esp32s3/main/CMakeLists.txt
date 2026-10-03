@@ -3,6 +3,7 @@ set(srcs "mdb-slave-esp32s3.c"
         "nimble.c"
         "sale_queue.c"
         "debug_log.c"
+        "rfid_reader.c"
         "modem.c"
         "modem_https.c"
         "network.c")

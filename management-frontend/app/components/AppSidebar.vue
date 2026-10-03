@@ -2,6 +2,7 @@
 import {
   IconBuildingWarehouse,
   IconCash,
+  IconCreditCard,
   IconCpu,
   IconDashboard,
   IconDeviceMobile,
@@ -17,6 +18,7 @@ import {
   IconDevices,
   IconCloudUpload,
   IconBuildingSkyscraper,
+  IconChartHistogram,
 } from "@tabler/icons-vue"
 
 import NavMain from '@/components/NavMain.vue'
@@ -41,7 +43,7 @@ onMounted(() => { checkIsPlatformAdmin().catch(() => {}) })
 const config = useRuntimeConfig()
 
 const versionLine = computed(() => {
-  const v = `v${config.public.appVersion}`
+  const v = `v${config.public.appVersionDisplay}`
   const raw = config.public.buildDate
   if (!raw) return v
   const d = new Date(raw)
@@ -63,6 +65,11 @@ const navGroups = computed(() => {
     {
       label: t('nav.groupOperations'),
       items: [
+        {
+          title: t('nav.analytics'),
+          url: "/analytics",
+          icon: IconChartHistogram,
+        },
         {
           title: t('nav.machines'),
           url: "/machines",
@@ -92,6 +99,11 @@ const navGroups = computed(() => {
           title: t('nav.cashBook'),
           url: "/cash-book",
           icon: IconCash,
+        },
+        {
+          title: t('nav.cardAccounts'),
+          url: "/card-accounts",
+          icon: IconCreditCard,
         },
         {
           title: t('nav.inbox'),

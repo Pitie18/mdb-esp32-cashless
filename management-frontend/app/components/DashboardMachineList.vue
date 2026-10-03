@@ -15,7 +15,7 @@ export interface DashboardMachine {
   name: string
   status: string | null
   today_revenue: number
-  stock_health: 'ok' | 'low' | 'critical'
+  stock_health: 'ok' | 'low' | 'fill' | 'critical'
   stock_percent: number
   last_sale_at: string | null
 }
@@ -29,15 +29,17 @@ function statusColor(status: string | null): string {
   return 'bg-green-500'
 }
 
-function stockBarColor(health: 'ok' | 'low' | 'critical'): string {
+function stockBarColor(health: 'ok' | 'low' | 'fill' | 'critical'): string {
   if (health === 'critical') return 'bg-red-500'
   if (health === 'low') return 'bg-amber-500'
+  if (health === 'fill') return 'bg-blue-500'
   return 'bg-green-500'
 }
 
-function stockBadgeClass(health: 'ok' | 'low' | 'critical'): string {
+function stockBadgeClass(health: 'ok' | 'low' | 'fill' | 'critical'): string {
   if (health === 'critical') return 'text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
   if (health === 'low') return 'text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+  if (health === 'fill') return 'text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
   return 'text-green-600 dark:text-green-400 border-green-200 dark:border-green-800'
 }
 </script>

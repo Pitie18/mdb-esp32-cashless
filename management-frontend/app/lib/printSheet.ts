@@ -1,0 +1,735 @@
+/**
+ * Pure logic behind the printable machine posters (`/machines/[id]/print`).
+ *
+ * Everything here is side-effect free and unit-tested: contact inheritance,
+ * phone normalisation, the public-origin guard, and resolving a saved layout
+ * into the concrete QR targets and labels a motif renders. Turning a target
+ * into an SVG happens in `useMachinePrint()`, because that part is async and
+ * browser-bound.
+ *
+ * i18n arrives as an injected `t`, so this file stays free of Vue and of the
+ * locale state while still producing finished strings.
+ */
+
+export type PrintFormat =
+  | 'a4' | 'a5' | 'a6'
+  | 'a5-2up' | 'a6-4up' | 'a7-8up'
+  | 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'
+
+/**
+ * Non-QR content a motif may render. QR content is not a block — it is a slot
+ * with a source, so the same motif can point its code at whatever the operator
+ * wants.
+ */
+export type PrintBlock = 'phone' | 'imprint' | 'url'
+
+export const PRINT_BLOCKS: PrintBlock[] = ['phone', 'imprint', 'url']
+
+/** What a QR slot points at. */
+export type SlotSource = 'page' | 'tel' | 'whatsapp' | 'problem' | 'custom' | 'none'
+
+export const SLOT_SOURCES: SlotSource[] = ['page', 'tel', 'whatsapp', 'problem', 'custom', 'none']
+
+/** Fields a poster wants but could not fill — surfaced as a warning, never printed blank. */
+export type MissingField =
+  | 'companyName'
+  | 'phone'
+  | 'whatsapp'
+  | 'whatsappCountry'
+  | 'email'
+  | 'address'
+  | 'customUrl'
+
+export interface PosterCompany {
+  id?: string
+  name?: string | null
+  legal_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+  whatsapp_phone?: string | null
+  support_hours?: string | null
+  website?: string | null
+  address_street?: string | null
+  address_house_number?: string | null
+  address_postal_code?: string | null
+  address_city?: string | null
+  country_code?: string | null
+  logo_path?: string | null
+}
+
+export interface PosterMachine {
+  id: string
+  name?: string | null
+  formatted_address?: string | null
+  address_street?: string | null
+  address_house_number?: string | null
+  address_postal_code?: string | null
+  address_city?: string | null
+  contact_phone?: string | null
+  whatsapp_phone?: string | null
+  support_hours?: string | null
+  contact_email?: string | null
+}
+
+/** A motif's QR slot, declared in `printMotifs.ts`. */
+export interface SlotDeclaration {
+  id: string
+  labelKey: string
+  defaultSource: SlotSource
+  /** Whether the operator may empty this slot. */
+  optional: boolean
+  /**
+   * The slot is a narrow tile rather than a full-width block, so its default
+   * label and hint use the short wording. One string cannot serve both: what
+   * fits under a 5 cm QR in a footer wraps to three lines in a third-width
+   * tile, and a wrapped tile pushes the imprint off the sheet.
+   */
+  compact?: boolean
+}
+
+export interface CustomLink {
+  url: string
+  title: string
+  hint: string
+}
+
+/** The saved, per-motif configuration. Every field is optional. */
+export interface PosterLayout {
+  slots?: Record<string, { source?: SlotSource }>
+  custom?: Partial<CustomLink>
+  /**
+   * Text overrides keyed by `title`, `lead`, or `slot.<id>.title` /
+   * `slot.<id>.hint`. Absent means "use the translated default".
+   */
+  texts?: Record<string, string>
+  blocks?: PrintBlock[]
+}
+
+export interface ResolvedSlot {
+  id: string
+  source: SlotSource
+  /** Encoded QR payload; null when the slot is empty or its data is missing. */
+  target: string | null
+  title: string
+  hint: string
+  /** Rendered SVG, filled in by `useMachinePrint()`. */
+  qr: string | null
+}
+
+/**
+ * The complete, already-resolved input to a motif component. Motifs never
+ * query the database, never know a machine id and never build a QR code —
+ * they lay out exactly this object.
+ */
+export interface PrintSheetBase {
+  machineId: string
+  machineName: string
+  /** Location hint under the machine name. */
+  machineNote: string | null
+  companyName: string
+  addressLine: string | null
+  email: string | null
+  website: string | null
+  phone: string | null
+  whatsapp: string | null
+  hours: string | null
+  logoUrl: string | null
+  /** One-off note for this print run only; never persisted. */
+  customText: string | null
+  /** Absolute public URL of the machine page. */
+  pageUrl: string
+  /** Whether to print a readable URL under the QR code. */
+  showUrl: boolean
+  slots: Record<string, ResolvedSlot>
+  /** Overridden headline / subline; empty means "motif default". */
+  texts: { title?: string; lead?: string }
+  missing: MissingField[]
+}
+
+export type PrintSheet = PrintSheetBase
+
+/** Physical sheet size in millimetres, portrait. */
+export const FORMAT_MM: Record<PrintFormat, { w: number; h: number }> = {
+  a4: { w: 210, h: 297 },
+  a5: { w: 148, h: 210 },
+  a6: { w: 105, h: 148 },
+  // Printed on A4 — the n-up layout is what actually places multiple tiles
+  // on that one sheet.
+  'a5-2up': { w: 210, h: 297 },
+  'a6-4up': { w: 210, h: 297 },
+  'a7-8up': { w: 210, h: 297 },
+  'sticker-sheet': { w: 210, h: 297 },
+  'sticker-sheet-small': { w: 210, h: 297 },
+  'sticker-sheet-strip': { w: 210, h: 297 },
+}
+
+/**
+ * The millimetre floor a motif's *primary* QR code must not fall below at
+ * this format, supplied to the motifs as `--qr-min`. Not "the smallest QR
+ * edge that still scans" in general — several sticker motifs render their
+ * primary code larger than the number listed here for their format
+ * (`sticker-sheet` says 20 while `StickerImprint` renders 17 and
+ * `StickerDuo`'s main code 26), so these are a CSS floor, not a scan-distance
+ * guarantee.
+ */
+export const MIN_QR_MM: Record<PrintFormat, number> = {
+  a4: 30,
+  a5: 30,
+  // What the motifs already enforce in CSS. The earlier value of 25 was dead
+  // documentation and would silently shrink A6 once the switch to --qr-min
+  // makes these constants drive the CSS.
+  a6: 30,
+  'a5-2up': 30,
+  'a6-4up': 25,
+  // 68 mm tile width: a 25 mm code would eat more than a third of it.
+  // At level L the longest real target URL is 41 modules including the quiet
+  // zone, so 18 mm works out to 0.439 mm/module — under the ~0.5 mm rule
+  // above qrErrorLevel. Accepted anyway: 68 mm of tile width is a physical
+  // limit, the same trade StickerMini takes at 0.488 mm/module, and that
+  // rule assumes arm's-length reading at the machine, while an A7 card is
+  // held closer. Raising the floor is not an option either — at 20.5 mm
+  // PosterKachel's three-tile QR row no longer fits the 68 mm tile.
+  'a7-8up': 18,
+  'sticker-sheet': 20,
+  // 50 x 30 mm leaves no room for more, and below this a phone camera has to
+  // be held closer than the machine allows.
+  'sticker-sheet-small': 16,
+  'sticker-sheet-strip': 22,
+}
+
+/**
+ * Floor for a motif's *secondary* code — the smaller one some motifs put
+ * beside or below the main code. It cannot simply be a fraction of MIN_QR_MM:
+ * scaled down proportionally on an A7 tile, a secondary code lands at 12 mm,
+ * which is less readable than the sticker code this whole change set out to
+ * fix. 18 mm is the floor, and A7 sits on it.
+ */
+export const QR_MIN_2_MM: Record<PrintFormat, number> = {
+  a4: 20,
+  a5: 20,
+  a6: 20,
+  'a5-2up': 20,
+  'a6-4up': 20,
+  'a7-8up': 18,
+  'sticker-sheet': 20,
+  'sticker-sheet-small': 20,
+  'sticker-sheet-strip': 20,
+}
+
+/**
+ * Smallest inner margin a motif keeps. On a 68 mm A7 tile, 5 mm per side
+ * would cost almost a sixth of the width.
+ */
+export const PAD_MIN_MM: Record<PrintFormat, number> = {
+  a4: 5,
+  a5: 5,
+  a6: 5,
+  'a5-2up': 5,
+  'a6-4up': 5,
+  'a7-8up': 3,
+  'sticker-sheet': 5,
+  'sticker-sheet-small': 5,
+  'sticker-sheet-strip': 5,
+}
+
+/**
+ * The mm floors a motif cannot know on its own, because they depend on the
+ * format. Set as custom properties on the sheet (or tile); motifs read them
+ * with today's values as the fallback, so they render unchanged even without
+ * the variable set.
+ */
+export function sheetCssVars(format: PrintFormat): Record<string, string> {
+  return {
+    '--qr-min': `${MIN_QR_MM[format]}mm`,
+    '--qr-min-2': `${QR_MIN_2_MM[format]}mm`,
+    '--pad-min': `${PAD_MIN_MM[format]}mm`,
+  }
+}
+
+export type StickerFormat = Extract<PrintFormat, 'sticker-sheet' | 'sticker-sheet-small' | 'sticker-sheet-strip'>
+
+export interface TileLayout {
+  w: number
+  h: number
+  gap: number
+  cols: number
+  rows: number
+  /**
+   * The tile sits rotated 90 degrees on the sheet and occupies h x w there.
+   * Eight portrait A7s otherwise don't fit on A4 by the numbers.
+   */
+  rotate: boolean
+  /**
+   * Poster motifs scale everything in `em` against the sheet width; inside a
+   * tile the base has to come from the tile instead, or A4-sized text
+   * overruns an A6 card. Sticker motifs are `false` here, but not because
+   * they inherit and keep the sheet base — every sticker motif sets its own
+   * root `font-size` in absolute mm, so the inherited base never reaches
+   * them in the first place, and this flag is simply moot for them.
+   */
+  scaleToTile: boolean
+}
+
+/** A tiled format is either a sticker sheet or an n-up poster layout. */
+export type TiledFormat = StickerFormat | 'a5-2up' | 'a6-4up' | 'a7-8up'
+
+/** Label geometry per tiled format, laid out on A4 portrait. */
+export const TILE_LAYOUT: Record<TiledFormat, TileLayout> = {
+  'sticker-sheet': { w: 90, h: 50, gap: 3, cols: 2, rows: 4, rotate: false, scaleToTile: false },
+  // For the coin return and the flap edge, where 90 x 50 simply does not fit.
+  'sticker-sheet-small': { w: 50, h: 30, gap: 3, cols: 3, rows: 8, rotate: false, scaleToTile: false },
+  // The long band that runs across a machine front, above or below the
+  // product window. Two of these do not fit side by side on A4, so it is one
+  // per row and six to a sheet.
+  'sticker-sheet-strip': { w: 148, h: 40, gap: 3, cols: 1, rows: 6, rotate: false, scaleToTile: false },
+  // The A-series halves crosswise: two portrait A5 do not fit side by side
+  // on A4, so the tile lies rotated 90 degrees.
+  'a5-2up': { w: 139, h: 196.5, gap: 4, cols: 1, rows: 2, rotate: true, scaleToTile: true },
+  'a6-4up': { w: 97, h: 137, gap: 4, cols: 2, rows: 2, rotate: false, scaleToTile: true },
+  'a7-8up': { w: 68, h: 96, gap: 4, cols: 2, rows: 4, rotate: true, scaleToTile: true },
+}
+
+export function isStickerFormat(format: PrintFormat): format is StickerFormat {
+  return format === 'sticker-sheet'
+    || format === 'sticker-sheet-small'
+    || format === 'sticker-sheet-strip'
+}
+
+export function isTiledFormat(format: PrintFormat): format is TiledFormat {
+  return format in TILE_LAYOUT
+}
+
+export function tileLayout(format: PrintFormat): TileLayout {
+  return TILE_LAYOUT[isTiledFormat(format) ? format : 'sticker-sheet']
+}
+
+/**
+ * Footprint of the entire tile block on the A4 sheet. A rotated tile
+ * occupies h x w there instead of w x h — without this distinction every
+ * "does it fit on the page" check measures the wrong axis for A5 and A7.
+ */
+export function tileBlockMm(format: PrintFormat): { w: number; h: number } {
+  const l = tileLayout(format)
+  const cellW = l.rotate ? l.h : l.w
+  const cellH = l.rotate ? l.w : l.h
+  return {
+    w: l.cols * cellW + (l.cols - 1) * l.gap,
+    h: l.rows * cellH + (l.rows - 1) * l.gap,
+  }
+}
+
+export function tilesPerSheet(format: PrintFormat): number {
+  const l = tileLayout(format)
+  return l.cols * l.rows
+}
+
+/**
+ * QR error correction. Not paper versus vinyl but area: more redundancy means
+ * more modules in the same space, and a symbol whose modules fall under
+ * roughly 0.5 mm is unreadable no matter how much redundancy it carries.
+ *
+ * Deliberately not derived from MIN_QR_MM. That constant is a CSS floor for a
+ * motif's primary code, which is a different question from "how small is the
+ * smallest code this format prints" — tying the two together made a routine
+ * correction of one silently change the other.
+ */
+export function qrErrorLevel(format: PrintFormat): 'L' | 'M' {
+  return isTiledFormat(format) ? 'L' : 'M'
+}
+
+const PRIVATE_IPV4 =
+  /^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/
+
+/**
+ * Would a QR built from this origin work on a customer's phone?
+ *
+ * A printed poster is permanent, so a LAN origin is not a warning but a stack
+ * of wasted paper. Ports other than the defaults also count as non-public:
+ * they are the tell-tale of a dev server or an unproxied container.
+ */
+export function isPublicOrigin(origin: string | null | undefined): boolean {
+  if (!origin) return false
+  let url: URL
+  try {
+    url = new URL(origin)
+  } catch {
+    return false
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
+  if (url.port && url.port !== '80' && url.port !== '443') return false
+
+  const host = url.hostname.toLowerCase()
+  if (host === 'localhost' || host.endsWith('.localhost')) return false
+  if (host === '::1' || host === '[::1]') return false
+  if (host.endsWith('.local') || host.endsWith('.internal') || host.endsWith('.lan')) return false
+  if (PRIVATE_IPV4.test(host)) return false
+  // A bare hostname without a dot only resolves inside one network.
+  if (!host.includes('.')) return false
+  return true
+}
+
+/**
+ * Machine value wins, company value inherits, whitespace counts as unset.
+ * Returns `null` when neither side has anything, so callers can branch on it
+ * instead of printing an empty line.
+ */
+export function inherit(
+  machineValue: string | null | undefined,
+  companyValue: string | null | undefined,
+): string | null {
+  const m = machineValue?.trim()
+  if (m) return m
+  const c = companyValue?.trim()
+  return c || null
+}
+
+/**
+ * Digits plus a leading `+`, suitable for a `tel:` href. The German-style
+ * `(0)` trunk marker is dropped: kept as a digit it turns a valid
+ * international number into one that does not connect.
+ */
+export function normalizePhone(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim().replace(/\(0\)/g, '')
+  if (!trimmed) return null
+  const plus = trimmed.startsWith('+')
+  const digits = trimmed.replace(/\D/g, '')
+  if (!digits) return null
+  return plus ? `+${digits}` : digits
+}
+
+/**
+ * Dialling codes for the countries this product actually ships to. Anything
+ * else falls through to `null` rather than guessing — a wrong country code
+ * sends the customer's WhatsApp message to a stranger.
+ */
+const DIALLING_CODES: Record<string, string> = {
+  DE: '49', AT: '43', CH: '41', NL: '31', BE: '32', LU: '352',
+  FR: '33', IT: '39', ES: '34', PT: '351', PL: '48', CZ: '420',
+  DK: '45', SE: '46', NO: '47', FI: '358', GB: '44', IE: '353',
+}
+
+/**
+ * International digits without `+`, the format `wa.me/<number>` expects.
+ *
+ * A national number (leading `0`) needs the company's country to be resolvable;
+ * without it we return `null` and the caller drops the WhatsApp slot.
+ */
+export function toWaNumber(
+  raw: string | null | undefined,
+  countryCode: string | null | undefined,
+): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim().replace(/\(0\)/g, '')
+  if (!trimmed) return null
+  const digits = trimmed.replace(/\D/g, '')
+  if (!digits) return null
+
+  if (trimmed.startsWith('+')) return digits
+  if (digits.startsWith('00')) return digits.slice(2) || null
+  if (digits.startsWith('0')) {
+    const cc = countryCode?.trim().toUpperCase()
+    const dial = cc ? DIALLING_CODES[cc] : undefined
+    if (!dial) return null
+    return `${dial}${digits.replace(/^0+/, '')}`
+  }
+  // Already international without a prefix (e.g. "4915112345678").
+  return digits
+}
+
+/**
+ * Accepts an operator-typed link. A bare domain gets https:// so "vmflow.de"
+ * does not silently become a relative path in the QR.
+ */
+export function normalizeCustomUrl(raw: string | null | undefined): string | null {
+  const trimmed = raw?.trim()
+  if (!trimmed) return null
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`
+  try {
+    const url = new URL(withScheme)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
+function joinAddress(parts: {
+  street?: string | null
+  houseNumber?: string | null
+  postalCode?: string | null
+  city?: string | null
+}): string | null {
+  const street = [parts.street?.trim(), parts.houseNumber?.trim()].filter(Boolean).join(' ')
+  const town = [parts.postalCode?.trim(), parts.city?.trim()].filter(Boolean).join(' ')
+  const line = [street, town].filter(Boolean).join(' · ')
+  return line || null
+}
+
+/**
+ * Best-effort trim of a Nominatim `display_name`. Only reached when a machine
+ * has no structured address at all, so it stays deliberately dumb: keep the
+ * leading segments, drop the district/state/country tail that makes the line
+ * unreadable on paper.
+ */
+function compactDisplayName(raw: string | null | undefined): string | null {
+  const trimmed = raw?.trim()
+  if (!trimmed) return null
+  const segments = trimmed.split(',').map(s => s.trim()).filter(Boolean)
+  if (segments.length <= 3) return segments.join(', ') || null
+  return segments.slice(0, 3).join(', ')
+}
+
+/** Translation function bound to the *sheet's* language. */
+export type PosterT = (key: string, named?: Record<string, unknown>) => string
+
+/**
+ * Default label and hint per source, in a full-width and a compact wording.
+ * Sources whose label is already short (WhatsApp) repeat the same key.
+ */
+const SOURCE_TEXT: Record<
+  Exclude<SlotSource, 'none' | 'custom'>,
+  { title: string; hint: string; shortTitle: string; shortHint: string }
+> = {
+  page: {
+    title: 'print.poster.pageTitle', hint: 'print.poster.pageHint',
+    shortTitle: 'print.poster.pageShort', shortHint: 'print.poster.pageHintShort',
+  },
+  tel: {
+    title: 'print.poster.callDirect', hint: 'print.poster.callHint',
+    shortTitle: 'print.poster.callShort', shortHint: 'print.poster.callHintShort',
+  },
+  whatsapp: {
+    title: 'print.poster.whatsappTitle', hint: 'print.poster.whatsappHint',
+    shortTitle: 'print.poster.whatsappTitle', shortHint: 'print.poster.whatsappHint',
+  },
+  problem: {
+    title: 'print.poster.problemQrTitle', hint: 'print.poster.problemQrHint',
+    shortTitle: 'print.poster.problemQrTitle', shortHint: 'print.poster.problemQrHint',
+  },
+}
+
+export interface BuildPrintSheetInput {
+  machine: PosterMachine
+  company: PosterCompany
+  /** Absolute origin the printed QR codes point at, no trailing slash. */
+  publicOrigin: string
+  /** The motif's slots, in render order. */
+  slotDeclarations: SlotDeclaration[]
+  /** Saved (or in-progress) configuration for this motif. */
+  layout: PosterLayout
+  t: PosterT
+  /**
+   * Prefilled WhatsApp message. `%machine%` is replaced with the machine name —
+   * deliberately not `{machine}`, which vue-i18n would consume as its own
+   * interpolation placeholder before the string ever reaches us.
+   */
+  whatsappTemplate?: string
+  customText?: string | null
+  logoUrl?: string | null
+  fallbackMachineName: string
+}
+
+/**
+ * Resolves company + machine + saved layout into everything a motif needs, and
+ * records which requested fields could not be filled.
+ */
+export function buildPrintSheetBase(input: BuildPrintSheetInput): PrintSheetBase {
+  const { machine, company, publicOrigin, layout, t } = input
+  const origin = publicOrigin.replace(/\/+$/, '')
+  const missing: MissingField[] = []
+  const blocks = layout.blocks ?? []
+
+  const companyName = company.legal_name?.trim() || company.name?.trim() || ''
+  if (!companyName) missing.push('companyName')
+
+  const phone = inherit(machine.contact_phone, company.contact_phone)
+  const whatsappRaw = inherit(machine.whatsapp_phone, company.whatsapp_phone)
+  const email = inherit(machine.contact_email, company.contact_email)
+  const hours = inherit(machine.support_hours, company.support_hours)
+
+  const companyAddress = joinAddress({
+    street: company.address_street,
+    houseNumber: company.address_house_number,
+    postalCode: company.address_postal_code,
+    city: company.address_city,
+  })
+
+  // Structured columns first. `formatted_address` is Nominatim's raw
+  // `display_name` — "15, An der Kelter, Criesbach, Ingelfingen, VVG der Stadt
+  // Künzelsau, Hohenlohekreis, Baden-Württemberg, 74653, Deutschland" — which
+  // is unreadable on a sign. It is only a fallback, and a trimmed one.
+  const machineNote =
+    joinAddress({
+      street: machine.address_street,
+      houseNumber: machine.address_house_number,
+      postalCode: machine.address_postal_code,
+      city: machine.address_city,
+    }) || compactDisplayName(machine.formatted_address)
+
+  const machineName = machine.name?.trim() || input.fallbackMachineName
+  const pageUrl = `${origin}/m/${machine.id}`
+
+  const wantsPhone = blocks.includes('phone')
+  const wantsImprint = blocks.includes('imprint')
+
+  if (wantsPhone && !phone) missing.push('phone')
+  if (wantsImprint && !email) missing.push('email')
+  if (wantsImprint && !companyAddress) missing.push('address')
+
+  const telTarget = normalizePhone(phone)
+  const waNumber = toWaNumber(whatsappRaw, company.country_code)
+  const customUrl = normalizeCustomUrl(layout.custom?.url)
+
+  let whatsappTarget: string | null = null
+  if (waNumber) {
+    const template = input.whatsappTemplate?.trim()
+    const text = template ? template.replaceAll('%machine%', machineName) : ''
+    whatsappTarget = text
+      ? `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/${waNumber}`
+  }
+
+  const slots: Record<string, ResolvedSlot> = {}
+  for (const declaration of input.slotDeclarations) {
+    const source = layout.slots?.[declaration.id]?.source ?? declaration.defaultSource
+
+    let target: string | null = null
+    switch (source) {
+      case 'page': target = pageUrl; break
+      case 'tel': target = telTarget ? `tel:${telTarget}` : null; break
+      case 'whatsapp': target = whatsappTarget; break
+      case 'problem': target = `${pageUrl}?feedback=problem`; break
+      case 'custom': target = customUrl; break
+      case 'none': target = null; break
+    }
+
+    // A slot pointing at data that is not configured is a hole in the sign,
+    // so it is reported rather than printed as an empty frame.
+    if (source === 'tel' && !telTarget) missing.push('phone')
+    if (source === 'whatsapp' && !whatsappRaw) missing.push('whatsapp')
+    if (source === 'whatsapp' && whatsappRaw && !waNumber) missing.push('whatsappCountry')
+    if (source === 'custom' && !customUrl) missing.push('customUrl')
+
+    const override = layout.texts ?? {}
+    const defaults =
+      source === 'custom' || source === 'none'
+        ? { title: layout.custom?.title?.trim() || t('print.poster.customTitle'),
+            hint: layout.custom?.hint?.trim() || t('print.poster.customHint') }
+        : declaration.compact
+          ? { title: t(SOURCE_TEXT[source].shortTitle), hint: t(SOURCE_TEXT[source].shortHint) }
+          : { title: t(SOURCE_TEXT[source].title), hint: t(SOURCE_TEXT[source].hint) }
+
+    slots[declaration.id] = {
+      id: declaration.id,
+      source,
+      target,
+      title: override[`slot.${declaration.id}.title`]?.trim() || defaults.title,
+      hint: override[`slot.${declaration.id}.hint`]?.trim() || defaults.hint,
+      qr: null,
+    }
+  }
+
+  // The imprint switch has to actually gate the imprint. Motifs branch on
+  // these being null, so nulling them here is what makes the toggle real.
+  const addressLine = wantsImprint ? companyAddress : null
+
+  return {
+    machineId: machine.id,
+    machineName,
+    machineNote,
+    companyName,
+    addressLine,
+    email: wantsImprint ? email : null,
+    website: wantsImprint ? company.website?.trim() || null : null,
+    phone: wantsPhone ? phone : null,
+    whatsapp: waNumber ? whatsappRaw : null,
+    hours,
+    logoUrl: input.logoUrl?.trim() || null,
+    customText: input.customText?.trim() || null,
+    pageUrl,
+    showUrl: blocks.includes('url'),
+    slots,
+    texts: {
+      title: layout.texts?.title?.trim() || undefined,
+      lead: layout.texts?.lead?.trim() || undefined,
+    },
+    missing: [...new Set(missing)],
+  }
+}
+
+/**
+ * Fingerprint of the contact data a poster actually carries.
+ *
+ * Stored alongside each `poster_printed` entry so a later comparison can tell
+ * whether the paper on the machine still matches reality — the failure mode
+ * being a changed support number that nobody reprints, leaving customers to
+ * call a dead line for months.
+ *
+ * Deliberately excluded:
+ * - `customText`, which is per-print and not persisted, so including it would
+ *   flag every poster whose one-off note happened to differ.
+ * - the logo and every headline/label, which are cosmetic: a reworded headline
+ *   does not make a sign *wrong*.
+ * - `machineNote`, because a re-geocoded address can shift by a word without
+ *   anything on the sign becoming incorrect.
+ *
+ * Slots contribute their source and target, so repointing a QR counts as a
+ * change. The WhatsApp target is reduced to its number: the full `wa.me` URL
+ * carries a prefilled message in the sheet's language, and reprinting the same
+ * sign in French must not read as the contact data having changed.
+ */
+export function posterFingerprint(base: PrintSheetBase): string {
+  const parts: (string | null)[] = [
+    base.machineName,
+    base.companyName,
+    base.addressLine,
+    base.email,
+    base.website,
+    base.phone,
+    base.whatsapp,
+    base.hours,
+  ]
+  for (const slot of Object.values(base.slots).sort((a, b) => a.id.localeCompare(b.id))) {
+    parts.push(slot.id, slot.source)
+    parts.push(slot.source === 'whatsapp' ? (base.whatsapp ?? null) : slot.target)
+  }
+  return fnv1a(parts.map(p => p ?? ' ').join(' '))
+}
+
+/**
+ * FNV-1a, 32 bit, hex. Not a security primitive — this only ever compares two
+ * fingerprints for equality, so collision resistance is irrelevant and a
+ * dependency-free hash beats pulling in crypto for a nine-line job.
+ */
+function fnv1a(input: string): string {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, '0')
+}
+
+/**
+ * The target as something worth printing as readable text. `tel:` and other
+ * schemes are noise on a sign — nobody types a tel: URI — so only web links
+ * come back.
+ */
+export function readableUrl(target: string | null | undefined): string | null {
+  if (!target) return null
+  return /^https?:\/\//i.test(target) ? target : null
+}
+
+/**
+ * Packs tiles continuously across A4 sheets rather than one sheet per
+ * machine — printing three machines should waste zero labels, not 21.
+ */
+export function distributeTiles<T>(items: T[], perSheet = 8): T[][] {
+  if (perSheet <= 0) return items.length ? [items] : []
+  const sheets: T[][] = []
+  for (let i = 0; i < items.length; i += perSheet) {
+    sheets.push(items.slice(i, i + perSheet))
+  }
+  return sheets
+}

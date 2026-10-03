@@ -2,13 +2,14 @@
 definePageMeta({ middleware: 'auth' })
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { IconTruck, IconPlayerPlay, IconArrowsExchange, IconRefresh } from '@tabler/icons-vue'
+import { IconTruck, IconPlayerPlay, IconArrowsExchange, IconRefresh, IconPrinter } from '@tabler/icons-vue'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { reasonLabel } from '@/composables/useDeviceRestarts'
 import { formatCurrency } from '@/lib/utils'
 import { getProductImageUrl } from '@/composables/useProducts'
 import { hasSavedTour, clearSavedTourState } from '@/composables/useRefillWizard'
 import LocationPicker, { type LocationModel } from '~/components/LocationPicker.vue'
+import { usePosterFreshness } from '@/composables/usePosterFreshness'
 
 const { t, locale } = useI18n()
 const { organization } = useOrganization()
@@ -30,8 +31,14 @@ function startNewTour() {
 onResume(() => fetchMachines())
 usePullToRefresh(() => fetchMachines())
 
+// Signs whose contact data has drifted since they were printed. Loaded
+// separately from the machine list: it is a cheap, independent lookup and must
+// not delay the numbers people actually came for.
+const posters = usePosterFreshness()
+
 onMounted(async () => {
   await fetchMachines()
+  posters.load()
   const unsubscribe = subscribeToStatusUpdates()
   onUnmounted(unsubscribe)
 })
@@ -51,9 +58,9 @@ const sortedMachines = computed(() => {
     if (key === 'name') return (a.name ?? '').localeCompare(b.name ?? '')
     if (key === 'todayRevenue') return (b.today_revenue ?? 0) - (a.today_revenue ?? 0)
     if (key === 'monthRevenue') return (b.this_month_revenue ?? 0) - (a.this_month_revenue ?? 0)
-    // stockHealth: critical > low > ok
-    const healthOrder: Record<string, number> = { critical: 0, low: 1, ok: 2 }
-    return (healthOrder[a.stock_health ?? 'ok'] ?? 2) - (healthOrder[b.stock_health ?? 'ok'] ?? 2)
+    // stockHealth: critical > low > fill > ok
+    const healthOrder: Record<string, number> = { critical: 0, low: 1, fill: 2, ok: 3 }
+    return (healthOrder[a.stock_health ?? 'ok'] ?? 3) - (healthOrder[b.stock_health ?? 'ok'] ?? 3)
   })
 })
 
@@ -205,6 +212,7 @@ async function submitCreateMachine() {
                     :class="{
                       'bg-red-500': (machine.stock_health ?? 'ok') === 'critical',
                       'bg-amber-500': (machine.stock_health ?? 'ok') === 'low',
+                      'bg-blue-500': (machine.stock_health ?? 'ok') === 'fill',
                       'bg-green-500': (machine.stock_health ?? 'ok') === 'ok',
                     }"
                   />
@@ -232,6 +240,18 @@ async function submitCreateMachine() {
                   </div>
                 </div>
 
+                <!-- Printed sign no longer matches the current contact data.
+                     A span, not a link: the whole card is already a NuxtLink,
+                     and a nested anchor is invalid HTML. The reprint action
+                     lives on the detail page this card leads to. -->
+                <span
+                  v-if="posters.isOutdated(machine.id)"
+                  class="inline-flex w-fit items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-500"
+                >
+                  <IconPrinter class="h-3.5 w-3.5" />
+                  {{ t('machines.posterOutdated') }}
+                </span>
+
                 <!-- Healthy machine with no stock issues at all -->
                 <template v-if="(machine.stock_health ?? 'ok') === 'ok' && (machine.no_stock_trays ?? 0) === 0">
                   <p class="text-sm text-muted-foreground">
@@ -241,6 +261,9 @@ async function submitCreateMachine() {
                     <template v-else>
                       {{ t('machines.noTraysConfigured') }}
                     </template>
+                  </p>
+                  <p v-if="(machine.empty_slots_with_stock ?? 0) > 0" class="text-xs text-muted-foreground">
+                    {{ t('machines.emptySlotsWithStock', { count: machine.empty_slots_with_stock }, machine.empty_slots_with_stock ?? 0) }}
                   </p>
                 </template>
 
@@ -276,6 +299,18 @@ async function submitCreateMachine() {
                       class="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                     >
                       {{ t('machines.noWarehouseStock', { count: machine.no_stock_summary!.filter(i => i.severity !== 'critical').length }) }}
+                    </span>
+                    <span
+                      v-if="(machine.fill_trays ?? 0) > 0"
+                      class="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400"
+                    >
+                      {{ t('machines.topoffRecommended', { count: machine.fill_trays }) }}
+                    </span>
+                    <span
+                      v-if="(machine.empty_slots_with_stock ?? 0) > 0"
+                      class="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                    >
+                      {{ t('machines.emptySlotsWithStock', { count: machine.empty_slots_with_stock }, machine.empty_slots_with_stock ?? 0) }}
                     </span>
                   </div>
 

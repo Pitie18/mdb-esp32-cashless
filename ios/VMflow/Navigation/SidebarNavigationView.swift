@@ -14,6 +14,10 @@ struct SidebarNavigationView: View {
                         Label(item.label, systemImage: item.icon)
                             .badge(badgeCount(for: item))
                     }
+                    // Locale-independent anchor for the screenshot UITest
+                    // (mirrors CompactTabView's "tab-…" ids) so the same test
+                    // drives both the sidebar (iPad) and the tab bar (iPhone).
+                    .accessibilityIdentifier("sidebar-\(item.rawValue)")
                 }
             }
             .navigationTitle("VMflow")
@@ -47,6 +51,10 @@ struct SidebarNavigationView: View {
         case .dashboard:
             NavigationStack {
                 DashboardView(onNavigate: { selectedItem = $0 })
+            }
+        case .analytics:
+            NavigationStack {
+                AnalyticsView()
             }
         case .machines:
             MachinesSplitView()

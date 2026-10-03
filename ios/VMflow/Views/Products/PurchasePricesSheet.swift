@@ -32,6 +32,7 @@ struct PurchasePricesSheet: View {
     @StateObject private var vm = PurchasePricesViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var route: EditorRoute?
+    @State private var pricePendingDelete: PurchasePrice?
 
     enum EditorRoute: Hashable, Identifiable {
         case add
@@ -63,7 +64,7 @@ struct PurchasePricesSheet: View {
                             PriceRow(supplier: e.supplierName, rawValue: e.price, basis: e.basis,
                                      priceNet: nil, priceGross: nil, observedOn: e.observedOn,
                                      isCheapest: false, isUsual: false)
-                            .swipeActions {
+                            .swipeActions(allowsFullSwipe: false) {
                                 Button(role: .destructive) { pending.removeAll { $0.id == e.id } } label: {
                                     Label(String(localized: "Delete"), systemImage: "trash")
                                 }
@@ -80,9 +81,9 @@ struct PurchasePricesSheet: View {
                                          isCheapest: p.id == cheapestId, isUsual: p.id == newest?.id)
                             }
                             .buttonStyle(.plain)
-                            .swipeActions {
+                            .swipeActions(allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    Task { await vm.deletePrice(id: p.id, productId: p.productId) }
+                                    pricePendingDelete = p
                                 } label: { Label(String(localized: "Delete"), systemImage: "trash") }
                             }
                         }
@@ -116,6 +117,28 @@ struct PurchasePricesSheet: View {
                 if let pid = productId {
                     await vm.loadPrices(productId: pid)
                     await vm.resolveTaxRate(productId: pid)
+                }
+            }
+            .confirmationDialog(
+                Text("Delete Purchase Price", comment: "Confirmation dialog title before deleting a recorded purchase price"),
+                isPresented: Binding(
+                    get: { pricePendingDelete != nil },
+                    set: { if !$0 { pricePendingDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "Delete", comment: "Confirm purchase price deletion button"), role: .destructive) {
+                    if let p = pricePendingDelete {
+                        Task { await vm.deletePrice(id: p.id, productId: p.productId) }
+                    }
+                    pricePendingDelete = nil
+                }
+                Button(String(localized: "Cancel", comment: "Cancel purchase price deletion button"), role: .cancel) {
+                    pricePendingDelete = nil
+                }
+            } message: {
+                if let p = pricePendingDelete {
+                    Text(p.supplierName)
                 }
             }
         }

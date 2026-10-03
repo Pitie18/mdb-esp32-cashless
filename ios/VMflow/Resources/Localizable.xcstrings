@@ -1,6 +1,192 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Sort by shortest reach": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach kürzester Reichweite sortieren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trier par autonomie la plus courte"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sorteren op kortste bereik"
+          }
+        }
+      }
+    },
+    "No sales": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Absatz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune vente"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen verkopen"
+          }
+        }
+      }
+    },
+    "%@ / day": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / Tag"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / jour"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / dag"
+          }
+        }
+      }
+    },
+    "<1 day": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "<1 Tag"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "<1 jour"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "<1 dag"
+          }
+        }
+      }
+    },
+    ">%lld days": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ">%lld Tage"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ">%lld jours"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ">%lld dagen"
+          }
+        }
+      }
+    },
+    "~%lld days": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "~%lld day"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "~%lld days"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "~%lld Tag"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "~%lld Tage"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "~%lld jour"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "~%lld jours"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "~%lld dag"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "~%lld dagen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     " · ": {
       "localizations": {
         "fr": {
@@ -35,6 +221,30 @@
         }
       }
     },
+    "%@ has %lld product(s). Remove products from this category first.": {
+      "extractionState": "manual",
+      "comment": "Error shown when trying to delete a category that still has products assigned to it",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ contient encore %lld produit(s). Retirez d'abord les produits de cette catégorie."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ enthält noch %lld Produkt(e). Entferne zuerst die Produkte aus dieser Kategorie."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ heeft nog %lld product(en). Verwijder eerst de producten uit deze categorie."
+          }
+        }
+      }
+    },
     "-%@ short": {
       "localizations": {
         "fr": {
@@ -47,6 +257,198 @@
           "stringUnit": {
             "state": "translated",
             "value": "-%@ tekort"
+          }
+        }
+      }
+    },
+    "Active": {
+      "extractionState": "manual",
+      "comment": "Deal validity status: the deal is currently active",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actif"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiv"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actief"
+          }
+        }
+      }
+    },
+    "Critical / expired": {
+      "extractionState": "manual",
+      "comment": "Expiration filter option: products that are critical or already expired",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Critique / expiré"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kritisch / abgelaufen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kritiek / verlopen"
+          }
+        }
+      }
+    },
+    "Expiring soon": {
+      "extractionState": "manual",
+      "comment": "Expiration filter option / deal validity status: expiring soon",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expire bientôt"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft bald ab"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verloopt binnenkort"
+          }
+        }
+      }
+    },
+    "Filter": {
+      "extractionState": "manual",
+      "comment": "Label for the warehouse stock list's filter menu button",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter"
+          }
+        }
+      }
+    },
+    "Reset filters": {
+      "extractionState": "manual",
+      "comment": "Button to reset the warehouse stock list filters to their defaults",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réinitialiser les filtres"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter zurücksetzen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filters resetten"
+          }
+        }
+      }
+    },
+    "Show all out of stock": {
+      "extractionState": "manual",
+      "comment": "Toggle to also include out-of-stock products that are in no machine slot; out-of-stock products still assigned to a machine are always shown",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher toutes les ruptures de stock"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle nicht auf Lager anzeigen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle niet op voorraad tonen"
+          }
+        }
+      }
+    },
+    "Show archived": {
+      "extractionState": "manual",
+      "comment": "Toggle to include archived products in the warehouse stock list",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher les archivés"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivierte anzeigen"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gearchiveerd tonen"
+          }
+        }
+      }
+    },
+    "Upcoming": {
+      "extractionState": "manual",
+      "comment": "Deal validity status: the deal hasn't started yet",
+      "localizations": {
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À venir"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bevorstehend"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Binnenkort"
           }
         }
       }
@@ -748,25 +1150,24 @@
         }
       }
     },
-    "%lld Empty": {
-      "extractionState": "stale",
+    "%lld out of stock": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Leer"
+            "value": "%lld ausverkauft"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Vide"
+            "value": "%lld en rupture de stock"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Leeg"
+            "value": "%lld zonder voorraad"
           }
         }
       }
@@ -886,25 +1287,46 @@
         }
       }
     },
-    "%lld Low": {
-      "extractionState": "stale",
+    "%lld refill needed": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Niedrig"
+            "value": "%lld Refill nötig"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Faible"
+            "value": "%lld réapprovisionnement(s) requis"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Laag"
+            "value": "%lld bijvulling(en) nodig"
+          }
+        }
+      }
+    },
+    "%lld recommended to top off": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Auffüllen empfohlen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld à réapprovisionner"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld bijvullen aanbevolen"
           }
         }
       }
@@ -978,25 +1400,46 @@
         }
       }
     },
-    "%lld No Stock": {
-      "extractionState": "stale",
+    "%lld missing": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Kein Lager"
+            "value": "fehlen %lld"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Rupture"
+            "value": "%lld manquant(s)"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Geen voorraad"
+            "value": "%lld tekort"
+          }
+        }
+      }
+    },
+    "%lld no stock": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kein Lager"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld aucun stock"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld geen voorraad"
           }
         }
       }
@@ -1170,25 +1613,252 @@
         }
       }
     },
-    "%lld Swap": {
-      "extractionState": "stale",
+    "%lld slots": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Fach"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Fächer"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld slot"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld slots"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld emplacement"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld emplacements"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld vak"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld vakken"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld slots empty": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Fach leer"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Fächer leer"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld slot empty"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld slots empty"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld emplacement vide"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld emplacements vides"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld vak leeg"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld vakken leeg"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld slots empty, product in another slot": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Fach leer, Produkt in anderem Fach"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Fächer leer, Produkt in anderem Fach"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld slot empty, product in another slot"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld slots empty, product in another slot"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld emplacement vide, produit dans un autre"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld emplacements vides, produit dans un autre"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld vak leeg, product in ander vak"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld vakken leeg, product in ander vak"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld swap product": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Tausch"
+            "value": "%lld Produkt wechseln"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Échange"
+            "value": "%lld produit(s) à remplacer"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Wissel"
+            "value": "%lld product(en) te vervangen"
           }
         }
       }
@@ -1765,6 +2435,16 @@
         }
       }
     },
+    "About": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über"
+          }
+        }
+      }
+    },
     "Account": {
       "extractionState": "stale",
       "localizations": {
@@ -2206,6 +2886,12 @@
       "comment": "A description of how to archive deals.",
       "isCommentAutoGenerated": true,
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiviere Angebote, die dich nicht interessieren, um die Liste übersichtlich zu halten."
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -2222,6 +2908,12 @@
     },
     "Archived": {
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiviert"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -2558,6 +3250,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Inname boeken"
+          }
+        }
+      }
+    },
+    "By product": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach Produkt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Par produit"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per product"
+          }
+        }
+      }
+    },
+    "By slot": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach Fach"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Par emplacement"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per vak"
           }
         }
       }
@@ -5555,6 +6291,35 @@
         }
       }
     },
+    "HW Watchdog": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HW Watchdog"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hardware-Watchdog"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chien de garde matériel"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hardware-watchdog"
+          }
+        }
+      }
+    },
     "hidden — above your highest cost": {
       "extractionState": "stale",
       "localizations": {
@@ -6741,6 +7506,30 @@
         }
       }
     },
+    "No archived deals": {
+      "extractionState": "manual",
+      "comment": "Empty state title on the Deals screen when the Archived list has no items",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine archivierten Angebote"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune offre archivée"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen gearchiveerde aanbiedingen"
+          }
+        }
+      }
+    },
     "No batches": {
       "comment": "A message displayed when a warehouse has no batches.",
       "isCommentAutoGenerated": true,
@@ -6777,6 +7566,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen categorieën"
+          }
+        }
+      }
+    },
+    "No deals found": {
+      "extractionState": "manual",
+      "comment": "Empty state title on the Deals screen when the Active list has no items",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Angebote gefunden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune offre trouvée"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen aanbiedingen gevonden"
           }
         }
       }
@@ -6821,6 +7634,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen enkele machine hoeft nu bijgevuld te worden."
+          }
+        }
+      }
+    },
+    "No open items": {
+      "extractionState": "manual",
+      "comment": "Empty state title on the Inbox screen when filtered to open items only",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine offenen Einträge"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun élément ouvert"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen open items"
           }
         }
       }
@@ -8215,6 +9052,30 @@
         }
       }
     },
+    "Retailer": {
+      "extractionState": "manual",
+      "comment": "Deal grouping option: group by retailer",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Händler"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enseigne"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Winkel"
+          }
+        }
+      }
+    },
     "Retry": {
       "extractionState": "stale",
       "localizations": {
@@ -8528,6 +9389,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scan de code van uw webdashboard"
+          }
+        }
+      }
+    },
+    "Search deals...": {
+      "extractionState": "manual",
+      "comment": "Search field placeholder on the Deals screen",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angebote suchen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher des offres"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aanbiedingen zoeken"
           }
         }
       }
@@ -9177,6 +10062,28 @@
         }
       }
     },
+    "Slot empty, product in another slot": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fach leer, Produkt in anderem Fach"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emplacement vide, produit dans un autre"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vak leeg, product in ander vak"
+          }
+        }
+      }
+    },
     "Slot Number: %lld": {
       "extractionState": "stale",
       "localizations": {
@@ -9196,6 +10103,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vaknummer: %lld"
+          }
+        }
+      }
+    },
+    "Sold out": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausverkauft"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Épuisé"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uitverkocht"
           }
         }
       }
@@ -9410,19 +10339,19 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tausch"
+            "value": "Wechseln"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échanger"
+            "value": "Remplacer"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wisselen"
+            "value": "Vervangen"
           }
         }
       }
@@ -9791,6 +10720,28 @@
         }
       }
     },
+    "Top off": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auffüllen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À compléter"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bijvullen"
+          }
+        }
+      }
+    },
     "Total Items Added": {
       "extractionState": "stale",
       "localizations": {
@@ -9886,6 +10837,12 @@
       "comment": "A description of the empty results view.",
       "isCommentAutoGenerated": true,
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versuche einen anderen Suchbegriff."
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -9927,6 +10884,12 @@
       "comment": "A description of the empty state when the user has not searched for any deals.",
       "isCommentAutoGenerated": true,
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versuche zu aktualisieren oder überprüfe deine Postleitzahl in den Einstellungen."
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -10013,6 +10976,12 @@
       "comment": "A label displayed under a chart showing the number of units sold.",
       "isCommentAutoGenerated": true,
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stück"
+          }
+        },
         "fr": {
           "stringUnit": {
             "state": "translated",
@@ -10064,6 +11033,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "tot %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bis %@"
           }
         }
       }
@@ -10152,6 +11127,16 @@
         }
       }
     },
+    "Version": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        }
+      }
+    },
     "Validity": {
       "comment": "A label displayed under the deal's validity.",
       "isCommentAutoGenerated": true,
@@ -10166,6 +11151,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geldigheid"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gültigkeit"
           }
         }
       }
@@ -10547,66 +11538,6 @@
         }
       }
     },
-    "%lld empty, %lld low": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld empty, %lld low"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld leer, %lld niedrig"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld vide, %lld faible"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld leeg, %lld laag"
-          }
-        }
-      },
-      "comment": "Machine overview stock health summary: count of empty trays and count of low-stock trays."
-    },
-    "%lld low": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld low"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld niedrig"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld faible"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld laag"
-          }
-        }
-      },
-      "comment": "Machine overview stock health summary when no trays are empty but some are low."
-    },
     "All good": {
       "extractionState": "manual",
       "localizations": {
@@ -10696,6 +11627,30 @@
         }
       },
       "comment": "More tab menu item label for the customer feedback inbox."
+    },
+    "Inbox is empty": {
+      "extractionState": "manual",
+      "comment": "Empty state title on the Inbox screen when showing all items (not filtered to open only)",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posteingang ist leer"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La boîte de réception est vide"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inbox is leeg"
+          }
+        }
+      }
     },
     "Recorded prices": {
       "extractionState": "manual",
@@ -12759,6 +13714,35 @@
         }
       }
     },
+    "stock_group_state_low": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Knapp"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Low"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bas"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laag"
+          }
+        }
+      }
+    },
     "stock_history_adjustment_correction": {
       "extractionState": "manual",
       "localizations": {
@@ -14059,6 +15043,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apparaatstatus"
+          }
+        }
+      }
+    },
+    "Updated: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updated: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisiert: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mis à jour : %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bijgewerkt: %@"
           }
         }
       }
@@ -15393,6 +16406,850 @@
           "stringUnit": {
             "state": "translated",
             "value": "Statistieken"
+          }
+        }
+      }
+    },
+    "%@ /day": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ /Tag"
+          }
+        }
+      }
+    },
+    "%d of %d slots filled": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d von %d Plätzen gefüllt"
+          }
+        }
+      }
+    },
+    "All categories": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Kategorien"
+          }
+        }
+      }
+    },
+    "All machines": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Automaten"
+          }
+        }
+      }
+    },
+    "Analytics": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auswertung"
+          }
+        }
+      }
+    },
+    "Analytics not available": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auswertung nicht verfügbar"
+          }
+        }
+      }
+    },
+    "Apply custom range": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitraum übernehmen"
+          }
+        }
+      }
+    },
+    "Breakdown": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufschlüsselung"
+          }
+        }
+      }
+    },
+    "Cash": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bar"
+          }
+        }
+      }
+    },
+    "Cashless": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bargeldlos"
+          }
+        }
+      }
+    },
+    "Class %@ · %.1f %% of revenue": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasse %@ · %.1f %% vom Umsatz"
+          }
+        }
+      }
+    },
+    "Custom range": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigener Zeitraum"
+          }
+        }
+      }
+    },
+    "From": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Von"
+          }
+        }
+      }
+    },
+    "Gross profit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rohertrag"
+          }
+        }
+      }
+    },
+    "Last 30 days": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzte 30 Tage"
+          }
+        }
+      }
+    },
+    "Last 7 days": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzte 7 Tage"
+          }
+        }
+      }
+    },
+    "Last 90 days": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzte 90 Tage"
+          }
+        }
+      }
+    },
+    "Last month": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzter Monat"
+          }
+        }
+      }
+    },
+    "Lasts about %.0f more days": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reicht noch etwa %.0f Tage"
+          }
+        }
+      }
+    },
+    "Latest %.2f € net": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neuester EK %.2f € netto"
+          }
+        }
+      }
+    },
+    "No sales in this period.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Verkäufe in diesem Zeitraum."
+          }
+        }
+      }
+    },
+    "Payment methods": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zahlungsarten"
+          }
+        }
+      }
+    },
+    "Peak hours": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stoßzeiten"
+          }
+        }
+      }
+    },
+    "Per machine": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je Automat"
+          }
+        }
+      }
+    },
+    "Profit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rohertrag"
+          }
+        }
+      }
+    },
+    "Purchase": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einkauf"
+          }
+        }
+      }
+    },
+    "Sell-through %.1f %%": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abverkauf %.1f %%"
+          }
+        }
+      }
+    },
+    "This month": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Monat"
+          }
+        }
+      }
+    },
+    "This server does not support analytics yet. Please update the backend.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Server unterstützt die Auswertung noch nicht. Bitte aktualisiere das Backend."
+          }
+        }
+      }
+    },
+    "Time range": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeitraum"
+          }
+        }
+      }
+    },
+    "To": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bis"
+          }
+        }
+      }
+    },
+    "Trend": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verlauf"
+          }
+        }
+      }
+    },
+    "empty": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "leer"
+          }
+        }
+      }
+    },
+    "no purchase price": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kein EK-Preis"
+          }
+        }
+      }
+    },
+    "range %.2f – %.2f € gross": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spanne %.2f – %.2f € brutto"
+          }
+        }
+      }
+    },
+    "stock %d/%d": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestand %d/%d"
+          }
+        }
+      }
+    },
+    "⌀ %.1f/day": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌀ %.1f/Tag"
+          }
+        }
+      }
+    },
+    "%lld category": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld category"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld categories"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Kategorie"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Kategorien"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld pc": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pc"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pcs"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Stk"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Stk"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld product": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld product"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld products"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Artikel"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Artikel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld quote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld quote"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld quotes"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Notierung"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Notierungen"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld pc · ⌀ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pc · ⌀ %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pcs · ⌀ %@"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Stk · ⌀ %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Stk · ⌀ %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Gross profit is net of tax. %lld products have no purchase price and are excluded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Gross profit is net of tax. %lld product has no purchase price and is excluded."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Gross profit is net of tax. %lld products have no purchase price and are excluded."
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Rohertrag netto. %lld Artikel ohne EK-Preis ist nicht enthalten."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Rohertrag netto. %lld Artikel ohne EK-Preis sind nicht enthalten."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Highest first": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Größte zuerst"
+          }
+        }
+      }
+    },
+    "Lowest first": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kleinste zuerst"
+          }
+        }
+      }
+    },
+    "Filtered": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gefiltert"
+          }
+        }
+      }
+    },
+    "All time": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesamte Zeit"
+          }
+        }
+      }
+    },
+    "Last year": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letztes Jahr"
+          }
+        }
+      }
+    },
+    "This year": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Jahr"
+          }
+        }
+      }
+    },
+    "Valid now": {
+      "comment": "Deal list section: offers that can be bought today",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt gültig"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valable maintenant"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nu geldig"
+          }
+        }
+      }
+    },
+    "Pinned": {
+      "comment": "Deal list section: deals the user pinned",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angepinnt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Épinglées"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vastgepind"
+          }
+        }
+      }
+    },
+    "valid from %@": {
+      "comment": "Deal validity: start day of an offer that is not valid yet. Argument is a short date like 'Mon, 28.09.'",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ab %@ gültig"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "valable dès le %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "geldig vanaf %@"
+          }
+        }
+      }
+    },
+    "tomorrow": {
+      "comment": "Deal validity: the offer starts tomorrow",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "morgen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "demain"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "morgen"
+          }
+        }
+      }
+    },
+    "in %lld days": {
+      "comment": "Deal validity: the offer starts in N days (N ≥ 2)",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "in %lld Tagen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dans %lld jours"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "over %lld dagen"
+          }
+        }
+      }
+    },
+    "Not valid yet": {
+      "comment": "Deal validity status: the offer has not started yet",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch nicht gültig"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas encore valable"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nog niet geldig"
+          }
+        }
+      }
+    },
+    "This offer only starts on %@ (%@). The store won't have this price before then.": {
+      "comment": "Deal detail notice for an offer that is not valid yet. First argument is the long start date, second is 'tomorrow' / 'in 3 days'.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Angebot gilt erst ab %1$@ (%2$@). Vorher gibt es den Preis im Markt noch nicht."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette offre ne commence que le %1$@ (%2$@). Le magasin n'applique pas ce prix avant."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze aanbieding geldt pas vanaf %1$@ (%2$@). Eerder heeft de winkel deze prijs nog niet."
           }
         }
       }

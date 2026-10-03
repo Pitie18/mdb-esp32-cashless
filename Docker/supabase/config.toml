@@ -110,6 +110,12 @@ public = true
 file_size_limit = "2MiB"
 allowed_mime_types = ["image/png", "image/jpeg", "image/webp"]
 
+[storage.buckets.company-logos]
+public = true
+file_size_limit = "2MiB"
+# No SVG: an uploadable SVG in a public bucket is an XSS vector.
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp"]
+
 [storage.buckets.firmware]
 public = true
 file_size_limit = "5MiB"

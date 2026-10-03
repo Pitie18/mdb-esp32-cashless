@@ -160,6 +160,12 @@ struct MoreView: View {
             List {
                 Section {
                     NavigationLink {
+                        AnalyticsView()
+                    } label: {
+                        Label(String(localized: "Analytics"), systemImage: "chart.xyaxis.line")
+                    }
+
+                    NavigationLink {
                         InboxView()
                     } label: {
                         Label("Inbox", systemImage: "tray.fill")
@@ -207,6 +213,7 @@ struct MoreView: View {
             // Programmatic deep-link: dashboard banner / push tap → a More dest.
             .navigationDestination(item: $deepLink) { item in
                 switch item {
+                case .analytics: AnalyticsView()
                 case .inbox:     InboxView()
                 case .deals:     DealsView()
                 case .products:  ProductsView()

@@ -26,6 +26,8 @@ export interface TranslationSet {
   sale: string
   left: string
   refillAt: (threshold: number) => string
+  inMachine: string
+  slot: string
   noStockInfo: string
   lowStockTitle: string
   remaining: string
@@ -38,6 +40,8 @@ export interface TranslationSet {
 const en: TranslationSet = {
   sale: 'Sale',
   left: 'left',
+  inMachine: 'in machine',
+  slot: 'Slot',
   refillAt: (n) => `refill at ${n}`,
   noStockInfo: 'No stock info',
   lowStockTitle: 'Low Stock Alert',
@@ -54,6 +58,8 @@ const en: TranslationSet = {
 const de: TranslationSet = {
   sale: 'Verkauf',
   left: 'übrig',
+  inMachine: 'im Automaten',
+  slot: 'Fach',
   refillAt: (n) => `nachfüllen bei ${n}`,
   noStockInfo: 'Kein Bestand',
   lowStockTitle: 'Bestandswarnung',
@@ -70,6 +76,8 @@ const de: TranslationSet = {
 const fr: TranslationSet = {
   sale: 'Vente',
   left: 'restant',
+  inMachine: 'dans la machine',
+  slot: 'Emplacement',
   refillAt: (n) => `réapprovisionner à ${n}`,
   noStockInfo: 'Aucune info de stock',
   lowStockTitle: 'Alerte stock bas',
@@ -86,6 +94,8 @@ const fr: TranslationSet = {
 const nl: TranslationSet = {
   sale: 'Verkoop',
   left: 'over',
+  inMachine: 'in automaat',
+  slot: 'Vak',
   refillAt: (n) => `bijvullen bij ${n}`,
   noStockInfo: 'Geen voorraadinfo',
   lowStockTitle: 'Lage voorraad melding',

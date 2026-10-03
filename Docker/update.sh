@@ -53,6 +53,25 @@ step()    { echo; echo -e "${BOLD}═══ $1 ═══${NC}"; echo; }
 [ -f .env ] || error ".env not found. Run setup.sh first."
 docker compose ps --services >/dev/null 2>&1 || error "Docker stack is not running. Start it with: docker compose up -d"
 
+# ─────────────────────────────────────────────────────────────
+# Clear stray volumes/db/*.sql directories before `git pull`
+# ─────────────────────────────────────────────────────────────
+# Installs created between 2026-01-04 and 2026-08-09 have empty
+# DIRECTORIES where webhooks.sql / jwt.sql / realtime.sql should be —
+# Docker materialises a missing bind-mount source that way. They must go
+# before the pull: git refuses to check a file out over a directory
+# ("unable to create file ...: Is a directory") and would abort step 1.
+# The matching database repair runs after the Environment Check, once the
+# restored files are on disk.
+for stray in volumes/db/*.sql; do
+    [ -d "$stray" ] || continue
+    if rmdir "$stray" 2>/dev/null; then
+        success "Removed stray directory ${stray} (leftover from a broken first start)"
+    else
+        error "${stray} is a non-empty directory and would break git pull — remove it manually."
+    fi
+done
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Step 1: Pull latest code
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -197,6 +216,106 @@ else
     success "MQTT admin credentials present"
 fi
 
+# ─── MQTT_PUBLIC_HOST / MQTT_PUBLIC_PORT (baked into every claimed device) ───
+# claim-device hands MQTT_PUBLIC_HOST:MQTT_PUBLIC_PORT to each ESP32 at claim
+# time and the device stores it in NVS -- a wrong value here is not a page you
+# fix by editing, it is a machine in the field that never reconnects.
+#
+# Until now setup.sh never wrote either key. It asked "MQTT broker hostname
+# (reachable by ESP32 devices)" and stored the answer in MQTT_HOST, which
+# docker-compose overrides with the internal service name for every consumer
+# -- so the answer was discarded and claim-device fell through to its upstream
+# default, mqtt.vmflow.xyz. Every install that never hand-edited .env has been
+# pointing its freshly claimed devices at somebody else's broker.
+if [ -z "${MQTT_PUBLIC_HOST:-}" ]; then
+    warn "MQTT_PUBLIC_HOST is not set in .env"
+    warn "It is the broker address claim-device writes into every device's NVS."
+    warn "While unset, newly claimed devices are pointed at mqtt.vmflow.xyz."
+
+    # A legacy MQTT_HOST holding anything other than an internal name IS the
+    # operator's answer to the old prompt -- migrate it verbatim, no guessing.
+    MQTT_PUBLIC_SUGGESTION=""
+    case "${MQTT_HOST:-}" in
+        ""|broker|localhost|127.0.0.1|host.docker.internal) ;;
+        *) MQTT_PUBLIC_SUGGESTION="$MQTT_HOST" ;;
+    esac
+    # Otherwise derive from the Supabase host, matching setup.sh's
+    # supabase.<domain> / mqtt.<domain> convention. Suggestion only.
+    if [ -z "$MQTT_PUBLIC_SUGGESTION" ] && [ -n "${SUPABASE_PUBLIC_URL:-}" ]; then
+        _sb_host=$(echo "$SUPABASE_PUBLIC_URL" | sed 's|^https\{0,1\}://||; s|[:/].*||')
+        _derived=$(echo "$_sb_host" | sed 's|^supabase\.|mqtt.|')
+        # Only suggest when the substitution actually fired -- otherwise the
+        # "suggestion" is the Supabase host itself, which is the wrong answer.
+        [ "$_derived" != "$_sb_host" ] && MQTT_PUBLIC_SUGGESTION="$_derived"
+    fi
+
+    if [ -t 0 ]; then
+        printf "  Public MQTT broker hostname%s: " "${MQTT_PUBLIC_SUGGESTION:+ [$MQTT_PUBLIC_SUGGESTION]}"
+        # Distinguish a deliberate empty Enter (accept the suggestion) from
+        # EOF/Ctrl-D (dismiss). A derived suggestion is only ever a guess at
+        # the operator's DNS convention, and this value gets written into
+        # device firmware -- it must not be adopted on a keystroke that means
+        # "cancel". Testing read in an `if` also keeps `set -e` from aborting
+        # the whole update on EOF.
+        if read -r MQTT_PUBLIC_INPUT; then
+            MQTT_PUBLIC_HOST="${MQTT_PUBLIC_INPUT:-$MQTT_PUBLIC_SUGGESTION}"
+        else
+            echo
+            MQTT_PUBLIC_HOST=""
+        fi
+        if [ -n "$MQTT_PUBLIC_HOST" ]; then
+            cat >> .env << MQTTPUBEOF
+
+##########
+# Public MQTT broker address
+# Added by update.sh on $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+# Handed to every ESP32 by claim-device and stored in the device's NVS, so it
+# must resolve from out in the field. This is NOT MQTT_HOST -- that one is the
+# internal compose service name used by the forwarder and the edge functions.
+# MQTT_PUBLIC_PORT doubles as the port docker-compose publishes the broker on.
+#########
+
+MQTT_PUBLIC_HOST=${MQTT_PUBLIC_HOST}
+MQTT_PUBLIC_PORT=${MQTT_PUBLIC_PORT:-1883}
+MQTTPUBEOF
+            export MQTT_PUBLIC_HOST
+            success "MQTT_PUBLIC_HOST set to ${MQTT_PUBLIC_HOST} and appended to .env"
+            info "Devices claimed before this update kept the old address in NVS."
+            info "Re-provision any device that cannot reach the broker."
+        else
+            warn "No value entered — devices will keep claiming against mqtt.vmflow.xyz"
+        fi
+    else
+        warn "Running non-interactively; not guessing a value."
+        [ -n "$MQTT_PUBLIC_SUGGESTION" ] && warn "Add it manually, e.g.: MQTT_PUBLIC_HOST=${MQTT_PUBLIC_SUGGESTION}"
+    fi
+else
+    case "$MQTT_PUBLIC_HOST" in
+        broker|localhost|127.0.0.1|host.docker.internal)
+            warn "MQTT_PUBLIC_HOST is ${MQTT_PUBLIC_HOST} — that is a container-internal"
+            warn "name. A device claimed against it would point at itself and never connect."
+            ;;
+        10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[01].*)
+            # Legitimate for a bench/dev install, so this is not a warning.
+            info "MQTT_PUBLIC_HOST is ${MQTT_PUBLIC_HOST}:${MQTT_PUBLIC_PORT:-1883} (LAN address)"
+            info "Fine on the bench; machines out in the field will not reach it."
+            ;;
+        *)
+            success "MQTT_PUBLIC_HOST: ${MQTT_PUBLIC_HOST}:${MQTT_PUBLIC_PORT:-1883}"
+            ;;
+    esac
+fi
+
+# ─── MQTT_HOST (server-side name only — informational) ───────────────────────
+case "${MQTT_HOST:-}" in
+    ""|broker) ;;
+    *)
+        info "MQTT_HOST is ${MQTT_HOST}, but docker-compose pins the forwarder and"
+        info "the edge functions to the internal service name 'broker', so the value"
+        info "is unused. The device-facing address is MQTT_PUBLIC_HOST."
+        ;;
+esac
+
 # ─── FCM_SERVICE_ACCOUNT_JSON (informational only) ────────────────────────────
 if [ -z "${FCM_SERVICE_ACCOUNT_JSON:-}" ]; then
     info "FCM_SERVICE_ACCOUNT_JSON not set — Android push notifications disabled"
@@ -216,6 +335,73 @@ if [ -z "${GITHUB_FIRMWARE_REPO:-}" ]; then
     info "GITHUB_FIRMWARE_REPO not set — GitHub release imports disabled on firmware page"
 else
     success "GITHUB_FIRMWARE_REPO: ${GITHUB_FIRMWARE_REPO}"
+fi
+
+# ─── SITE_URL (auth mails + printed poster QR codes) ─────────────────────────
+# SITE_URL has always fed GoTrue's auth mails; since the printable machine
+# posters it is also handed to the frontend as NUXT_PUBLIC_SITE_URL and encoded
+# into every QR code that gets printed on paper. A wrong value here is not a
+# broken page you fix by editing — it is a stack of signs nobody can scan.
+#
+# We never guess a value non-interactively: the same variable builds password
+# reset links, so a wrong guess would silently break account recovery.
+if [ -z "${SITE_URL:-}" ]; then
+    warn "SITE_URL is not set in .env"
+    warn "It builds password-reset links AND the QR codes on printed machine signs."
+    # Derive a suggestion from the Supabase host, matching setup.sh's
+    # supabase.<domain> / app.<domain> convention.
+    SITE_URL_SUGGESTION=""
+    if [ -n "${SUPABASE_PUBLIC_URL:-}" ]; then
+        _derived=$(echo "$SUPABASE_PUBLIC_URL" | sed 's|^\(https\{0,1\}://\)supabase\.|\1app.|')
+        # Only suggest when the substitution actually fired. Otherwise the
+        # "suggestion" would just be the Supabase URL itself, which is exactly
+        # the wrong answer offered as the default.
+        [ "$_derived" != "$SUPABASE_PUBLIC_URL" ] && SITE_URL_SUGGESTION="$_derived"
+    fi
+    if [ -t 0 ]; then
+        printf "  Public frontend URL%s: " "${SITE_URL_SUGGESTION:+ [$SITE_URL_SUGGESTION]}"
+        # Distinguish a deliberate empty Enter (accept the suggestion) from
+        # EOF/Ctrl-D (dismiss). The suggestion is only a guess at the
+        # operator's DNS convention, and this value signs password-reset links
+        # and gets printed into QR codes -- it must not be adopted on a
+        # keystroke that means "cancel". Testing read in an `if` also keeps
+        # `set -e` from aborting the whole update on EOF.
+        if read -r SITE_URL_INPUT; then
+            SITE_URL="${SITE_URL_INPUT:-$SITE_URL_SUGGESTION}"
+        else
+            echo
+            SITE_URL=""
+        fi
+        if [ -n "$SITE_URL" ]; then
+            cat >> .env << SITEURLEOF
+
+##########
+# Public frontend URL
+# Added by update.sh on $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+# Used for GoTrue auth mails and for the QR codes on printed machine signs.
+#########
+
+SITE_URL=${SITE_URL}
+SITEURLEOF
+            export SITE_URL
+            success "SITE_URL set to ${SITE_URL} and appended to .env"
+        else
+            warn "No value entered — printed QR codes will fall back to the browser URL"
+        fi
+    else
+        warn "Running non-interactively; not guessing a value."
+        [ -n "$SITE_URL_SUGGESTION" ] && warn "Add it manually, e.g.: SITE_URL=${SITE_URL_SUGGESTION}"
+    fi
+else
+    case "$SITE_URL" in
+        *localhost*|*127.0.0.1*|http://10.*|http://192.168.*|http://172.1[6-9].*|http://172.2[0-9].*|http://172.3[01].*|*.local*)
+            warn "SITE_URL is ${SITE_URL} — that address is not reachable from outside."
+            warn "QR codes printed on machine signs would not work on a customer's phone."
+            ;;
+        *)
+            success "SITE_URL: ${SITE_URL}"
+            ;;
+    esac
 fi
 
 # ─── ENV_NAME / ENV_COLOR (informational only) ───────────────────────────────
@@ -263,6 +449,74 @@ SQL
 else
     warn "SERVICE_ROLE_KEY not found in .env — skipping app.settings configuration"
     warn "Low-stock daily push will not fire until SERVICE_ROLE_KEY is set"
+fi
+
+# ─────────────────────────────────────────────────────────────
+# Repair installs whose Postgres init run aborted
+# ─────────────────────────────────────────────────────────────
+# Between 2026-01-04 (df239b3 deleted volumes/db/{webhooks,jwt,realtime,
+# _supabase,logs,pooler}.sql) and 2026-08-09 the compose file still
+# mounted them. Docker materialises a missing bind-mount source as an
+# empty DIRECTORY; the image's migrate.sh runs
+# `psql -v ON_ERROR_STOP=1 -f init-scripts/*.sql` under `set -e`, so
+# 98-webhooks.sql died with "Is a directory" and 99-jwt.sql /
+# 99-roles.sql never ran. The container restarted, found PGDATA
+# initialised, skipped init for good and came up looking healthy — with
+# authenticator, supabase_auth_admin and supabase_storage_admin left
+# without a password. Init scripts never re-run, so restoring the files
+# alone does not heal such an install; replay them here. Every check is a
+# no-op on a healthy database. (The stray directories those installs also
+# carry are cleared in the pre-flight section, before `git pull`.)
+
+if docker compose exec -T db pg_isready -U postgres >/dev/null 2>&1; then
+    db_psql() { docker compose exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d postgres "$@"; }
+
+    if [ "$(db_psql -Atc "SELECT count(*) FROM pg_namespace WHERE nspname = 'supabase_functions'")" = "0" ]; then
+        info "Schema supabase_functions missing — replaying webhooks.sql..."
+        if db_psql -q < volumes/db/webhooks.sql >/dev/null; then
+            success "webhooks.sql applied (supabase_functions + supabase_functions_admin)"
+        else
+            warn "webhooks.sql failed — check: docker compose logs db"
+        fi
+    fi
+
+    # `|| true` keeps set -e from aborting the whole update if this one
+    # query hiccups — a failed probe must not stop the migration step.
+    ROLES_NO_PASSWORD=$(db_psql -Atc \
+        "SELECT coalesce(string_agg(rolname, ', ' ORDER BY rolname), '')
+           FROM pg_authid
+          WHERE rolname IN ('authenticator','pgbouncer','supabase_admin','supabase_auth_admin','supabase_functions_admin','supabase_storage_admin')
+            AND rolpassword IS NULL" || true)
+    if [ -n "$ROLES_NO_PASSWORD" ]; then
+        warn "Roles without a password: ${ROLES_NO_PASSWORD} — replaying roles.sql..."
+        # roles.sql reads $POSTGRES_PASSWORD via psql backticks, which run
+        # inside the db container where compose sets it.
+        if db_psql -q < volumes/db/roles.sql >/dev/null; then
+            success "roles.sql applied — rest/auth/storage can authenticate again"
+        else
+            error "roles.sql failed. Check: docker compose logs db"
+        fi
+    fi
+
+    if [ -z "$(db_psql -Atc "SELECT current_setting('app.settings.jwt_secret', true)")" ]; then
+        info "app.settings.jwt_secret unset — replaying jwt.sql..."
+        if db_psql -q < volumes/db/jwt.sql >/dev/null; then
+            success "jwt.sql applied"
+        else
+            warn "jwt.sql failed — check: docker compose logs db"
+        fi
+    fi
+
+    if [ "$(db_psql -Atc "SELECT count(*) FROM pg_namespace WHERE nspname = '_realtime'")" = "0" ]; then
+        info "Schema _realtime missing — replaying realtime.sql..."
+        db_psql -q < volumes/db/realtime.sql >/dev/null \
+            && success "realtime.sql applied" \
+            || warn "realtime.sql failed — check: docker compose logs db"
+    fi
+
+    unset -f db_psql
+else
+    warn "Database not reachable — skipping init-script repair check"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════

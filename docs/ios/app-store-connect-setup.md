@@ -19,7 +19,60 @@ the first `beta`/`release` dispatch. Ordered.
 Repo → Settings → Secrets and variables → Actions:
 - `APP_STORE_CONNECT_KEY_ID` — the Key ID
 - `APP_STORE_CONNECT_ISSUER_ID` — the Issuer ID
-- `APP_STORE_CONNECT_KEY_P8` — the key, base64: `base64 -i AuthKey_XXXXX.p8 | pbcopy`
+- `APP_STORE_CONNECT_KEY_P8` — the key, base64: `base64 < AuthKey_XXXXX.p8 | pbcopy`
+  (portable across the BSD `base64` on stock macOS and the GNU/Homebrew one —
+  `-i`/`-D`/other input flags differ between them, plain stdin doesn't)
+- `MATCH_SSH_PRIVATE_KEY` — read-only deploy key for the private
+  `lucienkerl/vmflow-ios-certs` repo (already generated and set)
+- `MATCH_PASSWORD` — passphrase match uses to encrypt/decrypt that repo's
+  contents (already generated and set)
+
+Both `MATCH_*` secrets were already created for you when this pipeline moved
+to match-based signing — see "Code signing" below for what they're for and
+how to run match locally.
+
+## Code signing (fastlane match)
+
+CI signs via [fastlane match](https://docs.fastlane.tools/actions/match/),
+not Xcode's automatic cloud signing. The certificate and provisioning
+profiles live encrypted in the private repo `lucienkerl/vmflow-ios-certs`
+(separate from this public app repo), and CI clones it read-only over SSH
+using the `MATCH_SSH_PRIVATE_KEY` deploy key.
+
+**Why not automatic signing**: GitHub's macOS runners are ephemeral — a fresh
+VM every run, nothing persisted. With `CODE_SIGN_STYLE = Automatic` and
+`-allowProvisioningUpdates`, Xcode has no locally-cached signing identity to
+reuse on a fresh runner, so it minted a **new** distribution certificate on
+every single CI run. That silently ran the account into Apple's per-account
+certificate cap ("Choose a certificate to revoke. Your account has reached
+the maximum number of certificates.", first hit 2026-08-12). match fixes this
+by reusing one certificate/profile pair across every run — CI only ever reads
+it (`readonly: true` in `fastlane/Matchfile` and `build_signed`), it never
+creates or revokes.
+
+**One-time: populate the cert repo.** Run this locally (needs the same `.p8`
+key from step 2 above, and your own Apple ID login for the first
+authorization prompt — after that App Store Connect API key auth carries it):
+
+```bash
+cd ios
+export APP_STORE_CONNECT_KEY_ID=...      # same values as the GitHub secrets
+export APP_STORE_CONNECT_ISSUER_ID=...
+export APP_STORE_CONNECT_KEY_P8=$(base64 < AuthKey_XXXXX.p8)
+bundle exec fastlane match appstore --readonly false
+```
+
+If the account is already at the certificate limit, match (or the Apple
+Developer portal) will ask you to choose one to revoke — **that choice is
+deliberately not automated**; picking the wrong one to revoke could break
+someone else's local signing setup, so it needs a human. Check
+https://developer.apple.com/account/resources/certificates/list first if
+you're not sure which ones are still in use.
+
+Re-run the same command (still `--readonly false`) whenever the certificate
+is close to expiring (Apple distribution certs last ~1 year) or a new device
+needs the profile refreshed — match reuses the existing certificate rather
+than creating a new one as long as it's still valid.
 
 ## 4. Create the app record
 My Apps → **+** → New App:
@@ -49,11 +102,51 @@ submission if empty:
   fill the demo user/password/phone placeholders there first (see below).
 - **Encryption** — already answered via `ITSAppUsesNonExemptEncryption=false`.
 
-## 7. Before you submit for review
+## 7. Before your first `release`
 - Fill the placeholders in `ios/fastlane/metadata/review_information/`:
   `demo_user.txt`, `demo_password.txt`, `phone_number.txt`.
 - Provision the demo account and its organisation on `supabase.kerl-handel.de`
   with seeded data, per `app-store-review-notes.md`. The reviewer will test
   account deletion — the account must be **disposable and re-seedable**.
-- Run lane `release` (uploads binary + metadata + screenshots, **stops before
-  submission**), then submit from the ASC UI once you've eyeballed the listing.
+- That folder is git-ignored and therefore absent in CI, so deliver never
+  uploads review information. Enter the demo account, phone and notes **once by
+  hand** in App Store Connect — ASC carries them over to every later version,
+  which is what lets the automated submissions below go through untouched.
+
+## 8. Releasing (no App Store Connect visit needed)
+Actions → **iOS Release** → Run workflow → lane `release`. That single dispatch:
+
+1. regenerates the localized release notes from the commits since the last
+   `ios-v*` tag (see `release-notes.md`) and prints them to the job summary,
+2. builds, signs and uploads the binary plus all metadata and screenshots,
+3. **selects the uploaded build** — deliver waits out build processing and
+   attaches it to the version by itself,
+4. **submits for review**, and
+5. sets the release type to *after approval*, so App Store Connect publishes
+   the version the moment review passes.
+
+Afterwards the workflow commits the generated notes back and tags the commit it
+built, so you can always trace a build back to its source:
+
+| tag | meaning |
+|-----|---------|
+| `ios-v<version>-<build>` | went into App Store review |
+| `ios-build-<version>-<build>` | uploaded but not submitted — a `beta`/TestFlight run, or `release` with `submit: false` |
+
+Only `ios-v*` anchors the release notes. That is why an upload that never
+shipped gets the other prefix: otherwise the commits in a TestFlight build would
+disappear from the next real release's notes. `git show ios-v1.0.260808-1758`
+tells you the exact commit and why it was tagged.
+
+Escape hatches, all on the same dispatch form:
+- `submit: false` — upload only and leave the version sitting in ASC (the old
+  behaviour).
+- `notes: keep` — upload `fastlane/metadata/<locale>/release_notes.txt` exactly
+  as committed instead of regenerating it.
+- `notes_since: <ref>` — generate the notes against `<ref>` rather than the last
+  tag. Needed after a rejected review, where the tag was already pushed.
+- lane `release_notes` — dry run: generates and prints the notes, builds
+  nothing, uploads nothing, needs no secrets.
+
+The one thing that still needs a human in ASC is a **rejection**: read the
+resolution centre, fix, dispatch `release` again.

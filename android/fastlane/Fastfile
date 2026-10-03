@@ -1,0 +1,217 @@
+# VMflow Android release lanes — the Play-Store counterpart to ios/fastlane/Fastfile.
+#
+# The two pipelines are deliberately shaped alike: same dispatch workflow, same
+# auto-generated release notes (scripts/lib/release_notes_core.rb drives both),
+# same two-prefix tagging. What differs is what the stores themselves do
+# differently, and only that:
+#
+#   * Signing. iOS needs fastlane match and a whole cert repo because Apple
+#     issues per-developer certificates that CI would otherwise re-mint on every
+#     ephemeral runner. Android needs one keystore file. It arrives as
+#     ANDROID_KEYSTORE_BASE64 and is decoded per run — no repo, no match, no
+#     keychain. Play App Signing holds the real app signing key; the keystore
+#     here is only the *upload* key and can be replaced by Google if lost.
+#
+#   * Tracks instead of TestFlight. `internal` puts a build in front of testers;
+#     `promote` moves that exact build to production without rebuilding, which
+#     App Store Connect has no equivalent for.
+#
+#   * Review. Play reviews after the upload rather than gating it, so there is
+#     no `assert_review_submission_started` counterpart — a successful
+#     `upload_to_play_store` to production IS the submission.
+#
+# UPLOADS HAPPEN ONLY FROM CI. versionCode is derived from the build date plus
+# the day's commit count (android/app/build.gradle); local archives are for
+# debugging and would burn a versionCode that CI then cannot reuse.
+
+default_platform(:android)
+
+require "base64"
+require "tmpdir"
+
+platform :android do
+  # Decode the base64 service-account JSON from the environment into a temp
+  # file and return its path. Mirrors iOS's `asc_auth`: credentials live in
+  # GitHub secrets, never on disk in the repo.
+  private_lane :play_auth do
+    if ENV["PLAY_JSON_KEY_BASE64"].to_s.empty?
+      UI.user_error!("Missing env var PLAY_JSON_KEY_BASE64 — set it as a GitHub Actions secret")
+    end
+
+    path = File.join(Dir.mktmpdir("play"), "play-service-account.json")
+    File.write(path, Base64.decode64(ENV["PLAY_JSON_KEY_BASE64"]))
+
+    # Fail here with a clear message rather than deep inside googleauth.
+    begin
+      require "json"
+      JSON.parse(File.read(path)).fetch("client_email")
+    rescue StandardError => e
+      UI.user_error!("PLAY_JSON_KEY_BASE64 did not decode to a service-account JSON (#{e.class}). " \
+                     "Re-encode with: base64 < play-service-account.json")
+    end
+
+    path
+  end
+
+  # Decode the upload keystore and point Gradle at it. Gradle reads these four
+  # env vars in android/app/build.gradle; when they are absent it deliberately
+  # builds unsigned, so this must run before any lane that uploads.
+  private_lane :prepare_signing do
+    %w[
+      ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD
+    ].each do |var|
+      UI.user_error!("Missing env var #{var} — set it as a GitHub Actions secret") if ENV[var].to_s.empty?
+    end
+
+    path = File.join(Dir.mktmpdir("keystore"), "upload.jks")
+    File.write(path, Base64.decode64(ENV["ANDROID_KEYSTORE_BASE64"]), mode: "wb")
+    UI.user_error!("ANDROID_KEYSTORE_BASE64 decoded to an empty file") if File.size(path).zero?
+
+    ENV["ANDROID_KEYSTORE_PATH"] = path
+  end
+
+  # Play models a staged rollout as a release *state*, not as an extra
+  # parameter: a release that is still ramping is "inProgress" and carries a
+  # user fraction, a finished one is "completed" and carries none. Deciding
+  # both in one place keeps `release` and `promote` from drifting apart.
+  private_lane :rollout_options do |options|
+    rollout = options[:rollout].to_s
+    if !rollout.empty? && rollout.to_f > 0 && rollout.to_f < 1
+      { release_status: "inProgress", rollout: rollout }
+    else
+      { release_status: "completed", rollout: nil }
+    end
+  end
+
+  private_lane :build_aab do
+    prepare_signing
+    gradle(task: "clean")
+    gradle(task: "bundle", build_type: "Release")
+
+    aab = lane_context[SharedValues::GRADLE_AAB_OUTPUT_PATH]
+    UI.user_error!("Gradle produced no .aab — check the build log above") if aab.to_s.empty?
+
+    # An unsigned bundle uploads "fine" and is then rejected asynchronously by
+    # Play with a message that never mentions signing. Catch it here instead:
+    # if the signing config had not been wired up, the build.gradle guard would
+    # have silently skipped it.
+    UI.success("Built #{File.basename(aab)} (#{(File.size(aab) / 1024.0 / 1024).round(1)} MB)")
+    aab
+  end
+
+  # Regenerate fastlane/metadata/android/<locale>/changelogs/default.txt from
+  # the commits since the last android-v* tag. See android/scripts/release_notes.rb
+  # for the rules and for the `Release-Note-DE:` / `Release-Note: skip` trailers.
+  private_lane :stamp_release_notes do |options|
+    root = sh("git", "rev-parse", "--show-toplevel", log: false).strip
+    cmd = ["ruby", File.join(root, "android", "scripts", "release_notes.rb")]
+    cmd += ["--since", options[:since]] unless options[:since].to_s.empty?
+    sh(*cmd)
+  end
+
+  desc "Build, sign and upload to the internal testing track"
+  lane :internal do
+    json_key = play_auth
+    build_aab
+
+    # No store listing from this lane. The internal track is for getting a
+    # build in front of testers; pushing metadata from here would publish
+    # listing text that the production track has not shipped yet.
+    upload_to_play_store(
+      json_key: json_key,
+      track: "internal",
+      release_status: "completed",
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true
+    )
+  end
+
+  desc "Build, sign, upload binary + listing to production"
+  lane :release do |options|
+    # Options (all optional):
+    #   notes:keep    use the committed changelogs verbatim instead of regenerating
+    #   since:REF     generate notes against REF instead of the last android-v* tag
+    #   rollout:0.2   staged rollout to 20% of users instead of everyone
+    #
+    # Notes are stamped BEFORE the upload because supply reads the changelog
+    # files off disk while assembling the release.
+    stamp_release_notes(since: options[:since]) unless options[:notes].to_s == "keep"
+
+    json_key = play_auth
+    build_aab
+
+    staging = rollout_options(rollout: options[:rollout])
+
+    upload_to_play_store(
+      **staging,
+      json_key: json_key,
+      track: "production",
+      skip_upload_apk: true,
+      # The listing ships with the binary, exactly as deliver does on iOS.
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false,
+      skip_upload_changelogs: false
+    )
+
+    UI.success(
+      if staging[:rollout]
+        "Live to #{(staging[:rollout].to_f * 100).round}% of users — ramp it up in the Play Console ✅"
+      else
+        "Live to all users ✅"
+      end
+    )
+  end
+
+  desc "Promote the build already on the internal track to production, without rebuilding"
+  lane :promote do |options|
+    # Play has no App Store equivalent for this: the artefact that testers
+    # already vetted moves tracks untouched, so production ships the exact bytes
+    # that were tested rather than a fresh build of the same commit.
+    #
+    #   version_code:26082703  promote one specific build (default: whatever is
+    #                          currently on the internal track)
+    json_key = play_auth
+
+    upload_to_play_store(
+      **rollout_options(rollout: options[:rollout]),
+      json_key: json_key,
+      track: "internal",
+      track_promote_to: "production",
+      version_code: options[:version_code],
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true
+    )
+  end
+
+  desc "Upload the store listing only (no binary)"
+  lane :metadata do
+    json_key = play_auth
+
+    # Changelogs are deliberately skipped: on Play a changelog belongs to a
+    # release, not to the listing, so there is nothing to attach one to without
+    # a binary. Titles, descriptions and screenshots are listing-level and do
+    # update on their own.
+    upload_to_play_store(
+      json_key: json_key,
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_changelogs: true,
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false
+    )
+  end
+
+  desc "Preview the auto-generated release notes without building or uploading"
+  lane :release_notes do |options|
+    stamp_release_notes(since: options[:since])
+  end
+end

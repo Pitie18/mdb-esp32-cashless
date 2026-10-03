@@ -1,1 +1,2 @@
-Erste Version.
+Neu
+• Show throughput and stock reach in warehouse list

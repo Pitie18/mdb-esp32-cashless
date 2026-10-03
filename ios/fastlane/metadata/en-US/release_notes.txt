@@ -1,1 +1,2 @@
-Initial release.
+New
+• Show throughput and stock reach in warehouse list

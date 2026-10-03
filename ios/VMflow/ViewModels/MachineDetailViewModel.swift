@@ -54,6 +54,9 @@ final class MachineDetailViewModel: ObservableObject {
             .order("item_number", ascending: true)
             .execute()
             .value
+        // Same computation as the machine card, so the stock tile and the
+        // card never disagree for this machine.
+        stats.applyStock(trays: trays)
     }
 
     // MARK: - Sales
@@ -230,7 +233,8 @@ final class MachineDetailViewModel: ObservableObject {
                 addressStreet: addressStreet, addressHouseNumber: addressHouseNumber,
                 addressPostalCode: addressPostalCode, addressCity: addressCity,
                 formattedAddress: formattedAddress, nayaxMachineId: nayaxMachineId,
-                publicListing: publicListing
+                publicListing: publicListing,
+                linkedSelections: machine.linkedSelections
             )
             return true
         } catch {
@@ -249,13 +253,13 @@ final class MachineDetailViewModel: ObservableObject {
             .reduce(0) { $0 + ($1.itemPrice ?? 0) }
     }
 
-    /// Formatted stock health summary.
+    /// Stock tile text: the machine card's warehouse-aware product counts
+    /// (`MachineStats.applyStock`) in the card's badge wording.
     var stockSummary: String {
-        let empty = trays.filter { $0.isEmpty }.count
-        let low = trays.filter { $0.isBelowMinStock && !$0.isEmpty }.count
-
-        if empty > 0 { return String(localized: "\(empty) empty, \(low) low") }
-        if low > 0 { return String(localized: "\(low) low") }
-        return String(localized: "All good")
+        var parts: [String] = []
+        if stats.emptyTrays > 0 { parts.append(String(localized: "\(stats.emptyTrays) out of stock")) }
+        if stats.lowTrays > 0 { parts.append(String(localized: "\(stats.lowTrays) refill needed")) }
+        if stats.fillTrays > 0 { parts.append(String(localized: "\(stats.fillTrays) recommended to top off")) }
+        return parts.isEmpty ? String(localized: "All good") : parts.joined(separator: ", ")
     }
 }

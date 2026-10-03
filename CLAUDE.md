@@ -31,9 +31,49 @@ Single main file `main/mdb-slave-esp32s3.c` runs these concurrent FreeRTOS tasks
 - `mdb_cashless_loop` – MDB protocol handler on UART2 (GPIO4 RX, GPIO5 TX, 9600 baud, 9-bit mode)
 - `bleprph_host_task` – NimBLE BLE peripheral (in `nimble.c`) for legacy device config and vend approvals
 - MQTT client over WiFi for credit delivery and sales publishing
-- Telemetry reader on UART1 (GPIO43 TX, GPIO44 RX) for DEX/DDCMP data
+- Telemetry reader on UART1 (GPIO9 TX, GPIO8 RX — `PIN_DEX_TX`/`PIN_DEX_RX`, configured unconditionally at boot) for DEX/DDCMP data
+- `rfid_reader_task` – serial RFID card reader (F02DC) on UART0, RX = the pulse input (GPIO13), 9600 8N1
 
 **MDB State machine**: `INACTIVE → DISABLED → ENABLED → IDLE → VEND → IDLE`
+
+**Status LED** (`vTaskBitEvent` in `mdb-slave-esp32s3.c`, one WS2812 on `PIN_MDB_LED`):
+periodic pattern engine (50ms tick), not just one-shot solid colors. `led_compute_state()`
+evaluates a fixed priority ladder each tick — the first matching rule wins. Brightness is one
+global knob, `LED_BRIGHTNESS_SCALE` (0-255), applied to every color including the boot
+self-test. Every boot starts with a ~750ms red/green/blue self-test flash (pure channels, via
+`led_set_scaled_pixel`) so a dead channel is visible immediately, before the states below apply.
+
+| # | State | Color(s) | Pattern |
+|---|---|---|---|
+| 1 | MDB checksum/bus error (last 3s) | Red | Fast blink |
+| 2 | OTA update in progress | Purple | Fast blink |
+| 3 | Vend in progress (`machine_state == VEND_STATE`) | White | Pulse |
+| 4 | Not installed, claim POST in flight | Yellow | Double-blink |
+| 5 | Not installed, last claim attempt failed | Orange | Slow blink |
+| 6 | Not installed, WiFi connecting / cellular registering | Yellow | Fast blink |
+| 7 | Not installed, `network_init()` not yet resolved (boot) | White | Pulse |
+| 8 | Not installed, SoftAP up waiting for input | Yellow | Slow blink |
+| 9 | Installed, MQTT up + reader enabled (both axes agree) | Green | Solid |
+| 10 | Installed, any other reader/MQTT combination (axes disagree) | Green/Red (MQTT) + Green/Blue (reader) | Alternate |
+
+State 10 is a deliberate two-axis signal, not a single collapsed color — answers "is it
+online" before "is MDB talking", the priority the device's user cares about. `led_compute_state`
+picks a **connectivity color** (green=MQTT up, red=down) and a **reader color** (green=MDB
+reader enabled, blue=idle/not enabled) independently; if they're the same color (state 9) it
+shows solid, otherwise it shows both via `LED_PATTERN_ALTERNATE`: connectivity color 250ms,
+reader color 500ms, 1000ms pause, repeat (40-tick cycle at the 50ms base). The pause is the
+landmark — whichever color follows a gap is always the connectivity one, so you don't need to
+catch the start of the cycle or judge relative durations to read it. (Old design showed one
+solid/blinking color per combination, e.g. a fully-online device with no VMC attached yet and a
+truly offline device both showed solid red — indistinguishable and misleading.)
+
+Inputs: `xLedEventGroup` bits (installed/reader-enabled/MQTT-up) plus plain globals owned by
+other subsystems — `machine_state`, `ota_in_progress`, `s_prov_claim_running`/`s_prov_claim_failed`
+(provisioning), `network_get_status()` (network.c). The task is spawned right after the LED
+strip driver init (before `network_init()`, which blocks for 1-20s on `modem_probe()`) so state
+7 above is actually reachable — otherwise the LED stays dark for that whole window. Stack is
+4096 (not 2048 — the pattern engine's `network_status_t` local plus the RMT call chain blew a
+2048 stack with a raw Guru Meditation crash, not a clean overflow message).
 
 **EXPANSION REQUEST ID** (`0x07`/`0x00`) is answered with the Level 1 30-byte
 Peripheral ID, built once at task start by `mdb_build_peripheral_id()`. Some
@@ -44,7 +84,43 @@ cycle and then stays silent, which satisfies both.
 
 **Security**: MQTT and BLE payloads use XOR obfuscation with an 18-byte `passkey` plus a ±8 second timestamp window to prevent replay attacks.
 
-**MQTT topics**: `/{company_id}/{device_id}/{event}` where events are: `sale`, `status`, `paxcounter`, `dex`, `mdb-log`, `credit`, `ota`, `config`
+**Money arithmetic (`scale_factor.h`)**: MDB carries prices as integers in
+scale-factor units (a cent at the configured scale 1 / 2 decimals). The
+conversion goes through `pow(10, -dec)`, which is not exactly representable,
+so the round trip lands just *below* the integer it should hit — 8.20 becomes
+819.9999999999999 — and assigning that to an integer truncates. `TO_SCALE_FACTOR`
+therefore rounds (`llround`); `FROM_SCALE_FACTOR` stays a plain double because
+its result is a currency amount that callers print. The backend does the same
+on its side (`functions/_shared/scale.ts`). Both truncating forms were live
+once and compounded: a card balance of 8.20 reached the machine as 8.18.
+Regression tests: `mdb-slave-esp32s3/test/scale/run.sh` and
+`functions/_shared/scale.test.ts`.
+
+**MQTT topics**: `/{company_id}/{device_id}/{event}` where events are: `sale`, `status`, `paxcounter`, `dex`, `mdb-log`, `card`, `credit`, `ota`, `config`
+
+**RFID card reader (`rfid_reader.c` / `rfid_reader.h`)**: serial reader
+(F02DC and compatibles) on the **pulse pin** (GPIO 13) — no added hardware,
+the pin is routed through the GPIO matrix to UART0 (free because the console
+is on USB-Serial-JTAG; UART1 is DEX, UART2 the modem). The reader goes on
+`io13` of the J4 expansion header, **not** on the three-pin Pulse connector:
+that connector is an output (GND, `vin`, and the collector of Q7, whose base
+GPIO 13 drives through the 4k7 R27), so a reader wired there never reaches
+the SoC. R27 also means the reader's output has to be push-pull; any free pin
+(`io1`/`io2`/`io6`) avoids both, via `CONFIG_RFID_RX_GPIO`. Frames are
+`0x02 | LEN | TYPE | DATA… | XOR | 0x03`, parsed delimiter-driven and
+validated by the XOR byte rather than by trusting `LEN` (vendors disagree
+about what it counts). Readers repeat the serial while the card sits on the
+antenna, so repeats within `CONFIG_RFID_DEDUP_MS` (default 5 s) are dropped
+and each repeat slides the window — **one presentation is one backend
+request**. A card that could not be reported clears the dedup memory so the
+customer can simply present it again. Counters (`ok`/`bad`/`cards`/`dup`/`rx`, the last one raw bytes read)
+ride along in the `/mdb-log` diagnostics payload and are shown on the
+machine's MDB diagnostics card; a burst that parses into nothing is also
+hex-dumped to the console (rate-limited), which is what tells a mute
+reader apart from one speaking another dialect. Card presentations are
+published to `/{company}/{device}/card` as a variable-length payload
+(cmd `0x25`, see `card_payload_encode`) because the 19-byte sale payload has
+no room for a UID. Full write-up: `docs/integrations/rfid-card-reader.md`.
 
 **NVS namespace `vmflow`** keys:
 - `company_id` – UUID from companies table
@@ -113,7 +189,31 @@ signal bars + operator + IP, and disables submit buttons during in-flight
 or registering states. The old combined `/api/v1/settings/set` endpoint
 was removed in P3.
 
-**Cellular recovery (P4 + post-milestone hardening)**: Multi-layer escalation. Layer 1 — `network.c::ppp_reconnect_task` retries `modem_disconnect`+`modem_connect` 3 times on `IP_EVENT_PPP_LOST_IP`, ~6 s total. Layer 1.5/1.6/2/3 — `cellular_bring_up_task` recovery ladder triggers on **either** IPCP timeout **or phantom-PPP** (TCP probe to 1.1.1.1:53 fails after PPP_GOT_IP). Steps: `modem_pdp_reset` (CGACT=0/1, ~5s) → `modem_rf_reset` (CFUN=0/1, ~10s) → `modem_soft_restart` (CFUN=1,1, ~12s) → `modem_hard_reset` (PMU DC3 cut + PWRKEY, ~15s, true reset). Each step is followed by `modem_connect` + reachability probe; only if probe succeeds is `UPLINK_UP` fired. Worst-case ~3-4 min ladder traversal before bailing OFFLINE; `offline_retry` timer (30s) re-spawns fresh `cellular_bring_up_task`. Layer 4 — `modem.c::modem_watchdog_task` (30 s tick) calls `modem_hard_reset` after 3 consecutive `AT` failures (bounded to 2 hard-resets before deferring to Layer 5). Layer 5 — `mqtt_watchdog_cb` hard-reboots after 10 min without MQTT. MQTT keepalive bumps to 180 s + network/reconnect timeouts to 30 s/20 s when uplink is cellular at `esp_mqtt_client_init` time. Known limitation: at MQTT-init time `network_init()` has not yet run, so `modem_present` is false and cellular boards still get the WiFi-tuned MQTT values on the first connection. The watchdog task is started exclusively from `cellular_bring_up_task` (after `modem_connect` succeeds), so WiFi-only boards never spawn it.
+**Uplink switch — WiFi instead of cellular (Option A)**: a modem-equipped board can be switched
+to run on WiFi instead of cellular, and back, via the captive portal — never both at once, and
+never live: `network_init()` only branches once at boot, so switching always reboots. Three new
+NVS keys in `vmflow`: `uplink_pref` (u8, 0=cellular/default, 1=wifi — read at the very top of
+`network_init()`, before `modem_probe()`; when set, the probe is skipped entirely and
+`s_user_committed_wifi` is set the same way `network_skip_modem_probe()` sets it for a live
+in-progress probe) and `has_modem` (u8, sticky — set the first time any boot's `modem_probe()`
+returns true, never cleared short of factory reset; needed because `modem_is_present()` reads
+false once already running in WiFi mode, so it can't by itself tell "genuinely WiFi-only
+hardware" from "a cellular board currently choosing not to use it"). `network.c` exposes
+`network_set_uplink_preference(prefer_wifi, ssid, password)` / `network_get_uplink_preference()`
+/ `network_has_cellular_hw()`. `webui_server.c`'s `POST /api/v1/uplink/prefer`
+`{prefer: "wifi"|"cellular", ssid?, password?}` calls it, saves WiFi credentials in the same
+request when switching to WiFi (so the next boot connects immediately, no second SoftAP
+round-trip), and reboots via `tracked_restart` (exposed through the new `restart.h`, mirroring
+`provision.h`'s pattern for reaching an `mdb-slave-esp32s3.c` function from `webui_server.c`).
+`GET /api/v1/system/info` gained `uplink_switch: {available, preference}`; the captive portal's
+"claimed" view (`webui/index.html`) renders a switch control keyed off `available`, not
+`variant` — same reasoning as `has_modem` above. Wasn't feasible to bolt on top of the existing
+either/or boot branch without changes: WiFi driver + both netifs already run in APSTA mode
+simultaneously with the modem at boot (this was already true before this feature — SoftAP has
+to survive `modem_probe()` glitch-free), so the actual gap was event-handler registration +
+auto-connect being withheld on the cellular branch, not missing hardware/driver init.
+
+**Cellular recovery (P4 + post-milestone hardening)**: Multi-layer escalation. Layer 1 — `network.c::ppp_reconnect_task` retries `modem_disconnect`+`modem_connect` 3 times on `IP_EVENT_PPP_LOST_IP`, ~6 s total. The `IP_EVENT_PPP_LOST_IP` handler sets `s_state = NETWORK_STATE_OFFLINE` before spawning the task — do not remove this: the task's own first move under `modem_op_lock` is "if `s_state` is already `CELLULAR_UP`, another recovery path beat us to it, bail out." Without the handler clearing state first, that guard is trivially true on every single LOST_IP (nothing else touches `s_state` in between), so the task always bailed immediately without ever reconnecting — confirmed live 2026-09-15, the only thing that still worked was the 10-minute Layer 5 hard-reboot. Fix is in and matches the field evidence, but the specific repro (PPP LOST_IP while the app keeps running, no reboot in between) has not been re-triggered live yet to directly confirm `ppp_reconnect_task` now actually reconnects — a same-day SIM pull/reinsert test only exercised the normal cold-boot `modem_probe` path (device happened to be power-cycling for an unrelated reason at that moment), which was never broken. Layer 1.5/1.6/2/3 — `cellular_bring_up_task` recovery ladder triggers on **either** IPCP timeout **or phantom-PPP** (TCP probe to 1.1.1.1:53 fails after PPP_GOT_IP). Steps: `modem_pdp_reset` (CGACT=0/1, ~5s) → `modem_rf_reset` (CFUN=0/1, ~10s) → `modem_soft_restart` (CFUN=1,1, ~12s) → `modem_hard_reset` (PWRKEY toggle-pair, ~15s, true reset). Each step is followed by `modem_connect` + reachability probe; only if probe succeeds is `UPLINK_UP` fired. Worst-case ~3-4 min ladder traversal before bailing OFFLINE; `offline_retry` timer (30s) re-spawns fresh `cellular_bring_up_task`. Layer 4 — `modem.c::modem_watchdog_task` (30 s tick) calls `modem_hard_reset` after 3 consecutive `AT` failures (bounded to 2 hard-resets before deferring to Layer 5). Layer 5 — `mqtt_watchdog_cb` hard-reboots after 10 min without MQTT. MQTT keepalive bumps to 180 s + network/reconnect timeouts to 30 s/20 s when uplink is cellular at `esp_mqtt_client_init` time. Known limitation: at MQTT-init time `network_init()` has not yet run, so `modem_present` is false and cellular boards still get the WiFi-tuned MQTT values on the first connection. The watchdog task is started exclusively from `cellular_bring_up_task` (after `modem_connect` succeeds), so WiFi-only boards never spawn it.
 
 **Phantom-PPP detection (post-milestone)**: SIM7080G has two parallel network stacks (host PPP + internal AT+CIP*/AT+CNACT*) sharing the same PDP context. Residue in the internal stack splits the PDP binding — IPCP completes and inbound flows (cached air-side state) but outbound silently drops at GTP. Field symptom: TLS cert downloads OK, ClientKeyExchange never reaches server, server FINs at 15s timeout. **Three-layer protection**: (1) `modem_init` proactively clears state via `AT+CIPSHUT` + `AT+CNACT=0,0` (best-effort, ignore errors); (2) `modem_connect` verifies PDP via `AT+CGCONTRDP=1` poll (5×1s) after `+CEREG: 1,5` — confirms data attach actually completed before entering DATA mode; (3) `network.c::probe_internet_tcp("1.1.1.1", 53, 5000ms)` runs after `PPP_GOT_IP_BIT` and BEFORE `UPLINK_UP` — failed probe triggers recovery ladder immediately instead of letting MQTT/claim waste minutes on a dead path. **Important**: never call `AT+CGACT=1,1` manually on LTE — the default bearer auto-activates with registration; manual call introduces the race that creates phantom-PPP in the first place. **Note**: `10.0.0.1` in `PPP GOT_IP` log is the SIMCom IPCP peer placeholder (normal), not a stub from a half-broken state.
 
@@ -122,8 +222,9 @@ was removed in P3.
 **Cellular driver (`modem.c` / `modem.h`)**: SIM7080G driver introduced
 in P1. Public API: `modem_probe`, `modem_init`, `modem_connect`,
 `modem_disconnect`, `modem_status`, `modem_power_cycle` (single PWRKEY
-pulse — cold-boot only), `modem_hard_reset` (true cycle: PMU DC3 cut +
-PWRKEY, used by recovery ladder), `modem_pdp_reset` / `modem_rf_reset`
+pulse — cold-boot only), `modem_hard_reset` (PWRKEY toggle-pair, used by
+recovery ladder — no PMU on the production board to power-gate the
+modem), `modem_pdp_reset` / `modem_rf_reset`
 / `modem_soft_restart` (intermediate recovery layers), plus NVS helpers
 `modem_nvs_load`/`modem_nvs_save` (promoted to the public API in P2).
 All callers now go through `network.c` — no part of `app_main` touches
@@ -167,7 +268,7 @@ docker compose down -v --remove-orphans
 
 ### MQTT Forwarder
 
-`Docker/mqtt/forwarder/main.ts` is a Deno service that subscribes to MQTT topics `/+/+/sale`, `/+/+/status`, `/+/+/paxcounter`, `/+/+/mdb-log` and forwards raw payloads (base64-encoded) to the `mqtt-webhook` Supabase edge function via HTTP POST with webhook secret authentication. The `mqtt-webhook` function decrypts XOR payloads, validates checksum + timestamp (±8s), and writes to Supabase tables. The `mdb-log` topic carries plaintext JSON diagnostics (no XOR encryption).
+`Docker/mqtt/forwarder/main.ts` is a Deno service that subscribes to MQTT topics `/+/+/sale`, `/+/+/status`, `/+/+/paxcounter`, `/+/+/mdb-log`, `/+/+/card` and forwards raw payloads (base64-encoded) to the `mqtt-webhook` Supabase edge function via HTTP POST with webhook secret authentication. The `mqtt-webhook` function decrypts XOR payloads, validates checksum + timestamp (±8s), and writes to Supabase tables. The `mdb-log` topic carries plaintext JSON diagnostics (no XOR encryption).
 
 ### Supabase Local Development
 
@@ -202,15 +303,19 @@ Tables:
 - `companies` – organisations; has `anthropic_api_key` (nullable) for AI insights, `velocity_days` (default 30) for sales velocity calculation
 - `organization_members` – `(company_id, user_id, role)` where role ∈ `{admin, viewer}`
 - `invitations` – email-scoped invite tokens with expiry
-- `embeddeds` – registered devices: `subdomain` (bigint, auto-increment), `mac_address`, `passkey`, `status`, `mdb_diagnostics` (jsonb), `vmc_level` (int)
+- `embeddeds` – registered devices: `subdomain` (bigint, auto-increment), `mac_address`, `name` (nullable text, admin-assigned label), `passkey`, `status`, `mdb_diagnostics` (jsonb), `vmc_level` (int)
 - `sales` – vend events: `embedded_id`, `item_price` (**EUR, not cents**), `item_number`, `channel`, `lat`, `lng`, `machine_id`; has `REPLICA IDENTITY FULL` for realtime delete events
 - `paxcounter` – foot traffic: `embedded_id`, `count`
 - `device_provisioning` – one-time provisioning codes: `short_code`, `expires_at`, `used_at`, `embedded_id`
-- `vendingMachine` – physical machine records linked to embedded devices; `nayax_machine_id` (nullable text, UNIQUE per company) maps to a Nayax serial for `/reports/nayax-reconciliation`
+- `vendingMachine` – physical machine records linked to embedded devices; `nayax_machine_id` (nullable text, UNIQUE per company) maps to a Nayax serial for `/reports/nayax-reconciliation`; `contact_phone`/`whatsapp_phone`/`support_hours`/`contact_email` are nullable **overrides** of the company imprint used by printed posters (empty = inherit); `linked_selections` (boolean, default false, display only) marks a machine that vends from a sibling slot on its own when one is empty — the clients then hide the "slot empty, product in another slot" hint for it (set in Machine Settings on the web app)
 - `products`, `product_category` – product catalogue per company; `products.image_path` stores the storage object path; `products.discontinued` (boolean) flag
-- `machine_trays` – per-machine tray/slot configuration: `machine_id`, `item_number` (unique per machine), `product_id`, `capacity`, `current_stock`, `fill_when_below` (refill threshold), `product_assigned_at` (timestamp the current product was assigned to the slot, restamped on product change via trigger); stock auto-decremented on sales via `stamp_machine_and_decrement_stock` trigger
+- `machine_trays` – per-machine tray/slot configuration: `machine_id`, `item_number` (unique per machine), `product_id`, `capacity`, `current_stock`, `fill_when_below` (refill threshold), `product_assigned_at` (timestamp the current product was assigned to the slot, restamped on product change via trigger), `internal_item_number` (optional "internal tray number": the selection number the machine reports for this slot when it differs from the label; unique per machine, NULL = no mapping); stock auto-decremented on sales via `stamp_machine_and_decrement_stock` trigger. `item_number` is always the **labelled** number: `mqtt-webhook` translates the reported number at ingest (sale + DEX) — a tray whose `internal_item_number` matches wins, otherwise `vendingMachine.item_number_offset` is added (`mqtt-webhook/tray-mapping.ts`). No backfill; `internal_item_number_since` is a server-stamped cut-over the Nayax reconciliation and `dex_reconcile_gaps` use to decide per row. **Stock health is judged per product, not per slot**: all slots of a product in one machine form a group whose stock, capacity, `min_stock` and `fill_when_below` are summed (`groupTraysByProduct` in `management-frontend/app/lib/stock-health.ts`, ported 1:1 to iOS `MachineStockHealth.swift` and Android). A slot that is empty while its product is still in another slot is a hint (`emptySlotsWithStock`), never a critical machine; machine cards, dashboard and refill tour count products, and the refill step spreads packed units emptiest-slot-first (`distributeAcrossSlots`). Push follows the same rule (`mqtt-webhook/product-stock.ts`): the sale push shows the product total when the product sits in several slots, and the low-stock push fires once when the product total reaches its summed `min_stock` and once when it is sold out everywhere, instead of on every sale below the line
 - `machine_product_offerings` – per-`(machine_id, product_id)` offering history for the Analysis tab: `offered_since` timestamp tracks how long a product has been offered in a machine **independent of which slot(s) it occupies**. Maintained by an AFTER trigger on `machine_trays` (`maintain_machine_product_offerings`): moving a product between slots keeps the offering open; only removing it from every slot closes it (a later re-add starts a fresh trial). Used so the "testing" grace period survives slot moves.
+- `poster_layouts` – saved poster configuration per motif: which QR source sits in which slot, the operator's own link, overridden headlines/labels, and the content blocks. `machine_id IS NULL` is the company default, a set `machine_id` overrides it for one machine (partial unique indexes enforce one row each). Read by every member, written by admins.
 - `api_keys` – API keys for external integrations: `company_id`, `key_hash`, `key_prefix`, `name`
+- `card_accounts` – prepaid RFID card balances: `name`, `balance` (**EUR**), `is_active`, `last_seen_at`. Resolved by the card serial being **contained in `name`**, so `04A1B2C3` can be renamed to `Jane Doe (04A1B2C3)` without breaking the card; an unknown card auto-creates an account at 0
+- `card_account_transactions` – append-only ledger behind `card_accounts.balance` (`topup` / `vend` / `adjustment` / `refund`); `UNIQUE(sale_id)` makes a webhook replay charge a vend exactly once
+- `card_sessions` – which card account currently holds a device's credit (one open per device, 15 min TTL); how an incoming cashless sale is mapped back to an account
 - `warehouses` – warehouse locations per company
 - `product_barcodes` – barcode-to-product mapping for scanning
 - `warehouse_stock_batches` – FIFO stock batches with expiry tracking
@@ -230,11 +335,16 @@ Key RPC functions:
 - `delete_sale_and_restore_stock(sale_id)` – manual sale deletion with stock restoration
 - `insert_manual_sale(machine_id, item_number, price, channel, created_at)` – manual sale insertion
 - `deduct_warehouse_stock_fifo(...)` – FIFO warehouse stock deduction for refills
+- `card_account_resolve(company_id, card_uid)` – find (or auto-create) the card account whose name contains the serial; service role only
+- `card_session_open(...)` / `card_session_close(embedded_id, reason)` – open/supersede the device's card session; every non-card credit path (`send-credit`, Stripe, the app via `deliverCredit`) closes it so a paid vend is never charged to whoever tapped last
+- `card_account_charge_vend(embedded_id, amount, sale_id)` – subtract a completed cashless sale from the open session's account; no-op when the device has no live session
+- `card_account_topup(account_id, amount, description)` – operator-facing signed balance change (admins only), always writing a ledger row
 
 ### Supabase Storage
 
 Buckets defined in `config.toml`:
 - `product-images` – public, max 2MiB, PNG/JPEG/WebP; images stored as `{product_id}.{ext}`
+- `company-logos` – public, max 2MiB, PNG/JPEG/WebP (no SVG: XSS vector in a public bucket); logo stored as `{company_id}.{ext}`, path in `companies.logo_path`
 - `firmware` – public, max 5MiB, binary files for OTA updates
 
 To apply only pending migrations without resetting data: `supabase migration up`
@@ -253,7 +363,7 @@ All functions use `verify_jwt = false` in `config.toml` (workaround for ES256 `C
 | `claim-device` | none | Called by firmware; validates code, creates `embeddeds` row, returns `{company_id, device_id, passkey, mqtt_host, mqtt_port}` |
 | `send-credit` | yes | Encrypt + publish credit to device MQTT topic |
 | `request-credit` | yes | Related credit request flow |
-| `mqtt-webhook` | webhook secret | Receives forwarded MQTT payloads, decrypts + validates + writes to DB |
+| `mqtt-webhook` | webhook secret | Receives forwarded MQTT payloads, decrypts + validates + writes to DB; on `card` resolves the card account and delivers its balance as credit, on a cashless `sale` charges it back |
 | `trigger-ota` | admin | Publishes OTA firmware URL to device MQTT topic |
 | `import-products` | admin | Bulk import products from Nayax Excel export |
 | `register-push` | yes | Register browser push notification subscription |
@@ -287,7 +397,8 @@ When adding a new env var that the frontend or edge functions need in production
 **Edge function config**: Each edge function needs a `[functions.<name>]` section in `config.toml` with `import_map` pointing to its `deno.json` file. The self-hosted edge runtime reads secrets from `[edge_runtime.secrets]`.
 
 **Shared modules** (`Docker/supabase/functions/_shared/`):
-- `mqtt-publish.ts` – reusable MQTT publish helper (connects to broker, publishes, disconnects)
+- `mqtt-publish.ts` – reusable MQTT publish helper (connects to broker, publishes, disconnects). Speaks MQTT 3.1.1 over a **native WebSocket** rather than `npm:mqtt`: the library's Node path builds the upgrade with `ws`, which sets `options.createConnection`, and the edge runtime's node compatibility layer does not implement that — every publish died with `Not implemented: ClientRequest.options.createConnection`. Unit + stub-broker tests in `mqtt-publish.test.ts`
+- `scale.ts` – EUR ↔ MDB scale-factor units. Use `eurToScaleUnits()` for anything going onto the wire; never `amount / Math.pow(10, -2)`, which lands below the integer and gets truncated (see the money-arithmetic note in the firmware section)
 - `web-push.ts` – web push notification sender
 
 ---
@@ -324,13 +435,16 @@ Public routes (no auth check): `/auth/login`, `/auth/register`, `/onboarding/*`
 - `useOrganization()` – wraps `get-my-organization`, exposes `organization`, `role`, `fetchOrganization()`
 - `useMachines()` – fetches `vendingMachine` joined with `embeddeds`, batch-fetches per-machine stats (today/yesterday revenue, sales count, paxcounter, last sale) via `Promise.all`; `subscribeToStatusUpdates()` opens Supabase realtime channels on `embeddeds`, `vendingMachine`, and `sales` tables (live-updates today's stats on new sales)
 - `useProducts()` – CRUD for products + categories; `uploadProductImage(productId, file)` uploads to `product-images/{id}.{ext}` with upsert; `deleteProductImage()` removes from storage + nulls `image_path`; `deleteProduct()` cleans up storage; `getProductImageUrl(path)` builds public URL; `createProduct()` returns the new product ID
-- `useMachineTrays()` – CRUD for machine tray/slot configuration; `batchCreateTrays(machineId, startSlot, count, capacity)` bulk-inserts sequential slots; `updateTray()` updates by ID (allows slot number changes); `subscribeToTrayUpdates()` for realtime stock changes; stock auto-decrements on sales via DB trigger
+- `usePosterFreshness()` – per machine: does the sign hanging on it still show the current contact data? Recomputes the contact fingerprint from today's data using the blocks the `poster_printed` entry recorded, and compares it with the fingerprint stored at print time — so a motif change or a reprint in another language is not a change, but a new support number is. Drives the "sign out of date" badge on `/machines` and the banner on `/machines/[id]`
+- `useMachinePrint()` – data, QR rendering and layout persistence for the printable machine posters (`/machines/[id]/print`): resolves `machine.x ?? company.x` contact data, resolves each motif **slot** to a QR target (machine page / `tel:` / WhatsApp / fault form / the operator's own link / empty), renders them as **SVG** (not data URLs — visibly sharper at 5 cm on paper), loads and saves `poster_layouts`, and writes the `poster_printed` activity entry. The pure logic lives in `app/lib/printSheet.ts` and is unit-tested; motifs declare their slots, editable headlines and blocks in `app/lib/printMotifs.ts`
+- `useMachineTrays()` – CRUD for machine tray/slot configuration; `batchCreateTrays(machineId, startSlot, count, capacity)` bulk-inserts sequential slots; `updateTray()` updates by ID (allows slot number changes and the per-tray `internal_item_number`, validated by `app/lib/trayInternalNumber.ts`); `subscribeToTrayUpdates()` for realtime stock changes; stock auto-decrements on sales via DB trigger
 - `useMachineAnalysis()` – powers the Analysis tab on `/machines/[id]`. **Product-centric** performance analysis: combines `get_machine_product_kpis` (sales aggregated per product across all its slots), `get_product_sales_velocity` (fleet-wide velocity), the product catalogue, and `machine_product_offerings` tenure. Exposes pure, unit-tested helpers — `slotRowCol`/`computeSlotWidths`/`buildGridSlots` (replicate the iOS layout: 10 columns, `row=max(0,⌊item/10⌋-1)`, `col=item%10`, width=gap to next slot), `scoreProduct` (tier: dead/weak/ok/strong, plus a "testing" grace period for products offered < ~14 days so freshly-placed or brand-new test products aren't condemned), and `buildSuggestionPool` (replacement candidates = proven fleet bestsellers + never-sold "newcomer" test products). `applySwap(trayId, productId)` reassigns a slot's product (resets stock to 0, logs `product_swapped` to `activity_log`)
 - `useFirmware()` – CRUD for firmware versions in `firmware` storage bucket; `triggerOta(deviceId, firmwareId)` calls `trigger-ota` edge function
 - `useImportProducts()` – parses Nayax Excel exports, previews products, bulk imports via `import-products` edge function
 - `useNotifications()` – browser push notification registration and management via `register-push` edge function
 - `useWarehouse()` – CRUD for warehouses, stock batches (FIFO), transactions, barcode lookups, min-stock alerts; `deductStock()` calls `deduct_warehouse_stock_fifo` DB function for refill operations
 - `useMdbLog()` – fetches MDB diagnostics history from `mdb_log` table with realtime subscription
+- `useCardAccounts()` – CRUD for prepaid RFID card accounts plus `adjustBalance()` (via the `card_account_topup` RPC, so the ledger always matches) and the per-account transaction history. Exports the unit-tested `extractCardSerials`/`keepsCardSerials` helpers the rename warning uses — dropping the serial from a name orphans the physical card
 - `useActivityLog()` – activity/audit log composable
 
 **Refill & insights:**
@@ -368,7 +482,8 @@ Public routes (no auth check): `/auth/login`, `/auth/register`, `/onboarding/*`
 
 - `/` – Dashboard: KPI cards (today/week sales, machine counts) + 30-day sales chart + activity feed + machine list + recent sales
 - `/machines` – Responsive card grid (1/2/3 cols) of vending machines showing status badge, today/yesterday revenue, sales count, last sale time-ago, and paxcounter traffic; cards link to `/machines/[id]`
-- `/machines/[id]` – Per-machine detail with tabs: **Sales** (30-day chart + sales history with product image thumbnails from trays, manual sale add/delete); **Trays & Stock** (tray table, batch add (sequential slots), single add/edit (editable slot numbers), refill, delete); **Analysis** (product-centric performance — an iOS-springboard-style layout grid where each slot is colour-coded by its product's tier (dead/weak/testing/ok/strong); a "products to review" list with combined per-product KPIs + machine tenure; one-click replacement with fleet bestsellers or never-sold test products; on-demand AI `product_swap` recommendations); plus MDB diagnostics (admin) and Device Health tabs
+- `/machines/[id]` – Per-machine detail with tabs: **Sales** (30-day chart + sales history with product image thumbnails from trays, manual sale add/delete); **Trays & Stock** (a stock map of the machine (`components/machine/TrayStockGrid.vue`, colour = the product's status, tap highlights all slots of a product); tray list "By product" (default: a product's slots together under a summary header, `ProductGroupHeader.vue`, ordering/flags in `app/lib/trayGroups.ts`) or "By slot"; batch add (sequential slots), single add/edit (editable slot numbers), refill, delete); **Analysis** (product-centric performance — an iOS-springboard-style layout grid where each slot is colour-coded by its product's tier (dead/weak/testing/ok/strong); a "products to review" list with combined per-product KPIs + machine tenure; one-click replacement with fleet bestsellers or never-sold test products; on-demand AI `product_swap` recommendations); plus MDB diagnostics (admin) and Device Health tabs
+- `/machines/[id]/print` – Printable contact signage for a machine: seven A4/A5/A6 poster motifs — also offered as three n-up sheets that tile 2 × A5, 4 × A6 or 8 × A7 onto one A4 page, tiles rotated where the arithmetic requires it and separated by dashed cut lines through the gutters — plus eight sticker motifs in three sizes (90×50 mm 8-up, 50×30 mm 24-up, 148×40 mm landscape strip 6-up, all with cut marks), picked from a gallery of live thumbnails rendered from the machine's own data. Every QR slot's source is operator-chosen (machine page / `tel:` / WhatsApp / fault form / own link / empty), headlines and per-slot labels are overridable with a reset-to-default, and the whole configuration saves to `poster_layouts` per company or per machine. Plus per-sheet language, one-off free text, and batch selection across machines. Prints via `window.print()` with `@page` + `print-color-adjust: exact`. Its own route rather than a modal so the app chrome never has to be hidden. The QR origin comes from `SITE_URL` (`runtimeConfig.public.siteUrl`); a LAN or localhost origin raises a blocking-looking warning, because a wrong QR on paper is permanent
 - `/products` – Products tab (table with image thumbnails, add/edit modal with image upload zone + image search, category selector, discontinued flag) + Categories tab + Import from Nayax Excel
 - `/warehouse` – Warehouse inventory management: stock intake with barcode scanning (`BarcodeScanner` component), FIFO batch tracking, transaction history, min-stock alerts, product position management
 - `/refill` – Multi-step guided refill wizard: select warehouse → pack items (combined/per-machine mode) → refill trays → summary with tour stats
@@ -377,6 +492,7 @@ Public routes (no auth check): `/auth/login`, `/auth/register`, `/onboarding/*`
 - `/history` – Activity/audit log
 - `/devices` – Admin device management: registered embedded devices table, register new device with provisioning code + QR, pending tokens, delete device
 - `/firmware` – Firmware version management: upload .bin files + import from GitHub releases, deploy OTA to devices, delete versions
+- `/card-accounts` – prepaid RFID card accounts: balances, last use, block/unblock, top-up and correction (both ledgered), per-account history. Admin-only for writes; every member can read
 - `/api-keys` – API key management: create/revoke keys for external integrations
 - `/members` – Active members table + pending invitations (admin only); invite modal calls `invite-member`
 - `/settings` – Application settings (incl. Anthropic API key for AI insights, velocity days config)
@@ -408,4 +524,11 @@ npx vitest run          # run all tests
 npx vitest run --watch  # watch mode
 ```
 
-Edge function tests (Deno): `Docker/supabase/functions/mqtt-webhook/mdb-log.test.ts`
+Firmware host-side tests need no board and compile the real sources:
+- `mdb-slave-esp32s3/test/rfid/run.sh` — the F02DC frame parser
+  (`main/rfid_reader.c` against a few ESP-IDF stubs): framing, XOR validation,
+  duplicate suppression, resync.
+- `mdb-slave-esp32s3/test/scale/run.sh` — `main/scale_factor.h`: every credit
+  and price value over the whole uint16 MDB range converts exactly.
+
+Edge function tests (Deno): `Docker/supabase/functions/mqtt-webhook/*.test.ts` (`mdb-log`, `suppress`, `slot-offset`, `tray-mapping`, `stock-urgency`, `product-stock`, `card-payload`) and `Docker/supabase/functions/_shared/*.test.ts` (`notification-i18n`, `scale`, `mqtt-publish` — the last drives the publisher against an in-process stub broker), run with `deno test -A` from the respective directory

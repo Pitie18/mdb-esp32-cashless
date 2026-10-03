@@ -74,9 +74,9 @@ struct DealsView: View {
             Picker("List mode", selection: $viewModel.listMode) {
                 ForEach(DealsViewModel.ListMode.allCases, id: \.self) { mode in
                     if mode == .archived && viewModel.archivedCount > 0 {
-                        Text("\(mode.rawValue) (\(viewModel.archivedCount))").tag(mode)
+                        Text("\(mode.label) (\(viewModel.archivedCount))").tag(mode)
                     } else {
-                        Text(mode.rawValue).tag(mode)
+                        Text(mode.label).tag(mode)
                     }
                 }
             }
@@ -94,7 +94,7 @@ struct DealsView: View {
             // Grouping Picker
             Picker("Group by", selection: $viewModel.groupBy) {
                 ForEach(DealsViewModel.GroupMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(mode)
+                    Text(mode.label).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
@@ -125,17 +125,24 @@ struct DealsView: View {
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     archiveSwipeButton(for: deal)
                                 }
+                                .listRowBackground(deal.primary.validityStatus == .upcoming
+                                                   ? Color.orange.opacity(0.08) : nil)
                         }
                     } header: {
                         HStack(spacing: 6) {
-                            if group.pinned {
-                                Image(systemName: "pin.fill")
+                            if let icon = headerIcon(for: group.kind) {
+                                Image(systemName: icon)
                                     .font(.caption)
-                                    .foregroundStyle(Color.accentColor)
+                                    .foregroundStyle(headerColor(for: group.kind))
                             }
                             Text(group.label)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(group.pinned ? Color.accentColor : .primary)
+                                .foregroundStyle(headerColor(for: group.kind))
+                            if let sub = group.sublabel {
+                                Text(sub)
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
                             Spacer()
                             Text("\(group.deals.count)")
                                 .font(.caption.weight(.medium))
@@ -174,7 +181,7 @@ struct DealsView: View {
         }
         .listStyle(.insetGrouped)
         .searchable(text: $viewModel.searchText, prompt: "Search deals...")
-        .refreshable {
+        .dataRefreshable {
             await viewModel.fetchUserStates()
             await viewModel.fetchDeals(forceRefresh: true)
             await viewModel.fetchNewDealKeys()
@@ -192,6 +199,28 @@ struct DealsView: View {
                 }
                 .disabled(viewModel.isLoading)
             }
+        }
+    }
+
+    // MARK: - Section header styling
+
+    private func headerIcon(for kind: DealsViewModel.DealGroup.Kind) -> String? {
+        switch kind {
+        case .pinned: return "pin.fill"
+        case .validNow: return "checkmark.circle.fill"
+        case .upcoming: return "calendar.badge.clock"
+        case .expired: return "xmark.circle"
+        case .plain: return nil
+        }
+    }
+
+    private func headerColor(for kind: DealsViewModel.DealGroup.Kind) -> Color {
+        switch kind {
+        case .pinned: return .accentColor
+        case .validNow: return .green
+        case .upcoming: return .orange
+        case .expired: return .secondary
+        case .plain: return .primary
         }
     }
 
@@ -302,7 +331,9 @@ struct DealsView: View {
             Image(systemName: viewModel.listMode == .archived ? "archivebox" : "magnifyingglass")
                 .font(.title)
                 .foregroundStyle(.secondary)
-            Text(viewModel.listMode == .archived ? "No archived deals" : "No deals found")
+            Text(viewModel.listMode == .archived
+                 ? String(localized: "No archived deals", comment: "Empty state title on the Deals screen when the Archived list has no items")
+                 : String(localized: "No deals found", comment: "Empty state title on the Deals screen when the Active list has no items"))
                 .font(.subheadline.weight(.medium))
             if !viewModel.searchText.isEmpty {
                 Text("Try a different search term.")

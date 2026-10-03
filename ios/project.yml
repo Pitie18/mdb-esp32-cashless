@@ -18,6 +18,10 @@ settings:
     CURRENT_PROJECT_VERSION: 1
     GENERATE_INFOPLIST_FILE: false
     INFOPLIST_FILE: VMflow/Resources/Info.plist
+    # Universal app: 1 = iPhone, 2 = iPad. Both targets ship universal so the
+    # app runs natively on iPad (NavigationSplitView sidebar) instead of the
+    # iPhone-compatibility scaler.
+    TARGETED_DEVICE_FAMILY: "1,2"
 
 packages:
   Supabase:
@@ -41,6 +45,8 @@ targets:
         script: |
           BUILD_NUM=$(git -C "${SRCROOT}/.." rev-list --count HEAD)
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" "${SRCROOT}/VMflow/Resources/Info.plist"
+          SHORT_VERSION="${MARKETING_VERSION}.$(date +%y%m%d)"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $SHORT_VERSION" "${SRCROOT}/VMflow/Resources/Info.plist"
         runOnlyWhenInstalling: false
         basedOnDependencyAnalysis: false
     dependencies:
@@ -67,5 +73,7 @@ targets:
         script: |
           BUILD_NUM=$(git -C "${SRCROOT}/.." rev-list --count HEAD)
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" "${SRCROOT}/NotificationService/Info.plist"
+          SHORT_VERSION="${MARKETING_VERSION}.$(date +%y%m%d)"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $SHORT_VERSION" "${SRCROOT}/NotificationService/Info.plist"
         runOnlyWhenInstalling: false
         basedOnDependencyAnalysis: false

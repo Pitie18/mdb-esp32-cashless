@@ -68,3 +68,52 @@ val StockRed = Color(0xFFF44336)
 
 val OnlineGreen = Color(0xFF4CAF50)
 val OfflineGray = Color(0xFF9E9E9E)
+
+// ─── Analysis slot tiers ────────────────────────────────────────────────────
+// Deliberately fixed, distinct hues rather than scheme roles. The brand
+// scheme's primary/secondary/tertiary sit close together, so deriving the five
+// tiers from them rendered as near-identical tones in dark mode — which defeats
+// the whole point of a grid you are meant to read at a glance. Each tier gets a
+// light- and a dark-surface variant so contrast holds in both themes.
+val TierStrongLight = Color(0xFF2E7D32)
+val TierStrongDark = Color(0xFF66BB6A)
+val TierOkLight = Color(0xFF0277BD)
+val TierOkDark = Color(0xFF4FC3F7)
+val TierTestingLight = Color(0xFF6A1B9A)
+val TierTestingDark = Color(0xFFBA68C8)
+val TierWeakLight = Color(0xFFEF6C00)
+val TierWeakDark = Color(0xFFFFB74D)
+val TierDeadLight = Color(0xFFC62828)
+val TierDeadDark = Color(0xFFEF5350)
+
+// ─── Refill review reasons ──────────────────────────────────────────────────
+// The four reasons a slot lands in the pre-tour review (`ReplacementReason`),
+// each in its own hue so the badges stay tellable apart at a glance — same
+// argument as the tier block above, and the same reason they are fixed tokens
+// rather than `primary`/`secondary`/`tertiary` roles (which collapse into
+// near-identical tones in this brand's dark scheme).
+//
+// The hues match iOS `ReviewStepView.badgeColor(for:)` (red / orange / purple
+// / blue). Deliberately *their own* constants rather than aliases of the tier
+// tokens above: the two palettes mean unrelated things (a product's sales
+// performance vs. why a slot needs attention), and re-tuning one must not
+// silently repaint the other.
+val ReasonDiscontinuedLight = Color(0xFFC62828)
+val ReasonDiscontinuedDark = Color(0xFFEF5350)
+val ReasonExpiredLight = Color(0xFFEF6C00)
+val ReasonExpiredDark = Color(0xFFFFB74D)
+val ReasonNoStockLight = Color(0xFF6A1B9A)
+val ReasonNoStockDark = Color(0xFFBA68C8)
+val ReasonUnassignedLight = Color(0xFF0277BD)
+val ReasonUnassignedDark = Color(0xFF4FC3F7)
+
+// ─── Deals: "not valid yet" ─────────────────────────────────────────────────
+// Amber, not blue: blue next to a green price read as "valid, go", which is
+// exactly the misreading this marker has to prevent (people drove to the store
+// for an offer that only started days later). Same hue family as the web's
+// amber badge and the iOS orange capsule. Container + content pairs per theme
+// so the text keeps its contrast.
+val DealUpcomingContainerLight = Color(0xFFFFE0B2)
+val DealUpcomingContentLight = Color(0xFF7A3E00)
+val DealUpcomingContainerDark = Color(0xFF5A3300)
+val DealUpcomingContentDark = Color(0xFFFFCC80)

@@ -6,6 +6,7 @@
     "location_lon": 11.576124,
     "embedded": "44444444-4444-4444-4444-444444444441",
     "country_code": "DE",
+    "linked_selections": false,
     "embeddeds": {
       "id": "44444444-4444-4444-4444-444444444441",
       "status": "online",
@@ -22,6 +23,7 @@
     "location_lon": 13.369545,
     "embedded": "44444444-4444-4444-4444-444444444442",
     "country_code": "DE",
+    "linked_selections": false,
     "embeddeds": {
       "id": "44444444-4444-4444-4444-444444444442",
       "status": "online",
@@ -38,6 +40,7 @@
     "location_lon": 9.992196,
     "embedded": "44444444-4444-4444-4444-444444444443",
     "country_code": "DE",
+    "linked_selections": false,
     "embeddeds": {
       "id": "44444444-4444-4444-4444-444444444443",
       "status": "offline",

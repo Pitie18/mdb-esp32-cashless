@@ -1,0 +1,304 @@
+// Pure helpers and types for the Analytics page.
+//
+// Everything that computes lives here rather than in components, so it is
+// testable under Vitest without a Nuxt runtime — same split as printSheet.ts.
+//
+// Types mirror the JSON contracts of get_sales_analytics_summary and
+// get_sales_analytics_breakdown (migrations 20260811010000 / 20260811010100).
+
+export type AnalyticsMetric = 'units' | 'revenue' | 'grossProfit'
+export type AnalyticsDimension = 'product' | 'category' | 'machine'
+export type RangePreset =
+  | 'days7' | 'days30' | 'days90'
+  | 'thisMonth' | 'lastMonth'
+  | 'thisYear' | 'lastYear'
+  | 'allTime' | 'custom'
+export type SortDirection = 'desc' | 'asc'
+
+export interface AnalyticsTotals {
+  units: number
+  revenue_gross: number
+  revenue_net: number
+  cost_net: number
+  gross_profit: number
+  avg_ticket: number
+  avg_daily_units: number
+  avg_daily_revenue: number
+  avg_daily_gross_profit: number
+}
+
+export interface AnalyticsDailyPoint {
+  /** `yyyy-MM-dd` in the requested timezone. */
+  day: string
+  units: number
+  revenue_gross: number
+  gross_profit: number
+}
+
+export interface AnalyticsHeatCell {
+  /** ISO weekday: 1 = Monday … 7 = Sunday. */
+  dow: number
+  hour: number
+  units: number
+  revenue_gross: number
+}
+
+export interface AnalyticsChannel {
+  channel: string
+  units: number
+  revenue_gross: number
+  avg_ticket: number
+}
+
+export interface AnalyticsSummary {
+  range: {
+    from: string
+    to: string
+    previous_from: string
+    previous_to: string
+    days: number
+    timezone: string
+  }
+  totals: AnalyticsTotals
+  previous: AnalyticsTotals
+  daily: AnalyticsDailyPoint[]
+  heatmap: AnalyticsHeatCell[]
+  channels: AnalyticsChannel[]
+  missing_cost_products: number
+  unknown_product_units: number
+}
+
+export interface BreakdownRow {
+  /** null for the aggregate "Unknown" row (unresolvable sales). */
+  key: string | null
+  label: string
+  image_path: string | null
+  units: number
+  revenue_gross: number
+  revenue_net: number
+  gross_profit: number
+  prev_units: number
+  prev_revenue_gross: number
+  prev_gross_profit: number
+  share_pct: number
+  cumulative_share_pct: number
+  abc_class: string
+  avg_daily_units: number
+  avg_daily_revenue: number
+  avg_daily_gross_profit: number
+  total_capacity: number
+  total_stock: number
+  sell_through_pct: number | null
+  days_of_supply: number | null
+  machine_count: number
+  product_count: number
+  has_cost: boolean
+}
+
+/**
+ * Percentage change against the previous period. Returns null on a zero
+ * baseline — "+∞ %" is not something a user can act on, so the UI shows nothing.
+ */
+export function deltaPct(current: number, previous: number): number | null {
+  if (!previous) return null
+  return ((current - previous) / Math.abs(previous)) * 100
+}
+
+/**
+ * Daily bars turn into hairlines past roughly two months, and weekly bars do
+ * the same past about a year — "all time" would otherwise be a solid block.
+ */
+export function chartBucket(days: number): 'day' | 'week' | 'month' {
+  if (days > 400) return 'month'
+  return days > 60 ? 'week' : 'day'
+}
+
+export function heatIntensity(units: number, max: number): number {
+  if (max <= 0) return 0
+  return Math.min(units / max, 1)
+}
+
+type MetricSource = Pick<BreakdownRow, 'units' | 'revenue_gross' | 'gross_profit'>
+
+export function metricValue(source: MetricSource, metric: AnalyticsMetric): number {
+  if (metric === 'units') return source.units
+  if (metric === 'revenue') return source.revenue_gross
+  return source.gross_profit
+}
+
+/** The same metric one period earlier — the basis for every delta shown. */
+export function prevMetricValue(row: BreakdownRow, metric: AnalyticsMetric): number {
+  if (metric === 'units') return row.prev_units
+  if (metric === 'revenue') return row.prev_revenue_gross
+  return row.prev_gross_profit
+}
+
+/** The row's average per day for the selected metric — the row subtitle. */
+export function avgDailyValue(row: BreakdownRow, metric: AnalyticsMetric): number {
+  if (metric === 'units') return row.avg_daily_units
+  if (metric === 'revenue') return row.avg_daily_revenue
+  return row.avg_daily_gross_profit
+}
+
+/**
+ * Sorts a copy by the selected metric. The RPC returns rows revenue-sorted;
+ * switching the metric or the direction reorders client-side rather than
+ * triggering another round trip.
+ *
+ * Ties always fall back to the label ascending, in both directions — a stable,
+ * readable order beats mirroring the tie-break along with the values.
+ */
+export function sortRows(
+  rows: BreakdownRow[],
+  metric: AnalyticsMetric,
+  direction: SortDirection = 'desc',
+): BreakdownRow[] {
+  const sign = direction === 'asc' ? -1 : 1
+  return [...rows].sort((a, b) => {
+    const diff = (metricValue(b, metric) - metricValue(a, metric)) * sign
+    if (diff !== 0) return diff
+    return a.label.localeCompare(b.label)
+  })
+}
+
+/**
+ * Each row's share of the window total for the selected metric, keyed the same
+ * way the list keys its rows.
+ *
+ * Deliberately not `share_pct` from the RPC: that one is always revenue-based
+ * because it backs the ABC class, so it would report revenue shares while the
+ * list is showing units. Returns an empty map when the total is zero or
+ * negative (possible for gross profit when purchase prices exceed sale
+ * prices), where a percentage would be meaningless rather than merely large.
+ */
+export function metricShares(
+  rows: BreakdownRow[],
+  metric: AnalyticsMetric,
+): Map<string, number> {
+  const total = rows.reduce((sum, row) => sum + metricValue(row, metric), 0)
+  if (total <= 0) return new Map()
+  return new Map(rows.map(row => [
+    row.key ?? row.label,
+    (metricValue(row, metric) / total) * 100,
+  ]))
+}
+
+function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+function addDays(d: Date, n: number): Date {
+  const copy = new Date(d)
+  copy.setDate(copy.getDate() + n)
+  return copy
+}
+
+/**
+ * Resolves a preset into a half-open `[from, to)` window as full ISO strings
+ * with offset. Never hand PostgREST a bare `yyyy-MM-ddT00:00:00` — it reads
+ * that as UTC while the UI renders local, which shifts the window by the
+ * local offset.
+ *
+ * `to` is the exclusive midnight after the last included day, because the RPC
+ * filters `created_at < p_to`.
+ */
+export function resolveRange(
+  preset: RangePreset,
+  customFrom: string,
+  customTo: string,
+  now: Date = new Date(),
+  /** Timestamp of the oldest sale, used as the start of "all time". */
+  earliest?: string | null,
+): { from: string; to: string } {
+  const today = startOfLocalDay(now)
+  const tomorrow = addDays(today, 1)
+
+  const iso = (d: Date) => d.toISOString()
+
+  switch (preset) {
+    case 'days7':
+      return { from: iso(addDays(today, -6)), to: iso(tomorrow) }
+    case 'days30':
+      return { from: iso(addDays(today, -29)), to: iso(tomorrow) }
+    case 'days90':
+      return { from: iso(addDays(today, -89)), to: iso(tomorrow) }
+    case 'thisMonth':
+      return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: iso(tomorrow) }
+    case 'lastMonth': {
+      const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      return { from: iso(lastMonth), to: iso(thisMonth) }
+    }
+    case 'thisYear':
+      return { from: iso(new Date(now.getFullYear(), 0, 1)), to: iso(tomorrow) }
+    case 'lastYear': {
+      const thisYear = new Date(now.getFullYear(), 0, 1)
+      return { from: iso(new Date(now.getFullYear() - 1, 0, 1)), to: iso(thisYear) }
+    }
+    case 'allTime': {
+      // Anchored on the oldest sale rather than a fixed early date: the RPC
+      // builds one row per day in the window, so a 1970 start would return
+      // ~20k empty buckets. Without any sales, fall back to the current year.
+      const start = earliest ? startOfLocalDay(new Date(earliest)) : new Date(now.getFullYear(), 0, 1)
+      if (Number.isNaN(start.getTime())) {
+        return { from: iso(new Date(now.getFullYear(), 0, 1)), to: iso(tomorrow) }
+      }
+      return { from: iso(start), to: iso(tomorrow) }
+    }
+    case 'custom': {
+      const a = startOfLocalDay(new Date(`${customFrom}T00:00:00`))
+      const b = startOfLocalDay(new Date(`${customTo}T00:00:00`))
+      // An unparseable custom range would throw inside toISOString() and take
+      // the whole page down. Fall back to the default window instead.
+      if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+        return resolveRange('days30', '', '', now)
+      }
+      const from = a <= b ? a : b
+      const lastDay = a <= b ? b : a
+      return { from: iso(from), to: iso(addDays(lastDay, 1)) }
+    }
+  }
+}
+
+/**
+ * Folds a gapless daily series into ISO weeks (Monday-anchored) when the
+ * window is long enough for weekly bars.
+ */
+export function bucketDaily(
+  points: AnalyticsDailyPoint[],
+  bucket: 'day' | 'week' | 'month',
+): AnalyticsDailyPoint[] {
+  if (bucket === 'day') return points
+
+  const byWeek = new Map<string, AnalyticsDailyPoint>()
+  for (const point of points) {
+    const date = new Date(`${point.day}T00:00:00`)
+    let anchor: Date
+    if (bucket === 'month') {
+      anchor = new Date(date.getFullYear(), date.getMonth(), 1)
+    } else {
+      // getDay(): 0 = Sunday. Shift so Monday anchors the week.
+      anchor = addDays(date, -((date.getDay() + 6) % 7))
+    }
+    const key = [
+      anchor.getFullYear(),
+      String(anchor.getMonth() + 1).padStart(2, '0'),
+      String(anchor.getDate()).padStart(2, '0'),
+    ].join('-')
+
+    const existing = byWeek.get(key)
+    if (existing) {
+      existing.units += point.units
+      existing.revenue_gross += point.revenue_gross
+      existing.gross_profit += point.gross_profit
+    } else {
+      byWeek.set(key, {
+        day: key,
+        units: point.units,
+        revenue_gross: point.revenue_gross,
+        gross_profit: point.gross_profit,
+      })
+    }
+  }
+  return [...byWeek.values()].sort((a, b) => a.day.localeCompare(b.day))
+}

@@ -4,7 +4,7 @@ definePageMeta({ middleware: 'auth' })
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { VisAxis, VisStackedBar, VisXYContainer } from '@unovis/vue'
-import { IconCreditCard, IconCoins, IconDeviceMobile, IconSend, IconSparkles, IconLoader2, IconRefresh, IconTrash, IconPlus, IconHistory, IconArrowUp, IconArrowDown, IconExternalLink } from '@tabler/icons-vue'
+import { IconCreditCard, IconCoins, IconDeviceMobile, IconSend, IconSparkles, IconLoader2, IconRefresh, IconTrash, IconPlus, IconHistory, IconArrowUp, IconArrowDown, IconExternalLink, IconAlertTriangle } from '@tabler/icons-vue'
 import { NuxtLink } from '#components'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
@@ -12,8 +12,13 @@ import { useInsights, sortedRecommendations, priorityVariant, recommendationType
 import { suppressedReasonParts, buildSalesFeedDays } from '~/composables/useSuppressedSales'
 import { useDeviceRestarts, reasonLabel, reasonVariant, formatUptime } from '@/composables/useDeviceRestarts'
 import { timeAgo, formatCurrency, formatDate, formatTime, formatDateTime } from '@/lib/utils'
+import { MAX_INTERNAL_ITEM_NUMBER, findInternalItemNumberConflict, findShadowingTray, parseInternalItemNumber } from '@/lib/trayInternalNumber'
 import MachineSettingsModal from '~/components/MachineSettingsModal.vue'
+import { usePosterFreshness } from '@/composables/usePosterFreshness'
 import MachineAnalysisPanel from '~/components/analysis/MachineAnalysisPanel.vue'
+import ProductGroupHeader from '~/components/machine/ProductGroupHeader.vue'
+import TrayStockGrid from '~/components/machine/TrayStockGrid.vue'
+import { buildTrayGroupIndex, productListRows } from '@/lib/trayGroups'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -86,6 +91,36 @@ const sortedTrays = computed(() => {
     }
     return dir * ((a.current_stock ?? 0) - (b.current_stock ?? 0))
   })
+})
+
+// Slots are judged per product (all slots of a product summed, see
+// lib/stock-health.ts). "By product" lists a product's slots together under a
+// summary header; "By slot" is the plain sortable list. Sorting a column
+// switches to "By slot".
+const trayGroupIndex = computed(() => buildTrayGroupIndex(trays.value, { linkedSelections: (machine.value as any)?.linked_selections === true }))
+const trayView = ref<'product' | 'slot'>('product')
+const selectedGridProductId = ref<string | null>(null)
+
+function sortTrays(key: 'slot' | 'product' | 'stock') {
+  trayView.value = 'slot'
+  toggleTraySort(key)
+}
+
+const trayRows = computed(() => {
+  if (trayView.value === 'slot') return sortedTrays.value.map(tray => ({ tray, header: undefined, inGroup: false }))
+  const visible = new Set(sortedTrays.value.map(t => t.id))
+  return productListRows(trays.value, trayGroupIndex.value, t => visible.has(t.id))
+})
+
+const stockGridTrays = computed(() => trays.value.map(tr => ({
+  ...tr,
+  image_url: trayProductMap.value.get(tr.item_number)?.image_url ?? null,
+})))
+
+const selectedGridProduct = computed(() => {
+  if (!selectedGridProductId.value) return null
+  const tray = trays.value.find(t => t.product_id === selectedGridProductId.value)
+  return tray ? trayGroupIndex.value.get(tray.id) ?? null : null
 })
 
 // Merged Sales feed: real sales + auto-removed (suppressed) rows, day-grouped.
@@ -196,7 +231,7 @@ const errorMsg = ref('')
 async function fetchMachine() {
   const { data, error } = await supabase
     .from('vendingMachine')
-    .select('id, name, location_lat, location_lon, embedded, country_code, public_listing, address_street, address_house_number, address_postal_code, address_city, formatted_address, nayax_machine_id, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, firmware_build_date, mdb_address, mdb_diagnostics, last_restart_reason, last_restart_at, online_since, softap_password)')
+    .select('id, name, location_lat, location_lon, embedded, country_code, public_listing, address_street, address_house_number, address_postal_code, address_city, formatted_address, nayax_machine_id, item_number_offset, linked_selections, embeddeds(id, status, status_at, subdomain, mac_address, firmware_version, firmware_build_date, mdb_address, mdb_diagnostics, last_restart_reason, last_restart_at, online_since, softap_password)')
     .eq('id', route.params.id)
     .single()
   if (error) {
@@ -460,6 +495,13 @@ async function saveNameEdit() {
 const showDeviceInfoModal = ref(false)
 const showMachineSettingsModal = ref(false)
 
+// Whether the printed sign on this machine still shows the current contact
+// data. Reloaded after the settings modal saves, since that is exactly where
+// the contact data changes.
+const posters = usePosterFreshness()
+const posterOutdated = computed(() => posters.isOutdated(route.params.id as string))
+onMounted(() => posters.load())
+
 // ── Device swap ─────────────────────────────────────────────────────────────
 const showDeviceModal = ref(false)
 const availableDevices = ref<any[]>([])
@@ -641,13 +683,29 @@ async function setMdbAddress(address: 1 | 2) {
 }
 
 // ── Tray management ─────────────────────────────────────────────────────────
-const trayModal = useModalForm({ item_number: 0, product_id: '' as string | null, capacity: 10, current_stock: 0 })
+const trayModal = useModalForm({ item_number: 0, internal_item_number: '' as number | string, product_id: '' as string | null, capacity: 10, current_stock: 0 })
 
 function openAddTray() {
   const maxSlot = trays.value.length > 0
     ? Math.max(...trays.value.map(t => t.item_number)) + 1
     : 0
-  trayModal.openModal({ item_number: maxSlot, product_id: '', capacity: 10, current_stock: 0 })
+  trayModal.openModal({ item_number: maxSlot, internal_item_number: '', product_id: '', capacity: 10, current_stock: 0 })
+}
+
+/**
+ * Parse and check an internal tray number for `trayId` (null for a tray that
+ * does not exist yet). `value: null` means "no mapping".
+ */
+function validateInternalItemNumber(trayId: string | null, input: string | number): { value: number | null } | { error: string } {
+  const value = parseInternalItemNumber(input)
+  if (value === 'invalid') {
+    return { error: t('machineDetail.internalSlotInvalid', { max: MAX_INTERNAL_ITEM_NUMBER }) }
+  }
+  const conflict = value === null ? undefined : findInternalItemNumberConflict(trays.value, trayId, value)
+  if (conflict) {
+    return { error: t('machineDetail.internalSlotTaken', { number: value, slot: conflict.item_number }) }
+  }
+  return { value }
 }
 
 async function submitTray() {
@@ -663,15 +721,69 @@ async function submitTray() {
     trayModal.error.value = t('machineDetail.stockCannotExceed')
     return
   }
+  // The upsert overwrites a tray that already has this slot number, so that
+  // tray must not count as a conflict with itself.
+  const existingTray = trays.value.find(tr => tr.item_number === trayModal.form.value.item_number)
+  const internal = validateInternalItemNumber(existingTray?.id ?? null, trayModal.form.value.internal_item_number)
+  if ('error' in internal) {
+    trayModal.error.value = internal.error
+    return
+  }
   await trayModal.submit(async () => {
     await upsertTray({
       machine_id: machine.value.id,
       item_number: trayModal.form.value.item_number,
+      // Left empty: don't send it, so re-adding an existing slot keeps its mapping.
+      ...(internal.value !== null ? { internal_item_number: internal.value } : {}),
       product_id: trayModal.form.value.product_id || null,
       capacity: trayModal.form.value.capacity,
       current_stock: trayModal.form.value.current_stock,
     })
   })
+}
+
+// ── Internal tray number (inline) ───────────────────────────────────────────
+// Error of the last rejected inline edit; shown under that tray's input.
+const internalSlotError = ref<{ trayId: string; message: string } | null>(null)
+
+async function saveInternalItemNumber(trayId: string, input: string) {
+  const tray = trays.value.find(tr => tr.id === trayId)
+  if (!tray) return
+  const internal = validateInternalItemNumber(trayId, input)
+  if ('error' in internal) {
+    internalSlotError.value = { trayId, message: internal.error }
+    return
+  }
+  internalSlotError.value = null
+  if (tray.internal_item_number === internal.value) return
+  try {
+    await updateTray(trayId, machine.value.id, { internal_item_number: internal.value })
+  } catch {
+    internalSlotError.value = { trayId, message: t('machineDetail.failedToSaveTray') }
+  }
+}
+
+function handleInternalSlotKeydown(event: KeyboardEvent, trayId: string) {
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    saveInternalItemNumber(trayId, (event.target as HTMLInputElement).value)
+    // Advance to the next row's internal number: mappings are typically
+    // entered for the whole machine in one go.
+    const idx = sortedTrays.value.findIndex(tr => tr.id === trayId)
+    const nextTray = sortedTrays.value[idx + 1]
+    if (nextTray) {
+      nextTick(() => {
+        const el = document.getElementById(`internal-slot-${nextTray.id}`) as HTMLInputElement | null
+        el?.focus()
+        el?.select()
+      })
+    } else {
+      (event.target as HTMLInputElement).blur()
+    }
+  }
+  if (event.key === 'Escape') {
+    (event.target as HTMLInputElement).blur()
+  }
 }
 
 // ── Inline tray editing ─────────────────────────────────────────────────────
@@ -966,15 +1078,17 @@ async function handleDeleteTray(trayId: string) {
 }
 
 // Summary computed
-const lowStockCount = computed(() =>
-  trays.value.filter(t => t.min_stock > 0 && t.current_stock <= t.min_stock).length
-)
-
-const fillBelowCount = computed(() =>
-  trays.value.filter(t =>
-    !isLowStock(t) && t.fill_when_below > 0 && t.current_stock <= t.fill_when_below && t.current_stock > 0
-  ).length
-)
+// Products (not slots) that need refill, split by severity.
+const productsNeedingRefill = computed(() => {
+  const seen = new Map<string, 'low' | 'fill'>()
+  for (const info of trayGroupIndex.value.values()) {
+    if (!info.needsRefill) continue
+    seen.set(info.group.product_id, info.group.state === 'fill' ? 'fill' : 'low')
+  }
+  return [...seen.values()]
+})
+const lowStockCount = computed(() => productsNeedingRefill.value.filter(s => s === 'low').length)
+const fillBelowCount = computed(() => productsNeedingRefill.value.filter(s => s === 'fill').length)
 
 // Packing list: group needed items by product for low-stock and fill-when-below trays, ordered by first slot appearance
 const packingList = computed(() => {
@@ -1008,12 +1122,18 @@ const packingList = computed(() => {
 
 const isRefillMode = computed(() => route.query.tab === 'stock')
 
+// Judged on the tray's product, so a low slot next to a full one of the same
+// product is not flagged (see lib/trayGroups.ts).
 function isLowStock(tray: any) {
-  return tray.min_stock > 0 && tray.current_stock <= tray.min_stock
+  return trayGroupIndex.value.get(tray.id)?.flag === 'low'
 }
 
 function isFillBelow(tray: any) {
-  return !isLowStock(tray) && tray.fill_when_below > 0 && tray.current_stock <= tray.fill_when_below && tray.current_stock > 0
+  return trayGroupIndex.value.get(tray.id)?.flag === 'fill'
+}
+
+function isEmptySlotWithStock(tray: any) {
+  return trayGroupIndex.value.get(tray.id)?.flag === 'slotEmpty'
 }
 
 function isHealthyInRefillMode(tray: any) {
@@ -1288,6 +1408,11 @@ async function handleAddSale() {
                     <DropdownMenuItem v-if="isAdmin" @click="showMachineSettingsModal = true">
                       {{ t('machineSettings.title') }}
                     </DropdownMenuItem>
+                    <DropdownMenuItem as-child>
+                      <NuxtLink :to="`/machines/${route.params.id}/print`">
+                        {{ t('machineDetail.printPoster') }}
+                      </NuxtLink>
+                    </DropdownMenuItem>
                     <DropdownMenuItem @click="showDeviceInfoModal = true">
                       {{ t('machineDetail.deviceDetails') }}
                     </DropdownMenuItem>
@@ -1318,11 +1443,29 @@ async function handleAddSale() {
                     <DropdownMenuItem @click="showMachineSettingsModal = true">
                       {{ t('machineSettings.title') }}
                     </DropdownMenuItem>
+                    <DropdownMenuItem as-child>
+                      <NuxtLink :to="`/machines/${route.params.id}/print`">
+                        {{ t('machineDetail.printPoster') }}
+                      </NuxtLink>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </template>
             </div>
           </div>
+
+          <!-- The sign on this machine shows contact data that has since changed -->
+          <NuxtLink
+            v-if="posterOutdated"
+            :to="`/machines/${route.params.id}/print`"
+            class="mb-4 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 transition-colors hover:bg-amber-500/20 dark:text-amber-400"
+          >
+            <IconAlertTriangle class="mt-0.5 size-4 shrink-0" />
+            <span>
+              <strong class="block">{{ t('machineDetail.posterOutdatedTitle') }}</strong>
+              {{ t('machineDetail.posterOutdatedBody') }}
+            </span>
+          </NuxtLink>
 
           <!-- Tabs: Sales | Trays & Stock | MDB -->
           <Tabs :default-value="defaultTab">
@@ -1501,14 +1644,69 @@ async function handleAddSale() {
               <div v-if="traysLoading" class="text-sm text-muted-foreground">{{ t('machineDetail.loadingTrays') }}</div>
               <div v-else-if="trays.length === 0" class="text-sm text-muted-foreground">{{ t('machineDetail.noTraysConfiguredDetail') }}</div>
               <template v-else>
-                <SearchInput v-model="traySearch" :placeholder="t('common.search') + '...'" class="max-w-xs mb-3" />
+                <div class="mb-4 rounded-lg border bg-card p-3">
+                  <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-sm font-medium">{{ t('machineDetail.stockMap') }}</h3>
+                    <div v-if="selectedGridProduct" class="flex items-center gap-2 text-xs">
+                      <span class="font-medium">
+                        {{ t('machineDetail.selectedProductSummary', {
+                          name: trays.find(tr => tr.product_id === selectedGridProductId)?.product_name ?? '',
+                          slots: t('machineDetail.groupSlots', { count: selectedGridProduct.group.trays.length }, selectedGridProduct.group.trays.length),
+                          stock: selectedGridProduct.group.current_stock,
+                          capacity: selectedGridProduct.group.capacity,
+                        }) }}
+                      </span>
+                      <button type="button" class="text-muted-foreground underline-offset-2 hover:underline" @click="selectedGridProductId = null">
+                        {{ t('machineDetail.clearSelection') }}
+                      </button>
+                    </div>
+                  </div>
+                  <TrayStockGrid
+                    :trays="stockGridTrays"
+                    :index="trayGroupIndex"
+                    :selected-product-id="selectedGridProductId"
+                    @select="(id) => (selectedGridProductId = id)"
+                  />
+                </div>
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                  <SearchInput v-model="traySearch" :placeholder="t('common.search') + '...'" class="max-w-xs" />
+                  <div class="inline-flex rounded-md border p-0.5 text-xs" role="group">
+                    <button
+                      type="button"
+                      class="rounded px-2.5 py-1 font-medium transition-colors"
+                      :class="trayView === 'product' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                      :aria-pressed="trayView === 'product'"
+                      @click="trayView = 'product'"
+                    >
+                      {{ t('machineDetail.viewByProduct') }}
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded px-2.5 py-1 font-medium transition-colors"
+                      :class="trayView === 'slot' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
+                      :aria-pressed="trayView === 'slot'"
+                      @click="trayView = 'slot'"
+                    >
+                      {{ t('machineDetail.viewBySlot') }}
+                    </button>
+                  </div>
+                </div>
                 <div v-if="sortedTrays.length === 0" class="text-sm text-muted-foreground">{{ t('common.noResults') }}</div>
                 <!-- ── Mobile card layout ── -->
                 <div class="space-y-3 md:hidden">
+                  <template v-for="{ tray, header, inGroup } in trayRows" :key="'m-' + tray.id">
+                  <div v-if="header" class="rounded-lg border bg-muted/30 p-3 pb-2.5" :class="selectedGridProductId === header.product_id ? 'ring-2 ring-primary' : ''">
+                    <ProductGroupHeader
+                      :group="header"
+                      :name="tray.product_name ?? '—'"
+                      :image-url="trayProductMap.get(tray.item_number)?.image_url ?? null"
+                      :needs-refill="trayGroupIndex.get(tray.id)?.needsRefill ?? false"
+                      :show-empty-slots="machine?.linked_selections !== true"
+                    />
+                  </div>
                   <SwipeRight
-                    v-for="tray in sortedTrays"
-                    :key="'m-' + tray.id"
                     :label="t('machineDetail.stockHistory')"
+                    :class="inGroup ? 'ml-4' : ''"
                     @action="openStockHistory(tray)"
                   >
                     <template #icon>
@@ -1521,6 +1719,7 @@ async function handleAddSale() {
                         : isFillBelow(tray) && lowStockCount > 0 ? 'border-blue-300 bg-blue-50/40 dark:border-blue-700 dark:bg-blue-950/10'
                         : 'bg-card',
                       isHealthyInRefillMode(tray) ? 'opacity-40' : '',
+                      selectedGridProductId && tray.product_id === selectedGridProductId ? 'ring-2 ring-primary' : '',
                     ]"
                   >
                     <!-- Row 1: image + slot + product + actions -->
@@ -1682,6 +1881,7 @@ async function handleAddSale() {
                           class="inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-muted active:bg-muted/80"
                           @click="expandedMobileTray = expandedMobileTray === tray.id ? null : tray.id"
                         >
+                          <span v-if="tray.internal_item_number != null">{{ t('machineDetail.internalSlot') }}: {{ tray.internal_item_number }}</span>
                           <span v-if="tray.min_stock">{{ t('machineDetail.min') }}: {{ tray.min_stock }}</span>
                           <span v-if="tray.fill_when_below">{{ t('machineDetail.fill') }}: {{ tray.fill_when_below }}</span>
                           <span v-if="!tray.min_stock && !tray.fill_when_below" class="italic">{{ t('machineDetail.setThresholds') }}</span>
@@ -1691,6 +1891,7 @@ async function handleAddSale() {
                           ><polyline points="6 9 12 15 18 9" /></svg>
                         </button>
                         <template v-else>
+                          <span v-if="tray.internal_item_number != null">{{ t('machineDetail.internalSlot') }}: {{ tray.internal_item_number }}</span>
                           <span v-if="tray.min_stock">{{ t('machineDetail.min') }}: {{ tray.min_stock }}</span>
                           <span v-if="tray.fill_when_below">{{ t('machineDetail.fill') }}: {{ tray.fill_when_below }}</span>
                         </template>
@@ -1708,11 +1909,26 @@ async function handleAddSale() {
                         </span>
                       </div>
                     </div>
+                    <p v-if="isEmptySlotWithStock(tray)" class="mt-1 text-xs text-muted-foreground">
+                      {{ t('machineDetail.slotEmptyElsewhere') }}
+                    </p>
                     <!-- Expandable thresholds row (mobile, admin only) -->
                     <div
                       v-if="isAdmin && expandedMobileTray === tray.id"
-                      class="mt-2 flex items-center gap-4 rounded-md bg-muted/50 px-3 py-2"
+                      class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md bg-muted/50 px-3 py-2"
                     >
+                      <label class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        {{ t('machineDetail.internalSlot') }}
+                        <input
+                          type="number"
+                          :value="tray.internal_item_number ?? ''"
+                          min="0"
+                          :max="MAX_INTERNAL_ITEM_NUMBER"
+                          placeholder="—"
+                          class="h-7 w-16 rounded border border-input bg-background px-1.5 text-center font-mono text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          @change="(e: Event) => saveInternalItemNumber(tray.id, (e.target as HTMLInputElement).value)"
+                        />
+                      </label>
                       <label class="flex items-center gap-1.5 text-xs text-muted-foreground">
                         {{ t('machineDetail.min') }}
                         <input
@@ -1735,9 +1951,16 @@ async function handleAddSale() {
                           @change="(e: Event) => saveInlineField(tray.id, 'fill_when_below', parseInt((e.target as HTMLInputElement).value) || 0)"
                         />
                       </label>
+                      <p v-if="internalSlotError?.trayId === tray.id" class="w-full text-[10px] leading-tight text-destructive">
+                        {{ internalSlotError.message }}
+                      </p>
+                      <p v-else-if="findShadowingTray(trays, tray)" class="w-full text-[10px] leading-tight text-amber-600 dark:text-amber-400">
+                        {{ t('machineDetail.internalSlotShadowed', { number: tray.item_number, slot: findShadowingTray(trays, tray)!.item_number }) }}
+                      </p>
                     </div>
                   </div>
                   </SwipeRight>
+                  </template>
                 </div>
 
                 <!-- ── Desktop table layout ── -->
@@ -1745,13 +1968,28 @@ async function handleAddSale() {
                   <table class="w-full text-sm">
                     <thead>
                       <tr class="border-b bg-muted/50 text-left">
-                        <th class="w-20 px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="toggleTraySort('slot')">
+                        <th class="w-20 px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="sortTrays('slot')">
                           <SortHeader :icon="traySortIcon('slot')">{{ t('machineDetail.slot') }}</SortHeader>
                         </th>
-                        <th class="px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="toggleTraySort('product')">
+                        <th class="w-24 px-4 py-3 font-medium">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger as-child>
+                                <span class="inline-flex cursor-help items-center gap-1">
+                                  {{ t('machineDetail.internalSlot') }}
+                                  <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-muted-foreground/20 text-[9px] font-semibold leading-none text-muted-foreground">i</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p class="max-w-56">{{ t('machineDetail.internalSlotTooltip') }}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </th>
+                        <th class="px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="sortTrays('product')">
                           <SortHeader :icon="traySortIcon('product')">{{ t('machineDetail.product') }}</SortHeader>
                         </th>
-                        <th class="w-36 px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="toggleTraySort('stock')">
+                        <th class="w-36 px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="sortTrays('stock')">
                           <SortHeader :icon="traySortIcon('stock')">{{ t('machineDetail.stock') }}</SortHeader>
                         </th>
                         <th class="w-16 px-4 py-3 font-medium">
@@ -1789,11 +2027,23 @@ async function handleAddSale() {
                       </tr>
                     </thead>
                     <tbody>
+                      <template v-for="{ tray, header, inGroup } in trayRows" :key="tray.id">
+                      <tr v-if="header" class="border-b bg-muted/30" :class="selectedGridProductId === header.product_id ? 'outline outline-2 -outline-offset-2 outline-primary' : ''">
+                        <td :colspan="isAdmin ? 8 : 7" class="px-4 py-2.5">
+                          <ProductGroupHeader
+                            :group="header"
+                            :name="tray.product_name ?? '—'"
+                            :image-url="trayProductMap.get(tray.item_number)?.image_url ?? null"
+                            :needs-refill="trayGroupIndex.get(tray.id)?.needsRefill ?? false"
+                      :show-empty-slots="machine?.linked_selections !== true"
+                          />
+                        </td>
+                      </tr>
                       <tr
-                        v-for="tray in sortedTrays"
-                        :key="tray.id"
                         class="border-b last:border-0 transition-colors"
                         :class="[
+                          inGroup ? 'border-l-4 border-l-primary/30' : '',
+                          selectedGridProductId && tray.product_id === selectedGridProductId ? 'bg-primary/5' : '',
                           isLowStock(tray) ? 'bg-amber-50/60 hover:bg-amber-100/60 dark:bg-amber-950/20 dark:hover:bg-amber-950/40'
                             : isFillBelow(tray) && lowStockCount > 0 ? 'bg-blue-50/40 hover:bg-blue-100/40 dark:bg-blue-950/10 dark:hover:bg-blue-950/20'
                             : 'hover:bg-muted/30',
@@ -1806,6 +2056,30 @@ async function handleAddSale() {
                           <span v-if="trayProductMap.get(tray.item_number)?.sellprice" class="ml-1 text-xs text-muted-foreground">
                             {{ formatCurrency(trayProductMap.get(tray.item_number)!.sellprice!, locale) }}
                           </span>
+                        </td>
+
+                        <!-- Internal tray number: what the machine reports for this slot (empty = same as the slot) -->
+                        <td class="px-4 py-2">
+                          <input
+                            v-if="isAdmin"
+                            :id="`internal-slot-${tray.id}`"
+                            type="number"
+                            :value="tray.internal_item_number ?? ''"
+                            min="0"
+                            :max="MAX_INTERNAL_ITEM_NUMBER"
+                            placeholder="—"
+                            :aria-label="t('machineDetail.internalSlot')"
+                            class="h-7 w-16 rounded border border-transparent bg-transparent px-1 text-center font-mono text-sm placeholder:text-muted-foreground hover:border-input focus:border-input focus:bg-background focus:shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            @change="(e: Event) => saveInternalItemNumber(tray.id, (e.target as HTMLInputElement).value)"
+                            @keydown="(e: KeyboardEvent) => handleInternalSlotKeydown(e, tray.id)"
+                          />
+                          <span v-else class="font-mono text-muted-foreground">{{ tray.internal_item_number ?? '—' }}</span>
+                          <p v-if="internalSlotError?.trayId === tray.id" class="mt-0.5 max-w-40 text-[10px] leading-tight text-destructive">
+                            {{ internalSlotError.message }}
+                          </p>
+                          <p v-else-if="findShadowingTray(trays, tray)" class="mt-0.5 max-w-40 text-[10px] leading-tight text-amber-600 dark:text-amber-400">
+                            {{ t('machineDetail.internalSlotShadowed', { number: tray.item_number, slot: findShadowingTray(trays, tray)!.item_number }) }}
+                          </p>
                         </td>
 
                         <!-- Product (inline autocomplete for admins) -->
@@ -1939,6 +2213,9 @@ async function handleAddSale() {
                               -{{ trayDeficit(tray) }}
                             </span>
                           </div>
+                          <p v-if="isEmptySlotWithStock(tray)" class="mt-0.5 text-[11px] leading-tight text-muted-foreground">
+                            {{ t('machineDetail.slotEmptyElsewhere') }}
+                          </p>
                         </td>
 
                         <!-- Min stock threshold -->
@@ -2027,6 +2304,7 @@ async function handleAddSale() {
                           </div>
                         </td>
                       </tr>
+                      </template>
                     </tbody>
                   </table>
                 </div>
@@ -2095,6 +2373,37 @@ async function handleAddSale() {
                       <p class="mt-1 text-sm font-mono truncate">{{ machine.embeddeds.mdb_diagnostics.lastCmd }}</p>
                     </div>
                   </div>
+                  <!-- RFID reader: the firmware only sends this block once a reader
+                       is attached, so boards without one look exactly as before. -->
+                  <div v-if="machine.embeddeds.mdb_diagnostics.rfid" class="mt-4 border-t pt-3">
+                    <p class="text-xs text-muted-foreground uppercase tracking-wide">{{ t('machineDetail.rfidReader') }}</p>
+                    <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                      <span>{{ t('machineDetail.rfidCards') }}: <span class="font-medium">{{ machine.embeddeds.mdb_diagnostics.rfid.cards ?? 0 }}</span></span>
+                      <span>{{ t('machineDetail.rfidFrames') }}: <span class="font-medium">{{ machine.embeddeds.mdb_diagnostics.rfid.ok ?? 0 }}</span></span>
+                      <span :class="machine.embeddeds.mdb_diagnostics.rfid.bad ? 'text-red-500' : ''">
+                        {{ t('machineDetail.rfidBad') }}: <span class="font-medium">{{ machine.embeddeds.mdb_diagnostics.rfid.bad ?? 0 }}</span>
+                      </span>
+                      <span>{{ t('machineDetail.rfidRepeats') }}: <span class="font-medium">{{ machine.embeddeds.mdb_diagnostics.rfid.dup ?? 0 }}</span></span>
+                      <span v-if="machine.embeddeds.mdb_diagnostics.rfid.rx != null">
+                        {{ t('machineDetail.rfidBytes') }}: <span class="font-medium">{{ machine.embeddeds.mdb_diagnostics.rfid.rx }}</span>
+                      </span>
+                    </div>
+                    <!-- The two failure modes a counter can actually tell apart:
+                         a silent line, and a line that talks another dialect. -->
+                    <p
+                      v-if="machine.embeddeds.mdb_diagnostics.rfid.rx === 0"
+                      class="mt-2 text-xs text-amber-600 dark:text-amber-500"
+                    >
+                      {{ t('machineDetail.rfidNoBytes') }}
+                    </p>
+                    <p
+                      v-else-if="machine.embeddeds.mdb_diagnostics.rfid.rx > 0 && !machine.embeddeds.mdb_diagnostics.rfid.ok"
+                      class="mt-2 text-xs text-amber-600 dark:text-amber-500"
+                    >
+                      {{ t('machineDetail.rfidNoFrames') }}
+                    </p>
+                  </div>
+
                   <p class="mt-3 text-xs text-muted-foreground">
                     Updated {{ timeAgo(machine.embeddeds.mdb_diagnostics.updated_at, t) }}
                   </p>
@@ -2553,7 +2862,7 @@ async function handleAddSale() {
               >
                 <option value="" disabled>{{ t('machineDetail.selectADevice') }}</option>
                 <option v-for="d in availableDevices" :key="d.id" :value="d.id">
-                  {{ d.mac_address ?? 'Unknown MAC' }} — subdomain {{ d.subdomain }} ({{ d.status }}{{ d.firmware_version ? `, v${d.firmware_version}` : '' }})
+                  {{ d.name ? d.name + ' — ' : '' }}{{ d.mac_address ?? 'Unknown MAC' }} — subdomain {{ d.subdomain }} ({{ d.status }}{{ d.firmware_version ? `, v${d.firmware_version}` : '' }})
                 </option>
               </select>
               <p v-if="availableDevices.length === 0" class="text-xs text-muted-foreground">{{ t('machineDetail.noUnassignedDevices') }}</p>
@@ -2592,6 +2901,19 @@ async function handleAddSale() {
                 required
                 class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
+            </div>
+            <div class="space-y-1">
+              <label class="text-sm font-medium" for="tray-internal-slot">{{ t('machineDetail.internalSlotLabel') }}</label>
+              <input
+                id="tray-internal-slot"
+                v-model="trayModal.form.value.internal_item_number"
+                type="number"
+                min="0"
+                :max="MAX_INTERNAL_ITEM_NUMBER"
+                :placeholder="t('machineDetail.internalSlotPlaceholder')"
+                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              <p class="text-xs text-muted-foreground">{{ t('machineDetail.internalSlotHint') }}</p>
             </div>
             <div class="space-y-1">
               <label class="text-sm font-medium">{{ t('machineDetail.product') }}</label>
@@ -3064,8 +3386,10 @@ async function handleAddSale() {
           formatted_address: (machine as any).formatted_address ?? null,
           country_code: machine.country_code,
           nayax_machine_id: (machine as any).nayax_machine_id ?? null,
+          item_number_offset: (machine as any).item_number_offset ?? 0,
+          linked_selections: (machine as any).linked_selections ?? false,
         }"
-        @saved="fetchMachine"
+        @saved="() => { fetchMachine(); posters.load() }"
       />
 
       <SoftApCredentialsModal

@@ -131,7 +131,7 @@ export function useWarehouse() {
   const batches = ref<StockBatch[]>([])
   const transactions = ref<WarehouseTransaction[]>([])
   const productSummaries = ref<WarehouseProductSummary[]>([])
-  const barcodes = ref<ProductBarcode[]>([])
+  const barcodes = useState<ProductBarcode[]>('warehouse-barcodes', () => [])
   const minStocks = ref<MinStockEntry[]>([])
   const positions = ref<WarehouseProductPosition[]>([])
   const groups = ref<WarehousePositionGroup[]>([])

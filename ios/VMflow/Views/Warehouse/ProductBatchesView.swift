@@ -43,7 +43,7 @@ struct ProductBatchesView: View {
         .task {
             await viewModel.loadBatchesForProduct(productId)
         }
-        .refreshable {
+        .dataRefreshable {
             await viewModel.loadBatchesForProduct(productId)
         }
         .sheet(item: $selectedBatch) { batch in

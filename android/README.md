@@ -8,6 +8,7 @@ Native Android companion app for vending machine operators. Built with Kotlin + 
 - **Machine Management** — Browse machines sorted by stock urgency, view per-machine details (overview, trays, sales history)
 - **Tray Configuration** — Full CRUD for machine tray slots: add single/batch, edit, delete, quick stock adjustments
 - **Refill Wizard** — Multi-step guided refill tour (pack, refill per machine, summary) optimized for one-handed field use
+- **Deals** — Retailer offers matching your products (from the dashboard banner or the top-bar tag icon): grouped by validity so offers that only start later are clearly marked ("valid from Mon, 28.09."), plus pin/archive, NEW markers and a purchase-price (EK) comparison
 
 ## Setup
 
@@ -34,6 +35,23 @@ Supabase URL and anon key are injected via `BuildConfig` fields defined in `app/
 ```bash
 ./gradlew assembleRelease -PSUPABASE_URL=https://your-instance.supabase.co -PSUPABASE_ANON_KEY=your-key
 ```
+
+## Releasing to Google Play
+
+Releases go out through GitHub Actions → **Android Release**, which runs the
+fastlane lanes in `fastlane/Fastfile`: `internal` (internal testing track),
+`release` (production, with auto-generated release notes), `promote` (move the
+tested build to production without rebuilding), `metadata` (store listing only)
+and `release_notes` (dry run).
+
+The one-time account, keystore and service-account setup — and the fact that
+Play requires the very first upload to go through the console by hand — is in
+[docs/android/play-console-setup.md](../docs/android/play-console-setup.md).
+
+Do not upload from your machine: `versionCode` is derived from the build date
+plus the day's commit count, and a local upload burns a number CI cannot reuse.
+Local release builds come out unsigned on purpose when the keystore env vars
+are absent.
 
 ## Architecture
 

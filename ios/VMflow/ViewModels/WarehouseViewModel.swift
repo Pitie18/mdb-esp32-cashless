@@ -20,9 +20,19 @@ final class WarehouseViewModel: ObservableObject {
     @Published var searchText = ""
 
     // Stock list filters (parity with management frontend)
+    /// When false (the default), zero-stock products are hidden **unless the
+    /// product still sits in a machine slot** — there a zero warehouse stock is
+    /// the actionable signal (the slot needs refilling and there is nothing to
+    /// refill it with). Zero-stock products in no machine are catalogue noise
+    /// and stay hidden until this is switched on.
     @Published var includeOutOfStock = false
     @Published var includeArchived = false
+    /// Product IDs assigned to at least one `machine_trays` slot, company-wide
+    /// (RLS scopes it). Drives the out-of-stock exemption above.
+    @Published var assignedProductIds: Set<UUID> = []
     @Published var expirationFilter: ExpirationFilterOption = .all
+    /// Shortest stock reach first instead of alphabetical (products without sales last).
+    @Published var sortByReach = false
 
     /// Filter options for the stock list's expiration severity.
     enum ExpirationFilterOption: String, CaseIterable, Identifiable {
@@ -30,16 +40,16 @@ final class WarehouseViewModel: ObservableObject {
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .all: return "All"
-            case .expiringSoon: return "Expiring soon"
-            case .critical: return "Critical / expired"
+            case .all: return String(localized: "All")
+            case .expiringSoon: return String(localized: "Expiring soon")
+            case .critical: return String(localized: "Critical / expired")
             }
         }
     }
 
-    /// True when any filter deviates from the default (active in-stock) view.
+    /// True when any filter deviates from the default view.
     var hasActiveFilters: Bool {
-        includeOutOfStock || includeArchived || expirationFilter != .all
+        includeOutOfStock || includeArchived || expirationFilter != .all || sortByReach
     }
 
     // Intake form state
@@ -63,8 +73,10 @@ final class WarehouseViewModel: ObservableObject {
 
     // MARK: - Computed
 
-    /// Product summaries after search + filters, sorted: archived last, then
-    /// out of stock first, then low, then by name.
+    /// Product summaries after search + filters, sorted by name (web parity) —
+    /// or, with `sortByReach`, shortest stock reach first. Stock level deliberately does NOT influence the order — a
+    /// zero-stock product sits where its name puts it and is identified by its
+    /// red quantity + "Out of Stock" badge instead of by position.
     var filteredSummaries: [WarehouseProductSummary] {
         var items = productSummaries
 
@@ -76,7 +88,7 @@ final class WarehouseViewModel: ObservableObject {
             items = items.filter { !$0.discontinued }
         }
         if !includeOutOfStock {
-            items = items.filter { !$0.isOutOfStock }
+            items = items.filter { !$0.isOutOfStock || assignedProductIds.contains($0.productId) }
         }
         switch expirationFilter {
         case .all:
@@ -88,9 +100,11 @@ final class WarehouseViewModel: ObservableObject {
         }
 
         return items.sorted { lhs, rhs in
-            if lhs.discontinued != rhs.discontinued { return !lhs.discontinued }
-            if lhs.isOutOfStock != rhs.isOutOfStock { return lhs.isOutOfStock }
-            if lhs.isLow != rhs.isLow { return lhs.isLow }
+            if sortByReach {
+                let l = lhs.daysRemaining ?? Int.max
+                let r = rhs.daysRemaining ?? Int.max
+                if l != r { return l < r }
+            }
             return lhs.productName.localizedCaseInsensitiveCompare(rhs.productName) == .orderedAscending
         }
     }
@@ -169,7 +183,10 @@ final class WarehouseViewModel: ObservableObject {
                 .execute()
                 .value
 
+            async let velocityRes = loadVelocity(warehouseId: warehouseId)
+
             let (productRows, batchRows) = try await (productsRes, batchesRes)
+            let velocity = await velocityRes
 
             // Aggregate batches per product
             var stock: [UUID: (total: Int, count: Int, earliest: String?)] = [:]
@@ -198,9 +215,92 @@ final class WarehouseViewModel: ObservableObject {
                     batchCount: s?.count ?? 0,
                     earliestExpiration: s?.earliest,
                     discontinued: p.discontinued ?? false,
-                    expirationStatus: WarehouseProductSummary.expirationStatus(for: s?.earliest)
+                    expirationStatus: WarehouseProductSummary.expirationStatus(for: s?.earliest),
+                    avgDailySales: velocity[p.id] ?? 0
                 )
             }
+        } catch is CancellationError {
+            // Ignore — SwiftUI cancels refreshable tasks routinely
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    // MARK: - Load Sales Velocity
+
+    /// Fleet-wide avg units sold per day, keyed by product, over the company's
+    /// `velocity_days` window (default 30 — the setting the web warehouse page
+    /// uses). Best-effort like on the web: a failure yields an empty map, so
+    /// the list still loads, just without reach.
+    private func loadVelocity(warehouseId: UUID) async -> [UUID: Double] {
+        guard let companyId = warehouses.first(where: { $0.id == warehouseId })?.companyId else { return [:] }
+
+        struct CompanyRow: Decodable {
+            let velocityDays: Int?
+            enum CodingKeys: String, CodingKey { case velocityDays = "velocity_days" }
+        }
+        struct VelocityRow: Decodable {
+            let productId: UUID
+            let avgDailyUnits: Double
+
+            enum CodingKeys: String, CodingKey {
+                case productId = "product_id", avgDailyUnits = "avg_daily_units"
+            }
+
+            // `numeric` arrives as number or string depending on PostgREST version.
+            init(from decoder: Decoder) throws {
+                let c = try decoder.container(keyedBy: CodingKeys.self)
+                productId = try c.decode(UUID.self, forKey: .productId)
+                if let d = (try? c.decodeIfPresent(Double.self, forKey: .avgDailyUnits)) ?? nil {
+                    avgDailyUnits = d
+                } else if let s = (try? c.decodeIfPresent(String.self, forKey: .avgDailyUnits)) ?? nil, let d = Double(s) {
+                    avgDailyUnits = d
+                } else {
+                    avgDailyUnits = 0
+                }
+            }
+        }
+
+        let company: [CompanyRow]? = try? await client
+            .from("companies")
+            .select("velocity_days")
+            .eq("id", value: companyId.uuidString)
+            .execute()
+            .value
+        let days = company?.first?.velocityDays ?? 30
+
+        guard let rows: [VelocityRow] = try? await client.rpc("get_product_sales_velocity", params: [
+            "p_company_id": AnyJSON.string(companyId.uuidString),
+            "p_days": AnyJSON.integer(days),
+        ]).execute().value else { return [:] }
+
+        var velocity: [UUID: Double] = [:]
+        for row in rows where row.avgDailyUnits > 0 {
+            velocity[row.productId] = row.avgDailyUnits
+        }
+        return velocity
+    }
+
+    // MARK: - Load Machine Assignments
+
+    /// Loads the set of products that currently occupy at least one machine
+    /// slot. Warehouse-independent (a product is "in use" no matter which
+    /// warehouse supplies it), so this is not reloaded on warehouse switch.
+    func loadAssignedProductIds() async {
+        do {
+            struct TrayProduct: Decodable {
+                let productId: UUID?
+                enum CodingKeys: String, CodingKey { case productId = "product_id" }
+            }
+
+            let rows: [TrayProduct] = try await client
+                .from("machine_trays")
+                .select("product_id")
+                .not("product_id", operator: .is, value: "null")
+                .execute()
+                .value
+
+            assignedProductIds = Set(rows.compactMap(\.productId))
         } catch is CancellationError {
             // Ignore — SwiftUI cancels refreshable tasks routinely
         } catch {
@@ -379,8 +479,9 @@ final class WarehouseViewModel: ObservableObject {
         async let intakesTask: () = loadRecentIntakes()
         async let productsTask: () = loadProducts()
         async let suppliersTask: () = loadSuppliersForIntake()
+        async let assignmentsTask: () = loadAssignedProductIds()
 
-        _ = await (summariesTask, intakesTask, productsTask, suppliersTask)
+        _ = await (summariesTask, intakesTask, productsTask, suppliersTask, assignmentsTask)
 
         isLoading = false
     }
