@@ -110,6 +110,21 @@ unmatched buffer rows dropped. This keeps the buffer's benefit (no false missing
 at the edges → no duplicate imports) without letting a buffer row displace a real
 in-range sale.
 
+**Pass 3 — order-swap leftovers (added 2026-10-05).** The LCS is order-only, so
+two neighbouring sales whose order differs between Nayax and the DB can only align
+one of them; the other used to surface as a `missingInDb` + `ghostInDb` pair on the
+same slot. In practice this happens whenever the device clock drifts against Nayax,
+and especially after an import: an imported sale carries the Nayax time and lands
+among device-timestamped neighbours in a different order. Deleting the ghost and
+importing the gap then recreated the same swap, so the operator could never clear
+the difference. Pass 3 (`pairLeftoversByTime`) therefore pairs the residual Nayax
+rows (after Pass 2) with the Pass-1 phantom candidates when their effective slot is
+equal and `|Δt| ≤ LEFTOVER_PAIR_WINDOW_SECONDS` (15 min), greedily, closest pair
+first. Only rows still unpaired after Pass 3 are reported as `missingInDb` /
+`ghostInDb`. Known tradeoff: a genuine gap and a genuine phantom on the same slot
+within 15 minutes of each other are now paired instead of reported — far rarer
+than the swap it fixes.
+
 The buffer is a **local computation inside `loadDbSales`** applied only to the
 Supabase `.gte` / `.lte` query bounds. It must **not** mutate `settings.fromUtc` /
 `settings.toUtc` — those remain the strict range used by `runMatch`'s ghost filter
@@ -232,9 +247,12 @@ cases:
 5. **Repeated slot** (same product vended twice) → both align correctly; one missing
    when the DB only has one of them.
 6. **Price differs, slot matches** → `matched` with `priceDiffers === true`.
-7. **Adjacent order swap** → documents the accepted behavior (1 missing + 1 ghost).
-   Fixture uses two genuinely distinct `item_number`s so the LCS can't absorb the
-   swap via another equal-key path.
+7. **Adjacent order swap** → resolved by Pass 3: both pairs matched, zero missing,
+   zero ghosts. Fixture uses two genuinely distinct `item_number`s so the LCS can't
+   absorb the swap via another equal-key path. (Originally documented as the
+   accepted 1 missing + 1 ghost; changed 2026-10-05, see Pass 3.) Companion cases:
+   an imported row next to a drifted device row (the 2026-09-08 field case) pairs,
+   and a same-slot gap + phantom beyond the 15-min window stays reported.
 8. **Per-machine independence** → identical slot sequences on two different VMs do
    not cross-align.
 9. **Boundary buffer** → a DB sale just outside `[fromUtc,toUtc]` but within the
