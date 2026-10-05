@@ -208,6 +208,51 @@ export function alignMachine(
 }
 
 /**
+ * Max |Δt| for `runMatch`'s leftover pass: a gap and a phantom on the same slot
+ * closer than this are treated as the same sale. Generous enough for observed
+ * device clock drift (minutes), small enough that two distinct sales of the
+ * same slot are rarely merged.
+ */
+export const LEFTOVER_PAIR_WINDOW_SECONDS = 15 * 60
+
+/**
+ * Pair LCS leftovers: Nayax rows (`aRows`, keyed by `aKeys`) with DB rows of
+ * the same item number whose timestamps are within `windowSeconds`. Greedy,
+ * closest pairs first, each row used at most once. Returns indices into the
+ * inputs; `aOnly`/`bOnly` keep input order.
+ */
+export function pairLeftoversByTime(
+  aRows: NayaxRow[],
+  aKeys: number[],
+  bRows: DbSale[],
+  windowSeconds: number,
+): { pairs: Array<[number, number]>; aOnly: number[]; bOnly: number[] } {
+  const candidates: Array<{ ai: number; bi: number; d: number }> = []
+  for (let ai = 0; ai < aRows.length; ai++) {
+    const ta = Date.parse(aRows[ai]!.utcDt)
+    for (let bi = 0; bi < bRows.length; bi++) {
+      if (bRows[bi]!.item_number !== aKeys[ai]) continue
+      const d = Math.abs(Date.parse(bRows[bi]!.created_at) - ta) / 1000
+      if (d <= windowSeconds) candidates.push({ ai, bi, d })
+    }
+  }
+  candidates.sort((x, y) => x.d - y.d || x.ai - y.ai || x.bi - y.bi)
+  const usedA = new Set<number>()
+  const usedB = new Set<number>()
+  const pairs: Array<[number, number]> = []
+  for (const c of candidates) {
+    if (usedA.has(c.ai) || usedB.has(c.bi)) continue
+    usedA.add(c.ai); usedB.add(c.bi)
+    pairs.push([c.ai, c.bi])
+  }
+  return {
+    pairs,
+    aOnly: aRows.map((_, i) => i).filter(i => !usedA.has(i)),
+    bOnly: bRows.map((_, i) => i).filter(i => !usedB.has(i)),
+  }
+}
+
+/**
  * Widen an ISO date range by `seconds` on both ends, for the DB query only.
  * Lets a sale that drifted just across the file's start/end still load and
  * align. The strict range (for ghost classification) is left untouched.
@@ -649,21 +694,36 @@ export function useNayaxReconciliation() {
         const r1 = alignMachine(aKeys, aDays, sKeys, sDays, MAX_LCS_CELLS)
         if (r1.bucketed) bucketedVmIds.push(vmId)
         for (const [ai, bi] of r1.pairs) pushMatch(aRows[ai]!, bStrict[bi]!)
-        for (const bi of r1.bOnly) ghostInDb.push(bStrict[bi]!)   // in-range by construction → true phantoms
+        // In-range DB rows the LCS left over — phantom candidates for pass 3.
+        const residualB = r1.bOnly.map(bi => bStrict[bi]!)
 
         // Pass 2: rescue Nayax rows with no in-range twin against buffer-only DB
-        // rows (genuine cross-boundary drift). Unmatched here are true gaps;
-        // unmatched buffer rows are dropped (never phantoms).
-        const residualA = r1.aOnly.map(ai => aRows[ai]!)
+        // rows (genuine cross-boundary drift). Unmatched buffer rows are dropped
+        // (never phantoms).
+        let residualA = r1.aOnly.map(ai => aRows[ai]!)
         if (residualA.length > 0 && bBuffer.length > 0) {
           const raKeys = residualA.map(r => effectiveNayaxItemNumber(r.itemNumber as number, r.utcDt, vmOffset, vmTrays))
           const rbKeys = bBuffer.map(r => r.item_number ?? -1)
           const r2 = alignSequences(raKeys, rbKeys)
           for (const [ai, bi] of r2.pairs) pushMatch(residualA[ai]!, bBuffer[bi]!)
-          for (const ai of r2.aOnly) missingInDb.push(residualA[ai]!)
-        } else {
-          for (const a of residualA) missingInDb.push(a)
+          residualA = r2.aOnly.map(ai => residualA[ai]!)
         }
+
+        // Pass 3: the LCS is order-only, so two neighbouring sales whose order
+        // differs between Nayax and the DB (device clock drift, or a row
+        // imported here at the Nayax time next to device-recorded rows) can
+        // only align one of them — the other surfaces as a gap + phantom pair
+        // on the same slot. Pair those leftovers by slot within a time window,
+        // closest first. Whatever is still unpaired is a true gap / phantom.
+        const r3 = pairLeftoversByTime(
+          residualA,
+          residualA.map(r => effectiveNayaxItemNumber(r.itemNumber as number, r.utcDt, vmOffset, vmTrays)),
+          residualB,
+          LEFTOVER_PAIR_WINDOW_SECONDS,
+        )
+        for (const [ai, bi] of r3.pairs) pushMatch(residualA[ai]!, residualB[bi]!)
+        for (const ai of r3.aOnly) missingInDb.push(residualA[ai]!)
+        for (const bi of r3.bOnly) ghostInDb.push(residualB[bi]!)
       }
 
       result.value = {

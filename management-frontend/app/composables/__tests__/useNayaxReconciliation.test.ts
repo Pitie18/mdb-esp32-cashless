@@ -247,6 +247,49 @@ describe('runMatch (sequence)', () => {
     expect(r.result.value!.ghostInDb).toHaveLength(0)
   })
 
+  it('pairs a same-slot gap + phantom whose order crossed a neighbour (order-swap regression)', () => {
+    // Nayax: 57 then 12. DB: the 57 was imported at the Nayax time, the 12 was
+    // recorded by the device with a clock running ~1 min behind → DB order is
+    // 12, 57. The LCS can align only one of the two.
+    const r = setupRecon({
+      rawRows: [
+        mkNayax({ txId: 'A', itemNumber: 57, utcDt: '2026-09-08T03:41:39.000Z' }),
+        mkNayax({ txId: 'B', itemNumber: 12, utcDt: '2026-09-08T03:42:10.000Z' }),
+      ],
+      mapping: { N1: 'vm1' },
+      dbSales: [
+        mkSale({ id: 's12', item_number: 12, created_at: '2026-09-08T03:41:10.000Z' }),
+        mkSale({ id: 's57', item_number: 57, created_at: '2026-09-08T03:41:39.000Z' }),
+      ],
+      fromUtc: '2026-09-01T00:00:00.000Z',
+      toUtc: '2026-09-30T00:00:00.000Z',
+    })
+    r.runMatch()
+    expect(r.result.value!.matched.map(m => `${m.nayax.txId}:${m.db.id}`).sort()).toEqual(['A:s57', 'B:s12'])
+    expect(r.result.value!.missingInDb).toHaveLength(0)
+    expect(r.result.value!.ghostInDb).toHaveLength(0)
+  })
+
+  it('keeps a same-slot gap + phantom apart when they are beyond the leftover window', () => {
+    const r = setupRecon({
+      rawRows: [
+        mkNayax({ txId: 'A', itemNumber: 57, utcDt: '2026-09-08T03:00:00.000Z' }),
+        mkNayax({ txId: 'B', itemNumber: 12, utcDt: '2026-09-08T03:10:00.000Z' }),
+      ],
+      mapping: { N1: 'vm1' },
+      dbSales: [
+        mkSale({ id: 's12', item_number: 12, created_at: '2026-09-08T03:10:00.000Z' }),
+        mkSale({ id: 's57', item_number: 57, created_at: '2026-09-08T04:00:00.000Z' }),
+      ],
+      fromUtc: '2026-09-01T00:00:00.000Z',
+      toUtc: '2026-09-30T00:00:00.000Z',
+    })
+    r.runMatch()
+    expect(r.result.value!.matched.map(m => m.nayax.txId)).toEqual(['B'])
+    expect(r.result.value!.missingInDb.map(n => n.txId)).toEqual(['A'])
+    expect(r.result.value!.ghostInDb.map(s => s.id)).toEqual(['s57'])
+  })
+
   it('flags a DB-only sale as a phantom (ghost) in range', () => {
     const r = setupRecon({
       rawRows: [mkNayax({ itemNumber: 10, utcDt: '2026-03-10T08:00:00.000Z' })],
@@ -315,7 +358,7 @@ describe('runMatch (sequence)', () => {
     expect(r.result.value!.matched[0]!.priceDiffers).toBe(false)
   })
 
-  it('reports an adjacent order swap as one missing + one ghost', () => {
+  it('resolves an adjacent order swap via the leftover pass (no false missing + ghost)', () => {
     const r = setupRecon({
       rawRows: [
         mkNayax({ txId: 'A', itemNumber: 10, utcDt: '2026-03-10T08:00:00.000Z' }),
@@ -328,9 +371,9 @@ describe('runMatch (sequence)', () => {
       ],
     })
     r.runMatch()
-    expect(r.result.value!.matched).toHaveLength(1)
-    expect(r.result.value!.missingInDb).toHaveLength(1)
-    expect(r.result.value!.ghostInDb).toHaveLength(1)
+    expect(r.result.value!.matched).toHaveLength(2)
+    expect(r.result.value!.missingInDb).toHaveLength(0)
+    expect(r.result.value!.ghostInDb).toHaveLength(0)
   })
 
   it('aligns each machine independently (no cross-machine matching)', () => {
