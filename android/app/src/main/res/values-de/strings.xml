@@ -251,9 +251,14 @@
     <string name="analysis_replace_no_matches">Keine Treffer</string>
     <string name="analysis_replace_bestseller">Flotten-Bestseller</string>
     <string name="analysis_replace_newcomer">Noch nie verkauft — Testkandidat</string>
-    <string name="analysis_confirm_title">Produkt ersetzen?</string>
-    <string name="analysis_confirm_message">„%1$s“ in Fach %2$d durch „%3$s“ ersetzen? Der Bestand dieses Fachs wird auf 0 zurückgesetzt.</string>
-    <string name="analysis_confirm_message_empty">„%1$s“ dem leeren Fach %2$d zuweisen?</string>
+    <string name="analysis_confirm_title">Ersatz vormerken?</string>
+    <string name="analysis_confirm_message">„%1$s“ in Fach %2$d durch „%3$s“ ersetzen? Die Änderung wird im Änderungswunsch vorgemerkt und bei der nächsten Befülltour umgebaut.</string>
+    <string name="analysis_confirm_message_empty">„%1$s“ für das leere Fach %2$d vormerken? Befüllt wird bei der nächsten Befülltour.</string>
+    <string name="analysis_action_queue">Vormerken</string>
+    <string name="analysis_queued">Fach %1$d ist im Änderungswunsch vorgemerkt. Umgebaut wird bei der nächsten Befülltour.</string>
+    <string name="analysis_slot_has_request">Für dieses Fach ist schon eine Änderung vorgemerkt. Ein neues Produkt ersetzt sie.</string>
+    <string name="analysis_legend_pending">Änderung vorgemerkt</string>
+    <string name="analysis_slot_pending">%1$s, Änderung vorgemerkt</string>
     <string name="analysis_error_title">Fehler</string>
     <string name="action_replace">Ersetzen</string>
     <string name="product_unnamed">Unbenannt</string>
@@ -497,7 +502,7 @@
         <item quantity="other">%1$d Artikel noch im Automaten</item>
     </plurals>
     <string name="refill_review_stock_empty">0 Artikel im Automaten</string>
-    <string name="refill_review_applied">Ersetzt — bereits gespeichert</string>
+    <string name="refill_review_applied">Im Änderungsvermerk vorgemerkt</string>
     <string name="refill_review_skipped_keeping">Übersprungen — aktuelles Produkt beibehalten</string>
     <string name="refill_review_skipped_unassigned">Übersprungen — Fach bleibt nicht zugewiesen</string>
     <string name="refill_review_action_replace">Ersetzen</string>
@@ -507,7 +512,7 @@
     <string name="refill_review_action_skip">Überspringen</string>
     <string name="refill_review_skip_all">Rest überspringen</string>
     <string name="refill_review_continue">Weiter</string>
-    <string name="refill_review_apply_continue">Anwenden &amp; weiter</string>
+    <string name="refill_review_apply_continue">Vormerken &amp; weiter</string>
     <!-- Refill wizard — replacement product picker (Phase 5b Task 6) -->
     <string name="refill_picker_title">Ersatz auswählen</string>
     <string name="refill_picker_for_slot">Fach %1$d · %2$s</string>
@@ -652,4 +657,45 @@
     <string name="machine_detail_stock_of_capacity">%1$d / %2$d</string>
     <string name="machine_detail_tray_count">Fächer</string>
     <string name="tray_search_hint">Suchen…</string>
+    <!-- Refill-Assistent — Fächer umbelegen: Änderungsvermerk beim Packen, Umbau am Automaten -->
+    <string name="refill_rebuild_change_note">Änderungsvermerk</string>
+    <string name="refill_rebuild_accepted_of">%1$d von %2$d übernommen</string>
+    <string name="refill_rebuild_change_note_hint">Vom Büro gewünscht. Haken entfernen, um ein Fach diesmal so zu lassen; es bleibt für eine spätere Tour offen.</string>
+    <string name="refill_rebuild_toggle_item">Fach %1$d in dieser Tour umbauen</string>
+    <string name="refill_rebuild_empty_slot">Leer</string>
+    <string name="refill_rebuild_change_spiral">Spirale wechseln (%1$d → %2$d)</string>
+    <string name="refill_rebuild_new_price">neuer Preis %1$s</string>
+    <string name="refill_rebuild_not_this_tour">nicht in dieser Tour</string>
+    <string name="refill_rebuild_pack_for_rebuild">Für den Umbau packen</string>
+    <string name="refill_rebuild_packed_qty">%1$d×</string>
+    <string name="refill_rebuild_needed">(%1$d benötigt)</string>
+    <string name="refill_rebuild_moves_over">nichts, wird umgesetzt</string>
+    <string name="refill_rebuild_at_machine_title">Fächer umbauen</string>
+    <string name="refill_rebuild_live_stock">Jetzt im Fach: %1$d von %2$d (Verkäufe seit dem Packen schon abgezogen)</string>
+    <string name="refill_rebuild_removed">Entnommen</string>
+    <string name="refill_rebuild_filled">Eingefüllt (max. %1$d)</string>
+    <string name="refill_rebuild_fill_source">%1$d umgesetzt · %2$d aus dem Auto</string>
+    <string name="refill_rebuild_price_set">Preis an Wahl %1$d gestellt auf %2$s</string>
+    <string name="refill_rebuild_rebuilt">Umgebaut</string>
+    <string name="refill_rebuild_not_rebuilt">Nicht umgebaut</string>
+    <string name="refill_rebuild_stays_open">Bleibt wie es ist und kommt bei der nächsten Tour wieder.</string>
+    <string name="refill_rebuild_decide_all">Erst jedes Fach des Änderungsvermerks als umgebaut oder nicht umgebaut markieren.</string>
+    <string name="refill_rebuild_leftover_title">Übrige Ware</string>
+    <string name="refill_rebuild_leftover_hint">Wird gebucht, wenn du den Automaten bestätigst.</string>
+    <string name="refill_rebuild_units">%1$d Stk</string>
+    <string name="refill_rebuild_from_machine">%1$d aus dem Automaten entnommen</string>
+    <string name="refill_rebuild_from_van">%1$d gepackt, aber nicht gebraucht</string>
+    <string name="refill_rebuild_to_warehouse">Ins Lager</string>
+    <string name="refill_rebuild_write_off">Abschreiben</string>
+    <string name="refill_rebuild_best_before">MHD</string>
+    <string name="refill_rebuild_best_before_unset">nicht gesetzt</string>
+    <string name="refill_rebuild_best_before_clear">Kein Datum</string>
+    <string name="refill_rebuild_van_back_hint">Ungenutzte Ware geht zurück in die Charge, aus der sie gepackt wurde.</string>
+    <string name="refill_rebuild_machine_back_hint">Ware aus dem Automaten wird eine neue Charge mit diesem Datum.</string>
+    <string name="refill_rebuild_return_batch">Rückgabe aus Automat</string>
+    <string name="refill_summary_stat_slots_rebuilt">Fächer umgebaut</string>
+    <plurals name="refill_review_queued">
+        <item quantity="one">%1$d Fach im Änderungsvermerk vorgemerkt. Umgebaut wird am Automaten während der Tour.</item>
+        <item quantity="other">%1$d Fächer im Änderungsvermerk vorgemerkt. Umgebaut wird am Automaten während der Tour.</item>
+    </plurals>
 </resources>

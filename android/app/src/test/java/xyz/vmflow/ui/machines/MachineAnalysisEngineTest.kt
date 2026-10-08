@@ -12,7 +12,6 @@ import org.junit.Test
 import xyz.vmflow.data.MachineAnalysisDataSource
 import xyz.vmflow.data.ProductKpiRow
 import xyz.vmflow.data.SlotTier
-import xyz.vmflow.data.SwapLogContext
 import xyz.vmflow.models.Product
 import xyz.vmflow.models.Tray
 
@@ -204,11 +203,11 @@ class MachineAnalysisEngineTest {
         var kpiRows: List<ProductKpiRow> = emptyList(),
         var velocity: Map<String, Double> = emptyMap(),
         var failKpiWith: Throwable? = null,
-        var failUpdateWith: Throwable? = null,
-        var failLogWith: Throwable? = null,
+        var pending: Set<String> = emptySet(),
+        var failQueueWith: Throwable? = null,
+        var failPendingWith: Throwable? = null,
     ) : MachineAnalysisDataSource {
-        var updateCalls = mutableListOf<Pair<String, String>>()
-        var logCalls = mutableListOf<SwapLogContext>()
+        var queueCalls = mutableListOf<Triple<String, String, String>>()
 
         override suspend fun fetchCompanyId(): String = companyId
 
@@ -219,14 +218,16 @@ class MachineAnalysisEngineTest {
 
         override suspend fun fetchVelocity(companyId: String, days: Int): Map<String, Double> = velocity
 
-        override suspend fun updateTrayProduct(trayId: String, productId: String) {
-            failUpdateWith?.let { throw it }
-            updateCalls.add(trayId to productId)
+        override suspend fun fetchPendingTrayIds(machineId: String): Set<String> {
+            failPendingWith?.let { throw it }
+            return pending
         }
 
-        override suspend fun logProductSwap(context: SwapLogContext) {
-            failLogWith?.let { throw it }
-            logCalls.add(context)
+        override suspend fun queueReplacement(machineId: String, trayId: String, productId: String): Set<String> {
+            failQueueWith?.let { throw it }
+            queueCalls.add(Triple(machineId, trayId, productId))
+            pending = pending + trayId
+            return pending
         }
     }
 
@@ -276,8 +277,9 @@ class MachineAnalysisEngineTest {
             override suspend fun fetchProductKpis(machineId: String, companyId: String, days: Int): List<ProductKpiRow> =
                 throw CancellationException("cancelled")
             override suspend fun fetchVelocity(companyId: String, days: Int): Map<String, Double> = emptyMap()
-            override suspend fun updateTrayProduct(trayId: String, productId: String) = Unit
-            override suspend fun logProductSwap(context: SwapLogContext) = Unit
+            override suspend fun fetchPendingTrayIds(machineId: String): Set<String> = emptySet()
+            override suspend fun queueReplacement(machineId: String, trayId: String, productId: String): Set<String> =
+                emptySet()
         }
         val engine = MachineAnalysisEngine(repo)
 
@@ -291,29 +293,52 @@ class MachineAnalysisEngineTest {
     }
 
     @Test
-    fun `applySwap writes the update and a best-effort log entry naming the old and new product`() = runBlocking {
+    fun `analyze carries the trays with a pending change`() = runBlocking {
+        val trays = listOf(tray("t1", 10, productId = "p1"), tray("t2", 11, productId = "p1"))
+        val repo = FakeMachineAnalysisDataSource(pending = setOf("t2"))
+        val engine = MachineAnalysisEngine(repo)
+
+        engine.analyze("m1", trays, emptyList(), now = fixedNow)
+
+        assertEquals(setOf("t2"), engine.uiState.value.pendingTrayIds)
+    }
+
+    @Test
+    fun `a failed pending lookup does not fail the analysis`() = runBlocking {
+        val trays = listOf(tray("t1", 10, productId = "p1"))
+        val repo = FakeMachineAnalysisDataSource(failPendingWith = RuntimeException("no table"))
+        val engine = MachineAnalysisEngine(repo)
+
+        engine.analyze("m1", trays, emptyList(), now = fixedNow)
+
+        val state = engine.uiState.value
+        assertNull(state.error)
+        assertEquals(1, state.slots.size)
+        assertTrue(state.pendingTrayIds.isEmpty())
+    }
+
+    @Test
+    fun `applySwap queues the change for the analysed machine and marks the slot pending`() = runBlocking {
         val oldProduct = Product(id = "old-id", name = "Old Product")
         val trays = listOf(tray("t1", 12, productId = "old-id", product = oldProduct))
-        val repo = FakeMachineAnalysisDataSource(kpiRows = emptyList())
+        val repo = FakeMachineAnalysisDataSource(pending = setOf("t9"))
         val engine = MachineAnalysisEngine(repo)
-        engine.analyze("m1", trays, emptyList(), now = fixedNow) // populates lastSlots/lastMachineId
+        engine.analyze("m1", trays, emptyList(), now = fixedNow)
 
         val ok = engine.applySwap("t1", "new-id")
 
         assertTrue(ok)
-        assertEquals(listOf("t1" to "new-id"), repo.updateCalls)
-        assertEquals(1, repo.logCalls.size)
-        val logged = repo.logCalls.single()
-        assertEquals("m1", logged.machineId)
-        assertEquals(12, logged.itemNumber)
-        assertEquals("new-id", logged.newProductId)
-        assertEquals("old-id", logged.oldProductId)
-        assertEquals("Old Product", logged.oldProductName)
+        assertEquals(listOf(Triple("m1", "t1", "new-id")), repo.queueCalls)
+        assertEquals(setOf("t9", "t1"), engine.uiState.value.pendingTrayIds)
+        assertEquals(12, engine.uiState.value.queuedItemNumber)
+
+        engine.clearQueuedNotice()
+        assertNull(engine.uiState.value.queuedItemNumber)
     }
 
     @Test
-    fun `a failed update reports an error and never reaches the log call`() = runBlocking {
-        val repo = FakeMachineAnalysisDataSource(failUpdateWith = RuntimeException("write failed"))
+    fun `a failed queue reports an error and marks nothing pending`() = runBlocking {
+        val repo = FakeMachineAnalysisDataSource(failQueueWith = RuntimeException("write failed"))
         val engine = MachineAnalysisEngine(repo)
         engine.analyze("m1", emptyList(), emptyList(), now = fixedNow)
 
@@ -321,18 +346,16 @@ class MachineAnalysisEngineTest {
 
         assertFalse(ok)
         assertEquals("write failed", engine.uiState.value.error)
-        assertTrue(repo.logCalls.isEmpty())
+        assertTrue(engine.uiState.value.pendingTrayIds.isEmpty())
+        assertNull(engine.uiState.value.queuedItemNumber)
     }
 
     @Test
-    fun `a failed audit log entry does not undo an already-successful swap`() = runBlocking {
-        val repo = FakeMachineAnalysisDataSource(failLogWith = RuntimeException("log table missing"))
+    fun `applySwap before any analysis queues nothing`() = runBlocking {
+        val repo = FakeMachineAnalysisDataSource()
         val engine = MachineAnalysisEngine(repo)
-        engine.analyze("m1", emptyList(), emptyList(), now = fixedNow)
 
-        val ok = engine.applySwap("t1", "new-id")
-
-        assertTrue("the swap write already succeeded; a logging failure must stay non-fatal", ok)
-        assertEquals(listOf("t1" to "new-id"), repo.updateCalls)
+        assertFalse(engine.applySwap("t1", "new-id"))
+        assertTrue(repo.queueCalls.isEmpty())
     }
 }

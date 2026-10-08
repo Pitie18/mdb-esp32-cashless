@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -99,6 +100,7 @@ fun RefillSummaryStep(
     val traysRefilled = tourLog.sumOf { it.traysRefilled }
     val totalItemsAdded = tourLog.sumOf { it.totalAdded }
     val machinesSkipped = tourLog.count { it.skipped }
+    val slotsRebuilt = tourLog.sumOf { it.slotsRebuilt }
     val totalMachines = tourLog.size
 
     val scale = remember { Animatable(0f) }
@@ -150,6 +152,16 @@ fun RefillSummaryStep(
                         value = "$totalItemsAdded",
                         color = VMflowBlueDark
                     )
+                    // Slot change requests quit at the machines this tour —
+                    // only shown when there were any, like the skipped stat.
+                    if (slotsRebuilt > 0) {
+                        SummaryStatRow(
+                            icon = Icons.Default.SwapHoriz,
+                            label = stringResource(R.string.refill_summary_stat_slots_rebuilt),
+                            value = "$slotsRebuilt",
+                            color = StockOrange
+                        )
+                    }
                     // Matches iOS: the skipped stat only appears when there
                     // is anything to report — a fleet with a perfect tour
                     // never shows a "0 skipped" row.

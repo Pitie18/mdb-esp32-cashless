@@ -29,18 +29,13 @@ data class ReplacementSuggestion(
     val replacementProductId: String? = null,
     val isSkipped: Boolean = false,
     /**
-     * Set once [xyz.vmflow.data.RefillRepository.applyReplacement] has
-     * actually committed this slot's write. Lets a retry after a partial
-     * failure (see `RefillViewModel.applyReplacementsAndContinue`) resume
-     * rather than restart: without it, a retry would recompute the same
-     * to-apply set and re-run the write *and the audit log call* for slots
-     * that already succeeded — `applyReplacement` is idempotent on the tray
-     * (it just re-sets the same product), but the audit row is not: it is
-     * built from this suggestion's original `currentProductId`/
-     * `currentProductName`, so a duplicate row would assert "slot N: X → Y"
-     * at a moment when the slot already holds Y. Never true for a freshly
-     * detected suggestion; only ever set locally after a successful write,
-     * never persisted or re-derived from the server.
+     * Set once this slot's replacement has been queued into the machine's
+     * slot change request (`save_slot_change_request`, see
+     * `RefillViewModel.applyReplacementsAndContinue`). The review never
+     * writes `machine_trays` itself: the slot is rebuilt at the machine
+     * during the tour, through the change note. Lets a retry after a partial
+     * failure resume rather than restart. Never true for a freshly detected
+     * suggestion; only ever set locally, never persisted.
      */
     val isApplied: Boolean = false,
 )

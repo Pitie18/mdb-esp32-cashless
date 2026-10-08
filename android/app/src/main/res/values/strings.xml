@@ -255,9 +255,14 @@
     <string name="analysis_replace_no_matches">No matches</string>
     <string name="analysis_replace_bestseller">Fleet bestseller</string>
     <string name="analysis_replace_newcomer">Never sold — test candidate</string>
-    <string name="analysis_confirm_title">Replace product?</string>
-    <string name="analysis_confirm_message">Replace \"%1$s\" in slot %2$d with \"%3$s\"? Stock for this slot resets to 0.</string>
-    <string name="analysis_confirm_message_empty">Assign \"%1$s\" to empty slot %2$d?</string>
+    <string name="analysis_confirm_title">Queue replacement?</string>
+    <string name="analysis_confirm_message">Replace \"%1$s\" in slot %2$d with \"%3$s\"? The change is queued in the change request and rebuilt on the next refill tour.</string>
+    <string name="analysis_confirm_message_empty">Queue \"%1$s\" for empty slot %2$d? It is filled on the next refill tour.</string>
+    <string name="analysis_action_queue">Queue</string>
+    <string name="analysis_queued">Slot %1$d added to the change request. It is rebuilt on the next refill tour.</string>
+    <string name="analysis_slot_has_request">A change is already queued for this slot. A new product replaces it.</string>
+    <string name="analysis_legend_pending">Change queued</string>
+    <string name="analysis_slot_pending">%1$s, change queued</string>
     <string name="analysis_error_title">Error</string>
     <string name="action_replace">Replace</string>
     <string name="product_unnamed">Unnamed</string>
@@ -501,7 +506,7 @@
         <item quantity="other">%1$d items still in machine</item>
     </plurals>
     <string name="refill_review_stock_empty">0 items in machine</string>
-    <string name="refill_review_applied">Replaced — already saved</string>
+    <string name="refill_review_applied">Queued in the change request</string>
     <string name="refill_review_skipped_keeping">Skipped — keeping current product</string>
     <string name="refill_review_skipped_unassigned">Skipped — slot stays unassigned</string>
     <string name="refill_review_action_replace">Replace</string>
@@ -511,7 +516,7 @@
     <string name="refill_review_action_skip">Skip</string>
     <string name="refill_review_skip_all">Skip rest</string>
     <string name="refill_review_continue">Continue</string>
-    <string name="refill_review_apply_continue">Apply &amp; continue</string>
+    <string name="refill_review_apply_continue">Queue &amp; continue</string>
     <!-- Refill wizard — replacement product picker (Phase 5b Task 6) -->
     <string name="refill_picker_title">Select replacement</string>
     <string name="refill_picker_for_slot">Slot %1$d · %2$s</string>
@@ -656,4 +661,45 @@
     <string name="machine_detail_stock_of_capacity">%1$d / %2$d</string>
     <string name="machine_detail_tray_count">Trays</string>
     <string name="tray_search_hint">Search…</string>
+    <!-- Refill wizard — slot change requests ("Umbelegen"): change note while packing, rebuild at the machine -->
+    <string name="refill_rebuild_change_note">Change note</string>
+    <string name="refill_rebuild_accepted_of">%1$d of %2$d accepted</string>
+    <string name="refill_rebuild_change_note_hint">Requested by the office. Untick a slot to leave it as it is this time; it stays open for a later tour.</string>
+    <string name="refill_rebuild_toggle_item">Rebuild slot %1$d on this tour</string>
+    <string name="refill_rebuild_empty_slot">Empty</string>
+    <string name="refill_rebuild_change_spiral">Change spiral (%1$d → %2$d)</string>
+    <string name="refill_rebuild_new_price">new price %1$s</string>
+    <string name="refill_rebuild_not_this_tour">not this tour</string>
+    <string name="refill_rebuild_pack_for_rebuild">Pack for the rebuild</string>
+    <string name="refill_rebuild_packed_qty">%1$d×</string>
+    <string name="refill_rebuild_needed">(%1$d needed)</string>
+    <string name="refill_rebuild_moves_over">nothing, moves over</string>
+    <string name="refill_rebuild_at_machine_title">Rebuild slots</string>
+    <string name="refill_rebuild_live_stock">In the slot now: %1$d of %2$d (sales since packing included)</string>
+    <string name="refill_rebuild_removed">Taken out</string>
+    <string name="refill_rebuild_filled">Filled in (max %1$d)</string>
+    <string name="refill_rebuild_fill_source">%1$d moved over · %2$d from the van</string>
+    <string name="refill_rebuild_price_set">Price at selection %1$d set to %2$s</string>
+    <string name="refill_rebuild_rebuilt">Rebuilt</string>
+    <string name="refill_rebuild_not_rebuilt">Not rebuilt</string>
+    <string name="refill_rebuild_stays_open">Stays as it is and comes up again on the next tour.</string>
+    <string name="refill_rebuild_decide_all">Mark every slot of the change note as rebuilt or not rebuilt first.</string>
+    <string name="refill_rebuild_leftover_title">Left over</string>
+    <string name="refill_rebuild_leftover_hint">Booked when you confirm the machine.</string>
+    <string name="refill_rebuild_units">%1$d pcs</string>
+    <string name="refill_rebuild_from_machine">%1$d taken out of the machine</string>
+    <string name="refill_rebuild_from_van">%1$d packed but not used</string>
+    <string name="refill_rebuild_to_warehouse">To warehouse</string>
+    <string name="refill_rebuild_write_off">Write off</string>
+    <string name="refill_rebuild_best_before">Best before</string>
+    <string name="refill_rebuild_best_before_unset">not set</string>
+    <string name="refill_rebuild_best_before_clear">No date</string>
+    <string name="refill_rebuild_van_back_hint">Unused goods go back to the batch they were packed from.</string>
+    <string name="refill_rebuild_machine_back_hint">Goods from the machine become a new batch with this date.</string>
+    <string name="refill_rebuild_return_batch">Machine return</string>
+    <string name="refill_summary_stat_slots_rebuilt">Slots Rebuilt</string>
+    <plurals name="refill_review_queued">
+        <item quantity="one">%1$d slot added to the change request. It is rebuilt at the machine during the tour.</item>
+        <item quantity="other">%1$d slots added to the change request. They are rebuilt at the machine during the tour.</item>
+    </plurals>
 </resources>

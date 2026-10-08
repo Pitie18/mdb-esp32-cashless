@@ -21,7 +21,6 @@ import xyz.vmflow.data.ProductKpiRow
 import xyz.vmflow.data.ProductTierInfo
 import xyz.vmflow.data.SlotTier
 import xyz.vmflow.data.Suggestion
-import xyz.vmflow.data.SwapLogContext
 import xyz.vmflow.models.Product
 import xyz.vmflow.models.Tray
 
@@ -68,6 +67,10 @@ data class MachineAnalysisUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val days: Int = 30,
+    /** Trays with a pending item on the machine's slot change request (web `pendingTrayIds`). */
+    val pendingTrayIds: Set<String> = emptySet(),
+    /** Slot number just queued into the change request; drives the one-shot notice. */
+    val queuedItemNumber: Int? = null,
 ) {
     /** Underperforming products, worst first — the "products to review" list. Mirrors iOS `weakProducts`. */
     val weakProducts: List<ProductAnalysis>
@@ -178,8 +181,10 @@ internal class MachineAnalysisEngine(private val repository: MachineAnalysisData
             coroutineScope {
                 val kpiDeferred = async { repository.fetchProductKpis(machineId, companyId, days) }
                 val velocityDeferred = async { repository.fetchVelocity(companyId, days) }
+                val pendingDeferred = async { fetchPendingBestEffort(machineId) }
                 val kpiRows = kpiDeferred.await()
                 val velocity = velocityDeferred.await()
+                val pendingTrayIds = pendingDeferred.await()
 
                 val productsInMachine = trays.mapNotNull { it.productId }.toSet()
                 val pool = MachineAnalysis.buildSuggestionPool(
@@ -202,6 +207,7 @@ internal class MachineAnalysisEngine(private val repository: MachineAnalysisData
                         slots = slots,
                         rowCount = rowCount,
                         fillSuggestions = sharedSuggestions,
+                        pendingTrayIds = pendingTrayIds,
                         isLoading = false,
                     )
                 }
@@ -213,16 +219,30 @@ internal class MachineAnalysisEngine(private val repository: MachineAnalysisData
         }
     }
 
+    /** The pending marker is a hint: a failed lookup must not fail the analysis (web: `.catch(() => null)`). */
+    private suspend fun fetchPendingBestEffort(machineId: String): Set<String> =
+        try {
+            repository.fetchPendingTrayIds(machineId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptySet()
+        }
+
     /**
-     * Swap the product assigned to a slot. Resets stock to 0 (the old
-     * product is physically removed); the caller is responsible for
-     * reloading trays and re-running [analyze] afterwards — this only
-     * performs the write, same contract as iOS's `applySwap`.
+     * Queues a replacement for a slot on the machine's slot change request.
+     * The slot is NOT changed here: the refiller rebuilds it on the next tour
+     * and quits it at the machine (`apply_slot_change`), so sales and stock
+     * stay booked to the product physically in the slot until then. Other
+     * pending changes are kept and the slot keeps its capacity. Port of web
+     * `useMachineAnalysis.applySwap`.
      */
     suspend fun applySwap(trayId: String, productId: String): Boolean {
+        val machineId = lastMachineId ?: return false
         return try {
-            repository.updateTrayProduct(trayId, productId)
-            logSwapBestEffort(trayId, productId)
+            val pending = repository.queueReplacement(machineId, trayId, productId)
+            val itemNumber = lastSlots.firstOrNull { it.trayId == trayId }?.itemNumber
+            _uiState.update { it.copy(pendingTrayIds = pending, queuedItemNumber = itemNumber) }
             true
         } catch (e: CancellationException) {
             throw e
@@ -232,26 +252,9 @@ internal class MachineAnalysisEngine(private val repository: MachineAnalysisData
         }
     }
 
-    /** Best-effort audit log entry — a logging failure must never undo an already-successful swap. */
-    private suspend fun logSwapBestEffort(trayId: String, productId: String) {
-        val machineId = lastMachineId ?: return
-        val oldSlot = lastSlots.firstOrNull { it.trayId == trayId }
-        try {
-            repository.logProductSwap(
-                SwapLogContext(
-                    machineId = machineId,
-                    trayId = trayId,
-                    itemNumber = oldSlot?.itemNumber,
-                    newProductId = productId,
-                    oldProductId = oldSlot?.productId,
-                    oldProductName = oldSlot?.productName,
-                ),
-            )
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Non-fatal — the swap itself already succeeded.
-        }
+    /** The "queued" notice has been dismissed. */
+    fun clearQueuedNotice() {
+        _uiState.update { it.copy(queuedItemNumber = null) }
     }
 
     fun clearError() {
@@ -274,4 +277,6 @@ class MachineAnalysisViewModel @JvmOverloads constructor(
     }
 
     fun clearError() = engine.clearError()
+
+    fun clearQueuedNotice() = engine.clearQueuedNotice()
 }

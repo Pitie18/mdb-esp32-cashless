@@ -20,12 +20,21 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import xyz.vmflow.data.AuthRepository
+import xyz.vmflow.data.LeftoverDestination
 import xyz.vmflow.data.PackedDeduction
+import xyz.vmflow.data.PlannedChange
+import xyz.vmflow.data.RebuildAction
+import xyz.vmflow.data.RebuildLeftover
+import xyz.vmflow.data.RebuildSlot
 import xyz.vmflow.data.RefillRepository
 import xyz.vmflow.data.RefillReviewLogic
 import xyz.vmflow.data.RefillTourLogic
 import xyz.vmflow.data.RefillTourStoreHolder
 import xyz.vmflow.data.ReplacementSuggestion
+import xyz.vmflow.data.SlotChange
+import xyz.vmflow.data.SlotChangeApplyItem
+import xyz.vmflow.data.SlotChangeLeftoverPayload
+import xyz.vmflow.data.SlotChangeRepository
 import xyz.vmflow.data.TourStore
 import xyz.vmflow.data.TrayRepository
 import xyz.vmflow.data.WarehouseRepository
@@ -161,6 +170,34 @@ data class RefillUiState(
     val error: String? = null,
     val refillFailedAttempts: Int? = null,
     val failedDeductions: List<PackedDeduction> = emptyList(),
+    /**
+     * Slot change requests (web `committedRebuild`): `machineId -> productId
+     * -> units` the accepted change-note slots claim from the warehouse,
+     * computed before (and therefore ahead of) every normal packing line.
+     * Re-derived with [packingList]; only meaningful while packing — after
+     * tour start each machine's [RefillMachine.rebuildPacked] is the truth.
+     */
+    val rebuildCommitted: Map<String, Map<String, Int>> = emptyMap(),
+    /**
+     * [warehouseStock] minus [rebuildCommitted]: the stock the normal packing
+     * math ([RefillTourLogic]) may still hand out. Same keys as
+     * [warehouseStock], so it is empty exactly when that is.
+     */
+    val packingStock: Map<String, Int> = emptyMap(),
+    /** The machine [currentRebuild] belongs to; `null` when the current stop has no change note. */
+    val rebuildMachineId: String? = null,
+    /** At-machine rebuild cards of the current stop (web `currentRebuild`). Not persisted. */
+    val currentRebuild: List<RebuildSlot> = emptyList(),
+    /** `productId -> destination` of left-over goods; missing = warehouse. */
+    val leftoverDestinations: Map<String, LeftoverDestination> = emptyMap(),
+    /** `productId -> YYYY-MM-DD` best-before date for goods taken out of the machine. */
+    val leftoverExpiry: Map<String, String> = emptyMap(),
+    /**
+     * One-shot: how many review replacements were just queued into change
+     * requests, for the "queued for the rebuild" snackbar. Cleared by
+     * [RefillViewModel.clearQueuedReplacementNotice].
+     */
+    val queuedReplacementCount: Int? = null,
 )
 
 /**
@@ -186,6 +223,24 @@ val RefillUiState.stockLoaded: Boolean
  */
 val RefillUiState.allReplacementsHandled: Boolean
     get() = replacements.all { it.replacementProductId != null || it.isSkipped }
+
+/** Every slot of the current stop's change note is marked rebuilt or not rebuilt. */
+val RefillUiState.rebuildReady: Boolean
+    get() = currentRebuild.all { it.action != null }
+
+/**
+ * What is left over at the current stop, per product (web `rebuildLeftovers`).
+ * Undecided slots count as rebuilt so the panel can be read early.
+ */
+val RefillUiState.rebuildLeftovers: List<RebuildLeftover>
+    get() {
+        val machine = machines.find { it.machine.id == rebuildMachineId } ?: return emptyList()
+        return SlotChange.leftovers(currentRebuild, machine.rebuildPacked)
+    }
+
+/** Rebuild units committed to a product across every machine (packing step). */
+fun RefillUiState.rebuildCommittedTotal(productId: String): Int =
+    rebuildCommitted.values.sumOf { it[productId] ?: 0 }
 
 /**
  * Drives the refill wizard. This half of it loads machines/trays,
@@ -321,6 +376,7 @@ class RefillViewModel : ViewModel() {
         }
 
         val machinesResult = RefillRepository.fetchRefillMachines()
+            .map { machines -> withChangeRequests(machines) }
         machinesResult.fold(
             onSuccess = { machines ->
                 // `withSyncedPackedState()` rather than `withPackingList()`:
@@ -391,6 +447,68 @@ class RefillViewModel : ViewModel() {
         }
 
         _uiState.update { it.copy(isLoading = false) }
+    }
+
+    /**
+     * Attaches each machine's open slot change request ("Änderungsvermerk")
+     * to the freshly loaded machines. A failing lookup never blocks a normal
+     * tour — it degrades to "no change notes", as on the web.
+     *
+     * Declines the refiller already made in this wizard run survive the
+     * reload (the review's queued replacements trigger one), so un-ticking a
+     * slot is never silently undone. New items start accepted.
+     */
+    private suspend fun withChangeRequests(machines: List<RefillMachine>): List<RefillMachine> {
+        val requests = SlotChangeRepository.fetchOpenRequests(machines.map { it.machine.id })
+            .getOrDefault(emptyMap())
+        val declined = _uiState.value.machines
+            .flatMap { it.changeRequest?.items.orEmpty() }
+            .filter { !it.accepted }
+            .mapTo(HashSet()) { it.id }
+        return machines.map { machine ->
+            val request = requests[machine.machine.id] ?: return@map machine.copy(changeRequest = null)
+            machine.copy(
+                changeRequest = request.copy(
+                    items = request.items.map { if (it.id in declined) it.copy(accepted = false) else it }
+                )
+            )
+        }
+    }
+
+    /**
+     * Accepts or declines one slot of a machine's change note (packing step).
+     * A declined slot goes back into the normal refill and packs nothing for
+     * the rebuild; it stays open server-side for a later tour. Products of the
+     * machine that no longer need anything are unpacked, so a stale pin can't
+     * be charged to the warehouse. Ported from web `toggleRebuildItem`.
+     */
+    fun toggleRebuildItem(machineId: String, itemId: String) {
+        _uiState.update { state ->
+            if (state.step != RefillStep.PACKING || isTourInMemory(state)) return@update state
+            val toggled = state.copy(
+                machines = state.machines.map { machine ->
+                    val request = machine.changeRequest
+                    if (machine.machine.id != machineId || request == null) {
+                        machine
+                    } else {
+                        machine.copy(
+                            changeRequest = request.copy(
+                                items = request.items.map {
+                                    if (it.id == itemId) it.copy(accepted = !it.accepted) else it
+                                }
+                            )
+                        )
+                    }
+                }
+            )
+            val machine = toggled.machines.find { it.machine.id == machineId } ?: return@update state
+            val stillNeeded = RefillTourLogic.refillGroups(machine).mapTo(HashSet()) { it.productId }
+            var next = toggled
+            for (productId in toggled.packedItems[machineId].orEmpty()) {
+                if (productId !in stillNeeded) next = next.withUnpacked(machineId, productId)
+            }
+            next.withSyncedPackedState()
+        }
     }
 
     /**
@@ -498,8 +616,35 @@ class RefillViewModel : ViewModel() {
      * on. Every update that changes `machines` or `pickOrder` must go
      * through this — including the ones later tasks add.
      */
-    private fun RefillUiState.withPackingList(): RefillUiState =
-        copy(packingList = RefillTourLogic.buildCombinedPackingList(machines, pickOrder))
+    private fun RefillUiState.withPackingList(): RefillUiState {
+        val committed = computeRebuildCommitted()
+        return copy(
+            packingList = RefillTourLogic.buildCombinedPackingList(machines, pickOrder),
+            rebuildCommitted = committed,
+            packingStock = SlotChange.stockAfterRebuild(warehouseStock, committed)
+        )
+    }
+
+    /**
+     * Units the accepted change-note slots claim from the warehouse, machine
+     * by machine in tour order, ahead of any normal packing (web
+     * `recalculateCommittedQuantities`). Needs are computed from the stock
+     * known now: stock that moves to another slot of the same machine needs
+     * no warehouse stock ([SlotChange.rebuildPackNeeds]).
+     */
+    private fun RefillUiState.computeRebuildCommitted(): Map<String, Map<String, Int>> =
+        SlotChange.commitRebuild(
+            needsByMachine = machines.mapNotNull { machine ->
+                val items = machine.acceptedChangeItems
+                if (items.isEmpty()) return@mapNotNull null
+                machine.machine.id to SlotChange.rebuildPackNeeds(
+                    items,
+                    machine.trays.associate { it.tray.id to it.tray.currentStock }
+                )
+            },
+            warehouseStock = warehouseStock,
+            stockLoaded = stockLoaded
+        )
 
     /**
      * Re-opens the entry gate after a failed load, unless a tour is already
@@ -595,7 +740,15 @@ class RefillViewModel : ViewModel() {
             // transient failure. Use the shared extension rather than
             // re-deriving `warehouseStock.isNotEmpty()` here.
             stockLoaded = state.stockLoaded
-        )
+        ).let { found ->
+            // A slot that already has a pending change is handled by its
+            // change note during the tour — suggesting a second replacement
+            // for it would only overwrite the office's plan.
+            val pendingTrayIds = reviewMachines
+                .flatMap { it.changeRequest?.items.orEmpty() }
+                .mapTo(HashSet()) { it.trayId }
+            found.filter { it.trayId !in pendingTrayIds }
+        }
 
         _uiState.update {
             it.copy(
@@ -659,60 +812,40 @@ class RefillViewModel : ViewModel() {
     }
 
     /**
-     * Writes the chosen replacements, then reloads and moves on to
-     * [RefillStep.PACKING].
+     * Queues the chosen replacements into each machine's slot change request,
+     * then reloads and moves on to [RefillStep.PACKING].
      *
-     * Only slots with a chosen product are written — a skipped slot keeps
-     * what it has — and nothing is written at all until every slot has a
+     * **The review never writes `machine_trays`.** A replacement is a change
+     * of the machine's layout, and layout changes only happen at the machine:
+     * the chosen slot joins the machine's open change request
+     * (`save_slot_change_request`, merged with what the office planned — see
+     * [queueReplacements]), the reload brings it back as a change note, and
+     * the refiller rebuilds it during the tour like any other planned slot
+     * (`apply_slot_change`). The web's analysis "replace" button does the
+     * same (`useMachineAnalysis.applySwap`).
+     *
+     * Only slots with a chosen product are queued — a skipped slot keeps
+     * what it has — and nothing is queued at all until every slot has a
      * decision ([allReplacementsHandled]), matching iOS.
      *
-     * **A failed write is blocking.** The loop stops at the first failure,
-     * surfaces it and leaves the wizard at [RefillStep.REVIEW] with the
-     * driver's decisions intact, so they can retry.
+     * **A failed save is blocking.** The loop stops at the first failing
+     * machine, surfaces it and leaves the wizard at [RefillStep.REVIEW] with
+     * the driver's decisions intact, so they can retry. A retry resumes:
+     * [toApply] excludes anything already marked
+     * [ReplacementSuggestion.isApplied].
      *
-     * **A retry resumes, it does not restart.** [toApply] excludes anything
-     * already marked [ReplacementSuggestion.isApplied] by an earlier partial
-     * attempt, and each iteration below marks a suggestion applied the
-     * moment its write commits. This matters because, unlike the tray write
-     * itself (`applyReplacement` just re-sets the same product — harmless to
-     * repeat), [RefillRepository.logReviewSwap]'s audit row is built from
-     * this suggestion's *original* `currentProductId`/`currentProductName`:
-     * re-running it for an already-applied slot would assert "slot N: X →
-     * Y" in the `product_swapped` activity stream at a moment when the slot
-     * already holds Y — a record of a transition that never happened, not a
-     * harmless duplicate. Re-filtering [allReplacementsHandled]-eligible
-     * suggestions on every call, rather than tracking a separate "pending"
-     * list, keeps this in sync with [setReplacement]/[skipReplacement]
-     * automatically.
-     *
-     * One suggestion can still fail forever: a tray deleted between
-     * detection and apply makes [RefillRepository.applyReplacement] fail
-     * permanently (its update's returning representation comes back empty),
-     * and because [RefillReviewLogic.buildReplacementSuggestions]'s order is
-     * deterministic, that dead entry sits at the same position in [toApply]
-     * on every retry — blocking every suggestion after it. That is accepted
-     * here; the escape is the driver un-choosing it in the review UI (a
-     * later task), so that UI must let an already-made decision be
-     * *changed*, not only made once.
-     *
-     * The reload afterwards is **awaited** — the swapped slots now hold a
-     * different product at stock 0, and every deficit, packing-list row and
-     * `isPacked` flag downstream is derived from that. A failure of the
-     * *reload* is not blocking (nothing is half-written; the writes are all
-     * committed), so the step advances anyway with the error surfaced — same
-     * as iOS, whose `currentStep = .packing` runs after its `loadData`
-     * swallowed the failure. The pack step can therefore briefly show the
-     * pre-swap products until the next successful reload: iOS has the same
-     * gap, the entry gate re-arms so the next visit retries, and the
-     * swapped-in products are unstocked (`current_stock = 0`), so their
-     * packing rows cap at 0 rather than overstating what's available.
+     * The reload afterwards is **awaited** — it is what turns the queued
+     * slots into change notes. A failure of the *reload* is not blocking
+     * (the requests are saved), so the step advances anyway with the error
+     * surfaced, the "stale-list window": the pack step then lacks the new
+     * change notes until the next successful load.
      *
      * Ported from iOS `applyReplacementsAndContinue`.
      */
     fun applyReplacementsAndContinue() {
         val snapshot = _uiState.value
-        // Re-entrancy guard: a second tap would re-run the same writes and
-        // append a second audit row per replacement. iOS relies on `isSaving`
+        // Re-entrancy guard: a second tap would re-run the same saves.
+        // iOS relies on `isSaving`
         // disabling its button; this does not depend on the UI.
         if (snapshot.isApplyingReplacements) return
         // Nothing to review means no review happened, so there is nothing to
@@ -732,78 +865,82 @@ class RefillViewModel : ViewModel() {
         _uiState.update { it.copy(isApplyingReplacements = true, error = null) }
 
         viewModelScope.launch {
-            // Resolved at most once for the whole review, and only if there is
-            // anything to log — [RefillRepository.logReviewSwap] otherwise
-            // resolves it through the `get-my-organization` edge function per
-            // row. Same reasoning as [RefillUiState.tourCompanyId]; not stored
-            // there, because no tour exists yet.
-            var companyId: String? = null
-            var didResolveCompanyId = false
-
-            for (suggestion in toApply) {
-                val newProductId = suggestion.replacementProductId ?: continue
-
-                val applied = RefillRepository.applyReplacement(
-                    trayId = suggestion.trayId,
-                    productId = newProductId
-                )
-                val failure = applied.exceptionOrNull()
+            // One save per machine: `save_slot_change_request` replaces the
+            // machine's whole pending plan, so each machine's chosen slots go
+            // in together, merged into what the office already planned.
+            for ((machineId, suggestions) in toApply.groupBy { it.machineId }) {
+                val failure = queueReplacements(machineId, suggestions).exceptionOrNull()
                 if (failure != null) {
                     _uiState.update {
                         it.copy(isApplyingReplacements = false, error = failure.message)
                     }
                     return@launch
                 }
-
-                // Marked applied immediately, before the audit log call
-                // below: a retry must never redo this write or re-log this
-                // transition, even if the process dies between here and the
-                // next iteration, or `logReviewSwap` itself is what fails.
+                // Marked immediately: a retry after a later machine failed
+                // must not queue these again (harmless, but pointless).
+                val queuedIds = suggestions.mapTo(HashSet()) { it.trayId }
                 _uiState.update { state ->
                     state.copy(
                         replacements = state.replacements.map {
-                            if (it.trayId == suggestion.trayId) it.copy(isApplied = true) else it
+                            if (it.trayId in queuedIds) it.copy(isApplied = true) else it
                         }
                     )
                 }
-
-                if (!didResolveCompanyId) {
-                    companyId = resolveTourCompanyId()
-                    didResolveCompanyId = true
-                }
-
-                // Never blocks: `logReviewSwap` swallows its own failures —
-                // the slot is already rewritten and a lost audit row must not
-                // undo that.
-                RefillRepository.logReviewSwap(
-                    machineId = suggestion.machineId,
-                    machineName = suggestion.machineName,
-                    trayId = suggestion.trayId,
-                    slotNumber = suggestion.slotNumber,
-                    oldProductId = suggestion.currentProductId,
-                    oldProductName = suggestion.currentProductName,
-                    newProductId = newProductId,
-                    newProductName = snapshot.availableProducts
-                        .find { it.id == newProductId }?.name.orEmpty(),
-                    // No tour yet at review time; `""` would land in the
-                    // metadata as an empty `tour_id`.
-                    tourId = snapshot.tourId.ifEmpty { null },
-                    companyId = companyId
-                )
             }
 
             // Before the reload, or it would rebuild the suggestions it just
-            // applied and bounce straight back into the review.
+            // applied and bounce straight back into the review. The reload
+            // re-fetches the change requests, so the queued slots show up as
+            // change notes in the pack step right away.
             reviewCompleted = true
             performLoad()
             // Advances regardless of whether the reload above succeeded — see
-            // the function doc's "stale-list window" paragraph: a failed
-            // reload here means the pack step briefly renders with the
-            // pre-swap products until the next successful load.
+            // the function doc's "stale-list window" paragraph.
             _uiState.update {
-                it.copy(step = RefillStep.PACKING, isApplyingReplacements = false)
+                it.copy(
+                    step = RefillStep.PACKING,
+                    isApplyingReplacements = false,
+                    queuedReplacementCount = toApply.size.takeIf { count -> count > 0 }
+                )
             }
         }
+    }
+
+    /**
+     * Queues [suggestions] (all of one machine) into that machine's open slot
+     * change request: the existing pending items are kept, a slot that
+     * already had one gets its new product but keeps the planned capacity,
+     * any other slot keeps its current capacity. Port of the web's
+     * `useMachineAnalysis.applySwap`. Never touches `machine_trays`.
+     */
+    private suspend fun queueReplacements(
+        machineId: String,
+        suggestions: List<ReplacementSuggestion>
+    ): Result<Unit> {
+        val open = SlotChangeRepository.fetchOpenRequests(listOf(machineId))
+            .getOrElse { return Result.failure(it) }[machineId]
+        val capacityByTray = reviewMachines
+            .firstOrNull { it.machine.id == machineId }
+            ?.trays?.associate { it.tray.id to it.tray.capacity }
+            .orEmpty()
+
+        val changes = LinkedHashMap<String, PlannedChange>()
+        open?.items?.forEach {
+            changes[it.trayId] = PlannedChange(it.trayId, it.toProductId, it.toCapacity)
+        }
+        for (suggestion in suggestions) {
+            val productId = suggestion.replacementProductId ?: continue
+            val capacity = changes[suggestion.trayId]?.toCapacity
+                ?: capacityByTray[suggestion.trayId]
+                ?: return Result.failure(IllegalStateException("Tray ${suggestion.trayId} no longer exists"))
+            changes[suggestion.trayId] = PlannedChange(suggestion.trayId, productId, capacity)
+        }
+        return SlotChangeRepository.saveRequest(machineId, changes.values.toList()).map { }
+    }
+
+    /** The "queued for the rebuild" notice has been shown. */
+    fun clearQueuedReplacementNotice() {
+        _uiState.update { it.copy(queuedReplacementCount = null) }
     }
 
     /**
@@ -857,7 +994,7 @@ class RefillViewModel : ViewModel() {
             productId = productId,
             packedItems = state.packedItems,
             customQuantities = state.customQuantities,
-            warehouseStock = state.warehouseStock,
+            warehouseStock = state.packingStock,
             stockLoaded = state.stockLoaded
         )
     }
@@ -875,7 +1012,7 @@ class RefillViewModel : ViewModel() {
             productId = productId,
             packedItems = state.packedItems,
             customQuantities = state.customQuantities,
-            warehouseStock = state.warehouseStock,
+            warehouseStock = state.packingStock,
             stockLoaded = state.stockLoaded
         )
     }
@@ -897,7 +1034,7 @@ class RefillViewModel : ViewModel() {
             productId = productId,
             packedItems = state.packedItems,
             customQuantities = state.customQuantities,
-            warehouseStock = state.warehouseStock,
+            warehouseStock = state.packingStock,
             stockLoaded = state.stockLoaded
         )
     }
@@ -916,7 +1053,7 @@ class RefillViewModel : ViewModel() {
             productId = productId,
             packedItems = state.packedItems,
             customQuantities = state.customQuantities,
-            warehouseStock = state.warehouseStock
+            warehouseStock = state.packingStock
         ) <= 0
     }
 
@@ -1086,7 +1223,7 @@ class RefillViewModel : ViewModel() {
             productId = productId,
             packedItems = packedItems,
             customQuantities = customQuantities,
-            warehouseStock = warehouseStock,
+            warehouseStock = packingStock,
             stockLoaded = stockLoaded
         )
         val clamped = quantity.coerceIn(0, maxQty)
@@ -1127,7 +1264,7 @@ class RefillViewModel : ViewModel() {
             productId = productId,
             packedItems = packedItems,
             customQuantities = customQuantities,
-            warehouseStock = warehouseStock,
+            warehouseStock = packingStock,
             stockLoaded = stockLoaded
         )
         if (outOfStock) return this
@@ -1208,6 +1345,10 @@ class RefillViewModel : ViewModel() {
         // and the persisted snapshot can never disagree about which tour
         // they belong to.
         val started = _uiState.updateAndGet { state ->
+            // Rebuild units are fixed now: what the warehouse covers for each
+            // machine's accepted slots travels with the machine, and only the
+            // accepted items of the change note go on the tour (web `startTour`).
+            val rebuildCommitted = state.computeRebuildCommitted()
             state.copy(
                 isSaving = true,
                 tourId = tourId,
@@ -1216,17 +1357,34 @@ class RefillViewModel : ViewModel() {
                     machines = state.machines,
                     packedItems = state.packedItems,
                     customQuantities = state.customQuantities
-                )
+                ).map { machine ->
+                    val accepted = machine.acceptedChangeItems
+                    machine.copy(
+                        changeRequest = machine.changeRequest
+                            ?.takeIf { accepted.isNotEmpty() }
+                            ?.copy(items = accepted),
+                        rebuildPacked = rebuildCommitted[machine.machine.id] ?: emptyMap()
+                    )
+                }
             ).withPackingList()
         }
 
         viewModelScope.launch {
             val warehouseId = started.selectedWarehouseId
             if (warehouseId != null) {
-                val deductions = RefillTourLogic.buildDeductions(
-                    machines = started.machines,
-                    packedItems = started.packedItems,
-                    customQuantities = started.customQuantities
+                // One deduction per (machine, product): the normal refill plus
+                // the rebuild units, so unused rebuild units can later go back
+                // to the very batches this tour took them from (the deduction
+                // metadata carries the tour id `apply_slot_change` matches on).
+                val deductions = SlotChange.mergeDeductions(
+                    normal = RefillTourLogic.buildDeductions(
+                        machines = started.machines,
+                        packedItems = started.packedItems,
+                        customQuantities = started.customQuantities
+                    ),
+                    rebuildPacked = started.machines
+                        .filter { it.rebuildPacked.isNotEmpty() }
+                        .associate { it.machine.id to it.rebuildPacked }
                 )
                 // Never fails the tour — the driver has already packed the
                 // van — but the deductions that did not go through are kept
@@ -1288,6 +1446,7 @@ class RefillViewModel : ViewModel() {
                 ).withPackingList()
             }
             tourStore.save(next.toPersistedTourState())
+            prepareRebuildForCurrentMachine()
         }
     }
 
@@ -1325,14 +1484,20 @@ class RefillViewModel : ViewModel() {
     /**
      * Re-derives every machine's `isPacked`: packed as soon as at least one
      * of its still-needed products (a product with `deficit > 0` in one of
-     * its trays) is in `packedItems`. Also refreshes [RefillUiState.packingList]
+     * its trays) is in `packedItems`, or it has an accepted change-note slot. Also refreshes [RefillUiState.packingList]
      * since this changes `machines`. Ported from iOS `syncMachinePackedState`.
      */
     private fun RefillUiState.withSyncedPackedState(): RefillUiState {
         val newMachines = machines.map { rm ->
             val packedForMachine = packedItems[rm.machine.id] ?: emptySet()
-            val neededProductIds = rm.trays.filter { it.deficit > 0 }.mapNotNull { it.tray.productId }.toSet()
-            rm.copy(isPacked = neededProductIds.any { it in packedForMachine })
+            val rebuildTrayIds = rm.rebuildTrayIds
+            val neededProductIds = rm.trays
+                .filter { it.deficit > 0 && it.tray.id !in rebuildTrayIds }
+                .mapNotNull { it.tray.productId }
+                .toSet()
+            // An accepted change note makes the machine a stop on its own:
+            // a pure swap needs no units but still a visit (web `startTour`).
+            rm.copy(isPacked = neededProductIds.any { it in packedForMachine } || rebuildTrayIds.isNotEmpty())
         }
         return copy(machines = newMachines).withPackingList()
     }
@@ -1405,6 +1570,7 @@ class RefillViewModel : ViewModel() {
         if (state.currentMachineId == machineId) return
         val next = _uiState.updateAndGet { it.copy(currentMachineId = machineId) }
         tourStore.save(next.toPersistedTourState())
+        prepareRebuildForCurrentMachine()
     }
 
     /**
@@ -1429,7 +1595,7 @@ class RefillViewModel : ViewModel() {
      * log entry with 0/0 plus an `activity_log` row — so the history shows
      * the machine was opened. Ported from iOS `confirmRefill`.
      */
-    fun confirmRefill(machineId: String) {
+    fun confirmRefill(machineId: String, returnBatchLabel: String) {
         val snapshot = _uiState.value
         val machine = snapshot.machines.find { it.machine.id == machineId } ?: return
         // Re-entrancy guards. iOS disables only its *Confirm* button on
@@ -1447,6 +1613,21 @@ class RefillViewModel : ViewModel() {
         if (snapshot.isSaving) return
         if (machine.isRefilled || machine.isSkipped) return
 
+        // Change note first. The machine can only be confirmed once every
+        // slot of it is marked rebuilt or not rebuilt (the UI says so and
+        // disables Confirm); cards that were never prepared — they always are
+        // by the time the step renders — are prepared instead of booked blind.
+        val rebuildSlots = if (machine.acceptedChangeItems.isEmpty()) {
+            emptyList()
+        } else {
+            if (snapshot.rebuildMachineId != machineId) {
+                prepareRebuildForCurrentMachine()
+                return
+            }
+            if (!snapshot.rebuildReady) return
+            snapshot.currentRebuild
+        }
+
         // `isInTour` is defensive here, not load-bearing today: the fill
         // actions above no longer set `fillAmount > 0` on a not-packed tray.
         // But this is the single place that books stock, so it must not
@@ -1458,6 +1639,30 @@ class RefillViewModel : ViewModel() {
         val traysToRefill = machine.trays.filter { it.fillAmount > 0 && it.isInTour }
 
         viewModelScope.launch {
+            // `apply_slot_change` runs **before** the normal refill: it
+            // switches the rebuilt slots and books the leftovers. When it
+            // fails, nothing else is booked and the machine stays put — the
+            // driver confirms again, and the RPC's (request, tour)
+            // idempotency makes the retry safe even if the first call in fact
+            // committed. The normal refill below never touches rebuilt slots.
+            var slotsRebuilt = 0
+            if (rebuildSlots.isNotEmpty()) {
+                _uiState.update { it.copy(isSaving = true, error = null, refillFailedAttempts = null) }
+                val applied = applyRebuild(snapshot, machine, rebuildSlots, skipAll = false, returnBatchLabel)
+                val failure = applied.exceptionOrNull()
+                if (failure != null) {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            error = failure.message,
+                            refillFailedAttempts = MAX_REFILL_ATTEMPTS
+                        )
+                    }
+                    return@launch
+                }
+                slotsRebuilt = applied.getOrDefault(0)
+            }
+
             if (traysToRefill.isEmpty()) {
                 // Clear a stale error from a previous machine — a visit that
                 // needed no stock write is still a success, and leaving the
@@ -1469,8 +1674,10 @@ class RefillViewModel : ViewModel() {
                     machineId = machineId,
                     traysSnapshot = emptyList(),
                     traysCount = 0,
-                    itemsAdded = 0
+                    itemsAdded = 0,
+                    slotsRebuilt = slotsRebuilt
                 )
+                _uiState.update { it.copy(isSaving = false) }
                 return@launch
             }
 
@@ -1508,7 +1715,8 @@ class RefillViewModel : ViewModel() {
                     machineId = machineId,
                     traysSnapshot = traysToRefill,
                     traysCount = rows.size,
-                    itemsAdded = itemsAdded
+                    itemsAdded = itemsAdded,
+                    slotsRebuilt = slotsRebuilt
                 )
                 _uiState.update { it.copy(isSaving = false) }
                 return@launch
@@ -1536,7 +1744,7 @@ class RefillViewModel : ViewModel() {
      * `stock_refill_tour_skip` activity row carries **no** extra metadata,
      * matching iOS and the PWA. Ported from iOS `skipMachine`.
      */
-    fun skipMachine(machineId: String) {
+    fun skipMachine(machineId: String, returnBatchLabel: String) {
         val snapshot = _uiState.value
         val machine = snapshot.machines.find { it.machine.id == machineId } ?: return
         // Same guards as `confirmRefill`, and `isSaving` matters most here:
@@ -1548,9 +1756,36 @@ class RefillViewModel : ViewModel() {
         if (snapshot.isSaving) return
         if (machine.isRefilled || machine.isSkipped) return
 
+        // Not rebuilt: every accepted slot stays open for the next tour, and
+        // what was packed for them goes back to the batches it came from.
+        // Removed/filled play no part in a skip, so cards that were never
+        // prepared can be built from the items alone.
+        val rebuildSlots = when {
+            machine.acceptedChangeItems.isEmpty() -> emptyList()
+            snapshot.rebuildMachineId == machineId -> snapshot.currentRebuild
+            else -> SlotChange.startRebuild(machine.acceptedChangeItems, emptyMap(), machine.rebuildPacked)
+        }
+
         viewModelScope.launch {
+            if (rebuildSlots.isNotEmpty()) {
+                _uiState.update { it.copy(isSaving = true, error = null, refillFailedAttempts = null) }
+                val failure = applyRebuild(snapshot, machine, rebuildSlots, skipAll = true, returnBatchLabel)
+                    .exceptionOrNull()
+                if (failure != null) {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            error = failure.message,
+                            refillFailedAttempts = MAX_REFILL_ATTEMPTS
+                        )
+                    }
+                    return@launch
+                }
+            }
+
             val state = _uiState.updateAndGet { current ->
                 current.copy(
+                    isSaving = false,
                     machines = current.machines.map {
                         if (it.machine.id == machineId) it.copy(isSkipped = true) else it
                     },
@@ -1625,6 +1860,7 @@ class RefillViewModel : ViewModel() {
                 refillFailedAttempts = null
             ).withPackingList()
         }
+        prepareRebuildForCurrentMachine()
 
         // The rest of this tour still writes audit rows, so its company id is
         // resolved once here too — same reason as at tour start.
@@ -1675,7 +1911,8 @@ class RefillViewModel : ViewModel() {
         machineId: String,
         traysSnapshot: List<RefillTray>,
         traysCount: Int,
-        itemsAdded: Int
+        itemsAdded: Int,
+        slotsRebuilt: Int = 0
     ) {
         val machineName = _uiState.value.machines
             .find { it.machine.id == machineId }?.machine?.displayName.orEmpty()
@@ -1690,7 +1927,8 @@ class RefillViewModel : ViewModel() {
                     machineName = machineName,
                     traysRefilled = traysCount,
                     totalAdded = itemsAdded,
-                    skipped = false
+                    skipped = false,
+                    slotsRebuilt = slotsRebuilt
                 )
             ).withPackingList()
         }
@@ -1754,6 +1992,7 @@ class RefillViewModel : ViewModel() {
             )
         }
         tourStore.save(next.toPersistedTourState())
+        prepareRebuildForCurrentMachine()
     }
 
     /**
@@ -1811,6 +2050,223 @@ class RefillViewModel : ViewModel() {
             )
         }
         return copy(machines = newMachines).withPackingList()
+    }
+
+    // ---------------------------------------------------------------------
+    // Slot rebuild at the machine ("Änderungsvermerk"). Ported from the web
+    // wizard (`useRefillWizard.ts`: `loadTraysForCurrentMachine`'s rebuild
+    // half, `recomputeRebuildFill`, `setRebuild*`, `applyCurrentRebuild`).
+    // The arithmetic lives in [SlotChange] and is tested there.
+    // ---------------------------------------------------------------------
+
+    /**
+     * Builds the rebuild cards of the current stop, once per stop. Shown at
+     * once from the stock known locally, then refreshed with the slots' live
+     * stock: "removed" defaults to what is in the slot *now*, so sales between
+     * packing and filling are already accounted for. Also pre-fills the
+     * best-before date of goods coming out of the machine. Clears the cards
+     * when the current stop has no change note.
+     */
+    private fun prepareRebuildForCurrentMachine() {
+        val state = _uiState.value
+        val machine = state.machines.find { it.machine.id == state.currentMachineId }
+        val items = machine?.acceptedChangeItems.orEmpty()
+        if (machine == null || items.isEmpty()) {
+            if (state.rebuildMachineId != null || state.currentRebuild.isNotEmpty()) {
+                _uiState.update {
+                    it.copy(
+                        rebuildMachineId = null,
+                        currentRebuild = emptyList(),
+                        leftoverDestinations = emptyMap(),
+                        leftoverExpiry = emptyMap()
+                    )
+                }
+            }
+            return
+        }
+        val machineId = machine.machine.id
+        if (state.rebuildMachineId == machineId) return
+
+        val packed = machine.rebuildPacked
+        _uiState.update {
+            it.copy(
+                rebuildMachineId = machineId,
+                currentRebuild = SlotChange.startRebuild(
+                    items,
+                    machine.trays.associate { tray -> tray.tray.id to tray.tray.currentStock },
+                    packed
+                ),
+                leftoverDestinations = emptyMap(),
+                leftoverExpiry = emptyMap()
+            )
+        }
+
+        viewModelScope.launch {
+            val live = SlotChangeRepository.fetchTrayStocks(items.map { it.trayId }).getOrNull()
+            if (live != null) {
+                _uiState.update { s ->
+                    if (s.rebuildMachineId != machineId || s.isSaving) return@update s
+                    s.copy(
+                        currentRebuild = SlotChange.recomputeFill(
+                            s.currentRebuild.map { slot ->
+                                val stock = live[slot.item.trayId] ?: return@map slot
+                                // A "removed" the driver already typed wins.
+                                val untouched = slot.removed == slot.liveStock
+                                slot.copy(liveStock = stock, removed = if (untouched) stock else slot.removed)
+                            },
+                            packed
+                        )
+                    )
+                }
+            }
+
+            val fromProducts = items.mapNotNull { it.fromProductId }.distinct()
+            val found = fromProducts.mapNotNull { productId ->
+                SlotChangeRepository.suggestExpiry(machineId, productId)?.let { productId to it }
+            }
+            if (found.isNotEmpty()) {
+                _uiState.update { s ->
+                    if (s.rebuildMachineId != machineId) return@update s
+                    var expiry = s.leftoverExpiry
+                    for ((productId, date) in found) {
+                        if (productId !in expiry) expiry = expiry + (productId to date)
+                    }
+                    s.copy(leftoverExpiry = expiry)
+                }
+            }
+        }
+    }
+
+    /** Units of the old product taken out of a slot. Re-plans the suggested fills. */
+    fun setRebuildRemoved(itemId: String, value: Int) {
+        updateRebuild(recompute = true) { slot ->
+            if (slot.item.id == itemId) slot.copy(removed = value.coerceAtLeast(0)) else slot
+        }
+    }
+
+    /** Units of the new product put in, clamped to the new capacity; 0 for a slot left empty. */
+    fun setRebuildFilled(itemId: String, value: Int) {
+        updateRebuild(recompute = false) { slot ->
+            if (slot.item.id != itemId) return@updateRebuild slot
+            val filled = if (slot.item.toProductId == null) 0 else value.coerceIn(0, slot.item.toCapacity)
+            slot.copy(filled = filled, filledTouched = true)
+        }
+    }
+
+    /** Marks a slot rebuilt / not rebuilt; `null` takes the decision back. */
+    fun setRebuildAction(itemId: String, action: RebuildAction?) {
+        updateRebuild(recompute = true) { slot ->
+            if (slot.item.id == itemId) slot.copy(action = action) else slot
+        }
+    }
+
+    /** The new price has been set at the machine's selection. */
+    fun setRebuildPriceSet(itemId: String, value: Boolean) {
+        updateRebuild(recompute = false) { slot ->
+            if (slot.item.id == itemId) slot.copy(priceSet = value) else slot
+        }
+    }
+
+    fun setLeftoverDestination(productId: String, destination: LeftoverDestination) {
+        _uiState.update {
+            if (it.isSaving) it else it.copy(leftoverDestinations = it.leftoverDestinations + (productId to destination))
+        }
+    }
+
+    /** Best-before date (`YYYY-MM-DD`) for goods of [productId] taken out of the machine; `null` clears it. */
+    fun setLeftoverExpiry(productId: String, date: String?) {
+        _uiState.update {
+            if (it.isSaving) {
+                it
+            } else {
+                it.copy(
+                    leftoverExpiry = if (date.isNullOrBlank()) it.leftoverExpiry - productId
+                    else it.leftoverExpiry + (productId to date)
+                )
+            }
+        }
+    }
+
+    /**
+     * Applies [transform] to every card of the current stop. Locked while a
+     * write is in flight, like every other control of the refill step.
+     */
+    private fun updateRebuild(recompute: Boolean, transform: (RebuildSlot) -> RebuildSlot) {
+        _uiState.update { state ->
+            if (state.isSaving) return@update state
+            val machine = state.machines.find { it.machine.id == state.rebuildMachineId } ?: return@update state
+            val slots = state.currentRebuild.map(transform)
+            state.copy(
+                currentRebuild = if (recompute) SlotChange.recomputeFill(slots, machine.rebuildPacked) else slots
+            )
+        }
+    }
+
+    /**
+     * Quits the rebuild of [machine] through `apply_slot_change`, retried like
+     * the refill (three attempts, 1 s / 3 s apart — safe, the RPC is
+     * idempotent per (request, tour)). Returns how many slots were rebuilt.
+     *
+     * [skipAll] is the "machine skipped" path: every slot stays open and the
+     * units packed for them go back to the warehouse.
+     *
+     * Leftovers are only sent with a warehouse: without one nothing was
+     * deducted at tour start, so there is nothing to return — and the RPC
+     * refuses warehouse returns without one.
+     */
+    private suspend fun applyRebuild(
+        state: RefillUiState,
+        machine: RefillMachine,
+        slots: List<RebuildSlot>,
+        skipAll: Boolean,
+        returnBatchLabel: String
+    ): Result<Int> {
+        val request = machine.changeRequest ?: return Result.success(0)
+        if (slots.isEmpty()) return Result.success(0)
+        val effective = if (skipAll) slots.map { it.copy(action = RebuildAction.SKIP) } else slots
+        val items = effective.map {
+            SlotChangeApplyItem(
+                itemId = it.item.id,
+                action = if (it.action == RebuildAction.DONE) RebuildAction.DONE else RebuildAction.SKIP,
+                removed = it.removed,
+                filled = it.filled,
+                priceSet = it.priceSet
+            )
+        }
+        val warehouseId = state.selectedWarehouseId
+        val leftovers = if (warehouseId == null) {
+            emptyList()
+        } else {
+            SlotChange.leftovers(effective, machine.rebuildPacked).map { l ->
+                SlotChangeLeftoverPayload(
+                    productId = l.productId,
+                    vanQty = l.van,
+                    machineQty = l.machine,
+                    destination = if (skipAll) {
+                        LeftoverDestination.WAREHOUSE
+                    } else {
+                        state.leftoverDestinations[l.productId] ?: LeftoverDestination.WAREHOUSE
+                    },
+                    expirationDate = if (l.machine > 0) state.leftoverExpiry[l.productId] else null,
+                    batchNumber = returnBatchLabel
+                )
+            }
+        }
+
+        var lastError: Throwable? = null
+        for (attempt in 1..MAX_REFILL_ATTEMPTS) {
+            if (attempt > 1) delay(REFILL_BACKOFF_MS[attempt - 2])
+            val result = SlotChangeRepository.applySlotChange(
+                requestId = request.id,
+                tourId = state.tourId,
+                warehouseId = warehouseId,
+                items = items,
+                leftovers = leftovers
+            )
+            if (result.isSuccess) return Result.success(items.count { it.action == RebuildAction.DONE })
+            lastError = result.exceptionOrNull()
+        }
+        return Result.failure(lastError ?: IllegalStateException("apply_slot_change failed"))
     }
 
     private companion object {

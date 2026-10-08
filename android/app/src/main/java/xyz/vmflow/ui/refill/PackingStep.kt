@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import xyz.vmflow.R
 import xyz.vmflow.data.MachineStockTier
 import xyz.vmflow.data.RefillTourLogic
+import xyz.vmflow.data.SlotChange
 import xyz.vmflow.models.CombinedPackingItem
 import xyz.vmflow.models.MachineNeed
 import xyz.vmflow.models.RefillMachine
@@ -135,7 +136,8 @@ fun PackingStep(
     onPackEverything: () -> Unit,
     onPackAllForMachine: (machineId: String) -> Unit,
     onStartTour: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleRebuildItem: (machineId: String, itemId: String) -> Unit = { _, _ -> }
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -204,6 +206,8 @@ fun PackingStep(
         }
     }
 
+    val changeNotes = changeNotes(uiState, activeChip)
+
     val rows = packRows(
         uiState = uiState,
         visiblePackingList = visiblePackingList,
@@ -266,9 +270,24 @@ fun PackingStep(
                 )
             }
 
+            // Change notes ("Änderungsvermerk") first: accepting or declining a
+            // slot changes what the product cards below ask for.
+            items(items = changeNotes, key = { "change-note-${it.machineId}" }) { note ->
+                ChangeNoteCard(
+                    note = note,
+                    enabled = !uiState.isSaving,
+                    onToggleItem = { itemId ->
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onToggleRebuildItem(note.machineId, itemId)
+                    }
+                )
+            }
+
             if (rows.isEmpty()) {
-                item(key = "empty") {
-                    PackEmptyState(isMachineChip = activeChip != null)
+                if (changeNotes.isEmpty()) {
+                    item(key = "empty") {
+                        PackEmptyState(isMachineChip = activeChip != null)
+                    }
                 }
             } else {
                 items(items = rows, key = { it.productId }) { row ->
@@ -413,13 +432,16 @@ private fun packRows(
         }
 
         val allPacked = needStates.all { it.isPacked }
+        // `packingStock`, not the raw totals: units the change notes claim
+        // for slot rebuilds are no longer available to the normal refill,
+        // and count as committed.
         val remaining = if (stockLoaded) {
             RefillTourLogic.remainingWarehouseStock(
                 machines = uiState.machines,
                 productId = item.productId,
                 packedItems = uiState.packedItems,
                 customQuantities = uiState.customQuantities,
-                warehouseStock = uiState.warehouseStock
+                warehouseStock = uiState.packingStock
             )
         } else {
             null
@@ -430,7 +452,7 @@ private fun packRows(
                 productId = item.productId,
                 packedItems = uiState.packedItems,
                 customQuantities = uiState.customQuantities
-            )
+            ) + uiState.rebuildCommittedTotal(item.productId)
         } else {
             null
         }
@@ -460,6 +482,42 @@ private fun packRows(
         )
     }
 }
+
+/**
+ * The change notes to show: every machine with an open slot change request,
+ * narrowed to the active chip's machine. Pack lines are what the accepted
+ * slots need ([SlotChange.rebuildPackNeeds]) next to what the warehouse
+ * covers ([RefillUiState.rebuildCommitted]).
+ */
+private fun changeNotes(uiState: RefillUiState, activeChip: String?): List<ChangeNoteState> =
+    uiState.machines
+        .filter { machine ->
+            machine.changeRequest?.items?.isNotEmpty() == true &&
+                (activeChip == null || machine.machine.id == activeChip)
+        }
+        .map { machine ->
+            val items = machine.changeRequest?.items.orEmpty()
+            val needs = SlotChange.rebuildPackNeeds(
+                machine.acceptedChangeItems,
+                machine.trays.associate { it.tray.id to it.tray.currentStock }
+            )
+            val committed = uiState.rebuildCommitted[machine.machine.id].orEmpty()
+            ChangeNoteState(
+                machineId = machine.machine.id,
+                machineName = machine.machine.displayName,
+                items = items,
+                pack = needs.map { (productId, need) ->
+                    val ref = items.firstOrNull { it.toProductId == productId }
+                    RebuildPackLine(
+                        productId = productId,
+                        name = ref?.toName,
+                        imagePath = ref?.toImagePath,
+                        need = need,
+                        packed = committed[productId] ?: 0
+                    )
+                }
+            )
+        }
 
 /**
  * Slot number to name an unassigned product by. [CombinedPackingItem] is

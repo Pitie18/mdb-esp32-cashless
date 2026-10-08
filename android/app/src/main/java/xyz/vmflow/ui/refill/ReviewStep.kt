@@ -119,7 +119,7 @@ import xyz.vmflow.ui.theme.StockRed
  *   [RefillWizardScreen] for the seam the picker task fills.
  * @param onSkipReplacement `RefillViewModel::skipReplacement`.
  * @param onSkipAll `RefillViewModel::skipReview` — skips every *undecided*
- *   card and then applies the replacements already chosen; it is not
+ *   card and then queues the replacements already chosen; it is not
  *   "discard everything".
  * @param onContinue `RefillViewModel::applyReplacementsAndContinue`.
  */
@@ -512,8 +512,10 @@ private fun SkippedDecision(
 }
 
 /**
- * A slot whose write already **committed**: the tray now holds this product
- * and its stock has been zeroed. A done state, with no controls at all.
+ * A slot whose replacement is already **queued** into the machine's slot
+ * change request (`save_slot_change_request`); the tray itself only changes
+ * when a refiller quits the rebuild on a tour. A done state, with no controls
+ * at all.
  *
  * This exists because of what a *partial* apply leaves behind. The write loop
  * in [RefillViewModel.applyReplacementsAndContinue] stops at the first
