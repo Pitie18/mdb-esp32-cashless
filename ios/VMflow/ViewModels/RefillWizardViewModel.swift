@@ -17,6 +17,11 @@ struct RefillMachine: Identifiable, Equatable, Codable {
     /// Refillable products that are sold out or low — the tie-breaker of the
     /// tour order. Optional for the same reason as `health`.
     var urgentProductCount: Int? = nil
+    /// Open slot change request of the machine, shown as a change note
+    /// ("Änderungsvermerk"). While packing it holds every pending slot; once
+    /// the tour started only the slots the refiller accepted. Optional so
+    /// tours saved by older builds still decode.
+    var changeRequest: SlotChangeRequest? = nil
 
     var id: UUID { machine.id }
 
@@ -167,6 +172,9 @@ struct TourLogEntry: Equatable, Codable {
     let traysRefilled: Int
     let totalAdded: Int
     let skipped: Bool
+    /// Slots switched to their new product at this stop (slot change
+    /// request). Optional so tour logs saved by older builds still decode.
+    var slotsRebuilt: Int? = nil
 }
 
 // MARK: - Product Replacement
@@ -195,6 +203,62 @@ struct ReplacementSuggestion: Identifiable, Equatable, Codable {
     var isSkipped: Bool = false
 
     var id: UUID { trayId }
+}
+
+// MARK: - Slot Rebuild (change note)
+
+/// One slot of the change note, as handled at the machine.
+struct RebuildSlot: Identifiable, Equatable {
+    let item: SlotChangeRequestItem
+    /// Stock in the slot right now (sales since packing already deducted).
+    var liveStock: Int
+    /// Units of the old product taken out (editable, defaults to `liveStock`).
+    var removed: Int
+    var removedTouched: Bool = false
+    /// Units of the new product put in (editable, defaults to the fill plan).
+    var filled: Int
+    var filledTouched: Bool = false
+    /// Fill plan split of the suggestion.
+    var moved: Int = 0
+    var fromVan: Int = 0
+    /// `nil` until the refiller marks the slot rebuilt / not rebuilt.
+    var action: SlotChangeAction? = nil
+    var priceSet: Bool = false
+
+    var id: UUID { item.id }
+}
+
+/// Where leftover goods of a rebuild go.
+enum LeftoverDestination: String, Codable {
+    case warehouse
+    case waste
+}
+
+/// Goods left over at the current machine, per product.
+struct RebuildLeftover: Identifiable, Equatable {
+    let productId: UUID
+    let name: String?
+    let imagePath: String?
+    /// Packed for the rebuild but not used.
+    let van: Int
+    /// Taken out of the machine and not put into another slot.
+    let machine: Int
+
+    var id: UUID { productId }
+    var total: Int { van + machine }
+}
+
+/// Rebuild units of one product on a machine's change note (packing step).
+struct RebuildPackLine: Identifiable, Equatable {
+    let productId: UUID
+    let name: String?
+    let imagePath: String?
+    /// What the accepted slots need from the warehouse.
+    let need: Int
+    /// What the warehouse covers (≤ need when it runs short).
+    let packed: Int
+
+    var id: UUID { productId }
 }
 
 // MARK: - Refill Steps
@@ -293,6 +357,43 @@ final class RefillWizardViewModel: ObservableObject {
     /// user notices the delta before confirming.
     @Published var staleStockTrayIds: Set<UUID> = []
 
+    // MARK: Slot change requests ("Änderungsvermerk")
+    //
+    // A machine's open change request rides along in
+    // `RefillMachine.changeRequest`. The refiller accepts (default) or declines
+    // each slot while packing; accepted slots leave the normal refill and get
+    // their own packing line. At the machine they are rebuilt and quit via
+    // `apply_slot_change`, before the normal refill of the other slots.
+    // Declined / skipped slots stay open server-side for a later tour.
+    // Mirrors the PWA's `useRefillWizard.ts`.
+
+    /// Open requests (pending slots only) by machine id, as last fetched.
+    @Published var changeRequests: [UUID: SlotChangeRequest] = [:]
+    /// Item id → accepted. Missing = accepted.
+    @Published var rebuildDecisions: [UUID: Bool] = [:]
+    /// Machine id → product id → units packed (deducted) for rebuilds.
+    @Published var rebuildPacked: [UUID: [UUID: Int]] = [:]
+    /// Rebuild cards of the machine in `currentRebuildMachineId`.
+    @Published var currentRebuild: [RebuildSlot] = []
+    @Published private(set) var currentRebuildMachineId: UUID?
+    /// Product id → destination of its leftovers (missing = warehouse).
+    @Published var leftoverDestinations: [UUID: LeftoverDestination] = [:]
+    /// Product id → best-before date ("yyyy-MM-dd") for goods taken out of
+    /// the machine.
+    @Published var leftoverExpiry: [UUID: String] = [:]
+    /// Short confirmation after review-step replacements were queued into
+    /// change requests (shown on the packing step).
+    @Published var replacementNotice: String?
+    /// Machine whose rebuild cards are being loaded (guards double loads).
+    private var preparingRebuildFor: UUID?
+
+    /// Raw data of the last load, kept so the tour list can be rebuilt when
+    /// the refiller accepts or declines a slot of a change note.
+    private var lastAllMachines: [VendingMachine] = []
+    private var lastAllTrays: [Tray] = []
+    private var lastWarehouseProductIds: Set<UUID> = []
+    private var lastHasWarehouses = false
+
     /// Unique tour identifier, used to group activity log entries.
     private(set) var tourId: String = ""
 
@@ -334,6 +435,10 @@ final class RefillWizardViewModel: ObservableObject {
         let selectedWarehouseId: UUID?
         let tourId: String
         let tourLog: [TourLogEntry]
+        /// Units packed for slot rebuilds (machine → product → qty). The
+        /// accepted slots themselves travel in `machines[*].changeRequest`.
+        /// Optional so tours saved by older builds still decode.
+        var rebuildPacked: [UUID: [UUID: Int]]? = nil
         let savedAt: Date
     }
 
@@ -393,6 +498,10 @@ final class RefillWizardViewModel: ObservableObject {
             selectedWarehouseId = state.selectedWarehouseId
             tourId = state.tourId
             tourLog = state.tourLog
+            rebuildPacked = state.rebuildPacked ?? [:]
+            // Rebuild cards are rebuilt from live stock when the machine is
+            // shown again (`prepareRebuild`).
+            resetCurrentRebuild()
             // The snapshot holds tour-start stock; "sold during tour" badges
             // are not persisted. Start clean and let the caller's live refresh
             // (RefillWizardView) re-flag any trays that actually dropped, so a
@@ -431,6 +540,7 @@ final class RefillWizardViewModel: ObservableObject {
             selectedWarehouseId: selectedWarehouseId,
             tourId: tourId,
             tourLog: tourLog,
+            rebuildPacked: rebuildPacked,
             savedAt: Date()
         )
 
@@ -453,6 +563,8 @@ final class RefillWizardViewModel: ObservableObject {
     var traysRefilled: Int { tourLog.reduce(0) { $0 + $1.traysRefilled } }
     var totalItemsAdded: Int { tourLog.reduce(0) { $0 + $1.totalAdded } }
     var machinesSkipped: Int { tourLog.filter { $0.skipped }.count }
+    /// Slots switched to their new product during the tour ("Fächer umgebaut").
+    var slotsRebuilt: Int { tourLog.reduce(0) { $0 + ($1.slotsRebuilt ?? 0) } }
 
     /// Look up warehouse stock for a product.
     func warehouseStockFor(productId: UUID) -> WarehouseProductStock? {
@@ -460,8 +572,10 @@ final class RefillWizardViewModel: ObservableObject {
     }
 
     /// Total quantity already committed (packed) for a product across ALL machines.
+    /// Slot rebuilds (accepted change-note slots) are included: they get the
+    /// first claim on warehouse stock, like in the PWA.
     func committedQuantity(productId: UUID) -> Int {
-        var total = 0
+        var total = rebuildCommittedTotal(productId: productId)
         for machine in machines {
             guard packedItems[machine.id]?.contains(productId) == true else { continue }
             total += packingQuantity(machineId: machine.id, productId: productId)
@@ -705,7 +819,9 @@ final class RefillWizardViewModel: ObservableObject {
                 let maxQty = maxPackingQuantity(machineId: id, productId: item.productId)
                 guard qty >= min(need.quantity, maxQty) else { return false }
             }
-            return hadAnyNeed
+            // A machine on the list only for its change note has nothing to
+            // pack here — its box counts as done.
+            return hadAnyNeed || machines.first(where: { $0.id == id })?.changeRequest != nil
         }
     }
 
@@ -843,11 +959,12 @@ final class RefillWizardViewModel: ObservableObject {
         guard selectedWarehouseId != nil, !warehouseStock.isEmpty else { return trayMax }
         guard let stock = warehouseStockFor(productId: productId) else { return 0 }
 
-        // Available = total warehouse stock minus what OTHER machines have committed
+        // Available = total warehouse stock minus what OTHER machines have
+        // committed and what every slot rebuild has (rebuilds go first).
         let otherCommitted = machines
             .filter { $0.id != machineId && packedItems[$0.id]?.contains(productId) == true }
             .reduce(0) { $0 + packingQuantity(machineId: $1.id, productId: productId) }
-        let available = max(0, stock.totalQuantity - otherCommitted)
+        let available = max(0, stock.totalQuantity - otherCommitted - rebuildCommittedTotal(productId: productId))
 
         return min(trayMax, available)
     }
@@ -948,7 +1065,10 @@ final class RefillWizardViewModel: ObservableObject {
             let neededProductIds = Set(machine.trays.compactMap { $0.tray.productId }.filter { pid in
                 machine.trays.contains { $0.tray.productId == pid && $0.deficit > 0 }
             })
+            // An accepted change note puts the machine on the tour too — a
+            // pure swap needs no units but still a visit.
             machines[i].isPacked = !neededProductIds.isDisjoint(with: packedProductIds)
+                || hasAcceptedRebuild(machine)
         }
     }
 
@@ -992,6 +1112,8 @@ final class RefillWizardViewModel: ObservableObject {
             for productId in productIds {
                 total += packingQuantity(machineId: machine.id, productId: productId)
             }
+            // Plus what the machine's accepted change-note slots need.
+            total += (committedRebuild[machine.id] ?? [:]).values.reduce(0, +)
         }
         return total
     }
@@ -1022,19 +1144,27 @@ final class RefillWizardViewModel: ObservableObject {
     /// 4. Unassigned slots (no product) never ride along.
     /// 5. Order: critical, low, fill; then more sold-out + low refillable
     ///    products first.
+    /// 6. Slot change requests: slots with an accepted change
+    ///    (`acceptedTrayIds`) are left out — they get the rebuild instead of
+    ///    a normal refill — and a machine with an open request is listed even
+    ///    when it needs no refill (its change note must show).
     ///
     /// Static so both `loadData()` and `refreshDuringPacking()` share identical filtering.
     private static func buildRefillMachines(
         allMachines: [VendingMachine],
         allTrays: [Tray],
         warehouseProductIds: Set<UUID>,
-        hasWarehouses: Bool
+        hasWarehouses: Bool,
+        requests: [UUID: SlotChangeRequest] = [:],
+        acceptedTrayIds: Set<UUID> = []
     ) -> [RefillMachine] {
         let traysByMachine = Dictionary(grouping: allTrays, by: { $0.machineId })
         var refillMachines: [RefillMachine] = []
 
         for machine in allMachines {
-            let machineTrays = traysByMachine[machine.id] ?? []
+            let machineTrays = (traysByMachine[machine.id] ?? []).filter { !acceptedTrayIds.contains($0.id) }
+            let request = requests[machine.id]
+            let hasRequest = !(request?.items.isEmpty ?? true)
             let groups = MachineStockHealth.groupTraysByProduct(machineTrays).filter(\.needsRefill)
 
             var empty = 0, low = 0, fill = 0
@@ -1049,17 +1179,18 @@ final class RefillWizardViewModel: ObservableObject {
                 default: fill += 1
                 }
             }
-            guard empty + low + fill > 0 else { continue }
+            guard empty + low + fill > 0 || hasRequest else { continue }
 
             let trayIdsInGroups = Set(groups.flatMap { $0.trays.map(\.id) })
             let refillTrays: [RefillTray] = machineTrays
                 .filter { trayIdsInGroups.contains($0.id) }
                 .map { RefillTray(tray: $0, fillAmount: $0.deficit) }
-            guard !refillTrays.isEmpty else { continue }
+            guard !refillTrays.isEmpty || hasRequest else { continue }
 
             var refillMachine = RefillMachine(machine: machine, trays: refillTrays)
-            refillMachine.health = empty > 0 ? .critical : low > 0 ? .low : .fill
+            refillMachine.health = empty > 0 ? .critical : low > 0 ? .low : fill > 0 ? .fill : .ok
             refillMachine.urgentProductCount = empty + low
+            refillMachine.changeRequest = hasRequest ? request : nil
             refillMachines.append(refillMachine)
         }
 
@@ -1148,13 +1279,10 @@ final class RefillWizardViewModel: ObservableObject {
                 .value
 
             let availability = try await fetchCompanyWarehouseAvailability()
-            self.machines = Self.buildRefillMachines(
-                allMachines: allMachines,
-                allTrays: allTrays,
-                warehouseProductIds: availability.productIds,
-                hasWarehouses: availability.hasWarehouses
-            )
-            self.allTraysByMachine = Dictionary(grouping: allTrays, by: { $0.machineId })
+            // Change requests are kept from the last full load: a refresh
+            // must not pull a newly planned slot into a list being packed.
+            storeTourSource(allMachines: allMachines, allTrays: allTrays, availability: availability)
+            rebuildTourList()
 
             // `packedItems` keyed by machineId still applies to machines that are
             // still in the list; orphan entries for machines that no longer need
@@ -1206,9 +1334,12 @@ final class RefillWizardViewModel: ObservableObject {
         guard !isSaving else { return }
 
         // Only fetch stock for trays that are actually part of this tour.
+        // Plus the slots of the change note being rebuilt right now, so
+        // "taken out" follows sales until the refiller types a number.
         let tourTrayIds: [String] = machines
             .filter { !$0.isRefilled && !$0.isSkipped }
             .flatMap { m in m.trays.filter { $0.isInTour }.map { $0.tray.id.uuidString } }
+            + currentRebuild.map(\.item.trayId.uuidString)
         guard !tourTrayIds.isEmpty else { return }
 
         struct StockRow: Decodable {
@@ -1233,6 +1364,16 @@ final class RefillWizardViewModel: ObservableObject {
             )
 
             var didChange = false
+
+            for i in currentRebuild.indices {
+                guard let fresh = freshById[currentRebuild[i].item.trayId],
+                      fresh != currentRebuild[i].liveStock else { continue }
+                currentRebuild[i].liveStock = fresh
+                if !currentRebuild[i].removedTouched {
+                    currentRebuild[i].removed = fresh
+                }
+            }
+            recomputeRebuildFill()
 
             for mi in machines.indices {
                 // Skip machines the user has already confirmed or skipped.
@@ -1327,14 +1468,12 @@ final class RefillWizardViewModel: ObservableObject {
             print("[RefillWizard] Fetched \(allTrays.count) trays")
 
             let availability = try await fetchCompanyWarehouseAvailability()
-            self.machines = Self.buildRefillMachines(
-                allMachines: allMachines,
-                allTrays: allTrays,
-                warehouseProductIds: availability.productIds,
-                hasWarehouses: availability.hasWarehouses
-            )
-            let traysByMachine = Dictionary(grouping: allTrays, by: { $0.machineId })
-            self.allTraysByMachine = traysByMachine
+            // Open slot change requests become change notes. A failing lookup
+            // must never block a normal tour.
+            self.changeRequests = await fetchOpenChangeRequests(machineIds: allMachines.map(\.id))
+            storeTourSource(allMachines: allMachines, allTrays: allTrays, availability: availability)
+            rebuildTourList()
+            let traysByMachine = allTraysByMachine
 
             // Fetch warehouses first (needed for stock-based detection)
             print("[RefillWizard] Fetching warehouses...")
@@ -1402,9 +1541,12 @@ final class RefillWizardViewModel: ObservableObject {
                     }
                 }
 
-                // Scan ALL trays for replacement candidates
+                // Scan ALL trays for replacement candidates. Slots that
+                // already have a pending change (a replacement queued earlier,
+                // or a layout planned in the office) are handled by the
+                // change note instead.
                 var suggestions: [ReplacementSuggestion] = []
-                var seenTrayIds: Set<UUID> = []
+                var seenTrayIds: Set<UUID> = Set(changeRequests.values.flatMap { $0.items.map(\.trayId) })
 
                 for machine in allMachines {
                     let machineTrays = traysByMachine[machine.id] ?? []
@@ -1640,6 +1782,501 @@ final class RefillWizardViewModel: ObservableObject {
         return result
     }
 
+    // MARK: - Slot Change Requests (change note)
+
+    /// Remember the raw data the tour list is built from, so accepting or
+    /// declining a change-note slot can rebuild the list without a refetch.
+    private func storeTourSource(
+        allMachines: [VendingMachine],
+        allTrays: [Tray],
+        availability: (productIds: Set<UUID>, hasWarehouses: Bool)
+    ) {
+        lastAllMachines = allMachines
+        lastAllTrays = allTrays
+        lastWarehouseProductIds = availability.productIds
+        lastHasWarehouses = availability.hasWarehouses
+        allTraysByMachine = Dictionary(grouping: allTrays, by: { $0.machineId })
+    }
+
+    /// Rebuild `machines` from the stored source, the open change requests and
+    /// the refiller's accept/decline decisions (packing step only).
+    private func rebuildTourList() {
+        machines = Self.buildRefillMachines(
+            allMachines: lastAllMachines,
+            allTrays: lastAllTrays,
+            warehouseProductIds: lastWarehouseProductIds,
+            hasWarehouses: lastHasWarehouses,
+            requests: changeRequests,
+            acceptedTrayIds: acceptedRebuildTrayIds()
+        )
+        syncMachinePackedState()
+    }
+
+    private func acceptedRebuildTrayIds() -> Set<UUID> {
+        Set(changeRequests.values.flatMap(\.items).filter { isRebuildAccepted($0.id) }.map(\.trayId))
+    }
+
+    /// Whether a slot of a change note is accepted for this tour (default yes).
+    func isRebuildAccepted(_ itemId: UUID) -> Bool {
+        rebuildDecisions[itemId] != false
+    }
+
+    /// Whether the machine's change note has at least one accepted slot.
+    func hasAcceptedRebuild(_ machine: RefillMachine) -> Bool {
+        machine.changeRequest?.items.contains { isRebuildAccepted($0.id) } ?? false
+    }
+
+    /// Accepted change-note slots of a machine.
+    func acceptedRebuildItems(machineId: UUID) -> [SlotChangeRequestItem] {
+        guard let machine = machines.first(where: { $0.id == machineId }) else { return [] }
+        return (machine.changeRequest?.items ?? []).filter { isRebuildAccepted($0.id) }
+    }
+
+    /// Machines whose change note is shown on the packing step.
+    var machinesWithChangeNote: [RefillMachine] {
+        machines.filter { !($0.changeRequest?.items.isEmpty ?? true) }
+    }
+
+    /// Accept or decline one slot of a machine's change note (packing step).
+    /// A declined slot goes back into the normal refill and stays open
+    /// server-side for a later tour.
+    func toggleRebuildItem(machineId: UUID, itemId: UUID) {
+        guard currentStep == .packing else { return }
+        if isRebuildAccepted(itemId) {
+            rebuildDecisions[itemId] = false
+        } else {
+            rebuildDecisions[itemId] = nil
+        }
+        rebuildTourList()
+        reconcilePacking(machineId: machineId)
+    }
+
+    /// After a slot left or rejoined the normal refill, drop packed products
+    /// the machine no longer needs and cap pinned quantities to the room left
+    /// in its remaining slots.
+    private func reconcilePacking(machineId: UUID) {
+        guard let machine = machines.first(where: { $0.id == machineId }) else {
+            packedItems[machineId] = nil
+            customQuantities[machineId] = nil
+            syncMachinePackedState()
+            return
+        }
+        let needed = Set(machine.trays.filter { $0.deficit > 0 }.compactMap(\.tray.productId))
+        var packed = packedItems[machineId] ?? []
+        for pid in packed where !needed.contains(pid) {
+            packed.remove(pid)
+            customQuantities[machineId]?[pid] = nil
+        }
+        packedItems[machineId] = packed
+        for (pid, qty) in customQuantities[machineId] ?? [:] {
+            let room = machine.trays
+                .filter { $0.tray.productId == pid }
+                .reduce(0) { $0 + max(0, $1.tray.capacity - $1.tray.currentStock) }
+            if qty > room { customQuantities[machineId]?[pid] = room }
+        }
+        syncMachinePackedState()
+    }
+
+    /// Units the accepted slots of a machine need for the rebuild. While
+    /// packing it is computed from the stock known now (stock that moves
+    /// within the machine needs no warehouse stock); once the tour started it
+    /// is what was actually packed.
+    func rebuildNeeds(machineId: UUID) -> [UUID: Int] {
+        guard currentStep == .packing else { return rebuildPacked[machineId] ?? [:] }
+        let items = acceptedRebuildItems(machineId: machineId)
+        guard !items.isEmpty else { return [:] }
+        let stock = Dictionary(
+            (allTraysByMachine[machineId] ?? []).map { ($0.id, $0.currentStock) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return SlotChange.rebuildPackNeeds(items.map(\.line), stockByTray: stock)
+    }
+
+    /// Machine id → product id → units committed for rebuilds. Rebuilds get
+    /// the first claim on warehouse stock (an accepted change cannot be done
+    /// without its units), machines in tour order. Without warehouse stock
+    /// data nothing is restricted, like the normal packing. After the tour
+    /// started this is what was packed.
+    var committedRebuild: [UUID: [UUID: Int]] {
+        guard currentStep == .packing else { return rebuildPacked }
+        let restrict = selectedWarehouseId != nil && !warehouseStock.isEmpty
+        var remaining: [UUID: Int] = [:]
+        for stock in warehouseStock { remaining[stock.productId] = stock.totalQuantity }
+        var out: [UUID: [UUID: Int]] = [:]
+        for machine in machines {
+            var machineMap: [UUID: Int] = [:]
+            for (pid, need) in rebuildNeeds(machineId: machine.id) where need > 0 {
+                let qty: Int
+                if restrict {
+                    let available = remaining[pid] ?? 0
+                    qty = min(need, available)
+                    remaining[pid] = available - qty
+                } else {
+                    qty = need
+                }
+                if qty > 0 { machineMap[pid] = qty }
+            }
+            if !machineMap.isEmpty { out[machine.id] = machineMap }
+        }
+        return out
+    }
+
+    /// Units of a product committed to slot rebuilds across all machines.
+    func rebuildCommittedTotal(productId: UUID) -> Int {
+        committedRebuild.values.reduce(0) { $0 + ($1[productId] ?? 0) }
+    }
+
+    /// Packing lines of a machine's change note: per new product, what the
+    /// accepted slots need and what the warehouse covers.
+    func rebuildPackLines(machineId: UUID) -> [RebuildPackLine] {
+        let needs = rebuildNeeds(machineId: machineId)
+        guard !needs.isEmpty else { return [] }
+        let committed = committedRebuild[machineId] ?? [:]
+        var lines: [RebuildPackLine] = []
+        var seen = Set<UUID>()
+        for item in acceptedRebuildItems(machineId: machineId) {
+            guard let pid = item.toProductId, !seen.contains(pid), let need = needs[pid] else { continue }
+            seen.insert(pid)
+            lines.append(RebuildPackLine(
+                productId: pid, name: item.toName, imagePath: item.toImagePath,
+                need: need, packed: committed[pid] ?? 0
+            ))
+        }
+        return lines
+    }
+
+    /// Open change requests with their pending slots, keyed by machine id.
+    /// Never throws: a failing lookup must not block a normal tour.
+    func fetchOpenChangeRequests(machineIds: [UUID]) async -> [UUID: SlotChangeRequest] {
+        do {
+            return try await SlotChangeService.fetchOpenRequests(machineIds: machineIds)
+        } catch {
+            print("[RefillWizard] change requests unavailable: \(error)")
+            return [:]
+        }
+    }
+
+    /// Queue review-step replacements of one machine into its open change
+    /// request instead of switching the slots now: the slot is rebuilt at
+    /// the machine, where the old stock is counted.
+    private func queueReplacements(machineId: UUID, suggestions: [ReplacementSuggestion]) async throws {
+        let changes: [(trayId: UUID, productId: UUID)] = suggestions.compactMap { suggestion in
+            guard let productId = suggestion.replacementProductId else { return nil }
+            return (trayId: suggestion.trayId, productId: productId)
+        }
+        guard !changes.isEmpty else { return }
+        try await SlotChangeService.queueProducts(machineId: machineId, changes: changes)
+    }
+
+    // MARK: - Slot Rebuild at the Machine
+
+    /// Forget the rebuild cards (next machine, resume, reset).
+    func resetCurrentRebuild() {
+        currentRebuild = []
+        currentRebuildMachineId = nil
+        preparingRebuildFor = nil
+        leftoverDestinations = [:]
+        leftoverExpiry = [:]
+    }
+
+    /// Whether the machine has change-note slots to rebuild on this tour.
+    func machineHasRebuild(_ machineId: UUID) -> Bool {
+        !(machines.first(where: { $0.id == machineId })?.changeRequest?.items.isEmpty ?? true)
+    }
+
+    /// Build the rebuild cards of a machine when it comes up in the refill
+    /// step: "taken out" defaults to the slot's live stock (sales since
+    /// packing are already deducted), "filled in" to the fill plan. Keeps the
+    /// cards (and the refiller's input) when called again for the same machine.
+    func prepareRebuild(machineId: UUID) async {
+        guard currentStep == .refill,
+              currentRebuildMachineId != machineId,
+              preparingRebuildFor != machineId,
+              let machine = machines.first(where: { $0.id == machineId }) else { return }
+        let items = machine.changeRequest?.items ?? []
+        preparingRebuildFor = machineId
+        defer { if preparingRebuildFor == machineId { preparingRebuildFor = nil } }
+
+        var live: [UUID: Int]?
+        if !items.isEmpty {
+            struct StockRow: Decodable {
+                let id: UUID
+                let currentStock: Int
+                enum CodingKeys: String, CodingKey {
+                    case id
+                    case currentStock = "current_stock"
+                }
+            }
+            do {
+                let rows: [StockRow] = try await client
+                    .from("machine_trays")
+                    .select("id, current_stock")
+                    .in("id", values: items.map(\.trayId.uuidString))
+                    .execute()
+                    .value
+                live = Dictionary(rows.map { ($0.id, $0.currentStock) }, uniquingKeysWith: { first, _ in first })
+            } catch {
+                print("[RefillWizard] live stock for rebuild failed: \(error)")
+            }
+        }
+        // The view went away (task cancelled) or the refiller switched
+        // machines while this was loading: build the cards next time.
+        guard !Task.isCancelled,
+              currentMachine?.id == machineId,
+              currentRebuildMachineId != machineId else { return }
+
+        let known = Dictionary(
+            (allTraysByMachine[machineId] ?? []).map { ($0.id, $0.currentStock) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        currentRebuild = items.compactMap { item in
+            let stock: Int
+            if let live {
+                // A slot deleted since planning has nothing to rebuild.
+                guard let value = live[item.trayId] else { return nil }
+                stock = value
+            } else {
+                stock = known[item.trayId] ?? 0
+            }
+            return RebuildSlot(item: item, liveStock: stock, removed: stock, filled: 0)
+        }
+        currentRebuildMachineId = machineId
+        leftoverDestinations = [:]
+        leftoverExpiry = [:]
+        recomputeRebuildFill()
+        await loadExpirySuggestions(machineId: machineId)
+    }
+
+    /// Refresh the suggested fill of every slot whose fill the refiller
+    /// hasn't typed.
+    private func recomputeRebuildFill() {
+        guard let machineId = currentRebuildMachineId else { return }
+        let active = currentRebuild.filter { $0.action != .skip }
+        let removed = Dictionary(active.map { ($0.item.id, $0.removed) }, uniquingKeysWith: { first, _ in first })
+        let plan = SlotChange.fillPlan(
+            active.map(\.item.line),
+            removedByItem: removed,
+            vanByProduct: rebuildPacked[machineId] ?? [:]
+        )
+        for i in currentRebuild.indices {
+            let suggestion = plan[currentRebuild[i].item.id] ?? .zero
+            currentRebuild[i].moved = suggestion.moved
+            currentRebuild[i].fromVan = suggestion.van
+            if !currentRebuild[i].filledTouched {
+                currentRebuild[i].filled = suggestion.total
+            }
+        }
+    }
+
+    func setRebuildRemoved(itemId: UUID, value: Int) {
+        guard let i = currentRebuild.firstIndex(where: { $0.item.id == itemId }) else { return }
+        currentRebuild[i].removed = max(0, value)
+        currentRebuild[i].removedTouched = true
+        recomputeRebuildFill()
+    }
+
+    func setRebuildFilled(itemId: UUID, value: Int) {
+        guard let i = currentRebuild.firstIndex(where: { $0.item.id == itemId }) else { return }
+        let item = currentRebuild[i].item
+        currentRebuild[i].filled = item.toProductId == nil ? 0 : max(0, min(item.toCapacity, value))
+        currentRebuild[i].filledTouched = true
+    }
+
+    /// Mark a slot rebuilt / not rebuilt; `nil` undoes the decision.
+    func setRebuildAction(itemId: UUID, action: SlotChangeAction?) {
+        guard let i = currentRebuild.firstIndex(where: { $0.item.id == itemId }) else { return }
+        currentRebuild[i].action = action
+        recomputeRebuildFill()
+    }
+
+    func setRebuildPriceSet(itemId: UUID, value: Bool) {
+        guard let i = currentRebuild.firstIndex(where: { $0.item.id == itemId }) else { return }
+        currentRebuild[i].priceSet = value
+    }
+
+    /// Every slot of the change note has been marked rebuilt or not rebuilt.
+    var rebuildReady: Bool {
+        currentRebuild.allSatisfy { $0.action != nil }
+    }
+
+    /// What is left over at the current machine, per product. Slots not
+    /// decided yet count as rebuilt (the expected case) so the panel can be
+    /// read early.
+    var rebuildLeftovers: [RebuildLeftover] {
+        guard let machineId = currentRebuildMachineId else { return [] }
+        return computeRebuildLeftovers(slots: currentRebuild, machineId: machineId)
+    }
+
+    private func computeRebuildLeftovers(slots: [RebuildSlot], machineId: UUID) -> [RebuildLeftover] {
+        guard !slots.isEmpty else { return [] }
+        let outcome = Dictionary(
+            slots.map { slot in
+                (slot.item.id, SlotItemOutcome(
+                    action: slot.action == .skip ? .skip : .done,
+                    removed: slot.removed,
+                    filled: slot.filled
+                ))
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let left = SlotChange.computeLeftovers(
+            slots.map(\.item.line),
+            outcome: outcome,
+            packedByProduct: rebuildPacked[machineId] ?? [:]
+        )
+        // Stable order: as the products first appear on the note.
+        var order: [UUID] = []
+        var names: [UUID: String] = [:]
+        var images: [UUID: String] = [:]
+        func note(_ productId: UUID?, _ name: String?, _ image: String?) {
+            guard let productId else { return }
+            if !order.contains(productId) { order.append(productId) }
+            if let name { names[productId] = name }
+            if let image { images[productId] = image }
+        }
+        for slot in slots {
+            note(slot.item.fromProductId, slot.item.fromName, slot.item.fromImagePath)
+            note(slot.item.toProductId, slot.item.toName, slot.item.toImagePath)
+        }
+        let rest = left.keys.filter { !order.contains($0) }.sorted { $0.uuidString < $1.uuidString }
+        return (order + rest).compactMap { pid in
+            guard let split = left[pid] else { return nil }
+            return RebuildLeftover(
+                productId: pid, name: names[pid], imagePath: images[pid],
+                van: split.van, machine: split.machine
+            )
+        }
+    }
+
+    func leftoverDestination(productId: UUID) -> LeftoverDestination {
+        leftoverDestinations[productId] ?? .warehouse
+    }
+
+    func setLeftoverDestination(productId: UUID, destination: LeftoverDestination) {
+        leftoverDestinations[productId] = destination
+    }
+
+    /// `date` = "yyyy-MM-dd", or nil to clear.
+    func setLeftoverExpiry(productId: UUID, date: String?) {
+        leftoverExpiry[productId] = date
+    }
+
+    /// Pre-fill the best-before date of goods coming out of the machine: the
+    /// date of the batch the last refill of that product into this machine
+    /// came from. The machine does not track batches, so the refiller
+    /// confirms it. Mirrors `useSlotChangeRequests.suggestExpiry`.
+    private func loadExpirySuggestions(machineId: UUID) async {
+        struct ExpiryRow: Decodable {
+            let expirationDate: String?
+            enum CodingKeys: String, CodingKey { case expirationDate = "expiration_date" }
+        }
+        var productIds: [UUID] = []
+        for slot in currentRebuild {
+            if let pid = slot.item.fromProductId, !productIds.contains(pid) { productIds.append(pid) }
+        }
+        for pid in productIds {
+            do {
+                let rows: [ExpiryRow] = try await client
+                    .from("warehouse_transactions")
+                    .select("expiration_date")
+                    .eq("reference_id", value: machineId.uuidString)
+                    .eq("product_id", value: pid.uuidString)
+                    .eq("transaction_type", value: "outgoing_refill")
+                    .not("expiration_date", operator: .is, value: "null")
+                    .order("created_at", ascending: false)
+                    .limit(1)
+                    .execute()
+                    .value
+                guard currentRebuildMachineId == machineId else { return }
+                if let date = rows.first?.expirationDate, leftoverExpiry[pid] == nil {
+                    leftoverExpiry[pid] = String(date.prefix(10))
+                }
+            } catch {
+                print("[RefillWizard] expiry suggestion failed: \(error)")
+            }
+        }
+    }
+
+    /// Quit the change note of a machine via `apply_slot_change` — before the
+    /// normal refill. `skipAll` (machine skipped) marks every slot not rebuilt
+    /// and sends everything packed for them back to the warehouse. Retried
+    /// like the refill; the RPC is idempotent per (request, tour). Returns the
+    /// number of slots rebuilt, or nil when it could not be saved (`error` set).
+    private func applyRebuild(machineId: UUID, skipAll: Bool) async -> Int? {
+        guard let machine = machines.first(where: { $0.id == machineId }),
+              let request = machine.changeRequest,
+              !request.items.isEmpty else { return 0 }
+
+        var slots: [RebuildSlot]
+        if currentRebuildMachineId == machineId {
+            slots = currentRebuild
+        } else if skipAll {
+            slots = request.items.map { RebuildSlot(item: $0, liveStock: 0, removed: 0, filled: 0) }
+        } else {
+            self.error = String(localized: "Mark every slot of the change note as rebuilt or not rebuilt first.")
+            return nil
+        }
+        if skipAll {
+            for i in slots.indices { slots[i].action = .skip }
+        }
+        guard slots.allSatisfy({ $0.action != nil }) else {
+            self.error = String(localized: "Mark every slot of the change note as rebuilt or not rebuilt first.")
+            return nil
+        }
+
+        let itemsPayload: [AnyJSON] = slots.map { slot in
+            AnyJSON.object([
+                "item_id": .string(slot.item.id.uuidString),
+                "action": .string((slot.action ?? .skip).rawValue),
+                "removed": .integer(slot.removed),
+                "filled": .integer(slot.filled),
+                "price_set": .bool(slot.priceSet),
+            ])
+        }
+        // Without a warehouse nothing was deducted, so there is nothing to
+        // book back (the RPC would refuse warehouse leftovers anyway).
+        var leftovers: [AnyJSON] = []
+        if selectedWarehouseId != nil {
+            for left in computeRebuildLeftovers(slots: slots, machineId: machineId) {
+                let destination: LeftoverDestination = skipAll ? .warehouse : leftoverDestination(productId: left.productId)
+                let expiry: String? = left.machine > 0 ? leftoverExpiry[left.productId] : nil
+                leftovers.append(AnyJSON.object([
+                    "product_id": .string(left.productId.uuidString),
+                    "van_qty": .integer(left.van),
+                    "machine_qty": .integer(left.machine),
+                    "destination": .string(destination.rawValue),
+                    "expiration_date": expiry.map { AnyJSON.string($0) } ?? .null,
+                    "batch_number": .string(String(localized: "Machine return")),
+                ]))
+            }
+        }
+        let params: [String: AnyJSON] = [
+            "p_request_id": .string(request.id.uuidString),
+            "p_tour_id": .string(tourId),
+            "p_warehouse_id": selectedWarehouseId.map { AnyJSON.string($0.uuidString) } ?? .null,
+            "p_items": .array(itemsPayload),
+            "p_leftovers": .array(leftovers),
+        ]
+
+        let backoffSeconds: [Double] = [1.0, 3.0]
+        var lastError: Error?
+        for attempt in 1...3 {
+            do {
+                try await client.rpc("apply_slot_change", params: params).execute()
+                return slots.filter { $0.action == .done }.count
+            } catch {
+                lastError = error
+                print("[RefillWizard] apply_slot_change attempt \(attempt)/3 failed: \(error)")
+                if attempt < 3 {
+                    try? await Task.sleep(nanoseconds: UInt64(backoffSeconds[attempt - 1] * 1_000_000_000))
+                }
+            }
+        }
+        let reason = lastError?.localizedDescription ?? "unknown error"
+        self.error = String(localized: "The slot change could not be saved: \(reason). Please try again.")
+        return nil
+    }
+
     // MARK: - Packing Step Actions
 
     // MARK: - Review Step Actions
@@ -1671,22 +2308,20 @@ final class RefillWizardViewModel: ObservableObject {
         isSaving = true
 
         do {
-            for suggestion in toReplace {
-                guard let newProductId = suggestion.replacementProductId else { continue }
-                // Reset current_stock to 0: the old product's stock is irrelevant
-                // for the new product, and without this the tray won't show as
-                // needing refill in the next steps (deficit would be 0).
-                try await client
-                    .from("machine_trays")
-                    .update([
-                        "product_id": AnyJSON.string(newProductId.uuidString),
-                        "current_stock": AnyJSON.integer(0),
-                    ])
-                    .eq("id", value: suggestion.trayId.uuidString)
-                    .execute()
+            // Never switch the slot here: a replacement is queued into the
+            // machine's open slot change request, so it shows up as a change
+            // note in this tour and is rebuilt at the machine, where the old
+            // stock is counted (sales keep booking to the old product until
+            // then). One request per machine, merged with what is already open.
+            let byMachine = Dictionary(grouping: toReplace, by: \.machineId)
+            for (machineId, suggestions) in byMachine {
+                try await queueReplacements(machineId: machineId, suggestions: suggestions)
+            }
+            if !toReplace.isEmpty {
+                replacementNotice = String(localized: "\(toReplace.count) slot(s) queued as a change note. The new product goes in at the machine.")
             }
 
-            // Reload machine data to reflect the new products
+            // Reload machine data so the queued slots appear as change notes
             reviewCompleted = true
             await loadData()
             currentStep = .packing
@@ -1754,6 +2389,9 @@ final class RefillWizardViewModel: ObservableObject {
         tourId = UUID().uuidString
         tourLog = []
         staleStockTrayIds = []
+        // Rebuild units, computed while still packing (warehouse-capped).
+        let rebuildCommit = committedRebuild
+        resetCurrentRebuild()
 
         // Apply custom packing quantities and mark which trays belong to this tour.
         // Trays for products that were NOT packed get fillAmount = 0 and isInTour = false.
@@ -1819,9 +2457,21 @@ final class RefillWizardViewModel: ObservableObject {
             }
         }
 
+        // Only the accepted slots of a change note travel with the tour;
+        // declined ones stay open server-side for a later tour.
+        for mi in machines.indices {
+            guard machines[mi].isPacked, let request = machines[mi].changeRequest else { continue }
+            let accepted = request.items.filter { isRebuildAccepted($0.id) }
+            machines[mi].changeRequest = accepted.isEmpty ? nil : SlotChangeRequest(
+                id: request.id, machineId: request.machineId, note: request.note, items: accepted
+            )
+        }
+        let tourMachineIds = Set(machines.filter { $0.isPacked && $0.changeRequest != nil }.map(\.id))
+        rebuildPacked = rebuildCommit.filter { tourMachineIds.contains($0.key) }
+
         // Deduct warehouse stock (FIFO) for all packed products — matches web startTour()
         if let warehouseId = selectedWarehouseId {
-            await deductWarehouseStock(warehouseId: warehouseId)
+            await deductWarehouseStock(warehouseId: warehouseId, rebuild: rebuildPacked)
         }
 
         // Tour-started feed event — written after the warehouse deductions so an
@@ -1846,7 +2496,11 @@ final class RefillWizardViewModel: ObservableObject {
     }
 
     /// Deduct warehouse stock via the `deduct_warehouse_stock_fifo` RPC for each packed product-machine pair.
-    private func deductWarehouseStock(warehouseId: UUID) async {
+    /// Slot-rebuild units (`rebuild`: machine → product → qty) go into the same
+    /// deduction: one per (machine, product), normal refill + rebuild summed.
+    /// Their share is tracked in `rebuildPacked` so unused units can go back
+    /// to this tour's batches (`apply_slot_change` matches them by `tour_id`).
+    private func deductWarehouseStock(warehouseId: UUID, rebuild: [UUID: [UUID: Int]] = [:]) async {
         // Collect deductions from packed machines
         struct Deduction {
             let machineId: UUID
@@ -1863,9 +2517,16 @@ final class RefillWizardViewModel: ObservableObject {
             // goods that never left the shelf.
             let trayProductIds = Set(machine.trays.compactMap { $0.tray.productId })
             let productIds = (packedItems[machine.id] ?? []).intersection(trayProductIds)
+            var totals: [UUID: Int] = [:]
             for productId in productIds {
                 let qty = packingQuantity(machineId: machine.id, productId: productId)
                 guard qty > 0 else { continue }
+                totals[productId, default: 0] += qty
+            }
+            for (productId, qty) in rebuild[machine.id] ?? [:] where qty > 0 {
+                totals[productId, default: 0] += qty
+            }
+            for (productId, qty) in totals.sorted(by: { $0.key.uuidString < $1.key.uuidString }) {
                 deductions.append(Deduction(machineId: machine.id, productId: productId, quantity: qty))
             }
         }
@@ -1988,8 +2649,26 @@ final class RefillWizardViewModel: ObservableObject {
     /// backoff — the RPC is idempotent, so retries cannot double-apply.
     /// If all attempts fail, the machine is **not** marked refilled and the
     /// wizard stays put, letting the user retry the same machine cleanly.
+    ///
+    /// A change note on the machine is quit first (`apply_slot_change`, which
+    /// switches the rebuilt slots and books the leftovers); only when that
+    /// succeeded does the normal refill of the other slots run. Both RPCs are
+    /// idempotent per tour, so a retry after a partial failure is safe.
     func confirmRefill(machineId: UUID) async {
         guard let mi = machines.firstIndex(where: { $0.id == machineId }) else { return }
+
+        var slotsRebuilt = 0
+        if machineHasRebuild(machineId) {
+            guard currentRebuildMachineId == machineId, rebuildReady else {
+                self.error = String(localized: "Mark every slot of the change note as rebuilt or not rebuilt first.")
+                return
+            }
+            isSaving = true
+            let rebuilt = await applyRebuild(machineId: machineId, skipAll: false)
+            isSaving = false
+            guard let rebuilt else { return }  // error surfaced, the user can retry
+            slotsRebuilt = rebuilt
+        }
 
         // `isInTour` as well as a positive amount: defence in depth, so no
         // future caller that forgets the tour scope can book stock into a tray
@@ -2005,7 +2684,8 @@ final class RefillWizardViewModel: ObservableObject {
                 machineId: machineId,
                 traysSnapshot: [],
                 traysCount: 0,
-                itemsAdded: 0
+                itemsAdded: 0,
+                slotsRebuilt: slotsRebuilt
             )
             return
         }
@@ -2051,7 +2731,8 @@ final class RefillWizardViewModel: ObservableObject {
                     machineId: machineId,
                     traysSnapshot: traysToRefill,
                     traysCount: results.count,
-                    itemsAdded: itemsAdded
+                    itemsAdded: itemsAdded,
+                    slotsRebuilt: slotsRebuilt
                 )
                 return
             } catch {
@@ -2074,16 +2755,19 @@ final class RefillWizardViewModel: ObservableObject {
         machineId: UUID,
         traysSnapshot: [RefillTray],
         traysCount: Int,
-        itemsAdded: Int
+        itemsAdded: Int,
+        slotsRebuilt: Int = 0
     ) async {
         machines[mi].isRefilled = true
+        if currentRebuildMachineId == machineId { resetCurrentRebuild() }
 
         tourLog.append(TourLogEntry(
             machineId: machineId,
             machineName: machines[mi].machine.displayName,
             traysRefilled: traysCount,
             totalAdded: itemsAdded,
-            skipped: false
+            skipped: false,
+            slotsRebuilt: slotsRebuilt > 0 ? slotsRebuilt : nil
         ))
 
         await writeActivityLog(
@@ -2108,8 +2792,19 @@ final class RefillWizardViewModel: ObservableObject {
     }
 
     /// Skip the current machine.
+    ///
+    /// A change note on the machine is quit as "not rebuilt" first: its slots
+    /// stay open for the next tour and everything packed for them goes back to
+    /// the warehouse. If that cannot be saved the machine is not skipped.
     func skipMachine(machineId: UUID) async {
         guard let mi = machines.firstIndex(where: { $0.id == machineId }) else { return }
+        if machineHasRebuild(machineId) {
+            isSaving = true
+            let result = await applyRebuild(machineId: machineId, skipAll: true)
+            isSaving = false
+            guard result != nil else { return }
+        }
+        if currentRebuildMachineId == machineId { resetCurrentRebuild() }
         machines[mi].isSkipped = true
 
         // Record in tour log
@@ -2240,6 +2935,11 @@ final class RefillWizardViewModel: ObservableObject {
         packedItems = [:]
         customQuantities = [:]
         staleStockTrayIds = []
+        changeRequests = [:]
+        rebuildDecisions = [:]
+        rebuildPacked = [:]
+        replacementNotice = nil
+        resetCurrentRebuild()
         // Re-arm the entry gate so the next Refill-tab appearance reloads
         // fresh machine data for a brand-new tour instead of being skipped.
         didRunInitialLoad = false

@@ -21,6 +21,7 @@
 		0BEB2E18E56CCAF0DE150DF8 /* BatchAdjustSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B044726A1D09F334DDB0851 /* BatchAdjustSheet.swift */; };
 		0C7698AD6ED222844A1255F5 /* Tray.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D260DBBBEC69D0AD7B73C46 /* Tray.swift */; };
 		C0FFEE11ABCD22EF33445567 /* MachineStockHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE11ABCD22EF33445566 /* MachineStockHealth.swift */; };
+		45163A517121359541A88C1D /* SlotChange.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCE7796A01E46CBC5B0B535E /* SlotChange.swift */; };
 		123DDC46EFE39435A5A69CB5 /* RefillWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52A29D496BDB69F848C60674 /* RefillWizardView.swift */; };
 		1254787CC883CE8605189B4B /* PackingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90BC01B0752A47A20DF699E7 /* PackingStepView.swift */; };
 		14E8E7A13B8FB4BBA2CE3AA1 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4757F332F815A5F5300AC8 /* SettingsView.swift */; };
@@ -77,6 +78,8 @@
 		836A2197542D4BCCB8D8C2A3 /* PurchasePricesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 254111FB4644A0C29A6E97ED /* PurchasePricesSheet.swift */; };
 		893772831F630561F5DBEF01 /* MachineDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F302EE40A7DDA1135B7A9D7 /* MachineDetailView.swift */; };
 		9286828416CA9826CB3474B1 /* ReplacementProductPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24171AEC291F3AA1B07FEB50 /* ReplacementProductPicker.swift */; };
+		F581C6727228F26545BD7DE4 /* RefillRebuildSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF6A2793E29DE1F38084302 /* RefillRebuildSection.swift */; };
+		1510FDB98370FEF6C8E0D027 /* RefillChangeNoteCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18BBA83AFDC6E6291D4D0004 /* RefillChangeNoteCard.swift */; };
 		9408C221F48381AE80D82845 /* PurchasePrice.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D6E22DF428CDEE506150A1 /* PurchasePrice.swift */; };
 		98DBB72485FA6701994E86A6 /* VMflowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED1159C55CAF705215AD130 /* VMflowApp.swift */; };
 		994DEA5B68106C882733FA3E /* AddServerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 357877F547C30B7565611780 /* AddServerView.swift */; };
@@ -114,6 +117,7 @@
 		E161A2145944F1B03E599290 /* SidebarNavigationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994B0EDA9D03328A131F4664 /* SidebarNavigationView.swift */; };
 		E49EF3FACFF4F910A4F7AA1F /* ProductImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1ABF4B45C7B0D2415238F6 /* ProductImage.swift */; };
 		F0501A7FD0A96B9377D2DCCF /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E364431AFD63E8DE1238E3 /* SupabaseService.swift */; };
+		CDF23421E2723D065EB1DB0E /* SlotChangeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34DB4BDC523AC891FA0078D1 /* SlotChangeService.swift */; };
 		F4C8EB2697C216371012CB06 /* DealCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D19B501E340C90B0032C32 /* DealCard.swift */; };
 		F65C2BAC5F1F46AB4788DECF /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 1C6D6D60C1508A2B07975E1F /* Localizable.xcstrings */; };
 		F9ED3640AECA682247FEB81A /* DealsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E2C159F72B60828783FDAE /* DealsView.swift */; };
@@ -174,6 +178,8 @@
 		204427FECDDE3A1BB3CB316C /* StockBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockBar.swift; sourceTree = "<group>"; };
 		215EDEE2A21B82EE7D2ED841 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		24171AEC291F3AA1B07FEB50 /* ReplacementProductPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplacementProductPicker.swift; sourceTree = "<group>"; };
+		9EF6A2793E29DE1F38084302 /* RefillRebuildSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefillRebuildSection.swift; sourceTree = "<group>"; };
+		18BBA83AFDC6E6291D4D0004 /* RefillChangeNoteCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefillChangeNoteCard.swift; sourceTree = "<group>"; };
 		254111FB4644A0C29A6E97ED /* PurchasePricesSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PurchasePricesSheet.swift; sourceTree = "<group>"; };
 		25C77EB4B16044F00FE97E2E /* ProductDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductDetailSheet.swift; sourceTree = "<group>"; };
 		262B82892D49D5104059509A /* DealDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DealDetailSheet.swift; sourceTree = "<group>"; };
@@ -181,6 +187,7 @@
 		2B17A2CD3A0F549B76FAFF29 /* ProductsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductsView.swift; sourceTree = "<group>"; };
 		2D260DBBBEC69D0AD7B73C46 /* Tray.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tray.swift; sourceTree = "<group>"; };
 		C0FFEE11ABCD22EF33445566 /* MachineStockHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineStockHealth.swift; sourceTree = "<group>"; };
+		BCE7796A01E46CBC5B0B535E /* SlotChange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotChange.swift; sourceTree = "<group>"; };
 		2E4ECAF4493CB619B2F19A90 /* AdaptiveRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveRootView.swift; sourceTree = "<group>"; };
 		2FAA61B154F7ABC2401C2CCA /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		357877F547C30B7565611780 /* AddServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddServerView.swift; sourceTree = "<group>"; };
@@ -214,6 +221,7 @@
 		64E2C159F72B60828783FDAE /* DealsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DealsView.swift; sourceTree = "<group>"; };
 		70B6B1A9D2611C8B7EE53EDC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		70E364431AFD63E8DE1238E3 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
+		34DB4BDC523AC891FA0078D1 /* SlotChangeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotChangeService.swift; sourceTree = "<group>"; };
 		79D0846AC36BBA1BBDC87E68 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		79D8F4403556EBD0620DEECF /* Sale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sale.swift; sourceTree = "<group>"; };
 		7D17C7D7E21DDD2FDA3F7F48 /* MultiBarkasseCashBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiBarkasseCashBlock.swift; sourceTree = "<group>"; };
@@ -315,6 +323,7 @@
 				FE12AA13BB14CC15DD16EE17 /* ActivityFeed.swift */,
 				2D260DBBBEC69D0AD7B73C46 /* Tray.swift */,
 				C0FFEE11ABCD22EF33445566 /* MachineStockHealth.swift */,
+				BCE7796A01E46CBC5B0B535E /* SlotChange.swift */,
 				4E7EC46F36DD12575C056A1A /* VendingMachine.swift */,
 				A6908142D65605FE1D58C1AE /* Warehouse.swift */,
 				FDAD3C8C007944B5FDC1D17E /* Supplier.swift */,
@@ -364,6 +373,8 @@
 				9690B8B0412F05E68303EA15 /* RefillSummaryView.swift */,
 				52A29D496BDB69F848C60674 /* RefillWizardView.swift */,
 				24171AEC291F3AA1B07FEB50 /* ReplacementProductPicker.swift */,
+				9EF6A2793E29DE1F38084302 /* RefillRebuildSection.swift */,
+				18BBA83AFDC6E6291D4D0004 /* RefillChangeNoteCard.swift */,
 				C374A772F98B97BE6F2EE986 /* ReviewStepView.swift */,
 			);
 			path = Refill;
@@ -589,6 +600,7 @@
 				5AE7FC95E2E89DD0AC7A6981 /* RealtimeService.swift */,
 				81E4EBBB3677A660B6E57BD2 /* ServerStore.swift */,
 				70E364431AFD63E8DE1238E3 /* SupabaseService.swift */,
+				34DB4BDC523AC891FA0078D1 /* SlotChangeService.swift */,
 				58DE29ECFD46BCDD98F18DCF /* FixtureURLProtocol.swift */,
 			);
 			path = Services;
@@ -898,6 +910,8 @@
 				A36AE2752621D3854B40CCE2 /* RefillWizardViewModel.swift in Sources */,
 				AD28437ACBB0F0A443AA458E /* RegisterView.swift in Sources */,
 				9286828416CA9826CB3474B1 /* ReplacementProductPicker.swift in Sources */,
+				F581C6727228F26545BD7DE4 /* RefillRebuildSection.swift in Sources */,
+				1510FDB98370FEF6C8E0D027 /* RefillChangeNoteCard.swift in Sources */,
 				009EBF498DA30943CF9B822D /* ReviewStepView.swift in Sources */,
 				C2A2406A5D534A262F1CB0BA /* Sale.swift in Sources */,
 				72C90C4ACF2607C4D2195724 /* ServerEntry.swift in Sources */,
@@ -912,8 +926,10 @@
 				FE4C794519B8D88EA6886C0A /* StockBar.swift in Sources */,
 				A1B2C3D4E5F600000000EF01 /* ExpiryDateField.swift in Sources */,
 				F0501A7FD0A96B9377D2DCCF /* SupabaseService.swift in Sources */,
+				CDF23421E2723D065EB1DB0E /* SlotChangeService.swift in Sources */,
 				0C7698AD6ED222844A1255F5 /* Tray.swift in Sources */,
 				C0FFEE11ABCD22EF33445567 /* MachineStockHealth.swift in Sources */,
+				45163A517121359541A88C1D /* SlotChange.swift in Sources */,
 				5C989AE6260DDA7137C3A923 /* TrayEditSheet.swift in Sources */,
 				75FC6DAC6BC35B6F78317FBC /* TrayListView.swift in Sources */,
 				A1A27831F396EBCD53E5ED9A /* TrayRow.swift in Sources */,

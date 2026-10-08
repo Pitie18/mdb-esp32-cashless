@@ -22,8 +22,9 @@ Native iOS companion app for vending machine operators. Built with SwiftUI, targ
   - Warehouse stock awareness: tracks available stock, shows partial/out-of-stock states
   - **Machine selection** — Pick which machines to refill, ordered by proximity or urgency
   - **Refill step** — Per-machine tray adjustments, fill-to-capacity, warehouse stock deduction
-  - **Review step** — Summary of all changes before committing
-  - **Summary** — Tour stats with items refilled, machines completed
+  - **Review step** — Summary of all changes before committing; a chosen replacement product is queued into the machine's slot change request (`save_slot_change_request`), never written to the tray directly
+  - **Change notes ("Umbelegen")** — open slot change requests (planned on the web) show per machine while packing; accepted slots leave the normal refill and their units are packed and deducted with it. At the machine each slot is counted (taken out / filled in / price set) and marked rebuilt or not, leftovers go back to the warehouse or are written off, and `apply_slot_change` runs before `refill_machine_trays`. Tour maths in `Models/SlotChange.swift` (port of the web's `lib/slotChange.ts`), host tests in `HostTests/SlotChange/run.sh` (any Swift toolchain, no Xcode). Requests are read and queued through `Services/SlotChangeService.swift`; the machine Analysis tab's replace action queues into the same request (slots with a pending change are marked) instead of switching the tray
+  - **Summary** — Tour stats with items refilled, machines completed, slots rebuilt
 - **Push Notifications** — APNs support for low-stock alerts and other events
 
 ## Setup

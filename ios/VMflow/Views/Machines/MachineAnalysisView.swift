@@ -10,6 +10,8 @@ struct MachineAnalysisView: View {
     @ObservedObject var trayViewModel: TrayViewModel
     @StateObject private var vm = MachineAnalysisViewModel()
     @State private var replacingSlot: AnalysisGridSlot?
+    /// Shown after a replacement was queued into the change request.
+    @State private var queuedMessage: String?
 
     private var machineId: UUID { detailViewModel.machine.id }
 
@@ -23,6 +25,9 @@ struct MachineAnalysisView: View {
                 } else if vm.rowCount == 0 {
                     emptyState
                 } else {
+                    if let queuedMessage {
+                        queuedBanner(queuedMessage)
+                    }
                     daysPicker
                     gridSection
                     legendSection
@@ -37,6 +42,7 @@ struct MachineAnalysisView: View {
         .sheet(item: $replacingSlot) { slot in
             ReplaceProductSheet(
                 slot: slot,
+                hasPendingChange: vm.pendingTrayIds.contains(slot.trayId),
                 suggestions: vm.fillSuggestions.filter { $0.productId != slot.productId },
                 catalogue: detailViewModel.products.filter { $0.id != slot.productId }
             ) { productId in
@@ -84,7 +90,7 @@ struct MachineAnalysisView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Machine Layout")
                 .font(.subheadline.weight(.semibold))
-            AnalysisLayoutGrid(rowCount: vm.rowCount, slots: vm.slots) { slot in
+            AnalysisLayoutGrid(rowCount: vm.rowCount, slots: vm.slots, pendingTrayIds: vm.pendingTrayIds) { slot in
                 replacingSlot = slot
             }
         }
@@ -92,14 +98,50 @@ struct MachineAnalysisView: View {
 
     private var legendSection: some View {
         let tiers: [SlotTier] = [.strong, .ok, .testing, .weak, .dead]
-        return HStack(spacing: 12) {
-            ForEach(tiers, id: \.self) { tier in
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                ForEach(tiers, id: \.self) { tier in
+                    HStack(spacing: 4) {
+                        Circle().fill(tier.color).frame(width: 8, height: 8)
+                        Text(tier.label).font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            if !vm.pendingTrayIds.isEmpty {
                 HStack(spacing: 4) {
-                    Circle().fill(tier.color).frame(width: 8, height: 8)
-                    Text(tier.label).font(.caption2).foregroundStyle(.secondary)
+                    PendingChangeBadge()
+                    Text("Change pending").font(.caption2).foregroundStyle(.secondary)
                 }
             }
         }
+    }
+
+    private func queuedBanner(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            Text(message)
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                queuedMessage = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "Dismiss"))
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.green.opacity(0.1))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.green.opacity(0.4), lineWidth: 1)
+        )
     }
 
     // MARK: - AI Insights
@@ -223,11 +265,14 @@ struct MachineAnalysisView: View {
         await vm.fetchInsights(machineId: machineId, forceRefresh: forceRefresh, locale: Locale.current.language.languageCode?.identifier ?? "en")
     }
 
+    /// Queues the replacement into the machine's change request; the slot
+    /// itself only changes when the refiller rebuilds it on the next tour,
+    /// so trays and the analysis stay as they are.
     private func performSwap(trayId: UUID, productId: UUID) async {
+        let slotNumber = vm.slots.first { $0.trayId == trayId }?.itemNumber
         let ok = await vm.applySwap(trayId: trayId, productId: productId)
         guard ok else { return }
-        await trayViewModel.loadTrays()
-        await reload()
+        queuedMessage = String(localized: "Slot \(slotNumber ?? 0) added to the change request. It is rebuilt on the next refill tour.")
     }
 }
 
@@ -267,6 +312,7 @@ extension SlotTier {
 struct AnalysisLayoutGrid: View {
     let rowCount: Int
     let slots: [AnalysisGridSlot]
+    var pendingTrayIds: Set<UUID> = []
     let onTap: (AnalysisGridSlot) -> Void
 
     private let cellHeight: CGFloat = 48
@@ -313,7 +359,7 @@ struct AnalysisLayoutGrid: View {
                 result.append(ColumnEntry(id: c) { width in
                     AnyView(
                         Button { onTap(slot) } label: {
-                            AnalysisGridCell(slot: slot, cellWidth: width * CGFloat(slot.width) + spacing * CGFloat(slot.width - 1), cellHeight: cellHeight)
+                            AnalysisGridCell(slot: slot, isPending: pendingTrayIds.contains(slot.trayId), cellWidth: width * CGFloat(slot.width) + spacing * CGFloat(slot.width - 1), cellHeight: cellHeight)
                         }
                         .buttonStyle(.plain)
                     )
@@ -338,6 +384,7 @@ struct AnalysisLayoutGrid: View {
 
 private struct AnalysisGridCell: View {
     let slot: AnalysisGridSlot
+    var isPending = false
     let cellWidth: CGFloat
     let cellHeight: CGFloat
 
@@ -358,7 +405,31 @@ private struct AnalysisGridCell: View {
                 .padding(2)
         }
         .frame(width: cellWidth, height: cellHeight)
-        .accessibilityLabel(slot.productName ?? String(localized: "Slot \(slot.itemNumber), empty"))
+        .overlay(alignment: .topTrailing) {
+            if isPending {
+                PendingChangeBadge().padding(2)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var accessibilityText: String {
+        let base = slot.productName ?? String(localized: "Slot \(slot.itemNumber), empty")
+        return isPending ? base + ", " + String(localized: "Change pending") : base
+    }
+}
+
+/// Marks a slot that already has a pending change on the machine's change
+/// request (rebuilt on the next refill tour).
+private struct PendingChangeBadge: View {
+    var body: some View {
+        Image(systemName: "arrow.triangle.2.circlepath")
+            .font(.system(size: 8, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 14, height: 14)
+            .background(Circle().fill(Color.orange))
+            .accessibilityHidden(true)
     }
 }
 
@@ -369,6 +440,7 @@ private struct AnalysisGridCell: View {
 /// searchable full catalogue.
 private struct ReplaceProductSheet: View {
     let slot: AnalysisGridSlot
+    var hasPendingChange = false
     let suggestions: [Suggestion]
     let catalogue: [Product]
     let onSelect: (UUID) async -> Void
@@ -386,6 +458,20 @@ private struct ReplaceProductSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Text("Choosing a product adds it to the change request. The slot is rebuilt on the next refill tour.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if hasPendingChange {
+                        Label {
+                            Text("This slot already has a pending change. Choosing a product replaces it.")
+                                .font(.footnote)
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
                 if !suggestions.isEmpty {
                     Section(String(localized: "Suggestions")) {
                         ForEach(suggestions) { suggestion in
