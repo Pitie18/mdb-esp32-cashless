@@ -1,6 +1,7 @@
 import { ref, computed, useSupabaseClient } from '#imports'
 import { useOrganization } from './useOrganization'
 import { getProductImageUrl } from './useProducts'
+import { useSlotChangeRequests, type PlannedChange } from './useSlotChangeRequests'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Product-centric machine performance analysis
@@ -251,8 +252,11 @@ const TIER_SEVERITY: Record<SlotTier, number> = { dead: 0, weak: 1, testing: 2, 
 export function useMachineAnalysis() {
   const supabase = useSupabaseClient()
   const { organization } = useOrganization()
+  const { fetchOpenRequest, saveRequest } = useSlotChangeRequests()
 
   const products = ref<ProductAnalysis[]>([])
+  /** Trays with a pending change on the machine's change request. */
+  const pendingTrayIds = ref(new Set<string>())
   const slots = ref<GridSlot[]>([])
   const fillSuggestions = ref<Suggestion[]>([])
   const searchableProducts = ref<SearchableProduct[]>([])
@@ -425,6 +429,8 @@ export function useMachineAnalysis() {
 
       products.value = analyses
       slots.value = buildGridSlots(trays, tierByProduct)
+      const open = await fetchOpenRequest(machineId).catch(() => null)
+      pendingTrayIds.value = new Set((open?.items ?? []).map(i => i.tray_id))
       rowCount.value = slots.value.reduce((max, s) => Math.max(max, s.row + 1), 0)
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Failed to analyze machine'
@@ -434,45 +440,30 @@ export function useMachineAnalysis() {
   }
 
   /**
-   * Swap the product assigned to a slot. Resets stock to 0 (the old product is
-   * physically removed) and re-runs the analysis. The offering-history trigger
-   * keeps tenure correct; the page's tray realtime subscription keeps the
-   * Trays & Stock tab in sync.
+   * Put a replacement for a slot on the machine's change request. The slot is
+   * NOT changed here: the refiller rebuilds it on the next tour and quits it
+   * at the machine (apply_slot_change), which keeps sales and stock booked to
+   * the product that is physically in the slot until then. Other pending
+   * changes of the request are kept; the slot keeps its capacity.
    */
   async function applySwap(trayId: string, productId: string) {
     if (!currentMachineId) return
-    const slot = slots.value.find(s => s.trayId === trayId)
-    const { error: updErr } = await (supabase as any)
-      .from('machine_trays')
-      .update({ product_id: productId, current_stock: 0 })
-      .eq('id', trayId)
-    if (updErr) throw updErr
-
-    // Best-effort audit log (mirrors useMachineTrays logging shape)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const u = session?.user ?? null
-      const fullName = [u?.user_metadata?.first_name, u?.user_metadata?.last_name].filter(Boolean).join(' ').trim()
-      await (supabase as any).from('activity_log').insert({
-        company_id: organization.value?.id,
-        user_id: u?.id ?? null,
-        entity_type: 'stock',
-        entity_id: trayId,
-        action: 'product_swapped',
-        metadata: {
-          machine_id: currentMachineId,
-          item_number: slot?.item_number ?? null,
-          old_product_id: slot?.product_id ?? null,
-          old_product_name: slot?.product_name ?? null,
-          new_product_id: productId,
-          source: 'analysis_swap',
-          _user_email: u?.email ?? null,
-          _user_display: fullName || u?.email || null,
-        },
-      })
-    } catch { /* non-fatal */ }
-
-    await analyze(currentMachineId, days.value)
+    const machineId = currentMachineId
+    const [open, trayRes] = await Promise.all([
+      fetchOpenRequest(machineId),
+      (supabase as any).from('machine_trays').select('capacity').eq('id', trayId).single(),
+    ])
+    if (trayRes.error) throw trayRes.error
+    const changes = new Map<string, PlannedChange>(
+      (open?.items ?? []).map(i => [i.tray_id, { tray_id: i.tray_id, to_product_id: i.to_product_id, to_capacity: i.to_capacity }]),
+    )
+    changes.set(trayId, {
+      tray_id: trayId,
+      to_product_id: productId,
+      to_capacity: changes.get(trayId)?.to_capacity ?? trayRes.data.capacity,
+    })
+    await saveRequest(machineId, [...changes.values()])
+    pendingTrayIds.value = new Set(changes.keys())
   }
 
   return {
@@ -490,5 +481,6 @@ export function useMachineAnalysis() {
     lostRevenuePotential,
     analyze,
     applySwap,
+    pendingTrayIds,
   }
 }

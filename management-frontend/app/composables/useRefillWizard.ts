@@ -1,6 +1,8 @@
 import { useSupabaseClient } from '#imports'
 import { buildWarehouseStockInfo, distributeAcrossSlots, groupNeedsRefill, groupTraysByProduct, isProductRefillable } from '@/lib/stock-health'
+import { computeLeftovers, fillPlan, rebuildPackNeeds, type ItemOutcome } from '@/lib/slotChange'
 import { useOrganization } from './useOrganization'
+import { useSlotChangeRequests, type SlotChangeItem, type SlotChangeLeftover, type SlotChangeRequest } from './useSlotChangeRequests'
 import { useWarehouse } from './useWarehouse'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -16,6 +18,8 @@ export interface RefillMachine {
   low_trays: number
   total_trays: number
   tray_summary: RefillItem[]
+  /** Open slot change request (pending items only), shown as a change note. */
+  change_request?: SlotChangeRequest | null
 }
 
 export interface RefillItem {
@@ -59,6 +63,32 @@ export interface TourLogEntry {
   trays_refilled: number
   total_added: number
   skipped: boolean
+  /** Slots switched to their new product at this stop. */
+  slots_rebuilt?: number
+}
+
+/** One slot of the change note, as handled at the machine. */
+export interface RebuildSlot {
+  item: SlotChangeItem
+  /** Stock in the slot right now (sales since packing already deducted). */
+  live_stock: number
+  /** Units of the old product taken out (editable, defaults to live_stock). */
+  removed: number
+  /** Units of the new product put in (editable, defaults to the fill plan). */
+  filled: number
+  filled_touched: boolean
+  moved: number
+  from_van: number
+  action: 'done' | 'skip' | null
+  price_set: boolean
+}
+
+export interface RebuildLeftover {
+  product_id: string
+  name: string | null
+  image_path: string | null
+  van: number
+  machine: number
 }
 
 // ── Persistence ──────────────────────────────────────────────────────────────
@@ -76,6 +106,11 @@ interface PersistedTourState {
   completedMachineIds: string[]
   tourLog: TourLogEntry[]
   pickingMode?: PickingMode
+  tourId?: string
+  /** Slot change items the refiller declined at packing: [itemId, accepted][] */
+  rebuildDecisions?: [string, boolean][]
+  /** Units packed for slot rebuilds: [machineId, [productId, qty][]][] */
+  rebuildPacked?: [string, [string, number][]][]
   savedAt: number
 }
 
@@ -177,6 +212,7 @@ export function useRefillWizard() {
   const supabase = useSupabaseClient()
   const { organization } = useOrganization()
   const { fetchOrderedProductIds } = useWarehouse()
+  const { fetchOpenRequests, applySlotChange, suggestExpiry } = useSlotChangeRequests()
 
   // Wizard state
   const currentStep = ref<WizardStep>('packing')
@@ -218,6 +254,29 @@ export function useRefillWizard() {
   const pickingMode = ref<PickingMode>('per-machine')
   /** product_id → sort index (0-based). Empty = no positions defined. */
   const warehouseProductOrder = ref(new Map<string, number>())
+
+  // ── Slot change requests ("Änderungsvermerk") ──
+  // A machine's open change request rides along in RefillMachine.change_request.
+  // The refiller accepts (default) or declines each slot while packing; accepted
+  // slots leave the normal refill and get their own packing line. At the
+  // machine they are rebuilt and quit via apply_slot_change, before the normal
+  // refill of the other slots. Declined/skipped slots stay open server-side.
+  /** item id → accepted; missing = accepted. */
+  const rebuildDecisions = ref(new Map<string, boolean>())
+  /** machineId → productId → units committed for rebuilds (packing step). */
+  const committedRebuild = ref(new Map<string, Map<string, number>>())
+  /** machineId → productId → units packed (deducted) for rebuilds. */
+  const rebuildPacked = ref(new Map<string, Map<string, number>>())
+  /** Raw tray rows per machine, kept during packing to recompute summaries. */
+  const machineTrayRows = new Map<string, any[]>()
+  let warehouseInfo: { warehouseStockMap: Map<string, number>; hasWarehouses: boolean } = { warehouseStockMap: new Map(), hasWarehouses: false }
+  /** Rebuild cards of the current machine. */
+  const currentRebuild = ref<RebuildSlot[]>([])
+  const leftoverDestinations = ref(new Map<string, 'warehouse' | 'waste'>())
+  /** productId → best-before date for goods taken out of the machine. */
+  const leftoverExpiry = ref(new Map<string, string>())
+  /** Batch number for goods returned from a machine (set localized by the page). */
+  const returnBatchLabel = ref('Machine return')
 
   // ── Computed ─────────────────────────────────────────────────────────────
 
@@ -294,6 +353,9 @@ export function useRefillWizard() {
     for (const [, machineMap] of committedQuantities.value) {
       committed += machineMap.get(productId) ?? 0
     }
+    for (const [, machineMap] of committedRebuild.value) {
+      committed += machineMap.get(productId) ?? 0
+    }
     return Math.max(0, total - committed)
   }
 
@@ -309,6 +371,23 @@ export function useRefillWizard() {
     for (const [pid, qty] of warehouseStock.value) {
       remaining.set(pid, qty)
     }
+
+    // Slot rebuilds first: an accepted change cannot be done without its units.
+    const newRebuild = new Map<string, Map<string, number>>()
+    for (const machine of machines.value) {
+      const machineMap = new Map<string, number>()
+      for (const [pid, need] of rebuildNeeds(machine.id)) {
+        if (need <= 0) continue
+        const avail = remaining.get(pid) ?? 0
+        const qty = Math.min(need, avail)
+        if (qty > 0) {
+          machineMap.set(pid, qty)
+          remaining.set(pid, avail - qty)
+        }
+      }
+      if (machineMap.size > 0) newRebuild.set(machine.id, machineMap)
+    }
+    committedRebuild.value = newRebuild
 
     for (const machine of machines.value) {
       const checked = packedItems.value.get(machine.id)
@@ -380,7 +459,52 @@ export function useRefillWizard() {
     for (const set of packedItems.value.values()) {
       if (set.size > 0) return true
     }
-    return false
+    return machines.value.some(m => acceptedItems(m).length > 0)
+  }
+
+  // ── Change note (slot rebuilds) ─────────────────────────────────────────
+
+  function isItemAccepted(itemId: string): boolean {
+    return rebuildDecisions.value.get(itemId) !== false
+  }
+
+  function acceptedItems(machine: RefillMachine | null | undefined): SlotChangeItem[] {
+    return (machine?.change_request?.items ?? []).filter(i => isItemAccepted(i.id))
+  }
+
+  /** Accept or decline one slot of a machine's change note (packing step). */
+  function toggleRebuildItem(machineId: string, itemId: string) {
+    const next = new Map(rebuildDecisions.value)
+    if (isItemAccepted(itemId)) next.set(itemId, false)
+    else next.delete(itemId)
+    rebuildDecisions.value = next
+    const idx = machines.value.findIndex(m => m.id === machineId)
+    const machine = machines.value[idx]
+    const rows = machineTrayRows.get(machineId)
+    if (machine && rows) {
+      const rebuilt = buildRefillMachine({ id: machine.id, name: machine.name }, rows, machine.change_request ?? null)
+      if (rebuilt) machines.value.splice(idx, 1, rebuilt)
+    }
+    recalculateCommittedQuantities()
+  }
+
+  /**
+   * Units the accepted slots of a machine need for the rebuild. While packing
+   * it is computed from the stock known now; once the tour started it is what
+   * was actually packed.
+   */
+  function rebuildNeeds(machineId: string): Map<string, number> {
+    if (currentStep.value !== 'packing') return rebuildPacked.value.get(machineId) ?? new Map()
+    const machine = machines.value.find(m => m.id === machineId)
+    const items = acceptedItems(machine)
+    if (items.length === 0) return new Map()
+    const stock = new Map<string, number>((machineTrayRows.get(machineId) ?? []).map(r => [r.id, r.current_stock]))
+    return rebuildPackNeeds(items, stock)
+  }
+
+  /** What is committed for a rebuild product (≤ need when the warehouse runs short). */
+  function rebuildCommitted(machineId: string, productId: string): number {
+    return committedRebuild.value.get(machineId)?.get(productId) ?? 0
   }
 
   /** Set a custom packing quantity for a product on a specific machine */
@@ -428,6 +552,61 @@ export function useRefillWizard() {
 
   // ── Init ─────────────────────────────────────────────────────────────────
 
+  /**
+   * Stock summary of one machine for the packing list. Counts are products:
+   * all slots of a product in a machine are one group (lib/stock-health.ts),
+   * so a product that is empty in one spiral but stocked in another doesn't
+   * put the machine on the tour, and a product that does is packed for all of
+   * its slots. Slots with an accepted change are left out — they get the
+   * rebuild instead of a normal refill. Returns null when the machine needs
+   * neither a refill nor a rebuild.
+   */
+  function buildRefillMachine(
+    m: { id: string; name: string | null },
+    rows: any[],
+    request: SlotChangeRequest | null,
+  ): RefillMachine | null {
+    const excluded = new Set(
+      (request?.items ?? []).filter(i => isItemAccepted(i.id)).map(i => i.tray_id),
+    )
+    let empty = 0, low = 0, fill = 0, totalStock = 0, totalCapacity = 0
+    const deficits: RefillItem[] = []
+    for (const tray of rows) {
+      totalStock += tray.current_stock
+      totalCapacity += tray.capacity
+    }
+    for (const group of groupTraysByProduct(rows.filter(r => !excluded.has(r.id)))) {
+      if (!groupNeedsRefill(group)) continue
+      if (isProductRefillable(group.product_id, warehouseInfo.warehouseStockMap, warehouseInfo.hasWarehouses)) {
+        if (group.state === 'critical') empty++
+        else if (group.state === 'low') low++
+        else fill++
+      }
+      const first = group.trays[0]
+      deficits.push({
+        product_name: first.products?.name ?? `Slot ${first.item_number}`,
+        product_id: group.product_id,
+        deficit: group.deficit,
+        image_path: first.products?.image_path ?? null,
+        sellprice: first.products?.sellprice ?? null,
+      })
+    }
+    const hasRequest = (request?.items.length ?? 0) > 0
+    if (!hasRequest && empty === 0 && low === 0 && fill === 0) return null
+    return {
+      id: m.id,
+      name: m.name ?? 'Unnamed',
+      stock_health: empty > 0 ? 'critical' : low > 0 ? 'low' : fill > 0 ? 'fill' : 'ok',
+      stock_percent: totalCapacity > 0 ? Math.round((totalStock / totalCapacity) * 100) : 0,
+      empty_trays: empty,
+      low_trays: low + empty,
+      total_trays: rows.length,
+      tray_summary: deficits.sort((a, b) => b.deficit - a.deficit),
+      change_request: hasRequest ? request : null,
+    }
+  }
+
+
   async function initTour() {
     loading.value = true
     try {
@@ -446,87 +625,40 @@ export function useRefillWizard() {
 
       // Fetch all trays + company-wide warehouse stock (to tell whether a
       // low/empty/fill-below tray is actually refillable, same check /machines uses)
-      const [trayRes, warehouseStockRes] = await Promise.all([
+      const [trayRes, warehouseStockRes, requests] = await Promise.all([
         (supabase as any)
           .from('machine_trays')
-          .select('machine_id, item_number, product_id, capacity, current_stock, min_stock, fill_when_below, products(name, image_path, sellprice)')
+          .select('id, machine_id, item_number, product_id, capacity, current_stock, min_stock, fill_when_below, products(name, image_path, sellprice)')
           .in('machine_id', machineIds),
         (supabase as any)
           .from('warehouse_stock_batches')
           .select('product_id, quantity')
           .gt('quantity', 0),
+        // A failing change-request lookup must never block a normal tour.
+        fetchOpenRequests(machineIds).catch((err: unknown) => {
+          console.warn('[refillWizard] change requests unavailable:', err)
+          return new Map<string, SlotChangeRequest>()
+        }),
       ])
 
       if (trayRes.error) throw trayRes.error
-      const trayData = trayRes.data
 
-      const { warehouseStockMap, hasWarehouses } = buildWarehouseStockInfo(
+      warehouseInfo = buildWarehouseStockInfo(
         (warehouseStockRes.data ?? []) as { product_id: string; quantity: number }[],
       )
 
-      // Build machine stock info. Counts are products: all slots of a product
-      // in a machine are one group (lib/stock-health.ts), so a product that is
-      // empty in one spiral but stocked in another doesn't put the machine on
-      // the tour, and a product that does is packed for all of its slots.
-      const stockMap = new Map<string, {
-        total: number
-        low: number
-        empty: number
-        fill: number
-        totalStock: number
-        totalCapacity: number
-        deficits: RefillItem[]
-      }>()
-      const entryFor = (machineId: string) => {
-        let entry = stockMap.get(machineId)
-        if (!entry) {
-          entry = { total: 0, low: 0, empty: 0, fill: 0, totalStock: 0, totalCapacity: 0, deficits: [] }
-          stockMap.set(machineId, entry)
-        }
-        return entry
+      machineTrayRows.clear()
+      for (const tray of ((trayRes.data ?? []) as any[]).filter(t => t.machine_id)) {
+        const rows = machineTrayRows.get(tray.machine_id) ?? []
+        rows.push({ ...tray, min_stock: tray.min_stock ?? 0, fill_when_below: tray.fill_when_below ?? 0 })
+        machineTrayRows.set(tray.machine_id, rows)
       }
 
-      const trays = ((trayData ?? []) as any[]).filter(t => t.machine_id)
-      for (const tray of trays) {
-        const entry = entryFor(tray.machine_id)
-        entry.total++
-        entry.totalStock += tray.current_stock
-        entry.totalCapacity += tray.capacity
-      }
-
-      for (const group of groupTraysByProduct(trays)) {
-        if (!groupNeedsRefill(group)) continue
-        const entry = entryFor(group.machine_id)
-        if (isProductRefillable(group.product_id, warehouseStockMap, hasWarehouses)) {
-          if (group.state === 'critical') entry.empty++
-          else if (group.state === 'low') entry.low++
-          else entry.fill++
-        }
-        const first = group.trays[0]
-        entry.deficits.push({
-          product_name: first.products?.name ?? `Slot ${first.item_number}`,
-          product_id: group.product_id,
-          deficit: group.deficit,
-          image_path: first.products?.image_path ?? null,
-          sellprice: first.products?.sellprice ?? null,
-        })
-      }
-
-      // Build RefillMachine list (only machines needing refill)
+      // Build RefillMachine list (machines needing refill or with a change note)
       const result: RefillMachine[] = []
       for (const m of (machineData ?? []) as any[]) {
-        const stock = stockMap.get(m.id)
-        if (!stock || (stock.empty === 0 && stock.low === 0 && stock.fill === 0)) continue
-        result.push({
-          id: m.id,
-          name: m.name ?? 'Unnamed',
-          stock_health: stock.empty > 0 ? 'critical' : stock.low > 0 ? 'low' : 'fill',
-          stock_percent: stock.totalCapacity > 0 ? Math.round((stock.totalStock / stock.totalCapacity) * 100) : 0,
-          empty_trays: stock.empty,
-          low_trays: stock.low + stock.empty,
-          total_trays: stock.total,
-          tray_summary: stock.deficits.sort((a, b) => b.deficit - a.deficit),
-        })
+        const built = buildRefillMachine(m, machineTrayRows.get(m.id) ?? [], requests.get(m.id) ?? null)
+        if (built) result.push(built)
       }
 
       // Sort by urgency
@@ -611,23 +743,32 @@ export function useRefillWizard() {
       // Collect all deductions from committed quantities
       const deductions: { machine_id: string; product_id: string; quantity: number }[] = []
 
+      const newRebuildPacked = new Map<string, Map<string, number>>()
       for (const machine of machines.value) {
-        const committed = committedQuantities.value.get(machine.id)
-        if (!committed || committed.size === 0) continue
+        const committed = committedQuantities.value.get(machine.id) ?? new Map<string, number>()
+        const rebuild = committedRebuild.value.get(machine.id) ?? new Map<string, number>()
+        if (committed.size === 0 && rebuild.size === 0) continue
 
         const machinePackedQty = new Map<string, number>()
+        const total = new Map<string, number>()
 
         for (const [productId, qty] of committed) {
           if (qty <= 0) continue
-          deductions.push({
-            machine_id: machine.id,
-            product_id: productId,
-            quantity: qty,
-          })
           machinePackedQty.set(productId, (machinePackedQty.get(productId) ?? 0) + qty)
+          total.set(productId, (total.get(productId) ?? 0) + qty)
+        }
+        for (const [productId, qty] of rebuild) {
+          if (qty <= 0) continue
+          total.set(productId, (total.get(productId) ?? 0) + qty)
+        }
+        // One deduction per (machine, product); rebuild units are tracked
+        // separately so unused ones can go back to their batch later.
+        for (const [productId, qty] of total) {
+          deductions.push({ machine_id: machine.id, product_id: productId, quantity: qty })
         }
 
-        packedQuantities.value.set(machine.id, machinePackedQty)
+        if (machinePackedQty.size > 0) packedQuantities.value.set(machine.id, machinePackedQty)
+        if (rebuild.size > 0) newRebuildPacked.set(machine.id, new Map(rebuild))
       }
 
       // Execute all deductions in parallel
@@ -646,12 +787,20 @@ export function useRefillWizard() {
       )
       const firstError = deductionResults.find(r => r.error)
       if (firstError) throw firstError.error
+      rebuildPacked.value = newRebuildPacked
 
-      // Filter machines list to only those with packed items, preserve order
-      const tourMachines = machines.value.filter(m => {
-        const qty = packedQuantities.value.get(m.id)
-        return qty && qty.size > 0
-      })
+      // Filter machines list to those with packed items or an accepted
+      // rebuild (a pure swap needs no units but still a visit), preserve order.
+      // Only accepted items of the change note travel with the tour.
+      const tourMachines = machines.value
+        .filter((m) => {
+          const qty = packedQuantities.value.get(m.id)
+          return (qty && qty.size > 0) || acceptedItems(m).length > 0
+        })
+        .map((m) => {
+          const items = acceptedItems(m)
+          return { ...m, change_request: m.change_request && items.length > 0 ? { ...m.change_request, items } : null }
+        })
       machines.value = tourMachines
 
       // Tour-started activity entry (non-critical — failures only logged).
@@ -728,8 +877,24 @@ export function useRefillWizard() {
         min_stock: t.min_stock ?? 0,
         fill_when_below: t.fill_when_below ?? 0,
       }))
+
+      // Slots being rebuilt are handled by the change note, not the refill.
+      const rebuildItems = acceptedItems(machine)
+      const rebuildTrayIds = new Set(rebuildItems.map(i => i.tray_id))
+      const rowById = new Map(rows.map(r => [r.id, r]))
+      currentRebuild.value = rebuildItems
+        .filter(item => rowById.has(item.tray_id))
+        .map((item) => {
+          const live = rowById.get(item.tray_id)!.current_stock as number
+          return { item, live_stock: live, removed: live, filled: 0, filled_touched: false, moved: 0, from_van: 0, action: null, price_set: false }
+        })
+      recomputeRebuildFill()
+      leftoverDestinations.value = new Map()
+      leftoverExpiry.value = new Map()
+      void loadExpirySuggestions(machine.id)
+
       const fillByTrayId = new Map<string, number>()
-      for (const group of groupTraysByProduct(rows)) {
+      for (const group of groupTraysByProduct(rows.filter(r => !rebuildTrayIds.has(r.id)))) {
         if (!groupNeedsRefill(group)) continue
         const amounts = distributeAcrossSlots(group.trays, packed.get(group.product_id) ?? 0)
         group.trays.forEach((t, i) => fillByTrayId.set(t.id, amounts[i]!))
@@ -759,6 +924,157 @@ export function useRefillWizard() {
     } finally {
       currentTraysLoading.value = false
     }
+  }
+
+  // ── Rebuild at the machine ─────────────────────────────────────────────
+
+  /** Refresh the suggested fill of every slot whose fill the refiller hasn't typed. */
+  function recomputeRebuildFill() {
+    const machine = currentMachine.value
+    if (!machine) return
+    const slots = currentRebuild.value
+    const removed = new Map(slots.filter(s => s.action !== 'skip').map(s => [s.item.id, s.removed]))
+    const plan = fillPlan(
+      slots.filter(s => s.action !== 'skip').map(s => s.item),
+      removed,
+      rebuildPacked.value.get(machine.id) ?? new Map(),
+    )
+    for (const s of slots) {
+      const p = plan.get(s.item.id) ?? { moved: 0, van: 0, total: 0 }
+      s.moved = p.moved
+      s.from_van = p.van
+      if (!s.filled_touched) s.filled = p.total
+    }
+  }
+
+  function setRebuildRemoved(itemId: string, value: number) {
+    const slot = currentRebuild.value.find(s => s.item.id === itemId)
+    if (!slot) return
+    slot.removed = Math.max(0, Math.round(value || 0))
+    recomputeRebuildFill()
+  }
+
+  function setRebuildFilled(itemId: string, value: number) {
+    const slot = currentRebuild.value.find(s => s.item.id === itemId)
+    if (!slot) return
+    slot.filled = slot.item.to_product_id
+      ? Math.max(0, Math.min(slot.item.to_capacity, Math.round(value || 0)))
+      : 0
+    slot.filled_touched = true
+  }
+
+  function setRebuildAction(itemId: string, action: 'done' | 'skip' | null) {
+    const slot = currentRebuild.value.find(s => s.item.id === itemId)
+    if (!slot) return
+    slot.action = action
+    recomputeRebuildFill()
+  }
+
+  function setRebuildPriceSet(itemId: string, value: boolean) {
+    const slot = currentRebuild.value.find(s => s.item.id === itemId)
+    if (slot) slot.price_set = value
+  }
+
+  /** Every slot of the change note has been marked rebuilt or not rebuilt. */
+  const rebuildReady = computed(() => currentRebuild.value.every(s => s.action !== null))
+
+  /**
+   * What is left over for the current machine, per product. Slots not decided
+   * yet count as rebuilt (the expected case) so the panel can be read early.
+   */
+  const rebuildLeftovers = computed<RebuildLeftover[]>(() => {
+    const machine = currentMachine.value
+    if (!machine || currentRebuild.value.length === 0) return []
+    const outcome = new Map<string, ItemOutcome>(currentRebuild.value.map(s => [
+      s.item.id,
+      { action: s.action === 'skip' ? 'skip' : 'done', removed: s.removed, filled: s.filled },
+    ]))
+    const left = computeLeftovers(currentRebuild.value.map(s => s.item), outcome, rebuildPacked.value.get(machine.id) ?? new Map())
+    const info = new Map<string, { name: string | null; image_path: string | null }>()
+    for (const s of currentRebuild.value) {
+      if (s.item.from_product_id) info.set(s.item.from_product_id, { name: s.item.from_name, image_path: s.item.from_image_path })
+      if (s.item.to_product_id) info.set(s.item.to_product_id, { name: s.item.to_name, image_path: s.item.to_image_path })
+    }
+    return [...left.entries()].map(([pid, v]) => ({
+      product_id: pid,
+      name: info.get(pid)?.name ?? null,
+      image_path: info.get(pid)?.image_path ?? null,
+      van: v.van,
+      machine: v.machine,
+    }))
+  })
+
+  function setLeftoverDestination(productId: string, dest: 'warehouse' | 'waste') {
+    const next = new Map(leftoverDestinations.value)
+    next.set(productId, dest)
+    leftoverDestinations.value = next
+  }
+
+  function setLeftoverExpiry(productId: string, date: string) {
+    const next = new Map(leftoverExpiry.value)
+    if (date) next.set(productId, date)
+    else next.delete(productId)
+    leftoverExpiry.value = next
+  }
+
+  /** Pre-fill the best-before date of goods coming out of the machine. */
+  async function loadExpirySuggestions(machineId: string) {
+    const products = [...new Set(currentRebuild.value.map(s => s.item.from_product_id).filter((id): id is string => !!id))]
+    const found = await Promise.all(products.map(pid => suggestExpiry(machineId, pid).catch(() => null)))
+    if (currentMachine.value?.id !== machineId) return
+    const next = new Map(leftoverExpiry.value)
+    products.forEach((pid, i) => {
+      if (found[i] && !next.has(pid)) next.set(pid, found[i]!)
+    })
+    leftoverExpiry.value = next
+  }
+
+  function leftoverPayload(): SlotChangeLeftover[] {
+    return rebuildLeftovers.value.map(l => ({
+      product_id: l.product_id,
+      van_qty: l.van,
+      machine_qty: l.machine,
+      destination: leftoverDestinations.value.get(l.product_id) ?? 'warehouse',
+      expiration_date: l.machine > 0 ? (leftoverExpiry.value.get(l.product_id) ?? null) : null,
+      batch_number: returnBatchLabel.value,
+    }))
+  }
+
+  /** Quit the rebuild of the current machine (idempotent, retried like the refill). */
+  async function applyCurrentRebuild(mode: 'confirm' | 'skip'): Promise<number | null> {
+    const machine = currentMachine.value
+    const request = machine?.change_request
+    if (!machine || !request || currentRebuild.value.length === 0) return 0
+    if (mode === 'skip') {
+      for (const s of currentRebuild.value) s.action = 'skip'
+    }
+    const items = currentRebuild.value.map(s => ({
+      item_id: s.item.id,
+      action: s.action === 'done' ? 'done' as const : 'skip' as const,
+      removed: s.removed,
+      filled: s.filled,
+      price_set: s.price_set,
+    }))
+    const backoffMs = [1000, 3000]
+    let lastError: unknown = null
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await applySlotChange({
+          requestId: request.id,
+          tourId: tourId.value,
+          warehouseId: selectedWarehouseId.value,
+          items,
+          leftovers: leftoverPayload(),
+        })
+        return items.filter(i => i.action === 'done').length
+      } catch (err) {
+        lastError = err
+        console.warn(`[refillWizard] apply_slot_change attempt ${attempt}/3 failed:`, err)
+        if (attempt < 3) await delay(backoffMs[attempt - 1]!)
+      }
+    }
+    confirmError.value = (lastError as { message?: string })?.message ?? String(lastError ?? 'unknown error')
+    return null
   }
 
   function adjustFillAmount(trayId: string, delta: number) {
@@ -808,6 +1124,12 @@ export function useRefillWizard() {
     try {
       const traysToRefill = currentTrays.value.filter(t => t.fill_amount > 0)
 
+      // Change note first: switches the rebuilt slots and books leftovers.
+      // The normal refill below never touches those slots.
+      if (currentRebuild.value.length > 0 && !rebuildReady.value) return
+      const slotsRebuilt = await applyCurrentRebuild('confirm')
+      if (slotsRebuilt === null) return  // error surfaced, user can retry
+
       // Visit-only stop (no tray writes). Still record the tour stop.
       if (traysToRefill.length === 0) {
         completedMachineIds.value = new Set([...completedMachineIds.value, machine.id])
@@ -817,6 +1139,7 @@ export function useRefillWizard() {
           trays_refilled: 0,
           total_added: 0,
           skipped: false,
+          slots_rebuilt: slotsRebuilt,
         })
         await advanceToNextMachine()
         saveTourState()
@@ -910,6 +1233,7 @@ export function useRefillWizard() {
         trays_refilled: results.length,
         total_added: totalAdded,
         skipped: false,
+        slots_rebuilt: slotsRebuilt,
       })
 
       await advanceToNextMachine()
@@ -921,6 +1245,17 @@ export function useRefillWizard() {
 
   async function skipMachine() {
     const machine = currentMachine.value
+    if (machine && currentRebuild.value.length > 0) {
+      // Not rebuilt: the slots stay open for the next tour, and what was
+      // packed for them goes back to its batch.
+      confirmError.value = null
+      confirmingRefill.value = true
+      try {
+        if ((await applyCurrentRebuild('skip')) === null) return
+      } finally {
+        confirmingRefill.value = false
+      }
+    }
     if (machine) {
       completedMachineIds.value = new Set([...completedMachineIds.value, machine.id])
       tourLog.value.push({
@@ -1151,7 +1486,8 @@ export function useRefillWizard() {
     const machinesSkipped = tourLog.value.filter(e => e.skipped).length
     const totalTraysRefilled = tourLog.value.reduce((sum, e) => sum + e.trays_refilled, 0)
     const totalItemsAdded = tourLog.value.reduce((sum, e) => sum + e.total_added, 0)
-    return { totalMachines, machinesRefilled, machinesSkipped, totalTraysRefilled, totalItemsAdded }
+    const totalSlotsRebuilt = tourLog.value.reduce((sum, e) => sum + (e.slots_rebuilt ?? 0), 0)
+    return { totalMachines, machinesRefilled, machinesSkipped, totalTraysRefilled, totalItemsAdded, totalSlotsRebuilt }
   })
 
   // ── Persistence ──────────────────────────────────────────────────────────
@@ -1171,6 +1507,11 @@ export function useRefillWizard() {
       completedMachineIds: Array.from(completedMachineIds.value),
       tourLog: tourLog.value,
       pickingMode: pickingMode.value,
+      tourId: tourId.value,
+      rebuildDecisions: Array.from(rebuildDecisions.value.entries()),
+      rebuildPacked: Array.from(rebuildPacked.value.entries()).map(
+        ([mid, pmap]) => [mid, Array.from(pmap.entries())] as [string, [string, number][]]
+      ),
       savedAt: Date.now(),
     }
     try {
@@ -1201,6 +1542,9 @@ export function useRefillWizard() {
       completedMachineIds.value = new Set(state.completedMachineIds)
       tourLog.value = state.tourLog
       pickingMode.value = state.pickingMode ?? 'per-machine'
+      if (state.tourId) tourId.value = state.tourId
+      rebuildDecisions.value = new Map(state.rebuildDecisions ?? [])
+      rebuildPacked.value = new Map((state.rebuildPacked ?? []).map(([mid, entries]) => [mid, new Map(entries)]))
 
       const pq = new Map<string, Map<string, number>>()
       for (const [mid, entries] of state.packedQuantities) {
@@ -1233,6 +1577,13 @@ export function useRefillWizard() {
     tourId.value = ''
     pickingMode.value = 'per-machine'
     warehouseProductOrder.value = new Map()
+    rebuildDecisions.value = new Map()
+    committedRebuild.value = new Map()
+    rebuildPacked.value = new Map()
+    currentRebuild.value = []
+    leftoverDestinations.value = new Map()
+    leftoverExpiry.value = new Map()
+    machineTrayRows.clear()
     clearSavedTourState()
   }
 
@@ -1283,6 +1634,25 @@ export function useRefillWizard() {
     getCustomQuantity,
     getMaxCustomQuantity,
     getDisplayedPackingQty,
+
+    // Change note (slot rebuilds)
+    isItemAccepted,
+    acceptedItems,
+    toggleRebuildItem,
+    rebuildNeeds,
+    rebuildCommitted,
+    currentRebuild,
+    rebuildReady,
+    rebuildLeftovers,
+    leftoverDestinations,
+    leftoverExpiry,
+    returnBatchLabel,
+    setRebuildRemoved,
+    setRebuildFilled,
+    setRebuildAction,
+    setRebuildPriceSet,
+    setLeftoverDestination,
+    setLeftoverExpiry,
 
     // Actions
     initTour,
