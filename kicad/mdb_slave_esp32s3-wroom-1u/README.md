@@ -6,7 +6,10 @@ Target platform: any vending machine equipped with an MDB bus. Backend (Supabase
 
 Base reference: [lucienkerl/mdb-esp32-cashless](https://github.com/lucienkerl/mdb-esp32-cashless).
 
-![MDB ESP32-S3-WROOM-1U board (3D render)](mdb_slave_esp32s3-wroom-1u.png)
+![MDB ESP32-S3-WROOM-1U board — top (3D render)](mdb_slave_esp32s3-wroom-1u.png)
+![MDB ESP32-S3-WROOM-1U board — bottom (3D render)](mdb_slave_esp32s3-wroom-1u_back.png)
+
+**Order the PCB:** [PCBWay shared project](https://www.pcbway.com/project/shareproject/MDB_Slave_ESP32_S3_WROOM_1U_4_layer_cashless_telemetry_board_for_vending_mac_cb2e3ef8.html)
 
 ## Status
 
@@ -17,6 +20,7 @@ Base reference: [lucienkerl/mdb-esp32-cashless](https://github.com/lucienkerl/md
   pull-up R4)
 - Revision: **1.4.1** (R26/R28 changed from 10KΩ to 1KΩ)
 - Gerbers in `gerber_to_order/` (JLCPCB, PCBWay) reflect the current board
+- Orderable as a [PCBWay shared project](https://www.pcbway.com/project/shareproject/MDB_Slave_ESP32_S3_WROOM_1U_4_layer_cashless_telemetry_board_for_vending_mac_cb2e3ef8.html)
 
 ## Overview
 

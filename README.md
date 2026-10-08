@@ -273,13 +273,15 @@ A fastlane + GitHub Actions pipeline for Google Play is included. See [`android/
 The custom PCB connects directly to the vending machine's MDB bus via the standard connector. It's powered from the machine's own supply, needs no external power, and talks to the backend over WiFi (or optional Cellular/LTE) + MQTT.
 
 <p align="center">
-  <img src="kicad/mdb_slave_esp32s3-wroom-1u/mdb_slave_esp32s3-wroom-1u.png" alt="MDB ESP32-S3-WROOM-1U board" width="900" />
+  <img src="kicad/mdb_slave_esp32s3-wroom-1u/mdb_slave_esp32s3-wroom-1u.png" alt="MDB ESP32-S3-WROOM-1U board — top" width="900" />
+  <br/><br/>
+  <img src="kicad/mdb_slave_esp32s3-wroom-1u/mdb_slave_esp32s3-wroom-1u_back.png" alt="MDB ESP32-S3-WROOM-1U board — bottom" width="900" />
 </p>
 
 <p align="center">
   <b>MDB ESP32-S3-WROOM-1U</b> — 4-layer board with external antenna, two 15 A relays, digital inputs, 1-Wire, I2C and NTC sensing
   <br/>
-  <a href="kicad/mdb_slave_esp32s3-wroom-1u/">KiCad sources</a> · <a href="kicad/mdb_slave_esp32s3-wroom-1u/bom/ibom.html">Interactive BOM</a> · <a href="kicad/mdb_slave_esp32s3-wroom-1u/gerber_to_order/">Gerbers (JLCPCB / PCBWay)</a>
+  <a href="https://www.pcbway.com/project/shareproject/MDB_Slave_ESP32_S3_WROOM_1U_4_layer_cashless_telemetry_board_for_vending_mac_cb2e3ef8.html"><b>Order on PCBWay</b></a> · <a href="kicad/mdb_slave_esp32s3-wroom-1u/">KiCad sources</a> · <a href="kicad/mdb_slave_esp32s3-wroom-1u/bom/ibom.html">Interactive BOM</a> · <a href="kicad/mdb_slave_esp32s3-wroom-1u/gerber_to_order/">Gerbers (JLCPCB / PCBWay)</a>
 </p>
 
 **Key specs**
@@ -333,7 +335,7 @@ All boards run the **same firmware** ([`mdb-slave-esp32s3/`](mdb-slave-esp32s3/)
 
 **3D-printed holders** — three variants in [`3d-printing/`](3d-printing/): the original [`mdb-slave`](3d-printing/mdb-slave/) bracket, a [`mdb-slave-more-stable`](3d-printing/mdb-slave-more-stable/) version with extra support at the MDB connector, and [`mdb-slave-sim`](3d-printing/mdb-slave-sim/) with holes for two SMA antenna connectors (cellular board).
 
-> 🛒 **Order the PCB:** WROOM-1U board — ready-to-upload [gerbers for JLCPCB and PCBWay](kicad/mdb_slave_esp32s3-wroom-1u/gerber_to_order/) · other boards — [PCBWay shared project](https://www.pcbway.com/project/shareproject/mdb_esp32_cashless_bc6bf8d8.html) · [PCBWay project store](https://www.pcbway.com/project/member/?bmbno=1B3B95CB-4E28-4D)
+> 🛒 **Order the PCB:** [**MDB ESP32-S3-WROOM-1U on PCBWay**](https://www.pcbway.com/project/shareproject/MDB_Slave_ESP32_S3_WROOM_1U_4_layer_cashless_telemetry_board_for_vending_mac_cb2e3ef8.html) (or upload the [gerbers](kicad/mdb_slave_esp32s3-wroom-1u/gerber_to_order/) to JLCPCB / PCBWay) · other boards — [PCBWay shared project](https://www.pcbway.com/project/shareproject/mdb_esp32_cashless_bc6bf8d8.html) · [PCBWay project store](https://www.pcbway.com/project/member/?bmbno=1B3B95CB-4E28-4D)
 
 ---
 
