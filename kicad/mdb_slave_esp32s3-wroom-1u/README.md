@@ -6,6 +6,8 @@ Target platform: any vending machine equipped with an MDB bus. Backend (Supabase
 
 Base reference: [lucienkerl/mdb-esp32-cashless](https://github.com/lucienkerl/mdb-esp32-cashless).
 
+![MDB ESP32-S3-WROOM-1U board (3D render)](mdb_slave_esp32s3-wroom-1u.png)
+
 ## Status
 
 - Schematic: complete — ERC has 4 minor housekeeping items left (floating power symbols / an

@@ -272,13 +272,46 @@ A fastlane + GitHub Actions pipeline for Google Play is included. See [`android/
 
 The custom PCB connects directly to the vending machine's MDB bus via the standard connector. It's powered from the machine's own supply, needs no external power, and talks to the backend over WiFi (or optional Cellular/LTE) + MQTT.
 
+<p align="center">
+  <img src="kicad/mdb_slave_esp32s3-wroom-1u/mdb_slave_esp32s3-wroom-1u.png" alt="MDB ESP32-S3-WROOM-1U board" width="900" />
+</p>
+
+<p align="center">
+  <b>MDB ESP32-S3-WROOM-1U</b> — 4-layer board with external antenna, two 15 A relays, digital inputs, 1-Wire, I2C and NTC sensing
+  <br/>
+  <a href="kicad/mdb_slave_esp32s3-wroom-1u/">KiCad sources</a> · <a href="kicad/mdb_slave_esp32s3-wroom-1u/bom/ibom.html">Interactive BOM</a> · <a href="kicad/mdb_slave_esp32s3-wroom-1u/gerber_to_order/">Gerbers (JLCPCB / PCBWay)</a>
+</p>
+
+**Key specs**
+
+- **MCU:** ESP32-S3-WROOM-1U-N16R2 (dual-core, WiFi + BLE 5, 16 MB flash, 2 MB PSRAM) with **external u.FL antenna** — reliable WiFi inside metal cabinets
+- **MDB interface:** UART 9600 baud, 9-bit mode, optocoupler isolated
+- **Power:** drawn from the vending-machine bus — adjustable buck converter, 3.8–32 V input, PTC-protected
+- **Outputs:** two optocoupler-isolated **15 A SPDT relays** (COM/NO/NC screw terminals)
+- **Inputs & sensors:** three digital inputs, two 1-Wire buses, I2C (JST XH), NTC thermistor input
+- **Feedback:** RGB status LED and buzzer
+- **Connectors:** MDB, USB-C (programming & debug), UART debug and JTAG headers; all field connectors on the board edge
+- **Payments add-ons:** serial RFID card reader for prepaid cards ([guide](docs/integrations/rfid-card-reader.md))
+- **PCB design:** KiCad — sources in [`kicad/`](kicad/), hardware licensed under **CERN-OHL-S v2**
+- **Enclosure:** 3D-printable brackets — STL/STEP in [`3d-printing/`](3d-printing/)
+
+### Board variants
+
+All boards run the **same firmware** ([`mdb-slave-esp32s3/`](mdb-slave-esp32s3/)): the WROOM-1U board is detected at boot via a GPIO3 pull-down strap, and a cellular modem is detected by probing it.
+
+| Board | KiCad sources | Highlights |
+|---|---|---|
+| **MDB ESP32-S3-WROOM-1U** | [`kicad/mdb_slave_esp32s3-wroom-1u/`](kicad/mdb_slave_esp32s3-wroom-1u/) | 4-layer board (rev 1.4.1), 149.8 × 38.5 mm, WROOM-1U module with external antenna, WiFi. Relays, inputs, 1-Wire, I2C, NTC, buzzer. Fabrication gerbers and [interactive BOM](kicad/mdb_slave_esp32s3-wroom-1u/bom/ibom.html) included. |
+| **MDB ESP32-S3** | [`kicad/mdb-slave-esp32s3/`](kicad/mdb-slave-esp32s3/) | Compact ESP32-S3 board, WiFi, MDB + DEX + pulse I/O, 2×11 extension header (J4) for add-on modules |
+| **MDB ESP32-S3 + SIM7080G** | [`kicad/mdb-slave-esp32s3-sim7080g/`](kicad/mdb-slave-esp32s3-sim7080g/) | Adds an onboard SIM7080G modem (GPS / LTE-M / NB-IoT) — see its README for pin mapping and firmware status |
+
 <table>
 <tr>
 <td width="33%" align="center" valign="top">
 
-![PCB v3](mdb-slave-esp32s3/mdb-slave-esp32s3_pcb_v3.jpg)
+![MDB ESP32-S3 board](mdb-slave-esp32s3/mdb-slave-esp32s3_pcb_v3.jpg)
 
-**PCB v3** — latest revision
+**MDB ESP32-S3** — compact board
 
 </td>
 <td width="33%" align="center" valign="top">
@@ -298,30 +331,9 @@ The custom PCB connects directly to the vending machine's MDB bus via the standa
 </tr>
 </table>
 
-**Key specs**
-
-- **MCU:** ESP32-S3 (dual-core, WiFi + BLE 5)
-- **MDB interface:** UART 9600 baud, 9-bit mode, optocoupler isolated
-- **Power:** drawn from the vending-machine bus (onboard buck converter)
-- **Connectivity:** WiFi, optional Cellular/LTE (SIM7080G Cat-M / NB-IoT)
-- **Connectors:** MDB, USB-C (programming & debug), DEX telemetry port, 2×11 extension header (J4) for add-on modules (original board)
-- **Payments add-ons:** serial RFID card reader for prepaid cards ([guide](docs/integrations/rfid-card-reader.md))
-- **PCB design:** KiCad — sources in [`kicad/`](kicad/)
-- **Enclosure:** 3D-printable bracket — STL/STEP in [`3d-printing/`](3d-printing/)
-
-### Board variants
-
-All boards run the **same firmware** ([`mdb-slave-esp32s3/`](mdb-slave-esp32s3/)): the WROOM-1U board is detected at boot via a GPIO3 pull-down strap, and a cellular modem is detected by probing it.
-
-| Board | KiCad sources | Highlights |
-|---|---|---|
-| **MDB ESP32-S3** (original) | [`kicad/mdb-slave-esp32s3/`](kicad/mdb-slave-esp32s3/) | ESP32-S3, WiFi, MDB + DEX + pulse I/O, J4 extension header |
-| **MDB ESP32-S3 + SIM7080G** | [`kicad/mdb-slave-esp32s3-sim7080g/`](kicad/mdb-slave-esp32s3-sim7080g/) | Adds an onboard SIM7080G modem (GPS / LTE-M / NB-IoT) — see its README for pin mapping and firmware status |
-| **MDB ESP32-S3-WROOM-1U** | [`kicad/mdb_slave_esp32s3-wroom-1u/`](kicad/mdb_slave_esp32s3-wroom-1u/) | 4-layer board (rev 1.4.1) built around the ESP32-S3-WROOM-1U-N16R2 module (16 MB flash, 2 MB PSRAM, external u.FL antenna for metal cabinets), WiFi-only. Two isolated 15 A SPDT relays, three custom digital inputs, two 1-Wire buses, I2C, NTC input, RGB status LED, buzzer, adjustable 3.8–32 V buck. Ships with fabrication gerbers (JLCPCB/PCBWay) and an [interactive BOM](kicad/mdb_slave_esp32s3-wroom-1u/bom/ibom.html). Licensed under **CERN-OHL-S v2**. |
-
 **3D-printed holders** — three variants in [`3d-printing/`](3d-printing/): the original [`mdb-slave`](3d-printing/mdb-slave/) bracket, a [`mdb-slave-more-stable`](3d-printing/mdb-slave-more-stable/) version with extra support at the MDB connector, and [`mdb-slave-sim`](3d-printing/mdb-slave-sim/) with holes for two SMA antenna connectors (cellular board).
 
-> 🛒 **Order the PCB:** [PCBWay shared project](https://www.pcbway.com/project/shareproject/mdb_esp32_cashless_bc6bf8d8.html) · [PCBWay project store](https://www.pcbway.com/project/member/?bmbno=1B3B95CB-4E28-4D)
+> 🛒 **Order the PCB:** WROOM-1U board — ready-to-upload [gerbers for JLCPCB and PCBWay](kicad/mdb_slave_esp32s3-wroom-1u/gerber_to_order/) · other boards — [PCBWay shared project](https://www.pcbway.com/project/shareproject/mdb_esp32_cashless_bc6bf8d8.html) · [PCBWay project store](https://www.pcbway.com/project/member/?bmbno=1B3B95CB-4E28-4D)
 
 ---
 
