@@ -967,15 +967,15 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
+		(model "${KIPRJMOD}/3dmodels/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
 			(offset
-				(xyz -0.3 -0.516 -4.5)
+				(xyz -0 -0.5 0)
 			)
 			(scale
 				(xyz 1 1 1)
 			)
 			(rotate
-				(xyz -0 -0 0)
+				(xyz -0 -0 -0)
 			)
 		)
 	)
@@ -2967,15 +2967,15 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
+		(model "${KIPRJMOD}/3dmodels/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
 			(offset
-				(xyz -0.3 -0.516 -4.5)
+				(xyz 0 -0.5 0)
 			)
 			(scale
 				(xyz 1 1 1)
 			)
 			(rotate
-				(xyz -0 -0 0)
+				(xyz -0 -0 -0)
 			)
 		)
 	)
@@ -8573,7 +8573,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/BUZ-SMD_4P-L8.5-W8.5-H3.0.step"
+		(model "${KIPRJMOD}/3dmodels/BUZ-SMD_4P-L8.5-W8.5-H3.0.step"
 			(offset
 				(xyz -0 -0 0)
 			)
@@ -9931,6 +9931,17 @@
 			)
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/3dmodels/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
+			(offset
+				(xyz 0 -0.5 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz -0 -0 -0)
+			)
+		)
 	)
 	(footprint "MountingHole:MountingHole_2.7mm_M2.5_ISO7380"
 		(layer "F.Cu")
@@ -13229,15 +13240,15 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/RELAY-TH_L19.2-W15.6-H15.8.step"
+		(model "${KIPRJMOD}/3dmodels/RELAY-TH_L19.2-W15.6-H15.8.step"
 			(offset
-				(xyz -0.886 -0 -3)
+				(xyz -7 -6.5 6.5)
 			)
 			(scale
 				(xyz 1 1 1)
 			)
 			(rotate
-				(xyz -0 -0 0)
+				(xyz -0 -0 -0)
 			)
 		)
 	)
@@ -14272,7 +14283,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/SMD-4_L4.6-W6.5-H3.7-LS10.2-P2.54.step"
+		(model "${KIPRJMOD}/3dmodels/SMD-4_L4.6-W6.5-H3.7-LS10.2-P2.54.step"
 			(offset
 				(xyz 0.0001 -0 0)
 			)
@@ -17582,15 +17593,15 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
+		(model "${KIPRJMOD}/3dmodels/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
 			(offset
-				(xyz -0.3 -0.516 -4.5)
+				(xyz 0 -0.5 0)
 			)
 			(scale
 				(xyz 1 1 1)
 			)
 			(rotate
-				(xyz -0 -0 0)
+				(xyz -0 -0 -0)
 			)
 		)
 	)
@@ -18798,15 +18809,15 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
+		(model "${KIPRJMOD}/3dmodels/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
 			(offset
-				(xyz -0.3 -0.516 -4.5)
+				(xyz -0.3 -0.516 0)
 			)
 			(scale
 				(xyz 1 1 1)
 			)
 			(rotate
-				(xyz -0 -0 0)
+				(xyz -0 -0 -0)
 			)
 		)
 	)
@@ -19882,15 +19893,15 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/RELAY-TH_L19.2-W15.6-H15.8.step"
+		(model "${KIPRJMOD}/3dmodels/RELAY-TH_L19.2-W15.6-H15.8.step"
 			(offset
-				(xyz -0.886 -0 -3)
+				(xyz -7 -6.5 6.5)
 			)
 			(scale
 				(xyz 1 1 1)
 			)
 			(rotate
-				(xyz -0 -0 0)
+				(xyz -0 -0 -0)
 			)
 		)
 	)
@@ -20973,7 +20984,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/SMD-4_L4.6-W6.5-H3.7-LS10.2-P2.54.step"
+		(model "${KIPRJMOD}/3dmodels/SMD-4_L4.6-W6.5-H3.7-LS10.2-P2.54.step"
 			(offset
 				(xyz 0.0001 -0 0)
 			)
@@ -22507,15 +22518,15 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
+		(model "${KIPRJMOD}/3dmodels/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
 			(offset
-				(xyz -0.3 -0.516 -4.5)
+				(xyz 0 -0.5 0)
 			)
 			(scale
 				(xyz 1 1 1)
 			)
 			(rotate
-				(xyz -0 -0 0)
+				(xyz -0 -0 -0)
 			)
 		)
 	)
@@ -23363,15 +23374,15 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
+		(model "${KIPRJMOD}/3dmodels/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
 			(offset
-				(xyz -0.3 -0.516 -4.5)
+				(xyz 0 -0.5 0)
 			)
 			(scale
 				(xyz 1 1 1)
 			)
 			(rotate
-				(xyz -0 -0 0)
+				(xyz -0 -0 -0)
 			)
 		)
 	)
@@ -25254,15 +25265,15 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "${KIPRJMOD}/EASYEDA_MODELS/CONN-TH_MX4.20-WI-2x3P.step"
+		(model "${KIPRJMOD}/3dmodels/CONN-TH_MX4.20-WI-2x3P.step"
 			(offset
-				(xyz -0.1 -6.5 -3.5)
+				(xyz -4.2 -2.8 0)
 			)
 			(scale
 				(xyz 1 1 1)
 			)
 			(rotate
-				(xyz -0 -0 0)
+				(xyz -0 -0 -0)
 			)
 		)
 	)
@@ -27187,6 +27198,17 @@
 			)
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/3dmodels/CONN-TH_3P-P5.00_WJ500V-5.08-3P.step"
+			(offset
+				(xyz 0 -0.5 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz -0 -0 -0)
+			)
+		)
 	)
 	(footprint "TestPoint:TestPoint_Pad_D1.0mm"
 		(layer "F.Cu")

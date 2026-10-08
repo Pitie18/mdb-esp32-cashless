@@ -7,6 +7,10 @@
 !*.kicad_sch
 !*.md
 
+# Keep the project-local 3D models (referenced via ${KIPRJMOD}/3dmodels)
+!3dmodels/
+!3dmodels/**
+
 # Keep this .gitignore
 !.gitignore
 
