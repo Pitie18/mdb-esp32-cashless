@@ -528,7 +528,7 @@ npx vitest run          # run all tests
 npx vitest run --watch  # watch mode
 ```
 
-Slot re-assignment: `app/lib/__tests__/slotChange.test.ts`, `app/components/__tests__/SlotPlanPanel.test.ts`, `app/composables/__tests__/useRefillWizard.rebuild.test.ts`; DB side `Docker/supabase/tests/slot_change_requests.test.sql`.
+Slot re-assignment: `app/lib/__tests__/slotChange.test.ts`, `app/components/__tests__/SlotPlanPanel.test.ts`, `app/composables/__tests__/useRefillWizard.rebuild.test.ts`; DB side `Docker/supabase/tests/slot_change_requests.test.sql` and `slot_change_offerings.test.sql` (a product that only moves keeps its `machine_product_offerings` row, so it does not drop back into "testing").
 
 Firmware host-side tests need no board and compile the real sources:
 - `mdb-slave-esp32s3/test/rfid/run.sh` — the F02DC frame parser
