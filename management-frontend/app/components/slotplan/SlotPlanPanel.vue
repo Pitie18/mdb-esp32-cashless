@@ -25,7 +25,7 @@ const { fetchOpenRequest, saveRequest, withdrawRequest } = useSlotChangeRequests
 const WINDOW_DAYS = 30
 const TARGETS = [3, 5, 7, 10]
 
-interface ProductInfo { id: string; name: string; image_url: string | null; sellprice: number | null; discontinued: boolean }
+interface ProductInfo { id: string; name: string; image_url: string | null; sellprice: number | null; discontinued: boolean; min_age: number | null }
 
 const loading = ref(true)
 const error = ref('')
@@ -61,7 +61,7 @@ async function load() {
         .eq('machine_id', props.machineId).order('item_number'),
       (supabase as any).rpc('get_machine_product_kpis', { p_machine_id: props.machineId, p_company_id: companyId, p_days: WINDOW_DAYS }),
       (supabase as any).rpc('get_product_sales_velocity', { p_company_id: companyId, p_days: WINDOW_DAYS }),
-      (supabase as any).from('products').select('id, name, image_path, sellprice, discontinued').order('name'),
+      (supabase as any).from('products').select('id, name, image_path, sellprice, discontinued, product_category(min_age)').order('name'),
       fetchOpenRequest(props.machineId),
     ])
     if (trayRes.error) throw trayRes.error
@@ -73,7 +73,7 @@ async function load() {
     }))
     const pm = new Map<string, ProductInfo>()
     for (const p of (prodRes.data ?? []) as any[]) {
-      pm.set(p.id, { id: p.id, name: p.name ?? '?', image_url: p.image_path ? getProductImageUrl(p.image_path) : null, sellprice: p.sellprice ?? null, discontinued: !!p.discontinued })
+      pm.set(p.id, { id: p.id, name: p.name ?? '?', image_url: p.image_path ? getProductImageUrl(p.image_path) : null, sellprice: p.sellprice ?? null, discontinued: !!p.discontinued, min_age: p.product_category?.min_age ?? null })
     }
     products.value = pm
 
@@ -159,6 +159,8 @@ const catalogue = computed(() => {
 function name(pid: string | null) { return pid ? (products.value.get(pid)?.name ?? '?') : t('slotPlan.empty') }
 function image(pid: string | null) { return pid ? (products.value.get(pid)?.image_url ?? null) : null }
 function price(pid: string | null) { return pid ? (products.value.get(pid)?.sellprice ?? null) : null }
+function minAge(pid: string | null) { return pid ? (products.value.get(pid)?.min_age ?? null) : null }
+function ageLabel(n: number | null) { return n == null ? t('refillRebuild.noAgeLimit') : t('refillRebuild.ageFrom', { n }) }
 function days(n: number) {
   if (!Number.isFinite(n)) return '∞'
   return n.toLocaleString(locale.value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -305,6 +307,10 @@ const requestRows = computed(() => changes.value.map(c => ({
   narrow: c.to_product_id ? widthWarning(trays.value, c.to_product_id, c.tray_id) : false,
 })))
 const prices = computed(() => priceChanges(requestRows.value))
+const ageChanges = computed(() => requestRows.value
+  .map(r => ({ item_number: r.item_number, from: minAge(r.from_product_id), to: minAge(r.to_product_id) }))
+  .filter(r => r.from !== r.to)
+  .sort((a, b) => a.item_number - b.item_number))
 const extraPacking = computed(() => {
   const items = changes.value.map(c => ({ ...c, id: c.tray_id }))
   const stock = new Map(trays.value.map(t => [t.id, t.current_stock]))
@@ -754,6 +760,14 @@ async function withdraw() {
               <span>{{ t('slotPlan.selection', { n: p.item_number }) }}</span>
               <b>{{ formatCurrency(p.price, locale) }}</b>
             </div>
+            <template v-if="ageChanges.length > 0">
+              <h3 class="mt-3 text-sm font-medium">{{ t('slotPlan.ageTitle') }} <span class="text-red-600">({{ ageChanges.length }})</span></h3>
+              <p class="mb-2 text-xs text-muted-foreground">{{ t('slotPlan.ageHint') }}</p>
+              <div v-for="a in ageChanges" :key="a.item_number" class="mb-1 flex justify-between rounded-md bg-red-500/10 px-2 py-1 text-sm">
+                <span class="tabular-nums">{{ t('slotPlan.selection', { n: a.item_number }) }}</span>
+                <b>{{ ageLabel(a.from) }} → {{ ageLabel(a.to) }}</b>
+              </div>
+            </template>
           </div>
           <div class="rounded-xl border bg-card p-4">
             <h3 class="text-sm font-medium">{{ t('slotPlan.extraPacking') }}</h3>

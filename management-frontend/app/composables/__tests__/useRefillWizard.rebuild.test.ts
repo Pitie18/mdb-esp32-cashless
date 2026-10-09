@@ -59,7 +59,7 @@ import { useRefillWizard } from '../useRefillWizard'
 const ITEM = {
   id: 'i12', request_id: 'r1', tray_id: 't12', item_number: 12,
   from_product_id: 'schorle', to_product_id: 'cola', from_capacity: 10, to_capacity: 10,
-  from_price: 1.8, to_price: 2, skip_count: 0, from_name: 'Schorle', to_name: 'Cola',
+  from_price: 1.8, to_price: 2, from_min_age: null as number | null, to_min_age: null as number | null, skip_count: 0, from_name: 'Schorle', to_name: 'Cola',
   from_image_path: null, to_image_path: null, from_image_url: null, to_image_url: null,
 }
 
@@ -114,7 +114,7 @@ describe('refill tour with a change note', () => {
 
     expect(applySlotChange).toHaveBeenCalledTimes(1)
     const input = applySlotChange.mock.calls[0]![0] as any
-    expect(input.items).toEqual([{ item_id: 'i12', action: 'done', removed: 8, filled: 10, price_set: true }])
+    expect(input.items).toEqual([{ item_id: 'i12', action: 'done', removed: 8, filled: 10, price_set: true, age_set: false }])
     expect(input.leftovers).toEqual([{ product_id: 'schorle', van_qty: 0, machine_qty: 8, destination: 'warehouse', expiration_date: '2026-12-01', batch_number: 'Machine return' }])
     const refill = rpcCalls.find(c => c.fn === 'refill_machine_trays')!
     expect(refill.args.p_trays).toEqual([{ tray_id: 't11', fill_amount: 8 }])
@@ -136,5 +136,27 @@ describe('refill tour with a change note', () => {
     const input = applySlotChange.mock.calls[0]![0] as any
     expect(input.items[0]).toMatchObject({ item_id: 'i12', action: 'skip' })
     expect(input.leftovers).toEqual([expect.objectContaining({ product_id: 'cola', van_qty: 10, machine_qty: 0 })])
+  })
+
+  it('a slot whose age limit changes can only be quit after the age setting is confirmed', async () => {
+    fetchOpenRequests.mockResolvedValue(new Map([['m1', { id: 'r1', machine_id: 'm1', created_at: '', updated_at: '', note: null, items: [{ ...ITEM, to_min_age: 18 }] }]]))
+    const w = await startedTour()
+    w.togglePacked('m1', w.machines.value[0]!.tray_summary[0]!)
+    await w.startTour()
+
+    w.setRebuildAction('i12', 'done')
+    expect(w.currentRebuild.value[0]!.action).toBeNull()
+    w.setRebuildAgeSet('i12', true)
+    w.setRebuildAction('i12', 'done')
+    expect(w.currentRebuild.value[0]!.action).toBe('done')
+    // Unticking it takes the slot back to undecided
+    w.setRebuildAgeSet('i12', false)
+    expect(w.currentRebuild.value[0]!.action).toBeNull()
+    w.setRebuildAgeSet('i12', true)
+    w.setRebuildAction('i12', 'done')
+
+    await w.confirmMachineRefill()
+    const input = applySlotChange.mock.calls[0]![0] as any
+    expect(input.items[0]).toMatchObject({ item_id: 'i12', action: 'done', age_set: true })
   })
 })

@@ -19,7 +19,8 @@ data class SlotChangeApplyItem(
     val action: RebuildAction,
     val removed: Int,
     val filled: Int,
-    val priceSet: Boolean
+    val priceSet: Boolean,
+    val ageSet: Boolean = false
 )
 
 /** One product's leftovers for `apply_slot_change` (`p_leftovers`). */
@@ -66,7 +67,7 @@ object SlotChangeRepository {
     /** FK-named joins: the item references `products` twice. */
     private const val ITEM_SELECT =
         "id, request_id, tray_id, item_number, from_product_id, to_product_id, " +
-            "from_capacity, to_capacity, from_price, to_price, skip_count, " +
+            "from_capacity, to_capacity, from_price, to_price, skip_count, from_min_age, to_min_age, " +
             "from_product:products!slot_change_request_items_from_product_id_fkey(name, image_path), " +
             "to_product:products!slot_change_request_items_to_product_id_fkey(name, image_path)"
 
@@ -190,6 +191,7 @@ object SlotChangeRepository {
                                 put("removed", i.removed)
                                 put("filled", i.filled)
                                 put("price_set", i.priceSet)
+                                put("age_set", i.ageSet)
                             }
                         }
                     )

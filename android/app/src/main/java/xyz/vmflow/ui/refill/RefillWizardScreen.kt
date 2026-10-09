@@ -310,6 +310,7 @@ fun RefillWizardScreen(
                                     onFilled = viewModel::setRebuildFilled,
                                     onAction = viewModel::setRebuildAction,
                                     onPriceSet = viewModel::setRebuildPriceSet,
+                                    onAgeSet = viewModel::setRebuildAgeSet,
                                     onDestination = viewModel::setLeftoverDestination,
                                     onExpiry = viewModel::setLeftoverExpiry
                                 )

@@ -1,6 +1,6 @@
 import { useSupabaseClient } from '#imports'
 import { buildWarehouseStockInfo, distributeAcrossSlots, groupNeedsRefill, groupTraysByProduct, isProductRefillable } from '@/lib/stock-health'
-import { computeLeftovers, fillPlan, rebuildPackNeeds, type ItemOutcome } from '@/lib/slotChange'
+import { ageChanged, computeLeftovers, fillPlan, rebuildPackNeeds, type ItemOutcome } from '@/lib/slotChange'
 import { useOrganization } from './useOrganization'
 import { useSlotChangeRequests, type SlotChangeItem, type SlotChangeLeftover, type SlotChangeRequest } from './useSlotChangeRequests'
 import { useWarehouse } from './useWarehouse'
@@ -81,6 +81,8 @@ export interface RebuildSlot {
   from_van: number
   action: 'done' | 'skip' | null
   price_set: boolean
+  /** The machine's age setting was changed (required before 'done' when the restriction changes). */
+  age_set: boolean
 }
 
 export interface RebuildLeftover {
@@ -886,7 +888,7 @@ export function useRefillWizard() {
         .filter(item => rowById.has(item.tray_id))
         .map((item) => {
           const live = rowById.get(item.tray_id)!.current_stock as number
-          return { item, live_stock: live, removed: live, filled: 0, filled_touched: false, moved: 0, from_van: 0, action: null, price_set: false }
+          return { item, live_stock: live, removed: live, filled: 0, filled_touched: false, moved: 0, from_van: 0, action: null, price_set: false, age_set: false }
         })
       recomputeRebuildFill()
       leftoverDestinations.value = new Map()
@@ -966,6 +968,8 @@ export function useRefillWizard() {
   function setRebuildAction(itemId: string, action: 'done' | 'skip' | null) {
     const slot = currentRebuild.value.find(s => s.item.id === itemId)
     if (!slot) return
+    // A slot whose age restriction changes can only be quit once the age setting is confirmed
+    if (action === 'done' && ageChanged(slot.item) && !slot.age_set) return
     slot.action = action
     recomputeRebuildFill()
   }
@@ -973,6 +977,16 @@ export function useRefillWizard() {
   function setRebuildPriceSet(itemId: string, value: boolean) {
     const slot = currentRebuild.value.find(s => s.item.id === itemId)
     if (slot) slot.price_set = value
+  }
+
+  function setRebuildAgeSet(itemId: string, value: boolean) {
+    const slot = currentRebuild.value.find(s => s.item.id === itemId)
+    if (!slot) return
+    slot.age_set = value
+    if (!value && slot.action === 'done' && ageChanged(slot.item)) {
+      slot.action = null
+      recomputeRebuildFill()
+    }
   }
 
   /** Every slot of the change note has been marked rebuilt or not rebuilt. */
@@ -1054,6 +1068,7 @@ export function useRefillWizard() {
       removed: s.removed,
       filled: s.filled,
       price_set: s.price_set,
+      age_set: s.age_set,
     }))
     const backoffMs = [1000, 3000]
     let lastError: unknown = null
@@ -1651,6 +1666,7 @@ export function useRefillWizard() {
     setRebuildFilled,
     setRebuildAction,
     setRebuildPriceSet,
+    setRebuildAgeSet,
     setLeftoverDestination,
     setLeftoverExpiry,
 

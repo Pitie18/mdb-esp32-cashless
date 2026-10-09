@@ -680,6 +680,10 @@
     <string name="refill_rebuild_filled">Filled in (max %1$d)</string>
     <string name="refill_rebuild_fill_source">%1$d moved over · %2$d from the van</string>
     <string name="refill_rebuild_price_set">Price at selection %1$d set to %2$s</string>
+    <string name="refill_rebuild_age_set">Age setting changed on the machine</string>
+    <string name="refill_rebuild_age_none">no age limit</string>
+    <string name="refill_rebuild_age_min">%1$d+</string>
+    <string name="refill_rebuild_age_confirm_first">Confirm the age setting first.</string>
     <string name="refill_rebuild_rebuilt">Rebuilt</string>
     <string name="refill_rebuild_not_rebuilt">Not rebuilt</string>
     <string name="refill_rebuild_stays_open">Stays as it is and comes up again on the next tour.</string>

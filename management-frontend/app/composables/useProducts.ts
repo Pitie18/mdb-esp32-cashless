@@ -4,6 +4,8 @@ interface ProductCategory {
   id: string
   name: string
   tax_class_id: string | null
+  /** Minimum customer age for products in this category, null = no restriction. */
+  min_age: number | null
 }
 
 interface Product {
@@ -40,7 +42,7 @@ export function useProducts() {
           .order('name'),
         supabase
           .from('product_category')
-          .select('id, name, tax_class_id')
+          .select('id, name, tax_class_id, min_age')
           .order('name'),
       ])
 
@@ -125,14 +127,14 @@ export function useProducts() {
     await fetchProducts()
   }
 
-  async function createCategory(category: { name: string; company: string; tax_class_id?: string | null }) {
+  async function createCategory(category: { name: string; company: string; tax_class_id?: string | null; min_age?: number | null }) {
     const supabase = useSupabaseClient()
     const { error } = await supabase.from('product_category').insert(category)
     if (error) throw error
     await fetchProducts()
   }
 
-  async function updateCategory(id: string, updates: { name?: string; tax_class_id?: string | null }) {
+  async function updateCategory(id: string, updates: { name?: string; tax_class_id?: string | null; min_age?: number | null }) {
     const supabase = useSupabaseClient()
     const { error } = await supabase.from('product_category').update(updates).eq('id', id)
     if (error) throw error

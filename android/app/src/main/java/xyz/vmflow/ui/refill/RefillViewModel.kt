@@ -2156,7 +2156,7 @@ class RefillViewModel : ViewModel() {
     /** Marks a slot rebuilt / not rebuilt; `null` takes the decision back. */
     fun setRebuildAction(itemId: String, action: RebuildAction?) {
         updateRebuild(recompute = true) { slot ->
-            if (slot.item.id == itemId) slot.copy(action = action) else slot
+            if (slot.item.id == itemId) SlotChange.withAction(slot, action) else slot
         }
     }
 
@@ -2164,6 +2164,17 @@ class RefillViewModel : ViewModel() {
     fun setRebuildPriceSet(itemId: String, value: Boolean) {
         updateRebuild(recompute = false) { slot ->
             if (slot.item.id == itemId) slot.copy(priceSet = value) else slot
+        }
+    }
+
+    /**
+     * The age setting has been changed at the machine's selection. Unticking
+     * a slot already marked rebuilt takes "rebuilt" back (recompute: a slot
+     * going back to undecided counts as rebuilt for the fill plan anyway).
+     */
+    fun setRebuildAgeSet(itemId: String, value: Boolean) {
+        updateRebuild(recompute = true) { slot ->
+            if (slot.item.id == itemId) SlotChange.withAgeSet(slot, value) else slot
         }
     }
 
@@ -2230,7 +2241,8 @@ class RefillViewModel : ViewModel() {
                 action = if (it.action == RebuildAction.DONE) RebuildAction.DONE else RebuildAction.SKIP,
                 removed = it.removed,
                 filled = it.filled,
-                priceSet = it.priceSet
+                priceSet = it.priceSet,
+                ageSet = SlotChange.ageSetPayload(it)
             )
         }
         val warehouseId = state.selectedWarehouseId

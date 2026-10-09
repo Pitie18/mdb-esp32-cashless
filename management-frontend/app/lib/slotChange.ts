@@ -187,6 +187,11 @@ export function priceChanges(
     .sort((a, b) => a.item_number - b.item_number)
 }
 
+/** Age restriction of a slot changes with the switch (null = no restriction). */
+export function ageChanged(row: { from_min_age?: number | null; to_min_age?: number | null }): boolean {
+  return (row.from_min_age ?? null) !== (row.to_min_age ?? null)
+}
+
 // ── Tour ────────────────────────────────────────────────────────────────────
 
 export interface ChangeItem {

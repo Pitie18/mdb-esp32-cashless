@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   planFromTrays, planChanges, productReach, slotNeeds, removalCandidates, firstEmpty,
   rebuildPackNeeds, fillPlan, computeLeftovers, priceChanges, widthWarning,
-  type PlanTray, type ChangeItem,
+  ageChanged, type PlanTray, type ChangeItem,
 } from '../slotChange'
 
 const trays: PlanTray[] = [
@@ -169,5 +169,16 @@ describe('tour: at the machine', () => {
       { item_number: 14, to_product_id: null, from_price: 1, to_price: null },
     ]
     expect(priceChanges(rows)).toEqual([{ item_number: 12, price: 2 }])
+  })
+})
+
+describe('ageChanged', () => {
+  it('compares the age limits of the old and new product, null = none', () => {
+    expect(ageChanged({ from_min_age: null, to_min_age: 18 })).toBe(true)
+    expect(ageChanged({ from_min_age: 16, to_min_age: 18 })).toBe(true)
+    expect(ageChanged({ from_min_age: 18, to_min_age: null })).toBe(true)
+    expect(ageChanged({ from_min_age: 18, to_min_age: 18 })).toBe(false)
+    expect(ageChanged({ from_min_age: null, to_min_age: null })).toBe(false)
+    expect(ageChanged({})).toBe(false)
   })
 })

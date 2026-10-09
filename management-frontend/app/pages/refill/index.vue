@@ -30,7 +30,7 @@ const {
   resumeTour,
   isItemAccepted, toggleRebuildItem, rebuildNeeds, rebuildCommitted,
   currentRebuild, rebuildReady, rebuildLeftovers, leftoverDestinations, leftoverExpiry, returnBatchLabel,
-  setRebuildRemoved, setRebuildFilled, setRebuildAction, setRebuildPriceSet, setLeftoverDestination, setLeftoverExpiry,
+  setRebuildRemoved, setRebuildFilled, setRebuildAction, setRebuildPriceSet, setRebuildAgeSet, setLeftoverDestination, setLeftoverExpiry,
 } = useRefillWizard()
 
 returnBatchLabel.value = t('refillRebuild.returnBatch')
@@ -483,6 +483,7 @@ const currentMachineDone = computed(() =>
           @filled="setRebuildFilled"
           @action="setRebuildAction"
           @price="setRebuildPriceSet"
+          @age="setRebuildAgeSet"
           @destination="setLeftoverDestination"
           @expiry="setLeftoverExpiry"
         />
