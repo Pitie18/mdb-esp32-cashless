@@ -167,11 +167,13 @@ function days(n: number) {
 type SlotTag = 'new' | 'out' | 'short' | 'testing' | null
 function slotTag(trayId: string): SlotTag {
   const pid = plan.value[trayId]?.product_id ?? null
+  // A slow seller stays marked when it is only moved to make room: moving
+  // it does not make it sell better.
+  if (pid && outSet.value.has(pid)) return 'out'
   if (changedTrayIds.value.has(trayId)) return 'new'
   if (!pid) return null
   const ten = tenure.value.get(pid)
   if (ten != null && ten < 14) return 'testing'
-  if (outSet.value.has(pid)) return 'out'
   if ((reachMap.value.get(pid)?.reachDays ?? Infinity) < targetDays.value) return 'short'
   return null
 }

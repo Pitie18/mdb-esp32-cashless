@@ -100,4 +100,19 @@ describe('SlotPlanPanel', () => {
     await cells[2]!.trigger('drop', { dataTransfer })
     expect(w.text()).toContain('slotPlan.toRequest:{"n":2}')
   })
+
+  it('keeps a slow seller marked when it is only moved', async () => {
+    const w = mount(SlotPlanPanel, { props: { machineId: 'm1', isAdmin: true } })
+    await flushPromises()
+    const cells = () => w.findAll('[role="button"]')
+    const data = new Map<string, string>()
+    const dataTransfer = { setData: (k: string, v: string) => data.set(k, v), getData: (k: string) => data.get(k) ?? '' }
+    // Tic Tac (slot 12) sells 1 in 30 days → can go. Swap it with Snickers (13).
+    await cells()[1]!.trigger('dragstart', { dataTransfer })
+    await cells()[2]!.trigger('drop', { dataTransfer })
+    const moved = cells()[2]!  // slot 13 now holds Tic Tac
+    expect(moved.text()).toContain('Tic Tac')
+    expect(moved.text()).toContain('slotPlan.tagOut')
+    expect(moved.classes()).toContain('border-red-500')
+  })
 })
