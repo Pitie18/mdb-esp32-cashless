@@ -224,6 +224,13 @@ struct RebuildSlot: Identifiable, Equatable {
     /// `nil` until the refiller marks the slot rebuilt / not rebuilt.
     var action: SlotChangeAction? = nil
     var priceSet: Bool = false
+    /// The refiller confirmed the machine's age setting was changed. A slot
+    /// whose age restriction changes (`item.changesAge`) can only be marked
+    /// rebuilt once this is ticked.
+    var ageSet: Bool = false
+
+    /// "Rebuilt" is blocked until the age setting is confirmed.
+    var needsAgeConfirmation: Bool { item.changesAge && !ageSet }
 
     var id: UUID { item.id }
 }
@@ -2085,6 +2092,9 @@ final class RefillWizardViewModel: ObservableObject {
     /// Mark a slot rebuilt / not rebuilt; `nil` undoes the decision.
     func setRebuildAction(itemId: UUID, action: SlotChangeAction?) {
         guard let i = currentRebuild.firstIndex(where: { $0.item.id == itemId }) else { return }
+        // A slot whose age restriction changes can only be quit once the
+        // age setting at the machine is confirmed.
+        if action == .done && currentRebuild[i].needsAgeConfirmation { return }
         currentRebuild[i].action = action
         recomputeRebuildFill()
     }
@@ -2092,6 +2102,17 @@ final class RefillWizardViewModel: ObservableObject {
     func setRebuildPriceSet(itemId: UUID, value: Bool) {
         guard let i = currentRebuild.firstIndex(where: { $0.item.id == itemId }) else { return }
         currentRebuild[i].priceSet = value
+    }
+
+    /// Tick / untick "age setting changed". Unticking a slot already marked
+    /// rebuilt puts it back to undecided.
+    func setRebuildAgeSet(itemId: UUID, value: Bool) {
+        guard let i = currentRebuild.firstIndex(where: { $0.item.id == itemId }) else { return }
+        currentRebuild[i].ageSet = value
+        if !value && currentRebuild[i].action == .done && currentRebuild[i].item.changesAge {
+            currentRebuild[i].action = nil
+            recomputeRebuildFill()
+        }
     }
 
     /// Every slot of the change note has been marked rebuilt or not rebuilt.
@@ -2231,6 +2252,7 @@ final class RefillWizardViewModel: ObservableObject {
                 "removed": .integer(slot.removed),
                 "filled": .integer(slot.filled),
                 "price_set": .bool(slot.priceSet),
+                "age_set": .bool(slot.action == .done && slot.item.changesAge && slot.ageSet),
             ])
         }
         // Without a warehouse nothing was deducted, so there is nothing to

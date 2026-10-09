@@ -99,7 +99,7 @@ struct RefillChangeNoteCard: View {
                     .font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
 
-                    if item.changesCapacity || item.changesPrice || !accepted {
+                    if item.changesCapacity || item.changesPrice || item.changesAge || !accepted {
                         HStack(spacing: 6) {
                             if item.changesCapacity {
                                 Text("Change spiral (\(item.fromCapacity) → \(item.toCapacity))")
@@ -110,6 +110,12 @@ struct RefillChangeNoteCard: View {
                                     .foregroundStyle(.orange)
                                     .padding(.horizontal, 4)
                                     .background(RoundedRectangle(cornerRadius: 4).fill(Color.orange.opacity(0.15)))
+                            }
+                            if item.changesAge {
+                                Text(verbatim: item.ageChangeLabel)
+                                    .foregroundStyle(.red)
+                                    .padding(.horizontal, 4)
+                                    .background(RoundedRectangle(cornerRadius: 4).fill(Color.red.opacity(0.15)))
                             }
                             if !accepted {
                                 Text("not this tour")
@@ -155,5 +161,20 @@ struct RefillChangeNoteCard: View {
                     .foregroundStyle(.orange)
             }
         }
+    }
+}
+
+// MARK: - Age Restriction Labels
+
+extension SlotChangeRequestItem {
+    /// "18+" / "no age limit" (de: "ab 18" / "ohne Altersgrenze").
+    static func ageLabel(_ minAge: Int?) -> String {
+        guard let minAge else { return String(localized: "no age limit") }
+        return String(localized: "\(minAge)+")
+    }
+
+    /// The change spelled out, e.g. "no age limit → 18+".
+    var ageChangeLabel: String {
+        "\(Self.ageLabel(fromMinAge)) → \(Self.ageLabel(toMinAge))"
     }
 }

@@ -161,6 +161,30 @@ struct RefillRebuildSection: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                // New age restriction at the selection
+                if item.changesAge {
+                    Button {
+                        HapticFeedback.light.fire()
+                        viewModel.setRebuildAgeSet(itemId: item.id, value: !slot.ageSet)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: slot.ageSet ? "checkmark.square.fill" : "square")
+                                .font(.title3)
+                                .foregroundStyle(slot.ageSet ? Color.blue : Color.secondary)
+                            Text("Age setting changed on the machine")
+                                + Text(verbatim: " ")
+                                + Text(verbatim: item.ageChangeLabel).bold()
+                            Spacer(minLength: 0)
+                        }
+                        .font(.subheadline)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.red.opacity(0.1)))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
             // Rebuilt / not rebuilt
@@ -169,7 +193,8 @@ struct RefillRebuildSection: View {
                     title: Text("Rebuilt"),
                     systemImage: "checkmark",
                     isSelected: slot.action == .done,
-                    tint: .green
+                    tint: .green,
+                    isDisabled: slot.action != .done && slot.needsAgeConfirmation
                 ) {
                     viewModel.setRebuildAction(itemId: item.id, action: slot.action == .done ? nil : .done)
                 }
@@ -181,6 +206,13 @@ struct RefillRebuildSection: View {
                 ) {
                     viewModel.setRebuildAction(itemId: item.id, action: slot.action == .skip ? nil : .skip)
                 }
+            }
+
+            if slot.action == nil && slot.needsAgeConfirmation {
+                Text("Confirm the age setting first")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if slot.action == .skip {
@@ -251,6 +283,7 @@ struct RefillRebuildSection: View {
         systemImage: String,
         isSelected: Bool,
         tint: Color,
+        isDisabled: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button {
@@ -269,6 +302,8 @@ struct RefillRebuildSection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.4 : 1)
     }
 
     // MARK: - Leftovers

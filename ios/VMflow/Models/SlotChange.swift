@@ -141,6 +141,13 @@ enum SlotChange {
         return out
     }
 
+    /// The age restriction changes with the switch (nil = no restriction, so
+    /// nil → 16 is a change and nil → nil is not). Mirrors `ageChanged` in
+    /// the web's `lib/slotChange.ts`.
+    static func ageChanged(from: Int?, to: Int?) -> Bool {
+        from != to
+    }
+
     /// Items by slot number; ties keep their input order (the web's stable sort).
     private static func sortedBySlot(_ items: [SlotChangeLine]) -> [SlotChangeLine] {
         items.enumerated()
@@ -173,12 +180,17 @@ struct SlotChangeRequestItem: Codable, Equatable, Identifiable {
     let toName: String?
     let fromImagePath: String?
     let toImagePath: String?
+    /// Age restriction (`product_category.min_age`) of the old / new product,
+    /// snapshotted when the slot was planned; nil = no restriction.
+    let fromMinAge: Int?
+    let toMinAge: Int?
 
     /// Column list for `.select(...)` — the two product joins are named by
     /// their foreign keys because both point at `products`.
     static let selectColumns = """
         id, request_id, tray_id, item_number, from_product_id, to_product_id, \
         from_capacity, to_capacity, from_price, to_price, skip_count, \
+        from_min_age, to_min_age, \
         from_product:products!slot_change_request_items_from_product_id_fkey(name, image_path), \
         to_product:products!slot_change_request_items_to_product_id_fkey(name, image_path)
         """
@@ -188,7 +200,8 @@ struct SlotChangeRequestItem: Codable, Equatable, Identifiable {
         fromProductId: UUID?, toProductId: UUID?, fromCapacity: Int, toCapacity: Int,
         fromPrice: Double? = nil, toPrice: Double? = nil, skipCount: Int = 0,
         fromName: String? = nil, toName: String? = nil,
-        fromImagePath: String? = nil, toImagePath: String? = nil
+        fromImagePath: String? = nil, toImagePath: String? = nil,
+        fromMinAge: Int? = nil, toMinAge: Int? = nil
     ) {
         self.id = id
         self.requestId = requestId
@@ -205,6 +218,8 @@ struct SlotChangeRequestItem: Codable, Equatable, Identifiable {
         self.toName = toName
         self.fromImagePath = fromImagePath
         self.toImagePath = toImagePath
+        self.fromMinAge = fromMinAge
+        self.toMinAge = toMinAge
     }
 
     private struct ProductRef: Codable {
@@ -228,6 +243,8 @@ struct SlotChangeRequestItem: Codable, Equatable, Identifiable {
         case fromPrice = "from_price"
         case toPrice = "to_price"
         case skipCount = "skip_count"
+        case fromMinAge = "from_min_age"
+        case toMinAge = "to_min_age"
         case fromProduct = "from_product"
         case toProduct = "to_product"
     }
@@ -245,6 +262,9 @@ struct SlotChangeRequestItem: Codable, Equatable, Identifiable {
         fromPrice = try c.decodeIfPresent(Double.self, forKey: .fromPrice)
         toPrice = try c.decodeIfPresent(Double.self, forKey: .toPrice)
         skipCount = try c.decodeIfPresent(Int.self, forKey: .skipCount) ?? 0
+        // Absent in tours saved by builds before the age restriction.
+        fromMinAge = try c.decodeIfPresent(Int.self, forKey: .fromMinAge)
+        toMinAge = try c.decodeIfPresent(Int.self, forKey: .toMinAge)
         let from = try c.decodeIfPresent(ProductRef.self, forKey: .fromProduct)
         let to = try c.decodeIfPresent(ProductRef.self, forKey: .toProduct)
         fromName = from?.name
@@ -266,6 +286,8 @@ struct SlotChangeRequestItem: Codable, Equatable, Identifiable {
         try c.encodeIfPresent(fromPrice, forKey: .fromPrice)
         try c.encodeIfPresent(toPrice, forKey: .toPrice)
         try c.encode(skipCount, forKey: .skipCount)
+        try c.encodeIfPresent(fromMinAge, forKey: .fromMinAge)
+        try c.encodeIfPresent(toMinAge, forKey: .toMinAge)
         if fromName != nil || fromImagePath != nil {
             try c.encode(ProductRef(name: fromName, imagePath: fromImagePath), forKey: .fromProduct)
         }
@@ -290,6 +312,10 @@ struct SlotChangeRequestItem: Codable, Equatable, Identifiable {
     }
 
     var changesCapacity: Bool { toCapacity != fromCapacity }
+
+    /// The age restriction of the selection changes, so the machine's age
+    /// setting has to be changed and confirmed at the machine.
+    var changesAge: Bool { SlotChange.ageChanged(from: fromMinAge, to: toMinAge) }
 }
 
 /// A machine's open change request with its pending slots.

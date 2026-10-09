@@ -125,6 +125,14 @@ do { // a swap where everything moves leaves nothing over
     expect(left.isEmpty, true, "full swap leaves nothing")
 }
 
+// ── age restriction (ageChanged in slotChange.ts) ────────────────────────────
+
+expect(SlotChange.ageChanged(from: nil, to: nil), false, "no restriction either side")
+expect(SlotChange.ageChanged(from: nil, to: 18), true, "none → 18")
+expect(SlotChange.ageChanged(from: 18, to: nil), true, "18 → none")
+expect(SlotChange.ageChanged(from: 16, to: 18), true, "16 → 18")
+expect(SlotChange.ageChanged(from: 18, to: 18), false, "18 → 18")
+
 // ── server row decoding (PostgREST shape → persisted shape → back) ───────────
 
 do {
@@ -144,6 +152,21 @@ do {
     expect(decoded.changesCapacity, true, "capacity change")
     let roundTrip = try JSONDecoder().decode(SlotChangeRequestItem.self, from: JSONEncoder().encode(decoded))
     expect(roundTrip, decoded, "persisted round trip")
+    expect(decoded.fromMinAge, nil, "row without age snapshot")
+    expect(decoded.changesAge, false, "no age snapshot, no age change")
+
+    let aged = """
+    {"id":"\(u("i13"))","request_id":"\(u("r1"))","tray_id":"\(u("t13"))","item_number":13,
+     "from_product_id":"\(u("cola"))","to_product_id":"\(u("beer"))","from_capacity":10,"to_capacity":10,
+     "from_price":1.5,"to_price":2.5,"skip_count":0,"from_min_age":null,"to_min_age":18,
+     "from_product":{"name":"Cola","image_path":null},"to_product":{"name":"Beer","image_path":null}}
+    """
+    let agedItem = try JSONDecoder().decode(SlotChangeRequestItem.self, from: Data(aged.utf8))
+    expect(agedItem.fromMinAge, nil, "from age decoded")
+    expect(agedItem.toMinAge, 18, "to age decoded")
+    expect(agedItem.changesAge, true, "none → 18 changes the age")
+    let agedRoundTrip = try JSONDecoder().decode(SlotChangeRequestItem.self, from: JSONEncoder().encode(agedItem))
+    expect(agedRoundTrip, agedItem, "persisted round trip keeps the age snapshot")
 } catch {
     failures += 1
     print("FAIL decoding threw: \(error)")
