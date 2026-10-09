@@ -2478,7 +2478,9 @@
     "units": "{n} pcs",
     "updateRequest": "Mettre à jour la demande",
     "withdraw": "Retirer la demande",
-    "withdrawn": "Demande retirée."
+    "withdrawn": "Demande retirée.",
+    "tagMoved": "DÉPLACÉ",
+    "legendMoved": "Seulement déplacé"
   },
   "refillRebuild": {
     "acceptedOf": "{n} sur {total} acceptés",

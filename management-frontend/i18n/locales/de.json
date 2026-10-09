@@ -2478,7 +2478,9 @@
     "units": "{n} Stk",
     "updateRequest": "Änderungswunsch aktualisieren",
     "withdraw": "Wunsch zurückziehen",
-    "withdrawn": "Wunsch zurückgezogen."
+    "withdrawn": "Wunsch zurückgezogen.",
+    "tagMoved": "VERSCHOBEN",
+    "legendMoved": "Nur verschoben"
   },
   "refillRebuild": {
     "acceptedOf": "{n} von {total} übernommen",

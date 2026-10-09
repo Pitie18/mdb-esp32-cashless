@@ -2478,7 +2478,9 @@
     "units": "{n} st.",
     "updateRequest": "Wijzigingsverzoek bijwerken",
     "withdraw": "Verzoek intrekken",
-    "withdrawn": "Verzoek ingetrokken."
+    "withdrawn": "Verzoek ingetrokken.",
+    "tagMoved": "VERPLAATST",
+    "legendMoved": "Alleen verplaatst"
   },
   "refillRebuild": {
     "acceptedOf": "{n} van {total} overgenomen",
