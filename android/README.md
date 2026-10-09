@@ -7,7 +7,7 @@ Native Android companion app for vending machine operators. Built with Kotlin + 
 - **Dashboard** — KPI cards (revenue, sales, machine status, stock alerts), quick actions, recent sales feed
 - **Machine Management** — Browse machines sorted by stock urgency, view per-machine details (overview, trays, sales history)
 - **Tray Configuration** — Full CRUD for machine tray slots: add single/batch, edit, delete, quick stock adjustments
-- **Refill Wizard** — Multi-step guided refill tour (pack, refill per machine, summary) optimized for one-handed field use
+- **Refill Wizard** — Multi-step guided refill tour (pack, refill per machine, summary) optimized for one-handed field use; planned slot re-assignments show as change notes the refiller accepts and confirms at the machine
 - **Deals** — Retailer offers matching your products (from the dashboard banner or the top-bar tag icon): grouped by validity so offers that only start later are clearly marked ("valid from Mon, 28.09."), plus pin/archive, NEW markers and a purchase-price (EK) comparison
 
 ## Setup
@@ -77,13 +77,15 @@ app/src/main/java/xyz/vmflow/
     MachineRepository.kt     — Machine queries + stats aggregation
     TrayRepository.kt        — Tray CRUD operations
     RefillRepository.kt      — Refill wizard data operations
+    SlotChange.kt            — Slot change maths (pack needs, fill plan, leftovers)
+    SlotChangeRepository.kt  — Slot change requests (load, queue, apply)
     WarehouseRepository.kt   — Warehouse stock queries
   ui/
     auth/                    — Login, Register screens
     dashboard/               — Dashboard, KPI cards
     machines/                — Machine list, detail, cards
     trays/                   — Tray list, edit dialog, rows
-    refill/                  — Wizard: packing, refill, summary
+    refill/                  — Wizard: packing, refill, summary, change notes
     components/              — Reusable: StatusChip, StockBar, ProductImage
     theme/                   — Material 3 colors, typography, theme
 ```

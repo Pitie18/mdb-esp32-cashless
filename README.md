@@ -58,6 +58,8 @@ Barcode-driven stock intake, **FIFO batch tracking** with expiry dates, per-ware
 ### 🔁 Guided Refill Tours
 A step-by-step refill wizard generates per-machine packing lists from live warehouse stock, walks the operator through the route, deducts inventory FIFO, and logs the whole tour for history and audit.
 
+**Slot re-assignment:** the web app shows which products need more spirals and which slow sellers can go; you rearrange slots by drag & drop on the machine layout. The plan is saved as a change request and appears as a change note on the next refill tour, where the refiller accepts each slot, packs what it needs and confirms it at the machine. Leftover goods are booked back to the warehouse or written off.
+
 </td>
 </tr>
 <tr>
@@ -176,7 +178,7 @@ A modern, responsive web app (Nuxt 4 PWA, installable, dark mode, English, Germa
 
 <img src="docs/screenshots/web/analysis.png" alt="Product analysis" />
 
-**Product analysis** — springboard layout colour-coded by performance, with one-click swaps
+**Product analysis** — springboard layout colour-coded by performance, with one-click swaps queued for the next refill tour
 
 </td>
 <td width="50%" align="center" valign="top">
@@ -234,7 +236,7 @@ The app connects to your own VMflow server — sign in with your organization's 
 - **Dashboard** — revenue KPIs, 30-day sales chart, and a live activity feed (sales, refills, intakes, tours, cash movements)
 - **Machines** — sorted by stock urgency, with warehouse-availability labels, analysis tab, send credit, device health, and machine settings
 - **Trays & Stock** — per-machine slot configuration and quick stock adjustments; stock judged per product across slots
-- **Refill Wizard** — warehouse-aware packing, guided refill tour, and a review step with replacement suggestions
+- **Refill Wizard** — warehouse-aware packing, guided refill tour, a review step with replacement suggestions, and change notes for planned slot re-assignments
 - **Warehouse** — barcode intake (with Open Food Facts name lookup), FIFO batches, expiry dates, purchase prices
 - **Analytics, Deals & Cash Book** — fleet analytics, retailer offers with purchase-price comparison, cash expenses
 - **Push notifications** — low-stock and sale alerts via APNs
@@ -259,7 +261,7 @@ A native **Kotlin + Jetpack Compose (Material 3)** app for operators, at feature
 
 - **Dashboard** — revenue KPIs, 30-day chart, cash book, and an infinite-scroll activity feed
 - **Machines** — list-detail layout on tablets, machine analysis grid, send credit, device health, machine settings
-- **Refill Wizard** — stock-aware packing, FIFO deduction, atomic refill with retry/skip, resumable tours, review step with replacement picker
+- **Refill Wizard** — stock-aware packing, FIFO deduction, atomic refill with retry/skip, resumable tours, review step with replacement picker, change notes for planned slot re-assignments
 - **Warehouse** — stock overview, barcode-driven intake, batch drill-down and adjustments
 - **Deals** — retailer offers grouped by validity, with purchase-price comparison
 - **Server selection** — pick your backend on the login screen or scan the dashboard's QR code
