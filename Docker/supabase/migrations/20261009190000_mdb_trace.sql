@@ -28,6 +28,7 @@ GRANT SELECT ON public.mdb_trace TO authenticated;
 GRANT ALL ON public.mdb_trace TO service_role;
 
 -- Members of the same company can read the trace of their devices.
+DROP POLICY IF EXISTS mdb_trace_select ON public.mdb_trace;
 CREATE POLICY mdb_trace_select ON public.mdb_trace
     FOR SELECT TO authenticated
     USING (
@@ -39,8 +40,18 @@ CREATE POLICY mdb_trace_select ON public.mdb_trace
     );
 
 -- Per-device reads ordered by time, and the webhook's retention delete.
-CREATE INDEX idx_mdb_trace_embedded_created
+CREATE INDEX IF NOT EXISTS idx_mdb_trace_embedded_created
     ON public.mdb_trace (embedded_id, created_at DESC);
 
 -- Live updates for the frontend console.
-ALTER PUBLICATION supabase_realtime ADD TABLE public.mdb_trace;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime'
+          AND schemaname = 'public'
+          AND tablename = 'mdb_trace'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.mdb_trace;
+    END IF;
+END $$;
