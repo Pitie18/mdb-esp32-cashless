@@ -164,12 +164,30 @@ function days(n: number) {
   return n.toLocaleString(locale.value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
-type SlotTag = 'new' | 'out' | 'short' | 'testing' | null
+type SlotTag = 'new' | 'moved' | 'out' | 'short' | 'testing' | null
+const slotsBefore = computed(() => {
+  const m = new Map<string, number>()
+  for (const tr of trays.value) if (tr.product_id) m.set(tr.product_id, (m.get(tr.product_id) ?? 0) + 1)
+  return m
+})
+const slotsPlanned = computed(() => {
+  const m = new Map<string, number>()
+  for (const s of Object.values(plan.value)) if (s.product_id) m.set(s.product_id, (m.get(s.product_id) ?? 0) + 1)
+  return m
+})
+/** The slot changed, but its product was already in the machine and does not gain a spiral: it only moved. */
+function isMoved(trayId: string): boolean {
+  const pid = plan.value[trayId]?.product_id ?? null
+  if (!pid || !changedTrayIds.value.has(trayId)) return false
+  const before = slotsBefore.value.get(pid) ?? 0
+  return before > 0 && (slotsPlanned.value.get(pid) ?? 0) <= before
+}
 function slotTag(trayId: string): SlotTag {
   const pid = plan.value[trayId]?.product_id ?? null
   // A slow seller stays marked when it is only moved to make room: moving
-  // it does not make it sell better.
+  // it does not make it sell better. The moved badge shows next to it.
   if (pid && outSet.value.has(pid)) return 'out'
+  if (isMoved(trayId)) return 'moved'
   if (changedTrayIds.value.has(trayId)) return 'new'
   if (!pid) return null
   const ten = tenure.value.get(pid)
@@ -179,6 +197,7 @@ function slotTag(trayId: string): SlotTag {
 }
 const tagClass: Record<Exclude<SlotTag, null>, string> = {
   new: 'border-green-600 bg-green-500/10',
+  moved: 'border-violet-500 bg-violet-500/10',
   out: 'border-red-500 bg-red-500/10',
   short: 'border-amber-500 bg-amber-500/10',
   testing: 'border-blue-400 border-dashed',
@@ -187,6 +206,7 @@ function tagLabel(trayId: string) {
   const tag = slotTag(trayId)
   const pid = plan.value[trayId]?.product_id ?? null
   if (tag === 'new') return t('slotPlan.tagNew')
+  if (tag === 'moved') return t('slotPlan.tagMoved')
   if (tag === 'out') return t('slotPlan.tagOut')
   if (tag === 'testing') return t('slotPlan.tagTesting')
   if (tag === 'short' && pid) return t('slotPlan.daysShort', { n: days(reachMap.value.get(pid)!.reachDays) })
@@ -476,7 +496,16 @@ async function withdraw() {
                   @dragover.prevent
                   @drop.prevent="onDrop($event, c.tray.id)"
                 >
-                  <span v-if="tagLabel(c.tray.id)" class="absolute left-1 top-0.5 rounded bg-black/60 px-1 text-[9px] font-semibold text-white">{{ tagLabel(c.tray.id) }}</span>
+                  <span class="absolute left-1 top-0.5 flex items-center gap-0.5">
+                    <span v-if="tagLabel(c.tray.id)" class="rounded bg-black/60 px-1 text-[9px] font-semibold text-white">{{ tagLabel(c.tray.id) }}</span>
+                    <!-- A slow seller keeps its red OUT tag when moved; this badge says it was moved too -->
+                    <span
+                      v-if="slotTag(c.tray.id) === 'out' && isMoved(c.tray.id)"
+                      class="flex items-center rounded bg-violet-600 px-0.5 py-px text-white"
+                      :title="t('slotPlan.tagMoved')"
+                      :aria-label="t('slotPlan.tagMoved')"
+                    ><IconArrowsExchange class="size-2.5" /></span>
+                  </span>
                   <span class="absolute right-1 top-0.5 text-[10px] tabular-nums text-muted-foreground">{{ c.capacity }}</span>
                   <img v-if="image(c.product_id)" :src="image(c.product_id)!" :alt="name(c.product_id)" class="h-12 w-12 rounded object-cover" draggable="false" />
                   <div v-else class="flex h-12 w-12 items-center justify-center rounded bg-muted/50 text-xs text-muted-foreground">{{ c.product_id ? '?' : '—' }}</div>
@@ -497,6 +526,7 @@ async function withdraw() {
               <span class="flex items-center gap-1.5"><i class="size-3 rounded border-2 border-red-500 bg-red-500/10" />{{ t('slotPlan.legendOut') }}</span>
               <span class="flex items-center gap-1.5"><i class="size-3 rounded border-2 border-amber-500 bg-amber-500/10" />{{ t('slotPlan.legendShort', { n: targetDays }) }}</span>
               <span class="flex items-center gap-1.5"><i class="size-3 rounded border-2 border-green-600 bg-green-500/10" />{{ t('slotPlan.legendNew') }}</span>
+              <span class="flex items-center gap-1.5"><i class="size-3 rounded border-2 border-violet-500 bg-violet-500/10" />{{ t('slotPlan.legendMoved') }}</span>
               <span class="flex items-center gap-1.5"><i class="size-3 rounded border-2 border-dashed border-blue-400" />{{ t('slotPlan.legendTesting') }}</span>
             </div>
           </div>
