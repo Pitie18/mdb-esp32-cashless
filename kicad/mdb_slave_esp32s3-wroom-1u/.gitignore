@@ -24,3 +24,7 @@
 # Keep the interactive BOM (InteractiveHtmlBom export)
 !bom/
 !bom/ibom.html
+
+# Keep the board renders shown in the READMEs
+!mdb_slave_esp32s3-wroom-1u.png
+!mdb_slave_esp32s3-wroom-1u_back.png
