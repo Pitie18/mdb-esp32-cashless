@@ -3,6 +3,7 @@ import { IconArrowRight, IconArrowsExchange, IconCheck, IconX } from '@tabler/ic
 import { getProductImageUrl } from '@/composables/useProducts'
 import type { RebuildLeftover, RebuildSlot } from '@/composables/useRefillWizard'
 import { formatCurrency } from '@/lib/utils'
+import { ageChanged } from '@/lib/slotChange'
 
 // At the machine: rebuild the slots of the change note. The refiller counts
 // what comes out (sales since packing are already in the live stock), fills
@@ -21,12 +22,14 @@ const emit = defineEmits<{
   (e: 'filled', itemId: string, value: number): void
   (e: 'action', itemId: string, value: 'done' | 'skip' | null): void
   (e: 'price', itemId: string, value: boolean): void
+  (e: 'age', itemId: string, value: boolean): void
   (e: 'destination', productId: string, value: 'warehouse' | 'waste'): void
   (e: 'expiry', productId: string, value: string): void
 }>()
 const { t, locale } = useI18n()
 
 function num(e: Event) { return Number((e.target as HTMLInputElement).value) }
+function age(n: number | null) { return n == null ? t('refillRebuild.noAgeLimit') : t('refillRebuild.ageFrom', { n }) }
 </script>
 
 <template>
@@ -88,10 +91,20 @@ function num(e: Event) { return Number((e.target as HTMLInputElement).value) }
         <span>{{ t('refillRebuild.priceSet', { n: s.item.item_number }) }} <b class="tabular-nums">{{ formatCurrency(s.item.to_price, locale) }}</b></span>
       </label>
 
+      <label
+        v-if="s.action !== 'skip' && ageChanged(s.item)"
+        class="mt-2 flex items-center gap-2 rounded-md bg-red-500/10 px-2.5 py-2 text-sm"
+      >
+        <input type="checkbox" class="size-4" :checked="s.age_set" @change="emit('age', s.item.id, ($event.target as HTMLInputElement).checked)" />
+        <span>{{ t('refillRebuild.ageSet', { n: s.item.item_number }) }} <b>{{ age(s.item.from_min_age) }} → {{ age(s.item.to_min_age) }}</b></span>
+      </label>
+
       <div class="mt-3 grid grid-cols-2 gap-2">
         <button
-          class="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border text-sm font-medium transition-colors"
+          class="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           :class="s.action === 'done' ? 'border-green-600 bg-green-600 text-white' : 'hover:bg-muted'"
+          :disabled="s.action !== 'done' && ageChanged(s.item) && !s.age_set"
+          :title="ageChanged(s.item) && !s.age_set ? t('refillRebuild.confirmAgeFirst') : undefined"
           @click="emit('action', s.item.id, s.action === 'done' ? null : 'done')"
         ><IconCheck class="size-4" />{{ t('refillRebuild.rebuilt') }}</button>
         <button
@@ -101,6 +114,7 @@ function num(e: Event) { return Number((e.target as HTMLInputElement).value) }
         ><IconX class="size-4" />{{ t('refillRebuild.notRebuilt') }}</button>
       </div>
       <p v-if="s.action === 'skip'" class="mt-2 text-xs text-muted-foreground">{{ t('refillRebuild.staysOpen') }}</p>
+      <p v-else-if="s.action === null && ageChanged(s.item) && !s.age_set" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ t('refillRebuild.confirmAgeFirst') }}</p>
     </div>
 
     <!-- Leftovers -->

@@ -932,7 +932,9 @@
         "title": "Produkt konnte nicht geladen werden",
         "retry": "Erneut versuchen"
       }
-    }
+    },
+    "minAge": "Altersgrenze",
+    "minAgeHint": "Gilt für alle Produkte dieser Kategorie. Bei der Befülltour muss eine geänderte Alterseinstellung am Automaten bestätigt werden."
   },
   "warehouse": {
     "title": "Lager",
@@ -2480,7 +2482,9 @@
     "withdraw": "Wunsch zurückziehen",
     "withdrawn": "Wunsch zurückgezogen.",
     "tagMoved": "VERSCHOBEN",
-    "legendMoved": "Nur verschoben"
+    "legendMoved": "Nur verschoben",
+    "ageTitle": "Alterseinstellung ändern",
+    "ageHint": "Diese Wahlen brauchen am Automaten eine andere Altersfreigabe."
   },
   "refillRebuild": {
     "acceptedOf": "{n} von {total} übernommen",
@@ -2510,6 +2514,10 @@
     "staysOpen": "Bleibt wie es ist und kommt bei der nächsten Tour wieder.",
     "toWarehouse": "Ins Lager",
     "vanBackHint": "Ungenutzte Ware geht zurück in die Charge, aus der sie gepackt wurde.",
-    "writeOff": "Abschreiben"
+    "writeOff": "Abschreiben",
+    "ageSet": "Alterseinstellung für Wahl {n} am Automaten geändert",
+    "noAgeLimit": "ohne Altersgrenze",
+    "ageFrom": "ab {n}",
+    "confirmAgeFirst": "Erst die Alterseinstellung bestätigen"
   }
 }

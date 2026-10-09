@@ -932,7 +932,9 @@
         "title": "Laden van product mislukt",
         "retry": "Opnieuw proberen"
       }
-    }
+    },
+    "minAge": "Leeftijdsgrens",
+    "minAgeHint": "Geldt voor alle producten in deze categorie. Tijdens de vulronde moet een gewijzigde leeftijdsinstelling op de automaat worden bevestigd."
   },
   "warehouse": {
     "title": "Magazijn",
@@ -2480,7 +2482,9 @@
     "withdraw": "Verzoek intrekken",
     "withdrawn": "Verzoek ingetrokken.",
     "tagMoved": "VERPLAATST",
-    "legendMoved": "Alleen verplaatst"
+    "legendMoved": "Alleen verplaatst",
+    "ageTitle": "Leeftijdsinstelling aanpassen",
+    "ageHint": "Deze keuzes hebben een andere leeftijdsinstelling op de automaat nodig."
   },
   "refillRebuild": {
     "acceptedOf": "{n} van {total} overgenomen",
@@ -2510,6 +2514,10 @@
     "staysOpen": "Blijft zoals het is en komt bij de volgende ronde terug.",
     "toWarehouse": "Naar magazijn",
     "vanBackHint": "Ongebruikte waar gaat terug naar de partij waaruit ze werd ingepakt.",
-    "writeOff": "Afschrijven"
+    "writeOff": "Afschrijven",
+    "ageSet": "Leeftijdsinstelling voor keuze {n} op de automaat aangepast",
+    "noAgeLimit": "geen leeftijdsgrens",
+    "ageFrom": "{n}+",
+    "confirmAgeFirst": "Bevestig eerst de leeftijdsinstelling"
   }
 }

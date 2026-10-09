@@ -932,7 +932,9 @@
         "title": "Échec du chargement du produit",
         "retry": "Réessayer"
       }
-    }
+    },
+    "minAge": "Limite d'âge",
+    "minAgeHint": "S'applique à tous les produits de cette catégorie. Lors de la tournée, un réglage d'âge modifié doit être confirmé sur l'automate."
   },
   "warehouse": {
     "title": "Entrepôt",
@@ -2480,7 +2482,9 @@
     "withdraw": "Retirer la demande",
     "withdrawn": "Demande retirée.",
     "tagMoved": "DÉPLACÉ",
-    "legendMoved": "Seulement déplacé"
+    "legendMoved": "Seulement déplacé",
+    "ageTitle": "Modifier le réglage d'âge",
+    "ageHint": "Ces sélections nécessitent un autre réglage d'âge sur l'automate."
   },
   "refillRebuild": {
     "acceptedOf": "{n} sur {total} acceptés",
@@ -2510,6 +2514,10 @@
     "staysOpen": "Reste tel quel et revient à la prochaine tournée.",
     "toWarehouse": "À l'entrepôt",
     "vanBackHint": "La marchandise inutilisée retourne dans le lot d'où elle vient.",
-    "writeOff": "Mettre au rebut"
+    "writeOff": "Mettre au rebut",
+    "ageSet": "Réglage d'âge de la sélection {n} modifié sur l'automate",
+    "noAgeLimit": "sans limite d'âge",
+    "ageFrom": "{n}+",
+    "confirmAgeFirst": "Confirmez d'abord le réglage d'âge"
   }
 }

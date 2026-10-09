@@ -932,7 +932,9 @@
         "title": "Failed to load product",
         "retry": "Retry"
       }
-    }
+    },
+    "minAge": "Age limit",
+    "minAgeHint": "Applies to every product in this category. On the refill tour, a changed age setting must be confirmed at the machine."
   },
   "warehouse": {
     "title": "Warehouse",
@@ -2480,7 +2482,9 @@
     "withdraw": "Withdraw request",
     "withdrawn": "Request withdrawn.",
     "tagMoved": "MOVED",
-    "legendMoved": "Only moved"
+    "legendMoved": "Only moved",
+    "ageTitle": "Change age setting",
+    "ageHint": "These selections need a different age setting on the machine."
   },
   "refillRebuild": {
     "acceptedOf": "{n} of {total} accepted",
@@ -2510,6 +2514,10 @@
     "staysOpen": "Stays as it is and comes up again on the next tour.",
     "toWarehouse": "To warehouse",
     "vanBackHint": "Unused goods go back to the batch they were packed from.",
-    "writeOff": "Write off"
+    "writeOff": "Write off",
+    "ageSet": "Age setting for selection {n} changed on the machine",
+    "noAgeLimit": "no age limit",
+    "ageFrom": "{n}+",
+    "confirmAgeFirst": "Confirm the age setting first"
   }
 }

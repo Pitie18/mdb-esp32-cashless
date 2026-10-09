@@ -4,6 +4,7 @@ import { IconArrowRight, IconArrowsExchange } from '@tabler/icons-vue'
 import { getProductImageUrl } from '@/composables/useProducts'
 import type { SlotChangeItem } from '@/composables/useSlotChangeRequests'
 import { formatCurrency } from '@/lib/utils'
+import { ageChanged } from '@/lib/slotChange'
 
 // Packing step: the machine's change note. The refiller accepts (default) or
 // declines each slot; accepted slots add their rebuild units to the packing
@@ -18,6 +19,7 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'toggle', itemId: string): void }>()
 const { t, locale } = useI18n()
 
+function age(n: number | null) { return n == null ? t('refillRebuild.noAgeLimit') : t('refillRebuild.ageFrom', { n }) }
 const acceptedCount = computed(() => props.items.filter(i => props.accepted(i.id)).length)
 </script>
 
@@ -56,6 +58,9 @@ const acceptedCount = computed(() => props.items.filter(i => props.accepted(i.id
           </span>
           <span v-if="item.to_product_id && item.to_price != null && item.to_price !== item.from_price" class="ml-1 rounded bg-amber-500/15 px-1 text-xs text-amber-700 tabular-nums dark:text-amber-400">
             {{ t('refillRebuild.newPrice', { price: formatCurrency(item.to_price, locale) }) }}
+          </span>
+          <span v-if="ageChanged(item)" class="ml-1 rounded bg-red-500/15 px-1 text-xs text-red-700 dark:text-red-400">
+            {{ age(item.from_min_age) }} → {{ age(item.to_min_age) }}
           </span>
           <span v-if="!accepted(item.id)" class="ml-1 text-xs text-muted-foreground">{{ t('refillRebuild.notThisTour') }}</span>
         </span>

@@ -16,6 +16,8 @@ export interface SlotChangeItem extends ChangeItem {
   request_id: string
   from_price: number | null
   to_price: number | null
+  from_min_age: number | null
+  to_min_age: number | null
   skip_count: number
   from_name: string | null
   to_name: string | null
@@ -46,6 +48,7 @@ export interface SlotChangeApplyItem {
   removed?: number
   filled?: number
   price_set?: boolean
+  age_set?: boolean
 }
 
 export interface SlotChangeLeftover {
@@ -58,7 +61,7 @@ export interface SlotChangeLeftover {
 }
 
 const ITEM_SELECT = `id, request_id, tray_id, item_number, from_product_id, to_product_id,
-  from_capacity, to_capacity, from_price, to_price, skip_count,
+  from_capacity, to_capacity, from_price, to_price, from_min_age, to_min_age, skip_count,
   from_product:products!slot_change_request_items_from_product_id_fkey(name, image_path),
   to_product:products!slot_change_request_items_to_product_id_fkey(name, image_path)`
 
@@ -76,6 +79,8 @@ function mapItem(row: any): SlotChangeItem {
     to_capacity: row.to_capacity,
     from_price: row.from_price ?? null,
     to_price: row.to_price ?? null,
+    from_min_age: row.from_min_age ?? null,
+    to_min_age: row.to_min_age ?? null,
     skip_count: row.skip_count ?? 0,
     from_name: row.from_product?.name ?? null,
     to_name: row.to_product?.name ?? null,

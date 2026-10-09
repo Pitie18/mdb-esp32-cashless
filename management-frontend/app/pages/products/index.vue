@@ -96,7 +96,7 @@ const {
   error: categoryError,
   openModal: openCategoryModal,
   submit: submitCategoryForm,
-} = useModalForm({ name: '', tax_class_id: '' })
+} = useModalForm({ name: '', tax_class_id: '', min_age: '' })
 
 const categoryName = computed({
   get: () => categoryForm.value.name,
@@ -108,16 +108,22 @@ const categoryTaxClassId = computed({
   set: (v: string) => { categoryForm.value.tax_class_id = v },
 })
 
+const categoryMinAge = computed({
+  get: () => categoryForm.value.min_age,
+  set: (v: string) => { categoryForm.value.min_age = v },
+})
+const AGE_OPTIONS = [16, 18]
+
 const editingCategory = ref<{ id: string } | null>(null)
 
 function openAddCategory() {
   editingCategory.value = null
-  openCategoryModal({ name: '', tax_class_id: '' })
+  openCategoryModal({ name: '', tax_class_id: '', min_age: '' })
 }
 
-function openEditCategory(cat: { id: string; name: string; tax_class_id: string | null }) {
+function openEditCategory(cat: { id: string; name: string; tax_class_id: string | null; min_age: number | null }) {
   editingCategory.value = { id: cat.id }
-  openCategoryModal({ name: cat.name, tax_class_id: cat.tax_class_id ?? '' })
+  openCategoryModal({ name: cat.name, tax_class_id: cat.tax_class_id ?? '', min_age: cat.min_age != null ? String(cat.min_age) : '' })
 }
 
 async function submitCategory() {
@@ -130,12 +136,14 @@ async function submitCategory() {
       await updateCategory(editingCategory.value.id, {
         name: categoryForm.value.name.trim(),
         tax_class_id: categoryForm.value.tax_class_id || null,
+        min_age: categoryForm.value.min_age ? Number(categoryForm.value.min_age) : null,
       })
     } else {
       await createCategory({
         name: categoryForm.value.name.trim(),
         company: organization.value!.id,
         tax_class_id: categoryForm.value.tax_class_id || null,
+        min_age: categoryForm.value.min_age ? Number(categoryForm.value.min_age) : null,
       })
     }
   })
@@ -361,6 +369,7 @@ async function runImport() {
                   <tr class="border-b bg-muted/50 text-left">
                     <th class="px-4 py-3 font-medium">{{ t('common.name') }}</th>
                     <th class="px-4 py-3 font-medium">{{ t('products.taxClass') }}</th>
+                    <th class="px-4 py-3 font-medium">{{ t('products.minAge') }}</th>
                     <th v-if="isAdmin" class="px-4 py-3 font-medium">{{ t('common.actions') }}</th>
                   </tr>
                 </thead>
@@ -378,6 +387,10 @@ async function runImport() {
                       <span v-else class="text-xs text-amber-600 dark:text-amber-400">
                         {{ t('products.noTaxClassWarning') }}
                       </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <span v-if="cat.min_age" class="rounded bg-red-500/15 px-1.5 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">{{ t('refillRebuild.ageFrom', { n: cat.min_age }) }}</span>
+                      <span v-else class="text-muted-foreground">—</span>
                     </td>
                     <td v-if="isAdmin" class="px-4 py-3">
                       <div class="flex items-center gap-2">
@@ -460,6 +473,18 @@ async function runImport() {
                   {{ formatTaxClassLabel(tc) }}
                 </option>
               </select>
+            </div>
+            <div class="space-y-1">
+              <label class="text-sm font-medium" for="category-min-age">{{ t('products.minAge') }}</label>
+              <select
+                id="category-min-age"
+                v-model="categoryMinAge"
+                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">{{ t('refillRebuild.noAgeLimit') }}</option>
+                <option v-for="a in AGE_OPTIONS" :key="a" :value="String(a)">{{ t('refillRebuild.ageFrom', { n: a }) }}</option>
+              </select>
+              <p class="text-xs text-muted-foreground">{{ t('products.minAgeHint') }}</p>
             </div>
             <FormError :message="categoryError" />
             <div class="flex gap-2">
