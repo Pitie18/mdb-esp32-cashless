@@ -1,2 +1,9 @@
 New
-• Show throughput and stock reach in warehouse list
+• Per-machine "linked selections" setting
+• Judge stock per product instead of per slot
+
+Improved
+• iOS: change notes in the refill tour, swaps queue as change requests
+
+Fixed
+• Align stock logic with the PWA, drop the native stock map
