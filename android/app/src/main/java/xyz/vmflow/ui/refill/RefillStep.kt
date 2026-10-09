@@ -143,9 +143,15 @@ fun RefillStepContent(
     onFillAllTrays: () -> Unit,
     onConfirmRefill: () -> Unit,
     onSkipMachine: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    rebuild: RebuildSectionState? = null,
+    rebuildActions: RebuildActions? = null
 ) {
     val haptic = LocalHapticFeedback.current
+    // The machine can only be confirmed once every slot of its change note is
+    // marked rebuilt or not rebuilt (the ViewModel enforces it too).
+    val showRebuild = rebuild != null && rebuildActions != null && rebuild.slots.isNotEmpty()
+    val rebuildUndecided = showRebuild && rebuild?.slots?.any { it.action == null } == true
 
     // Both keyed on the machine id: the driver moving to the next stop must
     // not inherit the previous machine's open sheet or expanded full-tray
@@ -180,11 +186,15 @@ fun RefillStepContent(
     // `LazyColumn` below emits its items under — kept adjacent so the two
     // cannot drift apart — because `LazyListState` can only be scrolled by
     // index, not by item key. Item order is:
-    //   [layout]?  ·  [fill-all | empty]  ·  rows…  ·  [full-trays]?
+    //   [layout]?  ·  [rebuild]?  ·  [fill-all | empty]  ·  rows…  ·  [full-trays]?
     val showLayout = layout.rowCount > 0
-    val headerCount = if (showLayout) 1 else 0
+    val headerCount = (if (showLayout) 1 else 0) + (if (showRebuild) 1 else 0)
     val firstCardIndex = headerCount + 1
-    val fullTraysIndex = headerCount + if (rows.isNotEmpty()) 1 + rows.size else 1
+    val fullTraysIndex = headerCount + when {
+        rows.isNotEmpty() -> 1 + rows.size
+        showRebuild -> 0 // no "nothing to fill" item next to a change note
+        else -> 1
+    }
 
     // A grid tap is pure navigation: select the slot, bring its card into view.
     val onSlotSelected: (String) -> Unit = { trayId ->
@@ -236,6 +246,16 @@ fun RefillStepContent(
                 }
             }
 
+            if (showRebuild && rebuild != null && rebuildActions != null) {
+                item(key = "rebuild") {
+                    RebuildSection(
+                        state = rebuild,
+                        actions = rebuildActions,
+                        enabled = !isSaving
+                    )
+                }
+            }
+
             if (rows.isNotEmpty()) {
                 item(key = "fill-all") {
                     OutlinedButton(
@@ -281,7 +301,7 @@ fun RefillStepContent(
                         }
                     )
                 }
-            } else {
+            } else if (!showRebuild) {
                 item(key = "empty") { NothingToFill() }
             }
 
@@ -298,6 +318,11 @@ fun RefillStepContent(
 
         RefillBottomBar(
             isSaving = isSaving,
+            confirmBlockedHint = if (rebuildUndecided) {
+                stringResource(R.string.refill_rebuild_decide_all)
+            } else {
+                null
+            },
             onSkip = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onSkipMachine()
@@ -1271,10 +1296,19 @@ private fun RefillBottomBar(
     isSaving: Boolean,
     onSkip: () -> Unit,
     onConfirm: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    confirmBlockedHint: String? = null
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         HorizontalDivider()
+        if (confirmBlockedHint != null) {
+            Text(
+                text = confirmBlockedHint,
+                style = MaterialTheme.typography.bodySmall,
+                color = StockOrange,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1310,7 +1344,7 @@ private fun RefillBottomBar(
             }
             Button(
                 onClick = onConfirm,
-                enabled = !isSaving,
+                enabled = !isSaving && confirmBlockedHint == null,
                 modifier = Modifier
                     .weight(2f)
                     .defaultMinSize(minHeight = 60.dp)

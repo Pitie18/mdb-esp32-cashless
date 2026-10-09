@@ -89,6 +89,7 @@ const KNOWN_ACTIONS = new Set([
   'stock_refill_tour_skip',
   'tour_started',
   'product_swapped',
+  'slot_change_applied',
   'cash_book_created',
   'cash_book_deleted',
   'cash_book_entry_created',
@@ -118,6 +119,7 @@ export function activityIcon(action: string): ActivityIconSpec {
     case 'stock_refill_tour_skip': return { icon: 'Truck', tint: 'neutral' }
     case 'tour_started': return { icon: 'Truck', tint: 'tour' }
     case 'product_swapped': return { icon: 'Repeat', tint: 'stock' }
+    case 'slot_change_applied': return { icon: 'Repeat', tint: 'stock' }
     case 'cash_book_created': return { icon: 'Wallet', tint: 'cashbook' }
     case 'cash_book_deleted': return { icon: 'Trash2', tint: 'danger' }
     case 'cash_book_entry_created': return { icon: 'Coins', tint: 'cashbook' }
@@ -355,6 +357,22 @@ export function activityChips(entry: ActivityEntryLike, ctx: DescriptorCtx): Act
       if (m.item_number != null) push(F('slot'), `#${m.item_number}`, { icon: 'Hash' })
       if (m.old_product_name) push(F('fromProduct'), m.old_product_name, { variant: 'decrease' })
       if (m.new_product_name) push(F('toProduct'), m.new_product_name, { variant: 'increase', icon: 'ArrowRight' })
+      break
+    }
+
+    case 'slot_change_applied': {
+      // Written by apply_slot_change when the refiller quits a rebuild.
+      pushMachine()
+      const done = Array.isArray(m.done) ? (m.done as Record<string, unknown>[]) : []
+      const skipped = Array.isArray(m.skipped) ? (m.skipped as unknown[]) : []
+      if (done.length) push(F('slotsRebuilt'), done.map(d => `#${d.item_number}`).join(', '), { icon: 'Hash', variant: 'increase' })
+      if (skipped.length) push(F('slotsSkipped'), String(skipped.length), { icon: 'Hash' })
+      const returned = (Array.isArray(m.returns) ? (m.returns as { quantity?: number }[]) : [])
+        .reduce((sum, r) => sum + (Number(r.quantity) || 0), 0)
+      if (returned) push(F('returnedToWarehouse'), String(returned), { icon: 'Warehouse' })
+      const wasted = (Array.isArray(m.waste) ? (m.waste as { quantity?: number }[]) : [])
+        .reduce((sum, r) => sum + (Number(r.quantity) || 0), 0)
+      if (wasted) push(F('writtenOff'), String(wasted), { variant: 'decrease' })
       break
     }
 

@@ -17253,6 +17253,886 @@
           }
         }
       }
+    },
+    "%lld moved over · %lld from the van": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld umgesetzt · %lld aus dem Auto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld déplacés · %lld du véhicule"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld verplaatst · %lld uit de bus"
+          }
+        }
+      }
+    },
+    "%lld of %lld accepted": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld von %lld übernommen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld sur %lld acceptés"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld van %lld overgenomen"
+          }
+        }
+      }
+    },
+    "%lld packed but not used": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld gepackt, aber nicht gebraucht"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld emballés mais non utilisés"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ingepakt maar niet gebruikt"
+          }
+        }
+      }
+    },
+    "%lld pcs": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Stk"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld pcs"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld st."
+          }
+        }
+      }
+    },
+    "%lld slot(s) queued as a change note. The new product goes in at the machine.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Fach/Fächer im Änderungsvermerk vorgemerkt. Das neue Produkt kommt an der Maschine hinein."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld emplacement(s) ajouté(s) à la note de modification. Le nouveau produit est mis en place au distributeur."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld vak(ken) als wijzigingsnotitie vastgelegd. Het nieuwe product gaat er bij de automaat in."
+          }
+        }
+      }
+    },
+    "%lld taken out of the machine": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld aus dem Automaten entnommen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld retirés du distributeur"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld uit de automaat genomen"
+          }
+        }
+      }
+    },
+    "(%lld needed)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(%lld benötigt)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(%lld nécessaires)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(%lld nodig)"
+          }
+        }
+      }
+    },
+    "Add best-before date": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MHD eintragen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter la date de péremption"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "THT-datum toevoegen"
+          }
+        }
+      }
+    },
+    "Booked when you confirm the machine.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird gebucht, wenn du den Automaten bestätigst."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comptabilisé lorsque vous confirmez le distributeur."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wordt geboekt als je de automaat bevestigt."
+          }
+        }
+      }
+    },
+    "Change note": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderungsvermerk"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note de modification"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijzigingsnotitie"
+          }
+        }
+      }
+    },
+    "Change spiral (%lld → %lld)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spirale wechseln (%lld → %lld)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changer la spirale (%lld → %lld)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spiraal wisselen (%lld → %lld)"
+          }
+        }
+      }
+    },
+    "Clear": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Löschen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effacer"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wissen"
+          }
+        }
+      }
+    },
+    "Destination": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziel"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destination"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestemming"
+          }
+        }
+      }
+    },
+    "Filled in (max %lld)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eingefüllt (max. %lld)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remplis (max. %lld)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ingevuld (max. %lld)"
+          }
+        }
+      }
+    },
+    "Goods from the machine become a new batch with this date.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ware aus dem Automaten wird eine neue Charge mit diesem Datum."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La marchandise du distributeur devient un nouveau lot avec cette date."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waren uit de automaat worden een nieuwe partij met deze datum."
+          }
+        }
+      }
+    },
+    "In the slot now: %lld of %lld (sales since packing included)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt im Fach: %lld von %lld (Verkäufe seit dem Packen schon abgezogen)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans l'emplacement : %lld sur %lld (ventes depuis l'emballage déjà déduites)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nu in het vak: %lld van %lld (verkopen sinds het inpakken al afgetrokken)"
+          }
+        }
+      }
+    },
+    "Left over": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übrige Ware"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchandise restante"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overgebleven waren"
+          }
+        }
+      }
+    },
+    "Machine return": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rückgabe aus Automat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retour du distributeur"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retour uit automaat"
+          }
+        }
+      }
+    },
+    "Mark every slot of the change note as rebuilt or not rebuilt first.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erst jedes Fach des Änderungsvermerks als umgebaut oder nicht umgebaut markieren."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marquez d'abord chaque emplacement de la note de modification comme transformé ou non transformé."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markeer eerst elk vak van de wijzigingsnotitie als omgebouwd of niet omgebouwd."
+          }
+        }
+      }
+    },
+    "Not rebuilt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht umgebaut"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non transformé"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet omgebouwd"
+          }
+        }
+      }
+    },
+    "Pack for the rebuild": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für den Umbau packen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À emballer pour la transformation"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inpakken voor de ombouw"
+          }
+        }
+      }
+    },
+    "Price at selection %lld set to": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preis an Wahl %lld gestellt auf"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prix de la sélection %lld réglé sur"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prijs bij keuze %lld ingesteld op"
+          }
+        }
+      }
+    },
+    "Rebuild slots": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fächer umbauen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transformer les emplacements"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vakken ombouwen"
+          }
+        }
+      }
+    },
+    "Rebuilt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umgebaut"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transformé"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Omgebouwd"
+          }
+        }
+      }
+    },
+    "Requested by the office. Untick a slot to leave it as it is this time; it stays open for a later tour.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vom Büro gewünscht. Haken entfernen, um ein Fach diesmal so zu lassen; es bleibt für eine spätere Tour offen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demandé par le bureau. Décochez un emplacement pour le laisser tel quel cette fois ; il reste ouvert pour une tournée ultérieure."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gevraagd door kantoor. Vink een vak uit om het deze keer te laten zoals het is; het blijft open voor een latere ronde."
+          }
+        }
+      }
+    },
+    "Slots Rebuilt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fächer umgebaut"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emplacements transformés"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vakken omgebouwd"
+          }
+        }
+      }
+    },
+    "Stays as it is and comes up again on the next tour.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bleibt wie es ist und kommt bei der nächsten Tour wieder."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reste tel quel et revient à la prochaine tournée."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blijft zoals het is en komt bij de volgende ronde terug."
+          }
+        }
+      }
+    },
+    "Taken out": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entnommen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirés"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uitgenomen"
+          }
+        }
+      }
+    },
+    "The slot change could not be saved: %@. Please try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Fachumbau konnte nicht gespeichert werden: %@. Bitte erneut versuchen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La modification des emplacements n'a pas pu être enregistrée : %@. Veuillez réessayer."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De vakwijziging kon niet worden opgeslagen: %@. Probeer het opnieuw."
+          }
+        }
+      }
+    },
+    "To warehouse": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ins Lager"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Au stock"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Naar magazijn"
+          }
+        }
+      }
+    },
+    "Unused goods go back to the batch they were packed from.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ungenutzte Ware geht zurück in die Charge, aus der sie gepackt wurde."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La marchandise non utilisée retourne dans le lot d'où elle a été emballée."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ongebruikte waren gaan terug naar de partij waaruit ze zijn ingepakt."
+          }
+        }
+      }
+    },
+    "Write off": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abschreiben"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer en perte"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afschrijven"
+          }
+        }
+      }
+    },
+    "new price %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "neuer Preis %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nouveau prix %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nieuwe prijs %@"
+          }
+        }
+      }
+    },
+    "not this tour": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht in dieser Tour"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pas cette tournée"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "niet deze ronde"
+          }
+        }
+      }
+    },
+    "nothing, moves over": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nichts, wird umgesetzt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rien, déplacé"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "niets, wordt verplaatst"
+          }
+        }
+      }
+    },
+    "Dismiss": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schließen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermer"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sluiten"
+          }
+        }
+      }
+    },
+    "Change pending": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Änderung vorgemerkt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modification en attente"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijziging gepland"
+          }
+        }
+      }
+    },
+    "Slot %lld added to the change request. It is rebuilt on the next refill tour.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fach %lld ist im Änderungswunsch vorgemerkt. Umgebaut wird bei der nächsten Befülltour."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le compartiment %lld a été ajouté à la demande de modification. Il sera réaménagé lors de la prochaine tournée de remplissage."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vak %lld is aan het wijzigingsverzoek toegevoegd. Het wordt bij de volgende vulronde omgebouwd."
+          }
+        }
+      }
+    },
+    "This slot already has a pending change. Choosing a product replaces it.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für dieses Fach ist schon eine Änderung vorgemerkt. Ein neues Produkt ersetzt sie."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une modification est déjà prévue pour ce compartiment. Choisir un produit la remplace."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voor dit vak staat al een wijziging gepland. Een nieuw product vervangt die."
+          }
+        }
+      }
+    },
+    "Choosing a product adds it to the change request. The slot is rebuilt on the next refill tour.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das gewählte Produkt kommt in den Änderungswunsch. Umgebaut wird das Fach bei der nächsten Befülltour."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le produit choisi est ajouté à la demande de modification. Le compartiment sera réaménagé lors de la prochaine tournée de remplissage."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het gekozen product wordt aan het wijzigingsverzoek toegevoegd. Het vak wordt bij de volgende vulronde omgebouwd."
+          }
+        }
+      }
     }
   },
   "version": "1.1"

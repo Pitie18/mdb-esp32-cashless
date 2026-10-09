@@ -7,6 +7,8 @@ import { IconArrowLeft, IconCheck, IconPlayerSkipForward, IconTruck } from '@tab
 import { getProductImageUrl } from '@/composables/useProducts'
 import { useRefillWizard, hasSavedTour } from '@/composables/useRefillWizard'
 import { formatCurrency } from '@/lib/utils'
+import RefillChangeNote from '@/components/refill/RefillChangeNote.vue'
+import RefillRebuildSection from '@/components/refill/RefillRebuildSection.vue'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -26,7 +28,29 @@ const {
   initTour, loadWarehouseStock, startTour,
   adjustFillAmount, confirmMachineRefill, confirmError, skipMachine, goToMachine, isMachineCompleted, resetWizard,
   resumeTour,
+  isItemAccepted, toggleRebuildItem, rebuildNeeds, rebuildCommitted,
+  currentRebuild, rebuildReady, rebuildLeftovers, leftoverDestinations, leftoverExpiry, returnBatchLabel,
+  setRebuildRemoved, setRebuildFilled, setRebuildAction, setRebuildPriceSet, setLeftoverDestination, setLeftoverExpiry,
 } = useRefillWizard()
+
+returnBatchLabel.value = t('refillRebuild.returnBatch')
+
+/** Packing lines for the rebuild of a machine's accepted change-note slots. */
+function rebuildPack(machine: { id: string; change_request?: { items: { from_product_id: string | null; to_product_id: string | null; from_name: string | null; to_name: string | null; from_image_path: string | null; to_image_path: string | null }[] } | null }) {
+  const info = new Map<string, { name: string | null; image_path: string | null }>()
+  for (const i of machine.change_request?.items ?? []) {
+    if (i.to_product_id) info.set(i.to_product_id, { name: i.to_name, image_path: i.to_image_path })
+  }
+  return [...rebuildNeeds(machine.id).entries()].map(([pid, need]) => ({
+    product_id: pid,
+    name: info.get(pid)?.name ?? null,
+    image_path: info.get(pid)?.image_path ?? null,
+    need,
+    packed: rebuildCommitted(machine.id, pid),
+  }))
+}
+
+const machinesWithChangeNote = computed(() => machines.value.filter(m => (m.change_request?.items.length ?? 0) > 0))
 
 // Init — auto-resume saved tour if available, otherwise start fresh
 onMounted(async () => {
@@ -147,6 +171,19 @@ const currentMachineDone = computed(() =>
 
         <!-- ── COMBINED PICKING MODE ──────────────────────────────────── -->
         <div v-if="pickingMode === 'combined'" class="flex flex-col gap-3 pb-20 sm:pb-24">
+          <Card v-for="machine in machinesWithChangeNote" :key="`note-${machine.id}`">
+            <CardHeader class="pb-2 px-4 sm:px-6">
+              <CardTitle class="text-base font-semibold truncate">{{ machine.name }}</CardTitle>
+            </CardHeader>
+            <CardContent class="px-4 sm:px-6">
+              <RefillChangeNote
+                :items="machine.change_request!.items"
+                :accepted="isItemAccepted"
+                :pack="rebuildPack(machine)"
+                @toggle="toggleRebuildItem(machine.id, $event)"
+              />
+            </CardContent>
+          </Card>
           <Card>
             <CardContent class="space-y-1 px-4 py-3 sm:px-6">
               <div class="flex items-center justify-between mb-2">
@@ -216,7 +253,7 @@ const currentMachineDone = computed(() =>
             v-for="machine in sortedMachines"
             :key="machine.id"
             class="h-full"
-            :class="effectiveStockHealth(machine) === 'ok' ? 'opacity-40' : ''"
+            :class="effectiveStockHealth(machine) === 'ok' && !machine.change_request ? 'opacity-40' : ''"
           >
             <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
               <CardTitle class="text-base font-semibold truncate">
@@ -233,7 +270,7 @@ const currentMachineDone = computed(() =>
               />
             </CardHeader>
 
-            <CardContent v-if="effectiveStockHealth(machine) !== 'ok'" class="space-y-3 px-4 sm:px-6">
+            <CardContent v-if="effectiveStockHealth(machine) !== 'ok' || machine.change_request" class="space-y-3 px-4 sm:px-6">
               <!-- Stock bar -->
               <div class="flex items-center gap-2">
                 <div class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
@@ -249,6 +286,15 @@ const currentMachineDone = computed(() =>
                 </div>
                 <span class="text-xs font-medium text-muted-foreground w-8 text-right">{{ machine.stock_percent }}%</span>
               </div>
+
+              <!-- Change note (slot re-assignment) -->
+              <RefillChangeNote
+                v-if="machine.change_request"
+                :items="machine.change_request.items"
+                :accepted="isItemAccepted"
+                :pack="rebuildPack(machine)"
+                @toggle="toggleRebuildItem(machine.id, $event)"
+              />
 
               <!-- Packing checklist -->
               <div v-if="machine.tray_summary.length > 0" class="space-y-2">
@@ -421,12 +467,28 @@ const currentMachineDone = computed(() =>
 
       <div v-if="currentTraysLoading" class="text-muted-foreground px-1">{{ t('common.loading') }}</div>
 
-      <div v-else-if="currentTrays.length === 0" class="text-muted-foreground text-sm px-1">
+      <div v-else-if="currentTrays.length === 0 && currentRebuild.length === 0" class="text-muted-foreground text-sm px-1">
         {{ t('refill.noMachinesNeedRefill') }}
       </div>
 
       <!-- Tray cards — mobile-friendly card layout instead of table -->
       <div v-else class="flex flex-col gap-2 pb-28 sm:pb-32">
+        <RefillRebuildSection
+          v-if="currentRebuild.length > 0 && !currentMachineDone"
+          :slots="currentRebuild"
+          :leftovers="rebuildLeftovers"
+          :destinations="leftoverDestinations"
+          :expiry="leftoverExpiry"
+          @removed="setRebuildRemoved"
+          @filled="setRebuildFilled"
+          @action="setRebuildAction"
+          @price="setRebuildPriceSet"
+          @destination="setLeftoverDestination"
+          @expiry="setLeftoverExpiry"
+        />
+        <p v-if="currentRebuild.length > 0 && currentTrays.length > 0 && !currentMachineDone" class="px-1 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {{ t('refillRebuild.normalRefill') }}
+        </p>
         <div
           v-for="tray in currentTrays"
           :key="tray.id"
@@ -516,8 +578,9 @@ const currentMachineDone = computed(() =>
               <p class="font-medium">{{ t('refill.confirmFailedTitle') }}</p>
               <p class="mt-1 text-xs opacity-90">{{ confirmError }}</p>
             </div>
+            <p v-if="!rebuildReady" class="text-center text-xs text-amber-600">{{ t('refillRebuild.decideAll') }}</p>
             <button
-              :disabled="confirmingRefill"
+              :disabled="confirmingRefill || !rebuildReady"
               class="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-medium text-primary-foreground shadow-lg transition-colors hover:bg-primary/90 disabled:opacity-50"
               @click="confirmMachineRefill"
             >
@@ -558,6 +621,10 @@ const currentMachineDone = computed(() =>
           <p class="text-2xl font-bold tabular-nums">{{ tourSummary.totalTraysRefilled }}</p>
           <p class="text-[11px] sm:text-xs text-muted-foreground">{{ t('refill.traysRefilled', tourSummary.totalTraysRefilled) }}</p>
         </div>
+        <div v-if="tourSummary.totalSlotsRebuilt > 0" class="rounded-xl border p-3 text-center">
+          <p class="text-2xl font-bold tabular-nums">{{ tourSummary.totalSlotsRebuilt }}</p>
+          <p class="text-[11px] sm:text-xs text-muted-foreground">{{ t('refillRebuild.slotsRebuilt', { n: tourSummary.totalSlotsRebuilt }) }}</p>
+        </div>
         <div class="rounded-xl border p-3 text-center">
           <p class="text-2xl font-bold tabular-nums">{{ tourSummary.totalItemsAdded }}</p>
           <p class="text-[11px] sm:text-xs text-muted-foreground">{{ t('refill.itemsAdded', tourSummary.totalItemsAdded) }}</p>
@@ -578,6 +645,7 @@ const currentMachineDone = computed(() =>
             <p v-if="!entry.skipped" class="text-xs text-muted-foreground">
               {{ entry.trays_refilled }} {{ entry.trays_refilled === 1 ? 'tray' : 'trays' }} &middot;
               +{{ entry.total_added }} {{ entry.total_added === 1 ? 'item' : 'items' }}
+              <template v-if="entry.slots_rebuilt"> &middot; {{ t('refillRebuild.slotsRebuilt', { n: entry.slots_rebuilt }) }}</template>
             </p>
           </div>
           <span

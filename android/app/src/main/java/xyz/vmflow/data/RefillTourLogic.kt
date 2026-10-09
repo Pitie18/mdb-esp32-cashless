@@ -75,10 +75,18 @@ object RefillTourLogic {
 
     // ── Tour scope (PWA `initTour` / `effectiveStockHealth`) ─────────────
 
-    /** Product groups of [machine] that need a refill, judged on the trays' current stock. */
-    fun refillGroups(machine: RefillMachine): List<ProductStockGroup> =
-        StockHealth.groupTraysByProduct(machine.trays.map { it.tray })
-            .filter { StockHealth.groupNeedsRefill(it) }
+    /**
+     * Product groups of [machine] that need a refill, judged on the trays'
+     * current stock. Slots with an accepted change-note item
+     * ([RefillMachine.rebuildTrayIds]) are left out: they get the rebuild
+     * instead of a normal refill (PWA `buildRefillMachine`).
+     */
+    fun refillGroups(machine: RefillMachine): List<ProductStockGroup> {
+        val excluded = machine.rebuildTrayIds
+        return StockHealth.groupTraysByProduct(
+            machine.trays.map { it.tray }.filter { it.id !in excluded }
+        ).filter { StockHealth.groupNeedsRefill(it) }
+    }
 
     /** Whether the warehouse can refill [productId] for [machine] (see [RefillMachine.refillableProductIds]). */
     fun isRefillable(machine: RefillMachine, productId: String): Boolean =
@@ -173,11 +181,15 @@ object RefillTourLogic {
 
     /**
      * The tour's machines, PWA `initTour`: every machine with at least one
-     * refillable product group needing refill (fill-only machines included),
-     * in [sortByVisitOrder] order.
+     * refillable product group needing refill (fill-only machines included)
+     * or an open slot change request, in [sortByVisitOrder] order.
      */
     fun tourMachines(machines: List<RefillMachine>): List<RefillMachine> =
-        sortByVisitOrder(machines.filter { machineTier(it) != MachineStockTier.OK })
+        sortByVisitOrder(
+            machines.filter {
+                machineTier(it) != MachineStockTier.OK || it.changeRequest?.items?.isNotEmpty() == true
+            }
+        )
 
     /** Total quantity already committed (packed) for a product, across all machines that packed it. */
     fun committedQuantity(
@@ -223,8 +235,9 @@ object RefillTourLogic {
         stockLoaded: Boolean
     ): Int {
         val machine = machines.find { it.machine.id == machineId } ?: return 0
+        val rebuildTrayIds = machine.rebuildTrayIds
         val trayMax = machine.trays
-            .filter { it.tray.productId == productId }
+            .filter { it.tray.productId == productId && it.tray.id !in rebuildTrayIds }
             .sumOf { maxOf(0, it.tray.capacity - it.tray.currentStock) }
 
         if (!stockLoaded || warehouseStock.isEmpty()) return trayMax

@@ -79,6 +79,16 @@ struct RefillSummaryView: View {
                         color: .green
                     )
 
+                    // Slots switched to a new product (change notes)
+                    if viewModel.slotsRebuilt > 0 {
+                        statCard(
+                            icon: "arrow.left.arrow.right",
+                            label: "Slots Rebuilt",
+                            value: "\(viewModel.slotsRebuilt)",
+                            color: .purple
+                        )
+                    }
+
                     // Skipped machines
                     if viewModel.machinesSkipped > 0 {
                         statCard(

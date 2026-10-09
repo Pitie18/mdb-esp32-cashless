@@ -22,18 +22,37 @@ struct RefillStepView: View {
 
                 ScrollView {
                     VStack(spacing: 12) {
-                        // Refill All Button
-                        Button {
-                            HapticFeedback.medium.fire()
-                            viewModel.fillAllTrays(machineId: machine.id)
-                        } label: {
-                            Label("Fill All to Capacity", systemImage: "arrow.up.to.line")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
+                        // Change note: rebuild these slots first. They are
+                        // not part of the normal refill below.
+                        let hasRebuild = viewModel.machineHasRebuild(machine.id)
+                        let hasTourTrays = machine.trays.contains { $0.isInTour }
+                        if hasRebuild {
+                            RefillRebuildSection(viewModel: viewModel, machineId: machine.id)
+                            if hasTourTrays {
+                                Text("Refill")
+                                    .font(.caption.weight(.semibold))
+                                    .textCase(.uppercase)
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 4)
+                                    .padding(.top, 4)
+                            }
                         }
-                        .buttonStyle(.bordered)
-                        .tint(.blue)
+
+                        // Refill All Button
+                        if hasTourTrays || !hasRebuild {
+                            Button {
+                                HapticFeedback.medium.fire()
+                                viewModel.fillAllTrays(machineId: machine.id)
+                            } label: {
+                                Label("Fill All to Capacity", systemImage: "arrow.up.to.line")
+                                    .font(.subheadline.weight(.semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.blue)
+                        }
 
                         // Tray list — show everything that's part of this tour,
                         // regardless of fillAmount. Reducing fillAmount to 0
@@ -70,6 +89,11 @@ struct RefillStepView: View {
 
                 // Bottom Action Bar
                 bottomActionBar(machine)
+            }
+            .task(id: machine.id) {
+                // Build the rebuild cards from live stock when the machine
+                // comes up (no-op without a change note, or when already built).
+                await viewModel.prepareRebuild(machineId: machine.id)
             }
             .sheet(item: $selectedProduct) { sel in
                 ProductDetailSheet(
@@ -408,9 +432,26 @@ struct RefillStepView: View {
 
     // MARK: - Bottom Action Bar
 
+    /// The change note (if any) is fully decided — required before confirming.
+    private func rebuildDecided(_ machine: RefillMachine) -> Bool {
+        guard viewModel.machineHasRebuild(machine.id) else { return true }
+        return viewModel.currentRebuildMachineId == machine.id && viewModel.rebuildReady
+    }
+
     private func bottomActionBar(_ machine: RefillMachine) -> some View {
-        VStack(spacing: 0) {
+        let decided = rebuildDecided(machine)
+        return VStack(spacing: 0) {
             Divider()
+            if !decided {
+                Text("Mark every slot of the change note as rebuilt or not rebuilt first.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    .background(.bar)
+            }
             HStack(spacing: 12) {
                 // Skip button
                 Button {
@@ -422,6 +463,7 @@ struct RefillStepView: View {
                         .padding(.vertical, 14)
                 }
                 .buttonStyle(.bordered)
+                .disabled(viewModel.isSaving)
 
                 Spacer()
 
@@ -445,7 +487,7 @@ struct RefillStepView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isSaving)
+                .disabled(viewModel.isSaving || !decided)
             }
             .padding(.horizontal)
             .padding(.vertical, 12)

@@ -223,6 +223,8 @@ final class MachineAnalysisViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
     @Published var days = 30
+    /// Trays with a pending change on the machine's open change request.
+    @Published var pendingTrayIds: Set<UUID> = []
 
     @Published var insights: MachineInsights?
     @Published var insightsLoading = false
@@ -392,6 +394,8 @@ final class MachineAnalysisViewModel: ObservableObject {
 
             products = analyses
             slots = buildGridSlots(trays: trays, tierByProduct: tierByProduct)
+            let open = try? await SlotChangeService.fetchOpenRequest(machineId: machineId)
+            pendingTrayIds = Set((open?.items ?? []).map(\.trayId))
             rowCount = slots.reduce(0) { max($0, $1.row + 1) }
         } catch is CancellationError {
         } catch {
@@ -401,68 +405,22 @@ final class MachineAnalysisViewModel: ObservableObject {
 
     // MARK: - Apply swap
 
-    /// Swap the product assigned to a slot. Resets stock to 0 (the old product
-    /// is physically removed); the caller is responsible for reloading trays
-    /// and re-running `analyze` afterwards — this only performs the write.
+    /// Put a replacement for a slot on the machine's change request. The slot
+    /// is rebuilt on the next refill tour, where the old stock is counted —
+    /// nothing changes on the machine (or in `machine_trays`) now. Pending
+    /// slots of the request are kept; the slot keeps its planned capacity,
+    /// else its current one. Mirrors the PWA's `useMachineAnalysis.applySwap`.
     func applySwap(trayId: UUID, productId: UUID) async -> Bool {
-        struct Update: Encodable {
-            let product_id: String
-            let current_stock: Int
-        }
+        guard let machineId = lastMachineId else { return false }
         do {
-            try await client
-                .from("machine_trays")
-                .update(Update(product_id: productId.uuidString, current_stock: 0))
-                .eq("id", value: trayId.uuidString)
-                .execute()
-
-            await logSwap(trayId: trayId, newProductId: productId)
+            pendingTrayIds = try await SlotChangeService.queueProducts(
+                machineId: machineId,
+                changes: [(trayId: trayId, productId: productId)]
+            )
             return true
         } catch {
             self.error = error.localizedDescription
             return false
-        }
-    }
-
-    /// Best-effort audit log entry — mirrors the web's `applySwap` shape
-    /// exactly (same `activity_log` fields), so both platforms show up
-    /// identically in the activity log / tour history.
-    private func logSwap(trayId: UUID, newProductId: UUID) async {
-        guard let lastMachineId else { return }
-        let oldSlot = slots.first { $0.trayId == trayId }
-        do {
-            let user = try await client.auth.session.user
-            let companyId = try await fetchCompanyId()
-            let firstName = user.userMetadata["first_name"]?.stringValue
-            let lastName = user.userMetadata["last_name"]?.stringValue
-            let fullName = [firstName, lastName].compactMap { $0 }.joined(separator: " ").trimmingCharacters(in: .whitespaces)
-            let userDisplay = fullName.isEmpty ? user.email : fullName
-
-            var metadata: [String: AnyJSON] = [
-                "machine_id": .string(lastMachineId.uuidString),
-                "item_number": oldSlot.map { .integer($0.itemNumber) } ?? .null,
-                "new_product_id": .string(newProductId.uuidString),
-                "source": .string("analysis_swap"),
-                "_user_email": user.email.map { .string($0) } ?? .null,
-                "_user_display": userDisplay.map { .string($0) } ?? .null,
-            ]
-            if let oldProductId = oldSlot?.productId {
-                metadata["old_product_id"] = .string(oldProductId.uuidString)
-            }
-            if let oldProductName = oldSlot?.productName {
-                metadata["old_product_name"] = .string(oldProductName)
-            }
-
-            try await client.from("activity_log").insert([
-                "company_id": AnyJSON.string(companyId.uuidString),
-                "user_id": AnyJSON.string(user.id.uuidString),
-                "entity_type": .string("stock"),
-                "entity_id": .string(trayId.uuidString),
-                "action": .string("product_swapped"),
-                "metadata": .object(metadata),
-            ]).execute()
-        } catch {
-            // Non-fatal — the swap itself already succeeded.
         }
     }
 

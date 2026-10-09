@@ -6,6 +6,8 @@ import kotlinx.serialization.Serializable
 import xyz.vmflow.data.ExpirationStatus
 import xyz.vmflow.data.MachineStockSummary
 import xyz.vmflow.data.MachineStockTier
+import xyz.vmflow.data.SlotChangeItem
+import xyz.vmflow.data.SlotChangeRequest
 import xyz.vmflow.data.ReachLevel
 import xyz.vmflow.data.StockReach
 
@@ -476,8 +478,30 @@ data class RefillMachine(
      * refillable — also what a tour persisted before this field existed
      * decodes to. See [xyz.vmflow.data.RefillTourLogic.isRefillable].
      */
-    val refillableProductIds: Set<String>? = null
+    val refillableProductIds: Set<String>? = null,
+    /**
+     * The machine's open slot change request ("Änderungsvermerk"), pending
+     * items only, each carrying the refiller's accept/decline decision
+     * ([SlotChangeItem.accepted]). Once the tour starts only the accepted
+     * items travel with it. `null` without a request — and for a tour
+     * persisted before this field existed.
+     */
+    val changeRequest: SlotChangeRequest? = null,
+    /**
+     * `productId -> units` packed (and deducted) for the rebuild at tour
+     * start; empty before the tour starts. What the at-machine fill plan and
+     * the leftovers are computed from.
+     */
+    val rebuildPacked: Map<String, Int> = emptyMap()
 ) {
+    /** Change-note slots the refiller accepted for this tour. */
+    val acceptedChangeItems: List<SlotChangeItem>
+        get() = changeRequest?.items?.filter { it.accepted } ?: emptyList()
+
+    /** Trays being rebuilt: they leave the normal refill (web `buildRefillMachine`'s `excluded`). */
+    val rebuildTrayIds: Set<String>
+        get() = acceptedChangeItems.mapTo(HashSet()) { it.trayId }
+
     val totalDeficit: Int get() = trays.sumOf { it.deficit }
     val traysNeedingRefill: Int get() = trays.count { it.deficit > 0 }
     val totalCurrentStock: Int get() = trays.sumOf { it.tray.currentStock }
@@ -529,7 +553,9 @@ data class TourLogEntry(
     val machineName: String,
     val traysRefilled: Int,
     val totalAdded: Int,
-    val skipped: Boolean
+    val skipped: Boolean,
+    /** Slots switched to their new product at this stop (`apply_slot_change`). */
+    val slotsRebuilt: Int = 0
 )
 
 /**

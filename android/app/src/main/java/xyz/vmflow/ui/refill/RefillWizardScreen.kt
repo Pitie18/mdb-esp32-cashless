@@ -128,6 +128,24 @@ fun RefillWizardScreen(
         deductionWarning?.let { snackbarHostState.showSnackbar(it) }
     }
 
+    // The review's replacements were queued into the machines' change
+    // requests (never written to the trays) — say so once, since the review
+    // cards vanish into change notes on the pack step.
+    val queuedCount = uiState.queuedReplacementCount
+    val queuedNotice = queuedCount?.let {
+        pluralStringResource(R.plurals.refill_review_queued, it, it)
+    }
+    LaunchedEffect(queuedNotice) {
+        queuedNotice?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearQueuedReplacementNotice()
+        }
+    }
+
+    // Batch number of goods returned from a machine during a slot rebuild —
+    // localized here because the ViewModel has no resources.
+    val returnBatchLabel = stringResource(R.string.refill_rebuild_return_batch)
+
     // ── Belt and braces: a review with nothing to review is not a screen ──
     // [ReviewStep] renders its header and its bottom bar off `uiState`
     // regardless of how many cards it has, so a `REVIEW` step that somehow
@@ -225,7 +243,8 @@ fun RefillWizardScreen(
                         onSetPackingQuantity = viewModel::setPackingQuantity,
                         onPackEverything = viewModel::packEverything,
                         onPackAllForMachine = viewModel::packAllForMachine,
-                        onStartTour = viewModel::startTour
+                        onStartTour = viewModel::startTour,
+                        onToggleRebuildItem = viewModel::toggleRebuildItem
                     )
 
                     RefillStep.REFILL -> {
@@ -270,11 +289,30 @@ fun RefillWizardScreen(
                                     viewModel.fillAllTrays(currentMachine.machine.id)
                                 },
                                 onConfirmRefill = {
-                                    viewModel.confirmRefill(currentMachine.machine.id)
+                                    viewModel.confirmRefill(currentMachine.machine.id, returnBatchLabel)
                                 },
                                 onSkipMachine = {
-                                    viewModel.skipMachine(currentMachine.machine.id)
-                                }
+                                    viewModel.skipMachine(currentMachine.machine.id, returnBatchLabel)
+                                },
+                                rebuild = if (uiState.rebuildMachineId == currentMachine.machine.id) {
+                                    RebuildSectionState(
+                                        slots = uiState.currentRebuild,
+                                        leftovers = uiState.rebuildLeftovers,
+                                        destinations = uiState.leftoverDestinations,
+                                        expiry = uiState.leftoverExpiry,
+                                        showLeftovers = uiState.selectedWarehouseId != null
+                                    )
+                                } else {
+                                    null
+                                },
+                                rebuildActions = RebuildActions(
+                                    onRemoved = viewModel::setRebuildRemoved,
+                                    onFilled = viewModel::setRebuildFilled,
+                                    onAction = viewModel::setRebuildAction,
+                                    onPriceSet = viewModel::setRebuildPriceSet,
+                                    onDestination = viewModel::setLeftoverDestination,
+                                    onExpiry = viewModel::setLeftoverExpiry
+                                )
                             )
                         }
                     }

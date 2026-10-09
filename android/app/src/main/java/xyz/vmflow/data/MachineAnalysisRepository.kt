@@ -1,6 +1,5 @@
 package xyz.vmflow.data
 
-import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.datetime.Instant
 import kotlinx.serialization.KSerializer
@@ -35,11 +34,16 @@ interface MachineAnalysisDataSource {
     /** `get_product_sales_velocity(p_company_id, p_days)` — fleet-wide avg daily units, keyed by product id. Only entries with velocity > 0 are kept. */
     suspend fun fetchVelocity(companyId: String, days: Int): Map<String, Double>
 
-    /** Reassigns a slot's product and resets its stock to 0 (the old product is physically removed). */
-    suspend fun updateTrayProduct(trayId: String, productId: String)
+    /** Trays with a pending item on the machine's open slot change request. */
+    suspend fun fetchPendingTrayIds(machineId: String): Set<String>
 
-    /** Best-effort audit log entry, same `activity_log` shape as the web/iOS `analysis_swap` source. */
-    suspend fun logProductSwap(context: SwapLogContext)
+    /**
+     * Queues [productId] for [trayId] on the machine's slot change request
+     * (merging with its pending items, keeping the slot's capacity) and
+     * returns the trays now pending. Never writes `machine_trays`: the slot is
+     * rebuilt on the next refill tour. Port of web `useMachineAnalysis.applySwap`.
+     */
+    suspend fun queueReplacement(machineId: String, trayId: String, productId: String): Set<String>
 }
 
 /**
@@ -58,16 +62,6 @@ data class ProductKpiRow(
     val slots: List<Int>,
     val offeredSince: Instant?,
     val revenueEur: Double,
-)
-
-/** Everything [MachineAnalysisDataSource.logProductSwap] needs to write one `activity_log` row. */
-data class SwapLogContext(
-    val machineId: String,
-    val trayId: String,
-    val itemNumber: Int?,
-    val newProductId: String,
-    val oldProductId: String?,
-    val oldProductName: String?,
 )
 
 /**
@@ -123,36 +117,8 @@ private data class VelocityParams(
     @SerialName("p_days") val days: Int,
 )
 
-/**
- * `activity_log` metadata shape for a slot swap — field-for-field identical
- * to iOS's `logSwap()` (Z. 441-448), so the same swap shows up identically
- * in the activity feed / tour history on every client.
- */
-@Serializable
-private data class SwapMetadata(
-    @SerialName("machine_id") val machineId: String,
-    @SerialName("item_number") val itemNumber: Int? = null,
-    @SerialName("new_product_id") val newProductId: String,
-    val source: String = "analysis_swap",
-    @SerialName("_user_email") val userEmail: String? = null,
-    @SerialName("_user_display") val userDisplay: String? = null,
-    @SerialName("old_product_id") val oldProductId: String? = null,
-    @SerialName("old_product_name") val oldProductName: String? = null,
-)
-
-@Serializable
-private data class ActivityLogInsert(
-    @SerialName("company_id") val companyId: String,
-    @SerialName("user_id") val userId: String,
-    @SerialName("entity_type") val entityType: String,
-    @SerialName("entity_id") val entityId: String,
-    val action: String,
-    val metadata: SwapMetadata,
-)
-
 object MachineAnalysisRepository : MachineAnalysisDataSource {
     private val postgrest get() = SupabaseService.client.postgrest
-    private val auth get() = SupabaseService.client.auth
 
     override suspend fun fetchCompanyId(): String {
         val response = AuthRepository.fetchOrganization().getOrThrow()
@@ -187,38 +153,11 @@ object MachineAnalysisRepository : MachineAnalysisDataSource {
         return rows.filter { it.avgDailyUnits > 0 }.associate { it.productId to it.avgDailyUnits }
     }
 
-    override suspend fun updateTrayProduct(trayId: String, productId: String) {
-        postgrest.from("machine_trays")
-            .update({
-                set("product_id", productId)
-                set("current_stock", 0)
-            }) {
-                filter { eq("id", trayId) }
-            }
-    }
+    override suspend fun fetchPendingTrayIds(machineId: String): Set<String> =
+        SlotChangeRepository.fetchOpenRequests(listOf(machineId)).getOrThrow()[machineId]
+            ?.items?.map { it.trayId }?.toSet()
+            .orEmpty()
 
-    override suspend fun logProductSwap(context: SwapLogContext) {
-        val user = auth.currentUserOrNull() ?: return
-        val companyId = fetchCompanyId()
-        val userDisplay = user.auditDisplayName()
-
-        postgrest.from("activity_log").insert(
-            ActivityLogInsert(
-                companyId = companyId,
-                userId = user.id,
-                entityType = "stock",
-                entityId = context.trayId,
-                action = "product_swapped",
-                metadata = SwapMetadata(
-                    machineId = context.machineId,
-                    itemNumber = context.itemNumber,
-                    newProductId = context.newProductId,
-                    userEmail = user.email,
-                    userDisplay = userDisplay,
-                    oldProductId = context.oldProductId,
-                    oldProductName = context.oldProductName,
-                ),
-            ),
-        )
-    }
+    override suspend fun queueReplacement(machineId: String, trayId: String, productId: String): Set<String> =
+        SlotChangeRepository.queueReplacement(machineId, trayId, productId).getOrThrow()
 }

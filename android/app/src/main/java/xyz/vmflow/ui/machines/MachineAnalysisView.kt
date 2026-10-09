@@ -1,6 +1,7 @@
 package xyz.vmflow.ui.machines
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +55,8 @@ import xyz.vmflow.BuildConfig
 import xyz.vmflow.R
 import xyz.vmflow.data.AnalysisGridSlot
 import androidx.compose.foundation.isSystemInDarkTheme
+import xyz.vmflow.ui.theme.StockGreen
+import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.TierStrongLight
 import xyz.vmflow.ui.theme.TierStrongDark
 import xyz.vmflow.ui.theme.TierOkLight
@@ -83,10 +86,11 @@ import xyz.vmflow.ui.components.MachineLayoutGrid
  * not requested by the task briefs): AI recommendations
  * (`machine-insights`).
  *
- * Divergence from iOS: applying a swap is destructive-ish (it resets the
- * slot's stock to 0), so — unlike the iOS sheet, which applies immediately
- * on tap — Android always shows a confirmation [AlertDialog] naming the
- * slot and both products before writing anything.
+ * A replacement never writes `machine_trays`: like web
+ * `useMachineAnalysis.applySwap` it is queued into the machine's slot change
+ * request and rebuilt on the next refill tour. Android confirms it first with
+ * an [AlertDialog] naming the slot and both products, then shows a notice;
+ * slots with a pending change carry an outline in the grid.
  */
 @Composable
 fun MachineAnalysisTab(
@@ -118,6 +122,9 @@ fun MachineAnalysisTab(
             uiState.isLoading && uiState.products.isEmpty() -> LoadingState()
             uiState.rowCount == 0 -> EmptyState()
             else -> {
+                uiState.queuedItemNumber?.let { itemNumber ->
+                    QueuedNotice(itemNumber = itemNumber, onDismiss = { viewModel.clearQueuedNotice() })
+                }
                 DaysPicker(
                     selected = uiState.days,
                     onSelect = { days -> viewModel.analyze(machineId, trays, catalogue, windowDays = days) },
@@ -125,9 +132,10 @@ fun MachineAnalysisTab(
                 GridSection(
                     rowCount = uiState.rowCount,
                     slots = uiState.slots,
+                    pendingTrayIds = uiState.pendingTrayIds,
                     onSlotClick = { slot -> replacingSlot = slot },
                 )
-                LegendSection()
+                LegendSection(showPending = uiState.pendingTrayIds.isNotEmpty())
                 WeakProductsSection(products = uiState.weakProducts)
             }
         }
@@ -148,6 +156,7 @@ fun MachineAnalysisTab(
     pendingSwap?.let { pending ->
         SwapConfirmDialog(
             pending = pending,
+            slotHasRequest = pending.slot.trayId in uiState.pendingTrayIds,
             onConfirm = {
                 viewModel.applySwap(pending.slot.trayId, pending.choice.productId) { success ->
                     if (success) onSwapApplied()
@@ -239,14 +248,19 @@ private fun DaysPicker(selected: Int, onSelect: (Int) -> Unit) {
 // ─── Grid ────────────────────────────────────────────────────────────────
 
 @Composable
-private fun GridSection(rowCount: Int, slots: List<AnalysisGridSlot>, onSlotClick: (AnalysisGridSlot) -> Unit) {
+private fun GridSection(
+    rowCount: Int,
+    slots: List<AnalysisGridSlot>,
+    pendingTrayIds: Set<String>,
+    onSlotClick: (AnalysisGridSlot) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = stringResource(R.string.analysis_layout_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
-        AnalysisLayoutGrid(rowCount = rowCount, slots = slots, onSlotClick = onSlotClick)
+        AnalysisLayoutGrid(rowCount = rowCount, slots = slots, pendingTrayIds = pendingTrayIds, onSlotClick = onSlotClick)
     }
 }
 
@@ -259,9 +273,18 @@ private fun GridSection(rowCount: Int, slots: List<AnalysisGridSlot>, onSlotClic
  * the same one this file drew before the grid became shared.
  */
 @Composable
-private fun AnalysisLayoutGrid(rowCount: Int, slots: List<AnalysisGridSlot>, onSlotClick: (AnalysisGridSlot) -> Unit) {
+private fun AnalysisLayoutGrid(
+    rowCount: Int,
+    slots: List<AnalysisGridSlot>,
+    pendingTrayIds: Set<String>,
+    onSlotClick: (AnalysisGridSlot) -> Unit,
+) {
     val cells = slots.map { slot ->
         val tierColor = slot.tier.tierColor()
+        val pending = slot.trayId in pendingTrayIds
+        val description = slot.productName
+            ?.let { "$it — ${slot.tier.tierLabel()}" }
+            ?: stringResource(R.string.analysis_slot_empty, slot.itemNumber)
         MachineLayoutCell(
             id = slot.trayId,
             itemNumber = slot.itemNumber,
@@ -270,12 +293,16 @@ private fun AnalysisLayoutGrid(rowCount: Int, slots: List<AnalysisGridSlot>, onS
             width = slot.width,
             imagePath = slot.imagePath,
             background = tierColor.copy(alpha = if (slot.tier == SlotTier.EMPTY) 0.15f else 0.35f),
-            // The tier must not be conveyed by colour alone: screen-reader users
-            // and anyone with a colour vision deficiency get it spoken with the
-            // product.
-            contentDescription = slot.productName
-                ?.let { "$it — ${slot.tier.tierLabel()}" }
-                ?: stringResource(R.string.analysis_slot_empty, slot.itemNumber),
+            // A slot with a queued change (web `pendingTrayIds`) gets an outline.
+            outline = if (pending) PendingOutline else null,
+            // Neither the tier nor the pending change may be conveyed by colour
+            // alone: screen-reader users and anyone with a colour vision
+            // deficiency get both spoken with the product.
+            contentDescription = if (pending) {
+                stringResource(R.string.analysis_slot_pending, description)
+            } else {
+                description
+            },
         )
     }
 
@@ -289,19 +316,35 @@ private fun AnalysisLayoutGrid(rowCount: Int, slots: List<AnalysisGridSlot>, onS
 // ─── Legend ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun LegendSection() {
+private fun LegendSection(showPending: Boolean) {
     val tiers = listOf(SlotTier.STRONG, SlotTier.OK, SlotTier.TESTING, SlotTier.WEAK, SlotTier.DEAD)
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        tiers.forEach { tier ->
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            tiers.forEach { tier ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(tier.tierColor()),
+                    )
+                    Text(
+                        text = tier.tierLabel(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        if (showPending) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(tier.tierColor()),
+                        .size(10.dp)
+                        .border(2.dp, PendingOutline, RoundedCornerShape(2.dp)),
                 )
                 Text(
-                    text = tier.tierLabel(),
+                    text = stringResource(R.string.analysis_legend_pending),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -496,7 +539,12 @@ private fun SuggestionThumbnail(imagePath: String?) {
  * the slot and both products (task 25 brief, context note 3).
  */
 @Composable
-private fun SwapConfirmDialog(pending: PendingSwap, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+private fun SwapConfirmDialog(
+    pending: PendingSwap,
+    slotHasRequest: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     val oldName = pending.slot.productName
     val message = if (oldName != null) {
         stringResource(R.string.analysis_confirm_message, oldName, pending.slot.itemNumber, pending.choice.name)
@@ -507,10 +555,21 @@ private fun SwapConfirmDialog(pending: PendingSwap, onConfirm: () -> Unit, onDis
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.analysis_confirm_title)) },
-        text = { Text(message) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(message)
+                if (slotHasRequest) {
+                    Text(
+                        text = stringResource(R.string.analysis_slot_has_request),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PendingOutline,
+                    )
+                }
+            }
+        },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.action_replace))
+                Text(stringResource(R.string.analysis_action_queue))
             }
         },
         dismissButton = {
@@ -519,6 +578,34 @@ private fun SwapConfirmDialog(pending: PendingSwap, onConfirm: () -> Unit, onDis
             }
         },
     )
+}
+
+// ─── Queued change notice ─────────────────────────────────────────────────
+
+/** Outline/accent of a slot with a queued change (amber, like web's notice). */
+private val PendingOutline = StockOrange
+
+/** "Slot N added to the change request" — web `analysis.queued`, dismissable. */
+@Composable
+private fun QueuedNotice(itemNumber: Int, onDismiss: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(StockGreen.copy(alpha = 0.12f))
+            .border(1.dp, StockGreen.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+            .padding(start = 12.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.analysis_queued, itemNumber),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onDismiss) {
+            Text(stringResource(R.string.action_done))
+        }
+    }
 }
 
 // ─── Tier styling ───────────────────────────────────────────────────────────

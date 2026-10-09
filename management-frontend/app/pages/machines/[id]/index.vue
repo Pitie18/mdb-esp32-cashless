@@ -16,6 +16,7 @@ import { MAX_INTERNAL_ITEM_NUMBER, findInternalItemNumberConflict, findShadowing
 import MachineSettingsModal from '~/components/MachineSettingsModal.vue'
 import { usePosterFreshness } from '@/composables/usePosterFreshness'
 import MachineAnalysisPanel from '~/components/analysis/MachineAnalysisPanel.vue'
+import SlotPlanPanel from '~/components/slotplan/SlotPlanPanel.vue'
 import ProductGroupHeader from '~/components/machine/ProductGroupHeader.vue'
 import TrayStockGrid from '~/components/machine/TrayStockGrid.vue'
 import { buildTrayGroupIndex, productListRows } from '@/lib/trayGroups'
@@ -34,6 +35,7 @@ const defaultTab = computed(() => {
   if (tab === 'mdb') return 'mdb'
   if (tab === 'health') return 'health'
   if (tab === 'analysis') return 'analysis'
+  if (tab === 'slots') return 'slots'
   return 'sales'
 })
 const supabase = useSupabaseClient()
@@ -1469,11 +1471,12 @@ async function handleAddSale() {
 
           <!-- Tabs: Sales | Trays & Stock | MDB -->
           <Tabs :default-value="defaultTab">
-            <TabsList>
+            <TabsList class="max-w-full justify-start overflow-x-auto">
               <TabsTrigger value="sales">{{ t('machineDetail.sales') }}</TabsTrigger>
               <TabsTrigger v-if="isAdmin" value="mdb">{{ t('machineDetail.mdb') }}</TabsTrigger>
               <TabsTrigger value="trays">{{ t('machineDetail.traysAndStock') }}</TabsTrigger>
               <TabsTrigger value="analysis">{{ t('machineDetail.analysis') }}</TabsTrigger>
+              <TabsTrigger v-if="isAdmin" value="slots">{{ t('machineDetail.slotPlan') }}</TabsTrigger>
               <TabsTrigger v-if="machine?.embeddeds" value="health">{{ t('machineDetail.deviceHealth') }}</TabsTrigger>
             </TabsList>
 
@@ -2324,6 +2327,11 @@ async function handleAddSale() {
             <!-- ── Analysis Tab ── -->
             <TabsContent value="analysis" class="mt-4">
               <MachineAnalysisPanel v-if="machine" :machine-id="machine.id" :is-admin="isAdmin" />
+            </TabsContent>
+
+            <!-- ── Slot re-assignment Tab (change requests) ── -->
+            <TabsContent v-if="isAdmin" value="slots" class="mt-4">
+              <SlotPlanPanel v-if="machine" :machine-id="machine.id" :is-admin="isAdmin" />
             </TabsContent>
 
             <!-- ── MDB Diagnostics Tab ── -->

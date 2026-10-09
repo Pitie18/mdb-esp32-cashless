@@ -14,8 +14,13 @@ const { t, locale } = useI18n()
 
 const {
   products, slots, fillSuggestions, searchableProducts, rowCount, loading, error, days,
-  tierCounts, slotTierCounts, weakProducts, lostRevenuePotential, analyze, applySwap,
+  tierCounts, slotTierCounts, weakProducts, lostRevenuePotential, analyze, applySwap, pendingTrayIds,
 } = useMachineAnalysis()
+
+// Replacements only go onto the machine's change request; the slot changes
+// when the refiller rebuilds it on the next tour.
+const queuedMessage = ref('')
+const applyError = ref('')
 
 const PERIODS = [7, 30, 90]
 
@@ -80,10 +85,14 @@ function openProduct(p: ProductAnalysis) {
 async function applyProduct(productId: string) {
   if (!targetTrayId.value) return
   applyingProductId.value = productId
+  applyError.value = ''
   try {
     await applySwap(targetTrayId.value, productId)
+    queuedMessage.value = t('analysis.queued', { slot: targetSlotNumber.value ?? '' })
     sheetOpen.value = false
-  } catch { /* error surfaced via composable */ } finally {
+  } catch (e: unknown) {
+    applyError.value = e instanceof Error ? e.message : String(e)
+  } finally {
     applyingProductId.value = null
   }
 }
@@ -136,6 +145,10 @@ const aiSwaps = computed(() =>
     </div>
 
     <template v-else>
+      <div v-if="queuedMessage" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-green-600/40 bg-green-500/10 p-3 text-sm">
+        <span>{{ queuedMessage }}</span>
+        <a href="?tab=slots" class="text-sm font-medium underline">{{ t('analysis.openRequestLink') }}</a>
+      </div>
       <!-- KPI strip (counts of distinct products) -->
       <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div class="rounded-xl border bg-card p-3">
@@ -304,6 +317,11 @@ const aiSwaps = computed(() =>
               {{ t('analysis.testingHint') }}
             </div>
           </template>
+
+          <p v-if="targetTrayId && pendingTrayIds.has(targetTrayId)" class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+            {{ t('analysis.slotHasRequest') }}
+          </p>
+          <p v-if="applyError" class="text-sm text-destructive">{{ applyError }}</p>
 
           <!-- Empty slot: offer products to fill it -->
           <p v-else class="text-sm text-muted-foreground">{{ t('analysis.emptySlotHint') }}</p>

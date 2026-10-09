@@ -23,6 +23,13 @@ struct PackingStepView: View {
                     ChipBar(viewModel: viewModel)
                     HeaderStrip(viewModel: viewModel)
 
+                    if let notice = viewModel.replacementNotice {
+                        replacementNoticeBanner(notice)
+                    }
+
+                    // Change notes (slot change requests) of the machines in view
+                    changeNotes
+
                     Group {
                         switch viewModel.activeChip {
                         case .all:
@@ -48,6 +55,46 @@ struct PackingStepView: View {
                 fallbackSellprice: sel.sellprice
             )
         }
+    }
+
+    // MARK: - Change Notes
+
+    @ViewBuilder
+    private var changeNotes: some View {
+        switch viewModel.activeChip {
+        case .all:
+            ForEach(viewModel.machinesWithChangeNote) { machine in
+                RefillChangeNoteCard(viewModel: viewModel, machine: machine)
+            }
+        case .machine(let id):
+            if let machine = viewModel.machinesWithChangeNote.first(where: { $0.id == id }) {
+                RefillChangeNoteCard(viewModel: viewModel, machine: machine, showsMachineName: false)
+            }
+        }
+    }
+
+    /// Confirmation after review-step replacements were queued as change notes.
+    private func replacementNoticeBanner(_ notice: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "arrow.left.arrow.right.circle.fill")
+                .foregroundStyle(.orange)
+            Text(notice)
+                .font(.footnote)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                viewModel.replacementNotice = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.orange.opacity(0.12)))
     }
 
     // MARK: - Warehouse Picker
@@ -124,7 +171,10 @@ private struct AllPackingList: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            if viewModel.visibleCombinedPackingList.isEmpty && !viewModel.isLoading {
+            // A machine with only a change note has nothing to pack here —
+            // don't claim "all stocked" next to its note.
+            if viewModel.visibleCombinedPackingList.isEmpty && !viewModel.isLoading
+                && viewModel.machinesWithChangeNote.isEmpty {
                 emptyState
             } else {
                 ForEach(viewModel.visibleCombinedPackingList) { item in
@@ -499,6 +549,12 @@ private struct ChipBar: View {
                   let machine = viewModel.machines.first(where: { $0.id == id }) else { return nil }
             return viewModel.effectiveStockHealth(machine)
         }()
+        // A machine on the tour only for its change note is not dimmed.
+        let hasChangeNote: Bool = {
+            guard case .machine(let id) = chip,
+                  let machine = viewModel.machines.first(where: { $0.id == id }) else { return false }
+            return viewModel.hasAcceptedRebuild(machine)
+        }()
 
         let bg: Color = {
             if isActive && isDone { return .green }
@@ -543,7 +599,7 @@ private struct ChipBar: View {
             .foregroundStyle(fg)
             .overlay(Capsule().stroke(.black.opacity(0.06), lineWidth: 0.5))
             .shadow(color: .black.opacity(isActive ? 0.15 : 0.05), radius: isActive ? 4 : 2, y: 1)
-            .opacity(health == .ok && !isActive ? 0.4 : 1)
+            .opacity(health == .ok && !isActive && !hasChangeNote ? 0.4 : 1)
         }
         .buttonStyle(.plain)
     }
