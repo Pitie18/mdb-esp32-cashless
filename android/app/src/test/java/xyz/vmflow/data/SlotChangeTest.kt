@@ -278,6 +278,62 @@ class SlotChangeTest {
         assertFalse(decoded.hasPriceChange)
     }
 
+    // ─── age restriction (web `ageChanged`) ───
+
+    @Test
+    fun `age setting changes only when the restriction differs, null-aware`() {
+        val base = item("i12", "t12", "schorle", "beer", 10, 10)
+        assertTrue(base.copy(fromMinAge = null, toMinAge = 18).ageChanged)
+        assertTrue(base.copy(fromMinAge = 16, toMinAge = 18).ageChanged)
+        assertTrue(base.copy(fromMinAge = 18, toMinAge = null).ageChanged)
+        assertFalse(base.copy(fromMinAge = null, toMinAge = null).ageChanged)
+        assertFalse(base.copy(fromMinAge = 18, toMinAge = 18).ageChanged)
+    }
+
+    @Test
+    fun `age snapshot decodes, and rows without it mean no restriction`() {
+        val withAge = json.decodeFromString<SlotChangeItem>(
+            """{"id":"i1","tray_id":"t1","item_number":12,"from_capacity":10,"to_capacity":10,""" +
+                """"to_product_id":"p2","from_min_age":null,"to_min_age":18}"""
+        )
+        assertEquals(18, withAge.toMinAge)
+        assertTrue(withAge.ageChanged)
+        val old = json.decodeFromString<SlotChangeItem>(
+            """{"id":"i1","tray_id":"t1","item_number":12,"from_capacity":10,"to_capacity":10}"""
+        )
+        assertFalse(old.ageChanged)
+    }
+
+    @Test
+    fun `rebuilt needs the age confirmation, not rebuilt does not`() {
+        val slot = RebuildSlot(item = item("i12", "t12", "schorle", "beer", 10, 10).copy(toMinAge = 18), liveStock = 3, removed = 3)
+        assertTrue(slot.needsAgeConfirmation)
+        assertEquals(null, SlotChange.withAction(slot, RebuildAction.DONE).action)
+        assertEquals(RebuildAction.SKIP, SlotChange.withAction(slot, RebuildAction.SKIP).action)
+        assertFalse(SlotChange.ageSetPayload(SlotChange.withAction(slot, RebuildAction.SKIP)))
+
+        val confirmed = SlotChange.withAgeSet(slot, true)
+        val done = SlotChange.withAction(confirmed, RebuildAction.DONE)
+        assertEquals(RebuildAction.DONE, done.action)
+        assertTrue(SlotChange.ageSetPayload(done))
+
+        // Unticking after "rebuilt" puts the slot back to undecided.
+        val unticked = SlotChange.withAgeSet(done, false)
+        assertEquals(null, unticked.action)
+        assertFalse(SlotChange.ageSetPayload(unticked))
+        // A skipped slot stays skipped when the tick changes.
+        assertEquals(RebuildAction.SKIP, SlotChange.withAgeSet(slot.copy(action = RebuildAction.SKIP), false).action)
+    }
+
+    @Test
+    fun `a slot without age change is rebuilt freely and sends age_set false`() {
+        val slot = RebuildSlot(item = item("i12", "t12", "schorle", "cola", 10, 10), liveStock = 3, removed = 3)
+        assertFalse(slot.needsAgeConfirmation)
+        val done = SlotChange.withAction(slot, RebuildAction.DONE)
+        assertEquals(RebuildAction.DONE, done.action)
+        assertFalse(SlotChange.ageSetPayload(done))
+    }
+
     // ─── queueReplacement (useMachineAnalysis.applySwap merge) ───
 
     private fun pendingItem(trayId: String, toProductId: String?, toCapacity: Int) = SlotChangeItem(

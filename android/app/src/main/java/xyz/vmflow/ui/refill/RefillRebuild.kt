@@ -275,6 +275,7 @@ private fun ChangeNoteItemRow(item: SlotChangeItem, enabled: Boolean, onToggle: 
                 if (item.hasPriceChange && toPrice != null) {
                     add(stringResource(R.string.refill_rebuild_new_price, formatEuro(toPrice)))
                 }
+                if (item.ageChanged) add(ageChangeLabel(item))
                 if (!item.accepted) add(stringResource(R.string.refill_rebuild_not_this_tour))
             }
             if (details.isNotEmpty()) {
@@ -308,6 +309,7 @@ data class RebuildActions(
     val onFilled: (itemId: String, value: Int) -> Unit,
     val onAction: (itemId: String, action: RebuildAction?) -> Unit,
     val onPriceSet: (itemId: String, value: Boolean) -> Unit,
+    val onAgeSet: (itemId: String, value: Boolean) -> Unit,
     val onDestination: (productId: String, destination: LeftoverDestination) -> Unit,
     val onExpiry: (productId: String, date: String?) -> Unit
 )
@@ -475,6 +477,40 @@ private fun RebuildSlotCard(slot: RebuildSlot, actions: RebuildActions, enabled:
                         }
                     }
                 }
+
+                if (item.ageChanged) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = StockOrange.copy(alpha = 0.10f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .clickable(enabled = enabled) { actions.onAgeSet(item.id, !slot.ageSet) }
+                                .padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = slot.ageSet,
+                                onCheckedChange = { actions.onAgeSet(item.id, it) },
+                                enabled = enabled
+                            )
+                            Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                                Text(
+                                    text = stringResource(R.string.refill_rebuild_age_set),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = ageChangeLabel(item),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = StockOrange
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -484,7 +520,7 @@ private fun RebuildSlotCard(slot: RebuildSlot, actions: RebuildActions, enabled:
                     selected = slot.action == RebuildAction.DONE,
                     selectedColor = StockGreen,
                     icon = Icons.Default.Check,
-                    enabled = enabled,
+                    enabled = enabled && (slot.action == RebuildAction.DONE || !slot.needsAgeConfirmation),
                     onClick = {
                         actions.onAction(item.id, if (slot.action == RebuildAction.DONE) null else RebuildAction.DONE)
                     },
@@ -502,6 +538,14 @@ private fun RebuildSlotCard(slot: RebuildSlot, actions: RebuildActions, enabled:
                     modifier = Modifier.weight(1f)
                 )
             }
+            if (slot.action == null && slot.needsAgeConfirmation) {
+                Text(
+                    text = stringResource(R.string.refill_rebuild_age_confirm_first),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = StockOrange,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
             if (slot.action == RebuildAction.SKIP) {
                 Text(
                     text = stringResource(R.string.refill_rebuild_stays_open),
@@ -513,6 +557,17 @@ private fun RebuildSlotCard(slot: RebuildSlot, actions: RebuildActions, enabled:
         }
     }
 }
+
+/** One age restriction as shown to the refiller: "ab 18" / "18+", or "ohne Altersgrenze". */
+@Composable
+private fun ageLabel(minAge: Int?): String =
+    if (minAge == null) stringResource(R.string.refill_rebuild_age_none)
+    else stringResource(R.string.refill_rebuild_age_min, minAge)
+
+/** The age change of a slot spelled out, e.g. "ohne Altersgrenze → ab 18". */
+@Composable
+private fun ageChangeLabel(item: SlotChangeItem): String =
+    "${ageLabel(item.fromMinAge)} → ${ageLabel(item.toMinAge)}"
 
 @Composable
 private fun DecisionButton(

@@ -57,6 +57,9 @@ data class SlotChangeItem(
     @SerialName("from_price") val fromPrice: Double? = null,
     @SerialName("to_price") val toPrice: Double? = null,
     @SerialName("skip_count") val skipCount: Int = 0,
+    /** Age restriction of the old / new product's category (`product_category.min_age`), snapshotted by the server; `null` = none. */
+    @SerialName("from_min_age") val fromMinAge: Int? = null,
+    @SerialName("to_min_age") val toMinAge: Int? = null,
     @SerialName("from_product") val fromProduct: SlotChangeProductRef? = null,
     @SerialName("to_product") val toProduct: SlotChangeProductRef? = null,
     val accepted: Boolean = true
@@ -71,6 +74,13 @@ data class SlotChangeItem(
         get() = toProductId != null && toPrice != null && toPrice != fromPrice
 
     val capacityChanges: Boolean get() = toCapacity != fromCapacity
+
+    /**
+     * The machine's age setting for this selection has to change (web
+     * `ageChanged`): the restriction differs between the old and the new
+     * product, null-aware — none → 18 is a change, none → none is not.
+     */
+    val ageChanged: Boolean get() = fromMinAge != toMinAge
 }
 
 /** A machine's open change request with its pending items, slot order. */
@@ -117,8 +127,17 @@ data class RebuildSlot(
     val moved: Int = 0,
     val fromVan: Int = 0,
     val action: RebuildAction? = null,
-    val priceSet: Boolean = false
-)
+    val priceSet: Boolean = false,
+    /** The refiller confirmed the machine's age setting was changed (only meaningful when `item.ageChanged`). */
+    val ageSet: Boolean = false
+) {
+    /**
+     * "Rebuilt" is blocked until the age setting is confirmed — a selection
+     * selling an 18+ product without the age check must not be quittable by
+     * accident. "Not rebuilt" never needs it.
+     */
+    val needsAgeConfirmation: Boolean get() = item.ageChanged && !ageSet
+}
 
 /** One slot of a plan for `save_slot_change_request` (`p_items`). */
 data class PlannedChange(val trayId: String, val toProductId: String?, val toCapacity: Int)
@@ -308,6 +327,26 @@ object SlotChange {
         }
         return totals.map { (key, qty) -> PackedDeduction(machineId = key.first, productId = key.second, quantity = qty) }
     }
+
+    /**
+     * Marks a slot rebuilt / not rebuilt / undecided. Refuses "rebuilt" while
+     * the age setting is still unconfirmed (the slot is returned unchanged).
+     */
+    fun withAction(slot: RebuildSlot, action: RebuildAction?): RebuildSlot =
+        if (action == RebuildAction.DONE && slot.needsAgeConfirmation) slot else slot.copy(action = action)
+
+    /**
+     * Ticks / unticks "age setting changed". Unticking a slot already marked
+     * rebuilt takes that decision back — it can't stay rebuilt unconfirmed.
+     */
+    fun withAgeSet(slot: RebuildSlot, value: Boolean): RebuildSlot {
+        val next = slot.copy(ageSet = value)
+        return if (next.action == RebuildAction.DONE && next.needsAgeConfirmation) next.copy(action = null) else next
+    }
+
+    /** `age_set` for `apply_slot_change`: only a rebuilt slot whose age setting changed and was confirmed. */
+    fun ageSetPayload(slot: RebuildSlot): Boolean =
+        slot.action == RebuildAction.DONE && slot.item.ageChanged && slot.ageSet
 
     /** Fresh rebuild cards for a machine: `removed` defaults to the live stock. */
     fun startRebuild(items: List<SlotChangeItem>, liveStockByTray: Map<String, Int>, packed: Map<String, Int>): List<RebuildSlot> =

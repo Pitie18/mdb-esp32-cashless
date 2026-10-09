@@ -676,6 +676,10 @@
     <string name="refill_rebuild_filled">Eingefüllt (max. %1$d)</string>
     <string name="refill_rebuild_fill_source">%1$d umgesetzt · %2$d aus dem Auto</string>
     <string name="refill_rebuild_price_set">Preis an Wahl %1$d gestellt auf %2$s</string>
+    <string name="refill_rebuild_age_set">Alterseinstellung am Automaten geändert</string>
+    <string name="refill_rebuild_age_none">ohne Altersgrenze</string>
+    <string name="refill_rebuild_age_min">ab %1$d</string>
+    <string name="refill_rebuild_age_confirm_first">Erst Alterseinstellung bestätigen.</string>
     <string name="refill_rebuild_rebuilt">Umgebaut</string>
     <string name="refill_rebuild_not_rebuilt">Nicht umgebaut</string>
     <string name="refill_rebuild_stays_open">Bleibt wie es ist und kommt bei der nächsten Tour wieder.</string>
