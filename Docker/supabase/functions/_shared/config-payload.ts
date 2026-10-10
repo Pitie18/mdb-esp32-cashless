@@ -22,7 +22,7 @@ export const CMD_RESTART = 0x30
 export const CMD_MDB_ADDRESS = 0x31
 export const CMD_MDB_RESET = 0x32
 /** Live MDB bus trace: itemNumber = seconds to trace, 0 = stop. */
-export const CMD_MDB_TRACE = 0x33
+export const CMD_MDB_TRACE = 0x35
 
 /** The firmware clamps to the same cap (MDB_TRACE_MAX_SECONDS). */
 export const MDB_TRACE_MAX_SECONDS = 1800

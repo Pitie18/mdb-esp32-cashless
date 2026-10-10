@@ -23,7 +23,7 @@ function decode(payload: Uint8Array, passkey: string) {
 
 Deno.test("a trace request carries its duration in the raw itemNumber field", () => {
   const d = decode(buildConfigPayload(CMD_MDB_TRACE, 0, PASSKEY, 300, 1_800_000_000), PASSKEY);
-  assertEquals(d.cmd, 0x33);
+  assertEquals(d.cmd, 0x35);
   assertEquals(d.item, 300);
   assertEquals(d.param, 0);
   assertEquals(d.timestamp, 1_800_000_000);

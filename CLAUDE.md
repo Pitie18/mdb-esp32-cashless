@@ -99,7 +99,7 @@ Regression tests: `mdb-slave-esp32s3/test/scale/run.sh` and
 **MQTT topics**: `/{company_id}/{device_id}/{event}` where events are: `sale`, `status`, `paxcounter`, `dex`, `mdb-log`, `card`, `credit`, `ota`, `config`, `mdb-trace`
 
 **Live MDB bus trace (`mdb_trace.h`)**: on-demand raw capture of every 9-bit word on the bus, shown in the
-machine's MDB tab (admin). Off by default; started by config cmd `0x33` (duration in seconds in the *raw*
+machine's MDB tab (admin). Off by default; started by config cmd `0x35` (duration in seconds in the *raw*
 `itemNumber` bytes 6-7 — not the price param, which goes through the scale factor; `0` = stop, capped at 1800 s;
 the device also stops by itself). `read_9`/`read_9_timeout`/`write_payload_9` push into a wait-free SPSC ring
 (`mdb_trace_push`, 32-bit atomics only — Xtensa 8/16-bit atomics take a spinlock) — no lock, no network and no

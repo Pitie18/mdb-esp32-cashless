@@ -358,7 +358,7 @@ static void publish_mdb_diag(void); // forward declaration
 // Live MDB bus trace (see mdb_trace.h). Words are captured in read_9() /
 // write_payload_9() into a lock-free ring and published as /mdb-trace batches
 // by mdb_trace_task(). Completely idle unless an operator started a trace
-// (config cmd 0x33), and it always stops by itself.
+// (config cmd 0x35), and it always stops by itself.
 static mdb_trace_ring_t s_mdb_trace;
 #define MDB_TRACE_MAX_SECONDS   1800            // hard cap per start request
 static volatile int64_t s_mdb_trace_until_us = 0;
@@ -2441,7 +2441,7 @@ static void mdb_diag_timer_cb(void *arg) {
 }
 
 /* ---------- Live MDB bus trace ----------
- * Start/stop is driven by config cmd 0x33 (itemNumber field = seconds, 0 =
+ * Start/stop is driven by config cmd 0x35 (itemNumber field = seconds, 0 =
  * stop). While active, mdb_trace_task() drains the capture ring every
  * MDB_TRACE_PUBLISH_MS and publishes plaintext JSON batches (QoS 0, not
  * retained — a trace is only worth something live) to /{company}/{device}/
