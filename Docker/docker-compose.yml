@@ -19,6 +19,7 @@ services:
       args:
         GIT_HASH: ${GIT_HASH:-unknown}
         BUILD_DATE: ${BUILD_DATE:-}
+        NODE_MAX_OLD_SPACE: ${NODE_MAX_OLD_SPACE:-3072}
     restart: unless-stopped
     ports:
       - "3000:3000"
