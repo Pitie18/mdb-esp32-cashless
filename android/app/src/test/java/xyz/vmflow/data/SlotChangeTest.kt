@@ -358,4 +358,162 @@ class SlotChangeTest {
     fun `queueReplacement without an open request plans just that slot`() {
         assertEquals(listOf(PlannedChange("t3", "z", 12)), SlotChange.queueReplacement(emptyList(), "t3", "z", 12))
     }
+
+    // ── tour end: leftovers booked at the warehouse ──────────────────────
+
+    @Test
+    fun `tour leftovers add up per product across machines, earliest best-before wins`() {
+        val byMachine = linkedMapOf(
+            "m1" to listOf(
+                TourLeftover("schorle", "Schorle", "s.png", van = 0, machine = 8, suggestedExpiry = "2027-03-01"),
+                TourLeftover("cola", "Cola", null, van = 2, machine = 0)
+            ),
+            "m2" to listOf(
+                TourLeftover("schorle", null, null, van = 1, machine = 4, suggestedExpiry = "2027-01-15"),
+                TourLeftover("water", "Wasser", null, van = 0, machine = 0)
+            )
+        )
+        val out = SlotChange.aggregateTourLeftovers(byMachine)
+        assertEquals(listOf("schorle", "cola"), out.map { it.productId })
+        assertEquals(TourLeftover("schorle", "Schorle", "s.png", van = 1, machine = 12, suggestedExpiry = "2027-01-15"), out[0])
+        assertEquals(TourLeftover("cola", "Cola", null, van = 2, machine = 0), out[1])
+    }
+
+    @Test
+    fun `the return payload takes the counted quantities and skips products counted to zero`() {
+        val aggregated = listOf(
+            TourLeftover("schorle", van = 1, machine = 12, suggestedExpiry = "2027-01-15"),
+            TourLeftover("cola", van = 2, machine = 0),
+            TourLeftover("mate", van = 3, machine = 1, suggestedExpiry = "2027-02-01")
+        )
+        val payload = SlotChange.tourReturnPayload(
+            aggregated = aggregated,
+            vanQty = mapOf("schorle" to 0, "cola" to 0),
+            machineQty = mapOf("schorle" to 10, "cola" to 0),
+            destinations = mapOf("mate" to LeftoverDestination.WASTE),
+            expiry = emptyMap(),
+            batchNumber = "Rückgabe aus Automat"
+        )
+        assertEquals(
+            listOf(
+                SlotChangeLeftoverPayload("schorle", 0, 10, LeftoverDestination.WAREHOUSE, "2027-01-15", "Rückgabe aus Automat"),
+                // Written off: no best-before date travels with it.
+                SlotChangeLeftoverPayload("mate", 3, 1, LeftoverDestination.WASTE, null, "Rückgabe aus Automat")
+            ),
+            payload
+        )
+    }
+
+    @Test
+    fun `a best-before date set by the refiller wins, a blank one means none`() {
+        val aggregated = listOf(
+            TourLeftover("a", machine = 2, suggestedExpiry = "2027-01-15"),
+            TourLeftover("b", machine = 2, suggestedExpiry = "2027-01-15"),
+            TourLeftover("c", van = 2, machine = 0, suggestedExpiry = "2027-01-15")
+        )
+        val payload = SlotChange.tourReturnPayload(
+            aggregated, emptyMap(), emptyMap(), emptyMap(),
+            expiry = mapOf("a" to "2026-12-24", "b" to ""),
+            batchNumber = null
+        )
+        assertEquals(listOf("2026-12-24", null, null), payload.map { it.expirationDate })
+    }
+
+    @Test
+    fun `a skipped machine leaves every packed rebuild unit in the van`() {
+        val slots = SlotChange.startRebuild(
+            listOf(item("i12", "t12", "schorle", "cola", 10, 10), item("i13", "t13", "cola", "mate", 8, 8)),
+            mapOf("t12" to 6, "t13" to 3),
+            packed = mapOf("cola" to 4, "mate" to 8)
+        ).map { it.copy(action = RebuildAction.SKIP) }
+        val left = SlotChange.leftovers(slots, mapOf("cola" to 4, "mate" to 8))
+        assertEquals(mapOf("cola" to (4 to 0), "mate" to (8 to 0)), left.associate { it.productId to (it.van to it.machine) })
+    }
+
+    @Test
+    fun `a resumed tour keeps its leftovers and whether they were booked`() {
+        val state = PersistedTourState(
+            step = RefillStep.SUMMARY,
+            machines = emptyList(),
+            currentMachineIndex = 0,
+            selectedWarehouseId = "w1",
+            tourId = "tour-1",
+            tourLog = emptyList(),
+            savedAt = "2026-10-10T12:00:00Z",
+            tourLeftovers = mapOf("m1" to listOf(TourLeftover("cola", "Cola", null, van = 2, machine = 3, suggestedExpiry = "2027-01-01"))),
+            leftoversReturned = true
+        )
+        assertEquals(state, json.decodeFromString<PersistedTourState>(json.encodeToString(state)))
+
+        val old = """{"step":"SUMMARY","machines":[],"currentMachineIndex":0,"selectedWarehouseId":null,""" +
+            """"tourId":"t","savedAt":"x","tourLog":[]}"""
+        val restored = json.decodeFromString<PersistedTourState>(old)
+        assertEquals(emptyMap<String, List<TourLeftover>>(), restored.tourLeftovers)
+        assertFalse(restored.leftoversReturned)
+    }
+
+    // ── history: rebuilt slots in the stock_refill_tour row ──────────────
+
+    @Test
+    fun `rebuilt lines list every slot quit as rebuilt with something filled in`() {
+        val cola = SlotChangeProductRef(name = "Bacardi Limon")
+        val slots = listOf(
+            RebuildSlot(item("i14", "t14", "schorle", "cola", 10, 8).copy(toProduct = cola), liveStock = 0, removed = 0, filled = 8, action = RebuildAction.DONE),
+            RebuildSlot(item("i12", "t12", "schorle", "cola", 10, 5).copy(toProduct = cola), liveStock = 0, removed = 0, filled = 5, action = RebuildAction.DONE),
+            RebuildSlot(item("i13", "t13", "x", "cola", 10, 5), liveStock = 0, removed = 0, filled = 5, action = RebuildAction.SKIP),
+            RebuildSlot(item("i15", "t15", "x", "cola", 10, 5), liveStock = 0, removed = 0, filled = 0, action = RebuildAction.DONE),
+            RebuildSlot(item("i16", "t16", "x", null, 10, 5), liveStock = 0, removed = 3, filled = 0, action = RebuildAction.DONE)
+        )
+        assertEquals(
+            listOf(
+                RebuiltSlotLine("cola", "Bacardi Limon", 5, 12),
+                RebuiltSlotLine("cola", "Bacardi Limon", 8, 14)
+            ),
+            SlotChange.rebuiltLines(slots)
+        )
+    }
+
+    // ── pack step: rebuild units in the normal packing list ──────────────
+
+    @Test
+    fun `rebuild pack rows sum the machines in scope and leave out what only moves`() {
+        val items = listOf(
+            item("i12", "t12", "schorle", "cola", 10, 10).copy(toProduct = SlotChangeProductRef("Cola", "cola.png")),
+            item("i13", "t13", "cola", "mate", 8, 8).copy(toProduct = SlotChangeProductRef("Mate"))
+        )
+        val rows = SlotChange.rebuildPackRows(
+            needsByMachine = listOf(
+                "m1" to mapOf("cola" to 4, "mate" to 8, "duplo" to 0),
+                "m2" to mapOf("cola" to 6)
+            ),
+            committed = mapOf("m1" to mapOf("cola" to 4, "mate" to 5), "m2" to mapOf("cola" to 6)),
+            items = items
+        )
+        assertEquals(
+            listOf(
+                RebuildPackRow("cola", "Cola", "cola.png", need = 10, committed = 10),
+                RebuildPackRow("mate", "Mate", null, need = 8, committed = 5)
+            ),
+            rows
+        )
+    }
+
+    @Test
+    fun `rebuild-only lines slot into the warehouse walk without moving the normal ones`() {
+        data class Line(val id: String, val name: String?, val qty: Int)
+        val normal = listOf(Line("a", "Apfel", 3), Line("c", "Cola", 9), Line("x", "Xtra", 1))
+        val rebuild = listOf(Line("b", "Bier", 2), Line("z", "Zitrone", 5))
+        val pickOrder = mapOf("a" to 0, "b" to 1, "c" to 2, "x" to 3)
+        val sorted = SlotChange.sortForPacking(
+            normal + rebuild, pickOrder, { it.id }, { it.name }, { it.qty }, nullsLast(naturalOrder())
+        )
+        // `z` has no warehouse position: after every positioned line.
+        assertEquals(listOf("a", "b", "c", "x", "z"), sorted.map { it.id })
+
+        // Without a walk order: quantity first, like the packing list itself.
+        val byQty = SlotChange.sortForPacking(
+            normal + rebuild, emptyMap(), { it.id }, { it.name }, { it.qty }, nullsLast(naturalOrder())
+        )
+        assertEquals(listOf("c", "z", "a", "b", "x"), byQty.map { it.id })
+    }
 }

@@ -33,9 +33,10 @@ import xyz.vmflow.data.RefillTourStoreHolder
 import xyz.vmflow.data.ReplacementSuggestion
 import xyz.vmflow.data.SlotChange
 import xyz.vmflow.data.SlotChangeApplyItem
-import xyz.vmflow.data.SlotChangeLeftoverPayload
 import xyz.vmflow.data.SlotChangeRepository
+import xyz.vmflow.data.TourLeftover
 import xyz.vmflow.data.TourStore
+import xyz.vmflow.data.RebuiltSlotLine
 import xyz.vmflow.data.TrayRepository
 import xyz.vmflow.data.WarehouseRepository
 import xyz.vmflow.models.CombinedPackingItem
@@ -188,10 +189,36 @@ data class RefillUiState(
     val rebuildMachineId: String? = null,
     /** At-machine rebuild cards of the current stop (web `currentRebuild`). Not persisted. */
     val currentRebuild: List<RebuildSlot> = emptyList(),
-    /** `productId -> destination` of left-over goods; missing = warehouse. */
+    /**
+     * `productId -> YYYY-MM-DD` best-before suggestion for goods taken out of
+     * the current stop's machine (last refill batch of that product into it).
+     * Stored with the stop's [tourLeftovers] when the machine is quit.
+     */
+    val rebuildExpirySuggestions: Map<String, String> = emptyMap(),
+    /**
+     * Slot change leftovers riding in the van, `machineId -> per product`,
+     * booked at the end of the tour ([RefillViewModel.returnTourLeftovers]).
+     * Overwritten per machine on every successful quit, so a retry never
+     * counts twice. Persisted with the tour.
+     */
+    val tourLeftovers: Map<String, List<TourLeftover>> = emptyMap(),
+    /** [tourLeftovers] have been booked back. Persisted. */
+    val leftoversReturned: Boolean = false,
+    /** Summary: `productId -> unused (van) units` as counted at the warehouse; missing = computed. */
+    val leftoverVanQty: Map<String, Int> = emptyMap(),
+    /** Summary: `productId -> units taken out of machines` as counted; missing = computed. */
+    val leftoverMachineQty: Map<String, Int> = emptyMap(),
+    /** Summary: `productId -> destination` of left-over goods; missing = warehouse. */
     val leftoverDestinations: Map<String, LeftoverDestination> = emptyMap(),
-    /** `productId -> YYYY-MM-DD` best-before date for goods taken out of the machine. */
+    /**
+     * Summary: `productId -> YYYY-MM-DD` best-before date the refiller set; an
+     * empty string means explicitly "no date"; missing = the suggestion.
+     */
     val leftoverExpiry: Map<String, String> = emptyMap(),
+    /** `return_slot_change_leftovers` is in flight. */
+    val isReturningLeftovers: Boolean = false,
+    /** Raw message of the last failed return; the summary card shows it with a retry. */
+    val leftoverReturnError: String? = null,
     /**
      * One-shot: how many review replacements were just queued into change
      * requests, for the "queued for the rebuild" snackbar. Cleared by
@@ -228,15 +255,21 @@ val RefillUiState.allReplacementsHandled: Boolean
 val RefillUiState.rebuildReady: Boolean
     get() = currentRebuild.all { it.action != null }
 
+/** The tour's slot change leftovers per product, summed over every machine (summary card). */
+val RefillUiState.aggregatedTourLeftovers: List<TourLeftover>
+    get() = SlotChange.aggregateTourLeftovers(tourLeftovers)
+
+/** Leftover goods are in the van and not booked back yet — leaving the summary asks first. */
+val RefillUiState.hasUnreturnedLeftovers: Boolean
+    get() = !leftoversReturned && aggregatedTourLeftovers.isNotEmpty()
+
 /**
- * What is left over at the current stop, per product (web `rebuildLeftovers`).
- * Undecided slots count as rebuilt so the panel can be read early.
+ * The best-before date the summary shows and books for [productId]: what the
+ * refiller set ("" = explicitly none), else the suggestion.
  */
-val RefillUiState.rebuildLeftovers: List<RebuildLeftover>
-    get() {
-        val machine = machines.find { it.machine.id == rebuildMachineId } ?: return emptyList()
-        return SlotChange.leftovers(currentRebuild, machine.rebuildPacked)
-    }
+fun RefillUiState.leftoverExpiryFor(leftover: TourLeftover): String? =
+    if (leftover.productId in leftoverExpiry) leftoverExpiry[leftover.productId]?.takeIf { it.isNotBlank() }
+    else leftover.suggestedExpiry
 
 /** Rebuild units committed to a product across every machine (packing step). */
 fun RefillUiState.rebuildCommittedTotal(productId: String): Int =
@@ -1353,6 +1386,8 @@ class RefillViewModel : ViewModel() {
                 isSaving = true,
                 tourId = tourId,
                 tourLog = emptyList(),
+                tourLeftovers = emptyMap(),
+                leftoversReturned = false,
                 machines = RefillTourLogic.applyTourInclusion(
                     machines = state.machines,
                     packedItems = state.packedItems,
@@ -1477,7 +1512,9 @@ class RefillViewModel : ViewModel() {
             tourLog = tourLog,
             // Placeholder only: TourStore.save() re-stamps this from its own
             // clock, so the write and the expiry check share one time source.
-            savedAt = ""
+            savedAt = "",
+            tourLeftovers = tourLeftovers,
+            leftoversReturned = leftoversReturned
         )
     }
 
@@ -1595,7 +1632,7 @@ class RefillViewModel : ViewModel() {
      * log entry with 0/0 plus an `activity_log` row — so the history shows
      * the machine was opened. Ported from iOS `confirmRefill`.
      */
-    fun confirmRefill(machineId: String, returnBatchLabel: String) {
+    fun confirmRefill(machineId: String) {
         val snapshot = _uiState.value
         val machine = snapshot.machines.find { it.machine.id == machineId } ?: return
         // Re-entrancy guards. iOS disables only its *Confirm* button on
@@ -1640,15 +1677,19 @@ class RefillViewModel : ViewModel() {
 
         viewModelScope.launch {
             // `apply_slot_change` runs **before** the normal refill: it
-            // switches the rebuilt slots and books the leftovers. When it
+            // switches the rebuilt slots (the leftovers ride along in the van
+            // and are booked at the end of the tour). When it
             // fails, nothing else is booked and the machine stays put — the
             // driver confirms again, and the RPC's (request, tour)
             // idempotency makes the retry safe even if the first call in fact
             // committed. The normal refill below never touches rebuilt slots.
             var slotsRebuilt = 0
+            // Rebuilt slots go into the machine's audit row and tour log next
+            // to the normal refill — `refill_machine_trays` never sees them.
+            val rebuilt = SlotChange.rebuiltLines(rebuildSlots)
             if (rebuildSlots.isNotEmpty()) {
                 _uiState.update { it.copy(isSaving = true, error = null, refillFailedAttempts = null) }
-                val applied = applyRebuild(snapshot, machine, rebuildSlots, skipAll = false, returnBatchLabel)
+                val applied = applyRebuild(snapshot, machine, rebuildSlots, skipAll = false)
                 val failure = applied.exceptionOrNull()
                 if (failure != null) {
                     _uiState.update {
@@ -1675,7 +1716,8 @@ class RefillViewModel : ViewModel() {
                     traysSnapshot = emptyList(),
                     traysCount = 0,
                     itemsAdded = 0,
-                    slotsRebuilt = slotsRebuilt
+                    slotsRebuilt = slotsRebuilt,
+                    rebuilt = rebuilt
                 )
                 _uiState.update { it.copy(isSaving = false) }
                 return@launch
@@ -1716,7 +1758,8 @@ class RefillViewModel : ViewModel() {
                     traysSnapshot = traysToRefill,
                     traysCount = rows.size,
                     itemsAdded = itemsAdded,
-                    slotsRebuilt = slotsRebuilt
+                    slotsRebuilt = slotsRebuilt,
+                    rebuilt = rebuilt
                 )
                 _uiState.update { it.copy(isSaving = false) }
                 return@launch
@@ -1744,7 +1787,7 @@ class RefillViewModel : ViewModel() {
      * `stock_refill_tour_skip` activity row carries **no** extra metadata,
      * matching iOS and the PWA. Ported from iOS `skipMachine`.
      */
-    fun skipMachine(machineId: String, returnBatchLabel: String) {
+    fun skipMachine(machineId: String) {
         val snapshot = _uiState.value
         val machine = snapshot.machines.find { it.machine.id == machineId } ?: return
         // Same guards as `confirmRefill`, and `isSaving` matters most here:
@@ -1757,7 +1800,7 @@ class RefillViewModel : ViewModel() {
         if (machine.isRefilled || machine.isSkipped) return
 
         // Not rebuilt: every accepted slot stays open for the next tour, and
-        // what was packed for them goes back to the batches it came from.
+        // what was packed for them rides back in the van as tour leftovers.
         // Removed/filled play no part in a skip, so cards that were never
         // prepared can be built from the items alone.
         val rebuildSlots = when {
@@ -1769,7 +1812,7 @@ class RefillViewModel : ViewModel() {
         viewModelScope.launch {
             if (rebuildSlots.isNotEmpty()) {
                 _uiState.update { it.copy(isSaving = true, error = null, refillFailedAttempts = null) }
-                val failure = applyRebuild(snapshot, machine, rebuildSlots, skipAll = true, returnBatchLabel)
+                val failure = applyRebuild(snapshot, machine, rebuildSlots, skipAll = true)
                     .exceptionOrNull()
                 if (failure != null) {
                     _uiState.update {
@@ -1854,6 +1897,8 @@ class RefillViewModel : ViewModel() {
                 selectedWarehouseId = saved.selectedWarehouseId,
                 tourId = saved.tourId,
                 tourLog = saved.tourLog,
+                tourLeftovers = saved.tourLeftovers,
+                leftoversReturned = saved.leftoversReturned,
                 currentMachineId = current?.machine?.id,
                 hasSavedTour = false,
                 error = null,
@@ -1912,8 +1957,13 @@ class RefillViewModel : ViewModel() {
         traysSnapshot: List<RefillTray>,
         traysCount: Int,
         itemsAdded: Int,
-        slotsRebuilt: Int = 0
+        slotsRebuilt: Int = 0,
+        rebuilt: List<RebuiltSlotLine> = emptyList()
     ) {
+        // Rebuilt slots count like refilled trays: the summary's "items
+        // added" and the history row must include what went into them.
+        val totalTrays = traysCount + rebuilt.size
+        val totalAdded = itemsAdded + rebuilt.sumOf { it.quantity }
         val machineName = _uiState.value.machines
             .find { it.machine.id == machineId }?.machine?.displayName.orEmpty()
 
@@ -1925,8 +1975,8 @@ class RefillViewModel : ViewModel() {
                 tourLog = current.tourLog + TourLogEntry(
                     machineId = machineId,
                     machineName = machineName,
-                    traysRefilled = traysCount,
-                    totalAdded = itemsAdded,
+                    traysRefilled = totalTrays,
+                    totalAdded = totalAdded,
                     skipped = false,
                     slotsRebuilt = slotsRebuilt
                 )
@@ -1941,7 +1991,9 @@ class RefillViewModel : ViewModel() {
         // `models/ActivityFeed.kt:37-38` and `:59-63`, consumed in
         // `data/ActivityFeedBuilder.kt:86-100`. `product_id` is written for
         // the PWA/iOS readers; this app's decoder ignores it. A misspelling
-        // here renders as an empty refill card.
+        // here renders as an empty refill card. Rebuilt slots are appended as
+        // their own lines (`item_number`, `rebuild: true`) — extra keys the
+        // existing decoders ignore — and counted in both totals.
         RefillRepository.writeTourActivity(
             action = "stock_refill_tour",
             machineId = machineId,
@@ -1949,8 +2001,8 @@ class RefillViewModel : ViewModel() {
             tourId = state.tourId,
             warehouseId = state.selectedWarehouseId,
             extra = buildMap {
-                put("trays_refilled", JsonPrimitive(traysCount))
-                put("total_added", JsonPrimitive(itemsAdded))
+                put("trays_refilled", JsonPrimitive(totalTrays))
+                put("total_added", JsonPrimitive(totalAdded))
                 put(
                     "products",
                     JsonArray(
@@ -1963,6 +2015,14 @@ class RefillViewModel : ViewModel() {
                                 )
                                 put("product_name", JsonPrimitive(refillTray.productLabel))
                                 put("quantity", JsonPrimitive(refillTray.fillAmount))
+                            }
+                        } + rebuilt.map { line ->
+                            buildJsonObject {
+                                put("product_id", JsonPrimitive(line.productId))
+                                put("product_name", JsonPrimitive(line.productName ?: "Slot ${line.itemNumber}"))
+                                put("quantity", JsonPrimitive(line.quantity))
+                                put("item_number", JsonPrimitive(line.itemNumber))
+                                put("rebuild", JsonPrimitive(true))
                             }
                         }
                     )
@@ -2063,8 +2123,9 @@ class RefillViewModel : ViewModel() {
      * Builds the rebuild cards of the current stop, once per stop. Shown at
      * once from the stock known locally, then refreshed with the slots' live
      * stock: "removed" defaults to what is in the slot *now*, so sales between
-     * packing and filling are already accounted for. Also pre-fills the
-     * best-before date of goods coming out of the machine. Clears the cards
+     * packing and filling are already accounted for. Also looks up the
+     * best-before suggestion for goods coming out of the machine, which
+     * travels with the stop's leftovers to the summary. Clears the cards
      * when the current stop has no change note.
      */
     private fun prepareRebuildForCurrentMachine() {
@@ -2077,8 +2138,7 @@ class RefillViewModel : ViewModel() {
                     it.copy(
                         rebuildMachineId = null,
                         currentRebuild = emptyList(),
-                        leftoverDestinations = emptyMap(),
-                        leftoverExpiry = emptyMap()
+                        rebuildExpirySuggestions = emptyMap()
                     )
                 }
             }
@@ -2096,8 +2156,7 @@ class RefillViewModel : ViewModel() {
                     machine.trays.associate { tray -> tray.tray.id to tray.tray.currentStock },
                     packed
                 ),
-                leftoverDestinations = emptyMap(),
-                leftoverExpiry = emptyMap()
+                rebuildExpirySuggestions = emptyMap()
             )
         }
 
@@ -2127,11 +2186,7 @@ class RefillViewModel : ViewModel() {
             if (found.isNotEmpty()) {
                 _uiState.update { s ->
                     if (s.rebuildMachineId != machineId) return@update s
-                    var expiry = s.leftoverExpiry
-                    for ((productId, date) in found) {
-                        if (productId !in expiry) expiry = expiry + (productId to date)
-                    }
-                    s.copy(leftoverExpiry = expiry)
+                    s.copy(rebuildExpirySuggestions = s.rebuildExpirySuggestions + found)
                 }
             }
         }
@@ -2178,23 +2233,111 @@ class RefillViewModel : ViewModel() {
         }
     }
 
-    fun setLeftoverDestination(productId: String, destination: LeftoverDestination) {
-        _uiState.update {
-            if (it.isSaving) it else it.copy(leftoverDestinations = it.leftoverDestinations + (productId to destination))
+    // ---------------------------------------------------------------------
+    // Tour end: slot change leftovers booked back at the warehouse
+    // (`return_slot_change_leftovers`). The refiller counts what is really
+    // in the van now; the computed numbers are only the defaults.
+    // ---------------------------------------------------------------------
+
+    /** Summary: unused (van) units of [productId] as counted. */
+    fun setLeftoverVanQty(productId: String, value: Int) = updateLeftoverEdits {
+        it.copy(leftoverVanQty = it.leftoverVanQty + (productId to value.coerceAtLeast(0)))
+    }
+
+    /** Summary: units of [productId] taken out of machines, as counted. */
+    fun setLeftoverMachineQty(productId: String, value: Int) = updateLeftoverEdits {
+        it.copy(leftoverMachineQty = it.leftoverMachineQty + (productId to value.coerceAtLeast(0)))
+    }
+
+    fun setLeftoverDestination(productId: String, destination: LeftoverDestination) = updateLeftoverEdits {
+        it.copy(leftoverDestinations = it.leftoverDestinations + (productId to destination))
+    }
+
+    /** Best-before date (`YYYY-MM-DD`) for machine goods of [productId]; `null` = explicitly no date. */
+    fun setLeftoverExpiry(productId: String, date: String?) = updateLeftoverEdits {
+        it.copy(leftoverExpiry = it.leftoverExpiry + (productId to date.orEmpty()))
+    }
+
+    /** Locked while the return is in flight and once it is booked. */
+    private fun updateLeftoverEdits(transform: (RefillUiState) -> RefillUiState) {
+        _uiState.update { if (it.isReturningLeftovers || it.leftoversReturned) it else transform(it) }
+    }
+
+    /**
+     * Books the tour's leftovers in one go. Products the refiller counted
+     * down to zero are left out. Idempotent per tour on the server, so a
+     * retry after a lost response cannot book twice. On success the flag is
+     * persisted with the tour, so a resumed summary does not offer it again.
+     *
+     * @param batchLabel localized batch number of the return batch
+     *   ("Rückgabe aus Automat") — the ViewModel has no resources.
+     */
+    fun returnTourLeftovers(batchLabel: String) {
+        val snapshot = _uiState.value
+        if (snapshot.isReturningLeftovers || snapshot.leftoversReturned) return
+        if (snapshot.tourId.isEmpty()) return
+        val payload = SlotChange.tourReturnPayload(
+            aggregated = snapshot.aggregatedTourLeftovers,
+            vanQty = snapshot.leftoverVanQty,
+            machineQty = snapshot.leftoverMachineQty,
+            destinations = snapshot.leftoverDestinations,
+            expiry = snapshot.leftoverExpiry,
+            batchNumber = batchLabel
+        )
+        _uiState.update { it.copy(isReturningLeftovers = true, leftoverReturnError = null) }
+        viewModelScope.launch {
+            val result = SlotChangeRepository.returnTourLeftovers(
+                tourId = snapshot.tourId,
+                warehouseId = snapshot.selectedWarehouseId,
+                leftovers = payload
+            )
+            val failure = result.exceptionOrNull()
+            val next = _uiState.updateAndGet {
+                if (failure != null) {
+                    it.copy(isReturningLeftovers = false, leftoverReturnError = failure.message ?: "")
+                } else {
+                    it.copy(isReturningLeftovers = false, leftoversReturned = true, leftoverReturnError = null)
+                }
+            }
+            if (failure == null) tourStore.save(next.toPersistedTourState())
         }
     }
 
-    /** Best-before date (`YYYY-MM-DD`) for goods of [productId] taken out of the machine; `null` clears it. */
-    fun setLeftoverExpiry(productId: String, date: String?) {
-        _uiState.update {
-            if (it.isSaving) {
-                it
-            } else {
-                it.copy(
-                    leftoverExpiry = if (date.isNullOrBlank()) it.leftoverExpiry - productId
-                    else it.leftoverExpiry + (productId to date)
-                )
-            }
+    /**
+     * Whether the tour waiting to be resumed still has leftovers in the van
+     * that were never booked back — discarding it asks first.
+     */
+    fun savedTourHasUnreturnedLeftovers(): Boolean {
+        val saved = tourStore.load() ?: return false
+        return !saved.leftoversReturned && SlotChange.aggregateTourLeftovers(saved.tourLeftovers).isNotEmpty()
+    }
+
+    /**
+     * Stores what [machine]'s stop leaves in the van, replacing an earlier
+     * entry of the same machine (a retried quit must not count twice).
+     * Only with a warehouse: without one nothing was deducted at tour start,
+     * so there is nothing to book back — as before.
+     */
+    private fun storeTourLeftovers(machine: RefillMachine, leftovers: List<RebuildLeftover>) {
+        _uiState.update { state ->
+            if (state.selectedWarehouseId == null) return@update state
+            val suggestions = if (state.rebuildMachineId == machine.machine.id) state.rebuildExpirySuggestions else emptyMap()
+            val entries = leftovers
+                .filter { it.van + it.machine > 0 }
+                .map {
+                    TourLeftover(
+                        productId = it.productId,
+                        name = it.name,
+                        imagePath = it.imagePath,
+                        van = it.van,
+                        machine = it.machine,
+                        suggestedExpiry = if (it.machine > 0) suggestions[it.productId] else null
+                    )
+                }
+            state.copy(
+                tourLeftovers = if (entries.isEmpty()) state.tourLeftovers - machine.machine.id
+                else state.tourLeftovers + (machine.machine.id to entries)
+            )
         }
     }
 
@@ -2218,19 +2361,18 @@ class RefillViewModel : ViewModel() {
      * the refill (three attempts, 1 s / 3 s apart — safe, the RPC is
      * idempotent per (request, tour)). Returns how many slots were rebuilt.
      *
-     * [skipAll] is the "machine skipped" path: every slot stays open and the
-     * units packed for them go back to the warehouse.
+     * [skipAll] is the "machine skipped" path: every slot stays open.
      *
-     * Leftovers are only sent with a warehouse: without one nothing was
-     * deducted at tour start, so there is nothing to return — and the RPC
-     * refuses warehouse returns without one.
+     * No leftovers are sent: what is left over rides along in the van and is
+     * booked at the end of the tour ([returnTourLeftovers]). On success this
+     * stop's leftovers — for a skip, every unit packed for it — are stored in
+     * the tour state.
      */
     private suspend fun applyRebuild(
         state: RefillUiState,
         machine: RefillMachine,
         slots: List<RebuildSlot>,
-        skipAll: Boolean,
-        returnBatchLabel: String
+        skipAll: Boolean
     ): Result<Int> {
         val request = machine.changeRequest ?: return Result.success(0)
         if (slots.isEmpty()) return Result.success(0)
@@ -2245,25 +2387,6 @@ class RefillViewModel : ViewModel() {
                 ageSet = SlotChange.ageSetPayload(it)
             )
         }
-        val warehouseId = state.selectedWarehouseId
-        val leftovers = if (warehouseId == null) {
-            emptyList()
-        } else {
-            SlotChange.leftovers(effective, machine.rebuildPacked).map { l ->
-                SlotChangeLeftoverPayload(
-                    productId = l.productId,
-                    vanQty = l.van,
-                    machineQty = l.machine,
-                    destination = if (skipAll) {
-                        LeftoverDestination.WAREHOUSE
-                    } else {
-                        state.leftoverDestinations[l.productId] ?: LeftoverDestination.WAREHOUSE
-                    },
-                    expirationDate = if (l.machine > 0) state.leftoverExpiry[l.productId] else null,
-                    batchNumber = returnBatchLabel
-                )
-            }
-        }
 
         var lastError: Throwable? = null
         for (attempt in 1..MAX_REFILL_ATTEMPTS) {
@@ -2271,11 +2394,14 @@ class RefillViewModel : ViewModel() {
             val result = SlotChangeRepository.applySlotChange(
                 requestId = request.id,
                 tourId = state.tourId,
-                warehouseId = warehouseId,
+                warehouseId = state.selectedWarehouseId,
                 items = items,
-                leftovers = leftovers
+                leftovers = emptyList()
             )
-            if (result.isSuccess) return Result.success(items.count { it.action == RebuildAction.DONE })
+            if (result.isSuccess) {
+                storeTourLeftovers(machine, SlotChange.leftovers(effective, machine.rebuildPacked))
+                return Result.success(items.count { it.action == RebuildAction.DONE })
+            }
             lastError = result.exceptionOrNull()
         }
         return Result.failure(lastError ?: IllegalStateException("apply_slot_change failed"))

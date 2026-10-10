@@ -58,7 +58,7 @@ Barcode-driven stock intake, **FIFO batch tracking** with expiry dates, per-ware
 ### 🔁 Guided Refill Tours
 A step-by-step refill wizard generates per-machine packing lists from live warehouse stock, walks the operator through the route, deducts inventory FIFO, and logs the whole tour for history and audit.
 
-**Slot re-assignment:** the web app shows which products need more spirals and which slow sellers can go; you rearrange slots by drag & drop on the machine layout. The plan is saved as a change request and appears as a change note on the next refill tour, where the refiller accepts each slot, packs what it needs and confirms it at the machine. Leftover goods are booked back to the warehouse or written off.
+**Slot re-assignment:** the web app shows which products need more spirals and which slow sellers can go; you rearrange slots by drag & drop on the machine layout. The plan is saved as a change request and appears as a change note on the next refill tour, where the refiller accepts each slot, packs what it needs (marked in the normal packing list) and confirms it at the machine. Leftover goods are counted back at the warehouse at the end of the tour and booked back or written off.
 
 </td>
 </tr>

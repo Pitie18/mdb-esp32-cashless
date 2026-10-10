@@ -117,3 +117,11 @@ val DealUpcomingContainerLight = Color(0xFFFFE0B2)
 val DealUpcomingContentLight = Color(0xFF7A3E00)
 val DealUpcomingContainerDark = Color(0xFF5A3300)
 val DealUpcomingContentDark = Color(0xFFFFCC80)
+
+// ─── Slot rebuild ("Umbau") ─────────────────────────────────────────────────
+// Marks what a slot rebuild adds to a refill tour — the rebuild lines and
+// "+N rebuild" badges in the packing list, the change note's pointer to them.
+// Violet so it reads apart from every stock/status hue the wizard already
+// uses (green/orange/red/blue); one fixed token rather than a scheme role,
+// and mid-tone enough to hold contrast on light and dark surfaces alike.
+val RebuildViolet = Color(0xFF8B5CF6)

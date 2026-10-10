@@ -3,29 +3,14 @@ import SwiftUI
 /// Refill step, at the machine: rebuild the slots of the change note. The
 /// refiller counts what comes out (sales since packing are already in the live
 /// stock), fills the new product, sets the price and marks each slot rebuilt or
-/// not. What is left over goes back to the warehouse or is written off. Nothing
-/// is booked until the machine is confirmed (`apply_slot_change`). Mirrors the
-/// PWA's `RefillRebuildSection.vue`.
+/// not. Nothing is booked until the machine is confirmed (`apply_slot_change`).
+/// What is left over rides along in the van and is booked back at the end of
+/// the tour, on the summary step. Mirrors the PWA's `RefillRebuildSection.vue`.
 struct RefillRebuildSection: View {
     @ObservedObject var viewModel: RefillWizardViewModel
     let machineId: UUID
 
     private var isPrepared: Bool { viewModel.currentRebuildMachineId == machineId }
-
-    private var leftovers: [RebuildLeftover] {
-        // Without a warehouse nothing was deducted, so nothing is booked back.
-        guard isPrepared, viewModel.selectedWarehouseId != nil else { return [] }
-        return viewModel.rebuildLeftovers
-    }
-
-    private static let dayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .current
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -46,8 +31,14 @@ struct RefillRebuildSection: View {
                 ForEach(viewModel.currentRebuild) { slot in
                     slotCard(slot)
                 }
-                if !leftovers.isEmpty {
-                    leftoverPanel
+                // Without a warehouse nothing was deducted, so nothing is
+                // booked back.
+                if viewModel.selectedWarehouseId != nil {
+                    Label("Take removed goods with you – they are booked back at the end of the tour.", systemImage: "shippingbox")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 4)
                 }
             }
         }
@@ -304,121 +295,5 @@ struct RefillRebuildSection: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.4 : 1)
-    }
-
-    // MARK: - Leftovers
-
-    private var leftoverPanel: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Left over")
-                    .font(.subheadline.weight(.semibold))
-                Text("Booked when you confirm the machine.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            ForEach(leftovers) { leftover in
-                Divider()
-                leftoverRow(leftover)
-            }
-        }
-        .padding(14)
-        .background {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(.regularMaterial)
-                .shadow(color: .black.opacity(0.06), radius: 6, y: 2)
-        }
-    }
-
-    private func leftoverRow(_ leftover: RebuildLeftover) -> some View {
-        let destination = viewModel.leftoverDestination(productId: leftover.productId)
-        let origin: String = [
-            leftover.machine > 0 ? String(localized: "\(leftover.machine) taken out of the machine") : nil,
-            leftover.van > 0 ? String(localized: "\(leftover.van) packed but not used") : nil,
-        ]
-        .compactMap { $0 }
-        .joined(separator: " · ")
-
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                ProductImage(imagePath: leftover.imagePath, size: 32)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(leftover.name ?? "")
-                        .font(.subheadline)
-                        + Text(verbatim: " ")
-                        + Text("\(leftover.total) pcs").font(.subheadline.bold())
-                    Text(origin)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 4)
-            }
-
-            Picker("Destination", selection: Binding(
-                get: { viewModel.leftoverDestination(productId: leftover.productId) },
-                set: { viewModel.setLeftoverDestination(productId: leftover.productId, destination: $0) }
-            )) {
-                Text("To warehouse").tag(LeftoverDestination.warehouse)
-                Text("Write off").tag(LeftoverDestination.waste)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
-            if destination == .warehouse {
-                if leftover.machine > 0 {
-                    expiryRow(productId: leftover.productId)
-                }
-                if leftover.van > 0 {
-                    Text("Unused goods go back to the batch they were packed from.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if leftover.machine > 0 {
-                    Text("Goods from the machine become a new batch with this date.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-    }
-
-    /// Best-before date of goods coming out of the machine (pre-filled from
-    /// the batch the last refill came from; the refiller confirms it).
-    @ViewBuilder
-    private func expiryRow(productId: UUID) -> some View {
-        if let stored = viewModel.leftoverExpiry[productId],
-           let date = Self.dayFormatter.date(from: stored) {
-            HStack(spacing: 8) {
-                DatePicker(
-                    "Best before",
-                    selection: Binding(
-                        get: { date },
-                        set: { viewModel.setLeftoverExpiry(productId: productId, date: Self.dayFormatter.string(from: $0)) }
-                    ),
-                    displayedComponents: .date
-                )
-                .font(.subheadline)
-                Button {
-                    viewModel.setLeftoverExpiry(productId: productId, date: nil)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel(Text("Clear"))
-            }
-        } else {
-            Button {
-                viewModel.setLeftoverExpiry(productId: productId, date: Self.dayFormatter.string(from: Date()))
-            } label: {
-                Label("Add best-before date", systemImage: "calendar.badge.plus")
-                    .font(.subheadline)
-            }
-            .buttonStyle(.borderless)
-        }
     }
 }

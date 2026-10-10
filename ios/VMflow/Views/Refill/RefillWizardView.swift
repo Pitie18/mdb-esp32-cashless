@@ -6,6 +6,9 @@ struct RefillWizardView: View {
     @EnvironmentObject private var realtime: RealtimeService
     @Environment(\.scenePhase) private var scenePhase
     @State private var showResumeAlert = false
+    /// "New Tour" on a saved tour whose slot change leftovers were not
+    /// booked back yet asks once more.
+    @State private var confirmDiscardLeftovers = false
 
     /// Bumps whenever a sale is inserted, a tray is mutated, or warehouse
     /// stock changes. Used to refresh the packing list so new sales that push
@@ -67,22 +70,20 @@ struct RefillWizardView: View {
             }
         }
         .alert("Resume Tour?", isPresented: $showResumeAlert) {
-            Button("Resume") {
-                // Restore the snapshot, then immediately pull live tray stock so
-                // the resumed tour reflects sales that happened while away
-                // (the snapshot holds tour-start stock) and re-flags the
-                // "sold during tour" badges against the live baseline.
-                if viewModel.resumeTour() {
-                    Task { await viewModel.refreshFromRealtime() }
-                }
-            }
+            Button("Resume") { resumeSavedTour() }
             Button("New Tour", role: .destructive) {
-                RefillWizardViewModel.clearSavedTour()
-                viewModel.hasSavedTour = false
-                Task { await viewModel.loadData() }
+                if RefillWizardViewModel.savedTourHasUnreturnedLeftovers {
+                    confirmDiscardLeftovers = true
+                } else {
+                    startNewTour()
+                }
             }
         } message: {
             Text("You have an unfinished refill tour. Would you like to continue where you left off?")
+        }
+        .alert("Leftover goods have not been booked back yet. Finish anyway?", isPresented: $confirmDiscardLeftovers) {
+            Button("Finish anyway", role: .destructive) { startNewTour() }
+            Button("Resume", role: .cancel) { resumeSavedTour() }
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.error != nil },
@@ -107,6 +108,22 @@ struct RefillWizardView: View {
             guard newPhase == .active else { return }
             Task { await viewModel.refreshFromRealtime() }
         }
+    }
+
+    /// Restore the snapshot, then immediately pull live tray stock so the
+    /// resumed tour reflects sales that happened while away (the snapshot
+    /// holds tour-start stock) and re-flags the "sold during tour" badges
+    /// against the live baseline.
+    private func resumeSavedTour() {
+        if viewModel.resumeTour() {
+            Task { await viewModel.refreshFromRealtime() }
+        }
+    }
+
+    private func startNewTour() {
+        RefillWizardViewModel.clearSavedTour()
+        viewModel.hasSavedTour = false
+        Task { await viewModel.loadData() }
     }
 
     // MARK: - Step Indicator

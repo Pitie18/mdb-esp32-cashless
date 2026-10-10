@@ -164,7 +164,9 @@ struct PackingStepView: View {
 
 /// Today's product-centric list — extracted unchanged from PackingStepView.
 /// Renders cards grouped by product with expandable per-machine sub-rows.
-/// Used when the active chip is `.all`.
+/// Used when the active chip is `.all`. Slot rebuild units sit in the same
+/// list, in warehouse order: a violet "+N rebuild" badge on the product's
+/// card, or a violet row of their own (`RebuildPackRowView`).
 private struct AllPackingList: View {
     @ObservedObject var viewModel: RefillWizardViewModel
     @Binding var selectedProduct: PackingStepView.ProductSelection?
@@ -173,12 +175,18 @@ private struct AllPackingList: View {
         VStack(spacing: 12) {
             // A machine with only a change note has nothing to pack here —
             // don't claim "all stocked" next to its note.
-            if viewModel.visibleCombinedPackingList.isEmpty && !viewModel.isLoading
+            let rows = viewModel.packRows(for: .all)
+            if rows.isEmpty && !viewModel.isLoading
                 && viewModel.machinesWithChangeNote.isEmpty {
                 emptyState
             } else {
-                ForEach(viewModel.visibleCombinedPackingList) { item in
-                    productCard(item)
+                ForEach(rows) { row in
+                    switch row {
+                    case .product(let item, let rebuild):
+                        productCard(item, rebuild: rebuild)
+                    case .rebuild(let rebuildRow):
+                        RebuildPackRowView(viewModel: viewModel, row: rebuildRow, showsMachines: true)
+                    }
                 }
             }
         }
@@ -186,7 +194,7 @@ private struct AllPackingList: View {
 
     // MARK: - Product Card
 
-    private func productCard(_ item: CombinedPackingItem) -> some View {
+    private func productCard(_ item: CombinedPackingItem, rebuild: Int) -> some View {
         let fullyPacked = viewModel.isProductFullyPacked(item)
         // "Out of stock" should mean: nothing left AND nothing packed yet.
         // If the product is fully committed to one or more machines, the
@@ -307,6 +315,9 @@ private struct AllPackingList: View {
                                 .font(.caption2.weight(.medium))
                                 .foregroundStyle(.orange)
                                 .monospacedDigit()
+                        }
+                        if rebuild > 0 {
+                            RebuildBadge(units: rebuild)
                         }
                     }
                 }
@@ -739,12 +750,18 @@ private struct MachinePackingList: View {
     @Binding var selectedProduct: PackingStepView.ProductSelection?
 
     var body: some View {
-        if viewModel.visibleItemsForActiveChip.isEmpty {
+        let rows = viewModel.packRows(for: .machine(machineId))
+        if rows.isEmpty {
             emptyState
         } else {
             VStack(spacing: 12) {
-                ForEach(viewModel.visibleItemsForActiveChip) { item in
-                    card(item)
+                ForEach(rows) { row in
+                    switch row {
+                    case .product(let item, let rebuild):
+                        card(item, rebuild: rebuild)
+                    case .rebuild(let rebuildRow):
+                        RebuildPackRowView(viewModel: viewModel, row: rebuildRow, showsMachines: false)
+                    }
                 }
             }
         }
@@ -764,7 +781,7 @@ private struct MachinePackingList: View {
     }
 
     @ViewBuilder
-    private func card(_ item: CombinedPackingItem) -> some View {
+    private func card(_ item: CombinedPackingItem, rebuild: Int) -> some View {
         // By construction visibleItemsForActiveChip always returns items
         // with exactly one MachineNeed for the active machine. Guard
         // anyway — if a future refactor breaks that invariant we'd rather
@@ -793,6 +810,11 @@ private struct MachinePackingList: View {
                         .foregroundStyle(isDisabled ? .secondary : .primary)
                         .lineLimit(2)
                         .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if rebuild > 0 {
+                        RebuildBadge(units: rebuild)
+                            .padding(.top, 2)
+                    }
 
                     Button {
                         selectedProduct = PackingStepView.ProductSelection(
@@ -914,6 +936,98 @@ private struct MachinePackingList: View {
                 + Text("Partial").foregroundStyle(.orange).fontWeight(.semibold)
         }
         return line
+    }
+}
+
+// MARK: - Rebuild Rows
+
+/// Violet "+N rebuild" badge: units packed on top of the normal refill for
+/// slot rebuilds (committed and deducted together with it).
+private struct RebuildBadge: View {
+    let units: Int
+
+    var body: some View {
+        Text("+\(units) rebuild")
+            .font(.caption2.weight(.medium))
+            .monospacedDigit()
+            .foregroundStyle(Color.rebuildViolet)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(RoundedRectangle(cornerRadius: 4).fill(Color.rebuildVioletFill.opacity(0.15)))
+            .fixedSize()
+    }
+}
+
+/// A product packed only for slot rebuilds: its own violet row in the packing
+/// list. The tick is a packing aid — the units are committed and deducted at
+/// tour start either way, like before. Mirrors the PWA's
+/// `RefillRebuildPackRow.vue`.
+private struct RebuildPackRowView: View {
+    @ObservedObject var viewModel: RefillWizardViewModel
+    let row: RebuildPackRow
+    /// List the machines the units are for (the "All" chip).
+    let showsMachines: Bool
+
+    var body: some View {
+        let ticked = viewModel.isRebuildRowTicked(row)
+        let machineNames = row.machineIds
+            .map { viewModel.chipName(.machine($0)) }
+            .joined(separator: ", ")
+
+        Button {
+            HapticFeedback.light.fire()
+            viewModel.toggleRebuildRowTick(row)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: ticked ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(ticked ? Color.rebuildVioletFill : Color.rebuildViolet.opacity(0.6))
+
+                ProductImage(imagePath: row.imagePath, size: 36)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(row.name ?? "")
+                        .font(.subheadline.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Label("Rebuild", systemImage: "arrow.left.arrow.right")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(Color.rebuildViolet)
+                    if showsMachines && !machineNames.isEmpty {
+                        Text(verbatim: machineNames)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+
+                Spacer(minLength: 4)
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(row.packed)×")
+                        .font(.headline.weight(.bold))
+                        .monospacedDigit()
+                        .foregroundStyle(Color.rebuildViolet)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color.rebuildVioletFill.opacity(0.15)))
+                    if row.packed < row.need {
+                        Text("(\(row.need) needed)")
+                            .font(.caption2.weight(.medium))
+                            .monospacedDigit()
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Color.rebuildVioletFill.opacity(0.07)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.rebuildVioletFill.opacity(ticked ? 0.7 : 0.4), lineWidth: 1.5)
+        )
+        .animation(.easeInOut(duration: 0.2), value: ticked)
     }
 }
 

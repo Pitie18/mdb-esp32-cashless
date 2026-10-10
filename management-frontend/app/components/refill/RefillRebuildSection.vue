@@ -1,21 +1,18 @@
 <script setup lang="ts">
 import { IconArrowRight, IconArrowsExchange, IconCheck, IconX } from '@tabler/icons-vue'
 import { getProductImageUrl } from '@/composables/useProducts'
-import type { RebuildLeftover, RebuildSlot } from '@/composables/useRefillWizard'
+import type { RebuildSlot } from '@/composables/useRefillWizard'
 import { formatCurrency } from '@/lib/utils'
 import { ageChanged } from '@/lib/slotChange'
 
 // At the machine: rebuild the slots of the change note. The refiller counts
 // what comes out (sales since packing are already in the live stock), fills
-// the new product, sets the price and marks each slot rebuilt or not. What is
-// left over goes back to the warehouse or is written off. Nothing is booked
-// until the machine is confirmed.
+// the new product, sets the price and marks each slot rebuilt or not. Nothing
+// is booked until the machine is confirmed. What is left over rides along in
+// the van and is booked back at the end of the tour (RefillTourLeftovers).
 
 defineProps<{
   slots: RebuildSlot[]
-  leftovers: RebuildLeftover[]
-  destinations: Map<string, 'warehouse' | 'waste'>
-  expiry: Map<string, string>
 }>()
 const emit = defineEmits<{
   (e: 'removed', itemId: string, value: number): void
@@ -23,8 +20,6 @@ const emit = defineEmits<{
   (e: 'action', itemId: string, value: 'done' | 'skip' | null): void
   (e: 'price', itemId: string, value: boolean): void
   (e: 'age', itemId: string, value: boolean): void
-  (e: 'destination', productId: string, value: 'warehouse' | 'waste'): void
-  (e: 'expiry', productId: string, value: string): void
 }>()
 const { t, locale } = useI18n()
 
@@ -117,51 +112,6 @@ function age(n: number | null) { return n == null ? t('refillRebuild.noAgeLimit'
       <p v-else-if="s.action === null && ageChanged(s.item) && !s.age_set" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ t('refillRebuild.confirmAgeFirst') }}</p>
     </div>
 
-    <!-- Leftovers -->
-    <div v-if="leftovers.length > 0" class="rounded-xl border bg-card p-3 sm:p-4">
-      <p class="text-sm font-medium">{{ t('refillRebuild.leftoverTitle') }}</p>
-      <p class="mb-2 text-xs text-muted-foreground">{{ t('refillRebuild.leftoverHint') }}</p>
-      <div v-for="l in leftovers" :key="l.product_id" class="border-t py-2 first:border-t-0">
-        <div class="flex items-center gap-2">
-          <img v-if="l.image_path" :src="getProductImageUrl(l.image_path)" :alt="l.name ?? ''" class="size-8 rounded object-cover" />
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm">{{ l.name }} <b class="tabular-nums">{{ t('slotPlan.units', { n: l.van + l.machine }) }}</b></p>
-            <p class="text-xs text-muted-foreground">
-              <template v-if="l.machine > 0">{{ t('refillRebuild.fromMachine', { n: l.machine }) }}</template>
-              <template v-if="l.machine > 0 && l.van > 0"> · </template>
-              <template v-if="l.van > 0">{{ t('refillRebuild.fromVan', { n: l.van }) }}</template>
-            </p>
-          </div>
-          <div class="flex shrink-0 rounded-md border p-0.5 text-xs">
-            <button
-              class="rounded px-2 py-1 font-medium"
-              :class="(destinations.get(l.product_id) ?? 'warehouse') === 'warehouse' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'"
-              @click="emit('destination', l.product_id, 'warehouse')"
-            >{{ t('refillRebuild.toWarehouse') }}</button>
-            <button
-              class="rounded px-2 py-1 font-medium"
-              :class="destinations.get(l.product_id) === 'waste' ? 'bg-destructive text-white' : 'text-muted-foreground'"
-              @click="emit('destination', l.product_id, 'waste')"
-            >{{ t('refillRebuild.writeOff') }}</button>
-          </div>
-        </div>
-        <label
-          v-if="l.machine > 0 && (destinations.get(l.product_id) ?? 'warehouse') === 'warehouse'"
-          class="mt-2 flex items-center gap-2 text-xs text-muted-foreground"
-        >
-          {{ t('refillRebuild.bestBefore') }}
-          <input
-            type="date"
-            class="h-8 rounded-md border bg-background px-2 text-sm text-foreground"
-            :value="expiry.get(l.product_id) ?? ''"
-            @change="emit('expiry', l.product_id, ($event.target as HTMLInputElement).value)"
-          />
-        </label>
-        <p v-if="(destinations.get(l.product_id) ?? 'warehouse') === 'warehouse'" class="mt-1 text-[11px] text-muted-foreground">
-          {{ l.van > 0 ? t('refillRebuild.vanBackHint') : '' }}
-          {{ l.machine > 0 ? t('refillRebuild.machineBackHint') : '' }}
-        </p>
-      </div>
-    </div>
+    <p class="px-1 text-xs text-muted-foreground">{{ t('refillRebuild.takeAlongHint') }}</p>
   </div>
 </template>

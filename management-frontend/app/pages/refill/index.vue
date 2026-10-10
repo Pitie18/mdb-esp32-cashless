@@ -9,6 +9,8 @@ import { useRefillWizard, hasSavedTour } from '@/composables/useRefillWizard'
 import { formatCurrency } from '@/lib/utils'
 import RefillChangeNote from '@/components/refill/RefillChangeNote.vue'
 import RefillRebuildSection from '@/components/refill/RefillRebuildSection.vue'
+import RefillRebuildPackRow from '@/components/refill/RefillRebuildPackRow.vue'
+import RefillTourLeftovers from '@/components/refill/RefillTourLeftovers.vue'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -21,34 +23,34 @@ const {
   tourLog, tourSummary, currentMachine, totalMachinesInTour, currentMachineNumber,
   completedMachineIds, allMachinesCompleted,
   pickingMode, sortedMachines, combinedPickList, allPackedCombined,
-  isPacked, togglePacked, allPacked, effectiveDeficit,
+  isPacked, togglePacked, effectiveDeficit,
   isOutOfWarehouseStock, hasPartialStock, hasAnyPackedItems, effectiveStockHealth,
   isPackedCombined, togglePackedCombined, effectiveDeficitCombined,
   setCustomQuantity, getCustomQuantity, getMaxCustomQuantity, getDisplayedPackingQty,
   initTour, loadWarehouseStock, startTour,
   adjustFillAmount, confirmMachineRefill, confirmError, skipMachine, goToMachine, isMachineCompleted, resetWizard,
   resumeTour,
-  isItemAccepted, toggleRebuildItem, rebuildNeeds, rebuildCommitted,
-  currentRebuild, rebuildReady, rebuildLeftovers, leftoverDestinations, leftoverExpiry, returnBatchLabel,
-  setRebuildRemoved, setRebuildFilled, setRebuildAction, setRebuildPriceSet, setRebuildAgeSet, setLeftoverDestination, setLeftoverExpiry,
+  isItemAccepted, toggleRebuildItem, rebuildCommitted,
+  combinedPackRows, machinePackRows, isRebuildTicked, toggleRebuildTick, isRebuildTickedCombined, toggleRebuildTickCombined, allPackedWithRebuild,
+  currentRebuild, rebuildReady, returnBatchLabel,
+  setRebuildRemoved, setRebuildFilled, setRebuildAction, setRebuildPriceSet, setRebuildAgeSet,
+  tourLeftoverRows, hasPendingLeftovers, leftoversReturned, returningLeftovers, returnLeftoversError,
+  setLeftoverDestination, setLeftoverExpiry, setLeftoverCount, loadTourExpirySuggestions, returnTourLeftovers,
 } = useRefillWizard()
 
 returnBatchLabel.value = t('refillRebuild.returnBatch')
 
-/** Packing lines for the rebuild of a machine's accepted change-note slots. */
-function rebuildPack(machine: { id: string; change_request?: { items: { from_product_id: string | null; to_product_id: string | null; from_name: string | null; to_name: string | null; from_image_path: string | null; to_image_path: string | null }[] } | null }) {
-  const info = new Map<string, { name: string | null; image_path: string | null }>()
-  for (const i of machine.change_request?.items ?? []) {
-    if (i.to_product_id) info.set(i.to_product_id, { name: i.to_name, image_path: i.to_image_path })
-  }
-  return [...rebuildNeeds(machine.id).entries()].map(([pid, need]) => ({
-    product_id: pid,
-    name: info.get(pid)?.name ?? null,
-    image_path: info.get(pid)?.image_path ?? null,
-    need,
-    packed: rebuildCommitted(machine.id, pid),
-  }))
+/** Leave the summary; warn when the rebuild leftovers are not booked back yet. */
+function finishTour(to: string) {
+  if (hasPendingLeftovers.value && !window.confirm(t('refillRebuild.unbookedConfirm'))) return
+  resetWizard()
+  router.push(to)
 }
+
+// Best-before suggestions for the leftovers once the tour reaches the summary.
+watch(currentStep, (step) => {
+  if (step === 'summary' && hasPendingLeftovers.value) void loadTourExpirySuggestions()
+}, { immediate: true })
 
 const machinesWithChangeNote = computed(() => machines.value.filter(m => (m.change_request?.items.length ?? 0) > 0))
 
@@ -179,7 +181,6 @@ const currentMachineDone = computed(() =>
               <RefillChangeNote
                 :items="machine.change_request!.items"
                 :accepted="isItemAccepted"
-                :pack="rebuildPack(machine)"
                 @toggle="toggleRebuildItem(machine.id, $event)"
               />
             </CardContent>
@@ -196,8 +197,22 @@ const currentMachineDone = computed(() =>
                 </span>
               </div>
               <ul class="space-y-0.5">
+                <template v-for="row in combinedPackRows" :key="row.product_id">
+                <!-- Only needed for a slot rebuild -->
                 <li
-                  v-for="item in combinedPickList"
+                  v-if="row.kind === 'rebuild'"
+                  class="flex items-center gap-2.5 rounded-lg border-l-4 border-violet-500 bg-violet-500/5 px-2 py-2.5 -mx-2 transition-colors cursor-pointer select-none hover:bg-violet-500/10"
+                  @click="toggleRebuildTickCombined(row.product_id)"
+                >
+                  <RefillRebuildPackRow
+                    :row="row.row"
+                    :ticked="isRebuildTickedCombined(row.product_id)"
+                    :subtitle="t('refillRebuild.forRebuildIn', { machines: row.row.machines.join(', ') })"
+                  />
+                </li>
+                <template v-else>
+                <li
+                  v-for="item in [row.item]"
                   :key="item.product_id"
                   class="flex items-center gap-2.5 rounded-lg px-2 py-2.5 -mx-2 transition-colors cursor-pointer select-none hover:bg-muted/50 active:bg-muted"
                   @click="togglePackedCombined(item.product_id)"
@@ -233,6 +248,9 @@ const currentMachineDone = computed(() =>
                       <span v-if="item.sellprice != null" class="ml-1 text-xs font-medium text-muted-foreground tabular-nums">
                         {{ formatCurrency(item.sellprice, locale) }}
                       </span>
+                      <span v-if="row.rebuild > 0" class="ml-1 rounded bg-violet-500/15 px-1 text-xs font-medium text-violet-700 tabular-nums dark:text-violet-300">
+                        {{ t('refillRebuild.rebuildBadge', { n: row.rebuild }) }}
+                      </span>
                     </span>
                     <span class="text-xs text-muted-foreground block">
                       {{ t('refill.forMachines', { machines: item.machines.map(m => m.name).join(', ') }) }}
@@ -242,6 +260,8 @@ const currentMachineDone = computed(() =>
                     </span>
                   </div>
                 </li>
+                </template>
+                </template>
               </ul>
             </CardContent>
           </Card>
@@ -292,24 +312,33 @@ const currentMachineDone = computed(() =>
                 v-if="machine.change_request"
                 :items="machine.change_request.items"
                 :accepted="isItemAccepted"
-                :pack="rebuildPack(machine)"
                 @toggle="toggleRebuildItem(machine.id, $event)"
               />
 
               <!-- Packing checklist -->
-              <div v-if="machine.tray_summary.length > 0" class="space-y-2">
+              <div v-if="machinePackRows(machine).length > 0" class="space-y-2">
                 <div class="flex items-center justify-between">
                   <p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">{{ t('refill.packForMachine') }}</p>
                   <span
-                    v-if="allPacked(machine.id, machine.tray_summary)"
+                    v-if="allPackedWithRebuild(machine)"
                     class="text-xs font-medium text-green-600"
                   >
                     {{ t('refill.allPacked') }}
                   </span>
                 </div>
                 <ul class="space-y-0.5">
+                  <template v-for="row in machinePackRows(machine)" :key="row.product_id ?? row.product_name">
+                  <!-- Only needed for a slot rebuild -->
                   <li
-                    v-for="item in machine.tray_summary"
+                    v-if="row.kind === 'rebuild'"
+                    class="flex items-center gap-2.5 rounded-lg border-l-4 border-violet-500 bg-violet-500/5 px-2 py-2.5 -mx-2 transition-colors cursor-pointer select-none hover:bg-violet-500/10"
+                    @click="toggleRebuildTick(machine.id, row.product_id)"
+                  >
+                    <RefillRebuildPackRow :row="row.row" :ticked="isRebuildTicked(machine.id, row.product_id)" />
+                  </li>
+                  <template v-else>
+                  <li
+                    v-for="item in [row.item]"
                     :key="item.product_id ?? item.product_name"
                     class="flex items-center gap-2.5 rounded-lg px-2 py-2.5 -mx-2 transition-colors"
                     :class="isOutOfWarehouseStock(item)
@@ -374,6 +403,9 @@ const currentMachineDone = computed(() =>
                           {{ formatCurrency(item.sellprice, locale) }}
                         </span>
                       </template>
+                      <span v-if="row.rebuild > 0" class="mt-0.5 inline-block rounded bg-violet-500/15 px-1 text-xs font-medium text-violet-700 tabular-nums dark:text-violet-300">
+                        {{ t('refillRebuild.rebuildBadge', { n: row.rebuild }) }}
+                      </span>
                     </span>
                     <!-- Quantity adjuster (shown when item is checked and has warehouse context) -->
                     <div
@@ -396,6 +428,8 @@ const currentMachineDone = computed(() =>
                       >+</button>
                     </div>
                   </li>
+                  </template>
+                  </template>
                 </ul>
               </div>
             </CardContent>
@@ -476,16 +510,11 @@ const currentMachineDone = computed(() =>
         <RefillRebuildSection
           v-if="currentRebuild.length > 0 && !currentMachineDone"
           :slots="currentRebuild"
-          :leftovers="rebuildLeftovers"
-          :destinations="leftoverDestinations"
-          :expiry="leftoverExpiry"
           @removed="setRebuildRemoved"
           @filled="setRebuildFilled"
           @action="setRebuildAction"
           @price="setRebuildPriceSet"
           @age="setRebuildAgeSet"
-          @destination="setLeftoverDestination"
-          @expiry="setLeftoverExpiry"
         />
         <p v-if="currentRebuild.length > 0 && currentTrays.length > 0 && !currentMachineDone" class="px-1 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {{ t('refillRebuild.normalRefill') }}
@@ -632,6 +661,20 @@ const currentMachineDone = computed(() =>
         </div>
       </div>
 
+      <!-- Back at the warehouse: leftovers of the slot rebuilds -->
+      <RefillTourLeftovers
+        v-if="tourLeftoverRows.length > 0"
+        :rows="tourLeftoverRows"
+        :has-warehouse="!!selectedWarehouseId"
+        :returned="leftoversReturned"
+        :busy="returningLeftovers"
+        :error="returnLeftoversError"
+        @count="setLeftoverCount"
+        @destination="setLeftoverDestination"
+        @expiry="setLeftoverExpiry"
+        @book="returnTourLeftovers"
+      />
+
       <Separator />
 
       <!-- Per-machine log -->
@@ -664,13 +707,13 @@ const currentMachineDone = computed(() =>
         <div class="flex flex-col gap-2 max-w-3xl mx-auto">
           <button
             class="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-medium text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
-            @click="resetWizard(); router.push('/machines')"
+            @click="finishTour('/machines')"
           >
             {{ t('refill.backToMachines') }}
           </button>
           <button
             class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
-            @click="resetWizard(); router.push('/tour-history')"
+            @click="finishTour('/tour-history')"
           >
             {{ t('tourHistory.viewTourHistory') }}
           </button>
