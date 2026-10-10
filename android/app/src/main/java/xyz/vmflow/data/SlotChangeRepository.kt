@@ -196,21 +196,7 @@ object SlotChangeRepository {
                         }
                     )
                 )
-                put(
-                    "p_leftovers",
-                    JsonArray(
-                        leftovers.map { l ->
-                            buildJsonObject {
-                                put("product_id", l.productId)
-                                put("van_qty", l.vanQty)
-                                put("machine_qty", l.machineQty)
-                                put("destination", l.destination.raw)
-                                put("expiration_date", l.expirationDate?.let { JsonPrimitive(it) } ?: JsonNull)
-                                put("batch_number", l.batchNumber?.let { JsonPrimitive(it) } ?: JsonNull)
-                            }
-                        }
-                    )
-                )
+                put("p_leftovers", leftoversJson(leftovers))
             }
             postgrest.rpc("apply_slot_change", params)
             Result.success(Unit)
@@ -218,6 +204,45 @@ object SlotChangeRepository {
             Result.failure(e)
         }
     }
+
+    /**
+     * Books the leftovers of a whole tour at the warehouse, at the end of the
+     * tour (`return_slot_change_leftovers`,
+     * `Docker/supabase/migrations/20261010090000_slot_change_tour_returns.sql`).
+     * Idempotent per tour on the server: a retry gets the first result back.
+     */
+    suspend fun returnTourLeftovers(
+        tourId: String,
+        warehouseId: String?,
+        leftovers: List<SlotChangeLeftoverPayload>
+    ): Result<Unit> {
+        return try {
+            val params = buildJsonObject {
+                put("p_tour_id", tourId)
+                put("p_warehouse_id", warehouseId?.let { JsonPrimitive(it) } ?: JsonNull)
+                put("p_leftovers", leftoversJson(leftovers))
+            }
+            postgrest.rpc("return_slot_change_leftovers", params)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** `p_leftovers` — the same element shape for both RPCs. */
+    private fun leftoversJson(leftovers: List<SlotChangeLeftoverPayload>): JsonArray =
+        JsonArray(
+            leftovers.map { l ->
+                buildJsonObject {
+                    put("product_id", l.productId)
+                    put("van_qty", l.vanQty)
+                    put("machine_qty", l.machineQty)
+                    put("destination", l.destination.raw)
+                    put("expiration_date", l.expirationDate?.let { JsonPrimitive(it) } ?: JsonNull)
+                    put("batch_number", l.batchNumber?.let { JsonPrimitive(it) } ?: JsonNull)
+                }
+            }
+        )
 
     /** Live `current_stock` of the given trays — the "removed" default at the machine. */
     suspend fun fetchTrayStocks(trayIds: Collection<String>): Result<Map<String, Int>> {

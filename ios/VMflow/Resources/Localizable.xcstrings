@@ -17298,50 +17298,6 @@
         }
       }
     },
-    "%lld packed but not used": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld gepackt, aber nicht gebraucht"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld emballés mais non utilisés"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld ingepakt maar niet gebruikt"
-          }
-        }
-      }
-    },
-    "%lld pcs": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld Stk"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld pcs"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld st."
-          }
-        }
-      }
-    },
     "%lld slot(s) queued as a change note. The new product goes in at the machine.": {
       "localizations": {
         "de": {
@@ -17360,28 +17316,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld vak(ken) als wijzigingsnotitie vastgelegd. Het nieuwe product gaat er bij de automaat in."
-          }
-        }
-      }
-    },
-    "%lld taken out of the machine": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld aus dem Automaten entnommen"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld retirés du distributeur"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld uit de automaat genomen"
           }
         }
       }
@@ -17426,28 +17360,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "THT-datum toevoegen"
-          }
-        }
-      }
-    },
-    "Booked when you confirm the machine.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wird gebucht, wenn du den Automaten bestätigst."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Comptabilisé lorsque vous confirmez le distributeur."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wordt geboekt als je de automaat bevestigt."
           }
         }
       }
@@ -17606,28 +17518,6 @@
         }
       }
     },
-    "Left over": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Übrige Ware"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Marchandise restante"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Overgebleven waren"
-          }
-        }
-      }
-    },
     "Machine return": {
       "localizations": {
         "de": {
@@ -17690,28 +17580,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Niet omgebouwd"
-          }
-        }
-      }
-    },
-    "Pack for the rebuild": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Für den Umbau packen"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À emballer pour la transformation"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inpakken voor de ombouw"
           }
         }
       }
@@ -18002,28 +17870,6 @@
         }
       }
     },
-    "nothing, moves over": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "nichts, wird umgesetzt"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "rien, déplacé"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "niets, wordt verplaatst"
-          }
-        }
-      }
-    },
     "Dismiss": {
       "localizations": {
         "de": {
@@ -18218,6 +18064,270 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bevestig eerst de leeftijdsinstelling"
+          }
+        }
+      }
+    },
+    "+%lld rebuild": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld Umbau"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld réaménagement"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%lld ombouw"
+          }
+        }
+      }
+    },
+    "Rebuild": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umbau"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réaménagement"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ombouw"
+          }
+        }
+      }
+    },
+    "The goods for it are marked violet in the packing list.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Ware dafür steht violett markiert in der Packliste."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La marchandise correspondante est marquée en violet dans la liste de préparation."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De goederen hiervoor zijn paars gemarkeerd in de paklijst."
+          }
+        }
+      }
+    },
+    "Take removed goods with you – they are booked back at the end of the tour.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entnommene Ware mitnehmen – Rückbuchung am Ende der Tour im Lager."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emportez la marchandise retirée – elle sera remise en stock à la fin de la tournée, à l'entrepôt."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neem de verwijderde goederen mee – ze worden aan het einde van de ronde in het magazijn teruggeboekt."
+          }
+        }
+      }
+    },
+    "Leftover goods from rebuilds": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übrige Ware aus Umbauten"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchandise restante des réaménagements"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overgebleven goederen uit ombouw"
+          }
+        }
+      }
+    },
+    "Leftover goods booked": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übrige Ware gebucht"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchandise restante comptabilisée"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overgebleven goederen geboekt"
+          }
+        }
+      }
+    },
+    "Book back": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rückbuchen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remettre en stock"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terugboeken"
+          }
+        }
+      }
+    },
+    "Unused (van)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht verbaut (Fahrzeug)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non utilisé (véhicule)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet gebruikt (bus)"
+          }
+        }
+      }
+    },
+    "Taken out of machines": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus Automat entnommen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retiré des distributeurs"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uit automaten gehaald"
+          }
+        }
+      }
+    },
+    "Leftover goods have not been booked back yet. Finish anyway?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übrige Ware ist noch nicht zurückgebucht. Trotzdem beenden?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La marchandise restante n'a pas encore été remise en stock. Terminer quand même ?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overgebleven goederen zijn nog niet teruggeboekt. Toch afronden?"
+          }
+        }
+      }
+    },
+    "Finish anyway": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trotzdem beenden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer quand même"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toch afronden"
+          }
+        }
+      }
+    },
+    "The leftover goods could not be booked: %@. Please try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die übrige Ware konnte nicht gebucht werden: %@. Bitte erneut versuchen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La marchandise restante n'a pas pu être comptabilisée : %@. Veuillez réessayer."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De overgebleven goederen konden niet worden geboekt: %@. Probeer het opnieuw."
           }
         }
       }

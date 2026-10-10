@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 # Host test for VMflow/Models/SlotChange.swift — the slot re-assignment tour
-# maths (rebuildPackNeeds / fillPlan / computeLeftovers). Pure Foundation, so
+# maths (rebuildPackNeeds / fillPlan / computeLeftovers, the merged packing
+# list order and the end-of-tour leftover totals). Pure Foundation, so
 # it runs with any Swift toolchain (macOS or Linux), no Xcode project needed.
 # Same cases as management-frontend/app/lib/__tests__/slotChange.test.ts.
 #

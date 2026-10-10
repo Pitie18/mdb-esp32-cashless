@@ -1,20 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { IconArrowRight, IconArrowsExchange } from '@tabler/icons-vue'
-import { getProductImageUrl } from '@/composables/useProducts'
 import type { SlotChangeItem } from '@/composables/useSlotChangeRequests'
 import { formatCurrency } from '@/lib/utils'
 import { ageChanged } from '@/lib/slotChange'
 
 // Packing step: the machine's change note. The refiller accepts (default) or
-// declines each slot; accepted slots add their rebuild units to the packing
-// list. Declined slots stay open for a later tour.
+// declines each slot; accepted slots add their rebuild units to the normal
+// packing list (violet rows/badges, in warehouse order). Declined slots stay
+// open for a later tour.
 
 const props = defineProps<{
   items: SlotChangeItem[]
   accepted: (itemId: string) => boolean
-  /** Rebuild units per product: need = what the slots need, packed = what the warehouse covers. */
-  pack: { product_id: string; name: string | null; image_path: string | null; need: number; packed: number }[]
 }>()
 const emit = defineEmits<{ (e: 'toggle', itemId: string): void }>()
 const { t, locale } = useI18n()
@@ -67,15 +65,6 @@ const acceptedCount = computed(() => props.items.filter(i => props.accepted(i.id
       </li>
     </ul>
 
-    <div v-if="pack.length > 0" class="border-t pt-2">
-      <p class="mb-1 text-xs font-medium text-muted-foreground">{{ t('refillRebuild.packForRebuild') }}</p>
-      <div v-for="p in pack" :key="p.product_id" class="flex items-center gap-2 py-0.5 text-sm">
-        <img v-if="p.image_path" :src="getProductImageUrl(p.image_path)" :alt="p.name ?? ''" class="size-7 rounded object-cover" />
-        <span class="min-w-0 flex-1 truncate">{{ p.name }}</span>
-        <b v-if="p.need > 0" class="tabular-nums">{{ p.packed }}&times;</b>
-        <span v-else class="text-xs text-muted-foreground">{{ t('slotPlan.movesOver') }}</span>
-        <span v-if="p.packed < p.need" class="text-xs text-amber-600">{{ t('machines.needed', { count: p.need }) }}</span>
-      </div>
-    </div>
+    <p v-if="acceptedCount > 0" class="border-t pt-2 text-xs text-violet-700 dark:text-violet-300">{{ t('refillRebuild.packInListHint') }}</p>
   </div>
 </template>

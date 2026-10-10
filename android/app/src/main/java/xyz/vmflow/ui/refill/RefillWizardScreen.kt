@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import xyz.vmflow.R
+import xyz.vmflow.data.LeftoverDestination
 import xyz.vmflow.models.RefillStep
 
 /**
@@ -145,6 +146,12 @@ fun RefillWizardScreen(
     // Batch number of goods returned from a machine during a slot rebuild —
     // localized here because the ViewModel has no resources.
     val returnBatchLabel = stringResource(R.string.refill_rebuild_return_batch)
+
+    // "Leftover goods have not been booked back yet. Finish anyway?" — asked
+    // before leaving the summary, or before throwing away a saved tour, while
+    // rebuild leftovers are still unbooked. A question, never a block.
+    var confirmFinish by rememberSaveable { mutableStateOf(false) }
+    var confirmDiscard by rememberSaveable { mutableStateOf(false) }
 
     // ── Belt and braces: a review with nothing to review is not a screen ──
     // [ReviewStep] renders its header and its bottom bar off `uiState`
@@ -289,18 +296,15 @@ fun RefillWizardScreen(
                                     viewModel.fillAllTrays(currentMachine.machine.id)
                                 },
                                 onConfirmRefill = {
-                                    viewModel.confirmRefill(currentMachine.machine.id, returnBatchLabel)
+                                    viewModel.confirmRefill(currentMachine.machine.id)
                                 },
                                 onSkipMachine = {
-                                    viewModel.skipMachine(currentMachine.machine.id, returnBatchLabel)
+                                    viewModel.skipMachine(currentMachine.machine.id)
                                 },
                                 rebuild = if (uiState.rebuildMachineId == currentMachine.machine.id) {
                                     RebuildSectionState(
                                         slots = uiState.currentRebuild,
-                                        leftovers = uiState.rebuildLeftovers,
-                                        destinations = uiState.leftoverDestinations,
-                                        expiry = uiState.leftoverExpiry,
-                                        showLeftovers = uiState.selectedWarehouseId != null
+                                        showReturnHint = uiState.selectedWarehouseId != null
                                     )
                                 } else {
                                     null
@@ -310,9 +314,7 @@ fun RefillWizardScreen(
                                     onFilled = viewModel::setRebuildFilled,
                                     onAction = viewModel::setRebuildAction,
                                     onPriceSet = viewModel::setRebuildPriceSet,
-                                    onAgeSet = viewModel::setRebuildAgeSet,
-                                    onDestination = viewModel::setLeftoverDestination,
-                                    onExpiry = viewModel::setLeftoverExpiry
+                                    onAgeSet = viewModel::setRebuildAgeSet
                                 )
                             )
                         }
@@ -325,14 +327,40 @@ fun RefillWizardScreen(
                         // machine — the summary is the one screen someone
                         // reads to the end.
                         failedDeductionCount = failedDeductionCount,
+                        leftovers = uiState.aggregatedTourLeftovers.map { l ->
+                            TourLeftoverRow(
+                                productId = l.productId,
+                                name = l.name,
+                                imagePath = l.imagePath,
+                                van = uiState.leftoverVanQty[l.productId] ?: l.van,
+                                machine = uiState.leftoverMachineQty[l.productId] ?: l.machine,
+                                destination = uiState.leftoverDestinations[l.productId]
+                                    ?: LeftoverDestination.WAREHOUSE,
+                                expiry = uiState.leftoverExpiryFor(l)
+                            )
+                        },
+                        leftoversReturned = uiState.leftoversReturned,
+                        isReturningLeftovers = uiState.isReturningLeftovers,
+                        leftoverError = uiState.leftoverReturnError,
+                        leftoverActions = TourLeftoverActions(
+                            onVan = viewModel::setLeftoverVanQty,
+                            onMachine = viewModel::setLeftoverMachineQty,
+                            onDestination = viewModel::setLeftoverDestination,
+                            onExpiry = viewModel::setLeftoverExpiry,
+                            onReturn = { viewModel.returnTourLeftovers(returnBatchLabel) }
+                        ),
                         // reset() then leave, in that order: it re-arms the
                         // entry gate and leaves `isLoading = true`, which is
                         // only correct if the screen is actually left and
                         // re-entered afterwards — staying here would show a
                         // permanent spinner.
                         onDone = {
-                            viewModel.reset()
-                            onDone()
+                            if (uiState.hasUnreturnedLeftovers) {
+                                confirmFinish = true
+                            } else {
+                                viewModel.reset()
+                                onDone()
+                            }
                         }
                     )
                 }
@@ -386,24 +414,72 @@ fun RefillWizardScreen(
     // only become true after the load's terminal update (success or
     // failure). No latch, no generation token, no timing assumption: it is
     // false by construction for the whole duration of the load.
-    if (!uiState.isLoading && uiState.hasSavedTour) {
+    val discardSavedTour = {
+        viewModel.discardSavedTour()
+        // Both failure branches of `loadData` (RefillViewModel.kt
+        // ~212, ~232) can leave `isLoading = false` with
+        // `hasSavedTour` still true and `machines` empty — the
+        // initial load that would have populated the pack step never
+        // finished. Discarding alone would leave "New tour" looking
+        // like a dead tap; retry the load so the pack step actually
+        // has something to show. A no-op when machines already
+        // loaded (the success-path reasoning this used to rely on
+        // exclusively still holds there).
+        if (uiState.machines.isEmpty()) viewModel.loadData()
+    }
+    if (!uiState.isLoading && uiState.hasSavedTour && !confirmDiscard) {
         ResumeTourDialog(
             onResume = viewModel::resumeTour,
             onDiscard = {
-                viewModel.discardSavedTour()
-                // Both failure branches of `loadData` (RefillViewModel.kt
-                // ~212, ~232) can leave `isLoading = false` with
-                // `hasSavedTour` still true and `machines` empty — the
-                // initial load that would have populated the pack step never
-                // finished. Discarding alone would leave "New tour" looking
-                // like a dead tap; retry the load so the pack step actually
-                // has something to show. A no-op when machines already
-                // loaded (the success-path reasoning this used to rely on
-                // exclusively still holds there).
-                if (uiState.machines.isEmpty()) viewModel.loadData()
+                // The saved tour may still carry rebuild leftovers that were
+                // never booked back — throwing it away asks first.
+                if (viewModel.savedTourHasUnreturnedLeftovers()) confirmDiscard = true
+                else discardSavedTour()
             }
         )
     }
+    if (confirmDiscard) {
+        UnreturnedLeftoversDialog(
+            onConfirm = {
+                confirmDiscard = false
+                discardSavedTour()
+            },
+            onDismiss = { confirmDiscard = false }
+        )
+    }
+    if (confirmFinish) {
+        UnreturnedLeftoversDialog(
+            onConfirm = {
+                confirmFinish = false
+                viewModel.reset()
+                onDone()
+            },
+            onDismiss = { confirmFinish = false }
+        )
+    }
+}
+
+/**
+ * Asks before the tour ends with rebuild leftovers still unbooked. Not a
+ * block: "Finish anyway" goes ahead, the goods then have to be booked by hand.
+ */
+@Composable
+private fun UnreturnedLeftoversDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.refill_leftover_title)) },
+        text = { Text(stringResource(R.string.refill_leftover_unreturned_message)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.refill_leftover_finish_anyway))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    )
 }
 
 /**

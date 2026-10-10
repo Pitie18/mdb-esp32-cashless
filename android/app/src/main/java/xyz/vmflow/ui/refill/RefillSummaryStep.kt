@@ -88,13 +88,22 @@ import xyz.vmflow.ui.theme.VMflowBlueDark
  *   `isLoading = true` with the entry gate re-armed, which is only correct
  *   once this screen has actually been left and would otherwise show it a
  *   permanent spinner on itself.
+ * @param leftovers the tour's slot change leftovers per product
+ *   ([TourLeftoverCard]); empty when no rebuild left anything over. Not part
+ *   of the four figures — they count what went *into* the machines.
+ * @param leftoverActions `null` hides the leftover card.
  */
 @Composable
 fun RefillSummaryStep(
     tourLog: List<TourLogEntry>,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
-    failedDeductionCount: Int = 0
+    failedDeductionCount: Int = 0,
+    leftovers: List<TourLeftoverRow> = emptyList(),
+    leftoversReturned: Boolean = false,
+    isReturningLeftovers: Boolean = false,
+    leftoverError: String? = null,
+    leftoverActions: TourLeftoverActions? = null
 ) {
     val machinesVisited = tourLog.count { !it.skipped }
     val traysRefilled = tourLog.sumOf { it.traysRefilled }
@@ -126,6 +135,20 @@ fun RefillSummaryStep(
             if (failedDeductionCount > 0) {
                 item(key = "deduction-warning") {
                     DeductionWarningCard(count = failedDeductionCount)
+                }
+            }
+
+            // Back at the warehouse: the goods the rebuilds left in the van
+            // are counted and booked here, once, for the whole tour.
+            if (leftovers.isNotEmpty() && leftoverActions != null) {
+                item(key = "leftovers") {
+                    TourLeftoverCard(
+                        rows = leftovers,
+                        returned = leftoversReturned,
+                        isReturning = isReturningLeftovers,
+                        error = leftoverError,
+                        actions = leftoverActions
+                    )
                 }
             }
 

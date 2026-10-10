@@ -172,6 +172,88 @@ do {
     print("FAIL decoding threw: \(error)")
 }
 
+// ── tour: packing list with rebuild units ───────────────────────────────────
+
+do { // rebuild-only rows slot into the warehouse pick order
+    let normal = [
+        PackOrderKey(productId: u("cola"), name: "Cola", quantity: 5),
+        PackOrderKey(productId: u("water"), name: "Water", quantity: 9),
+    ]
+    let rebuildOnly = [
+        PackOrderKey(productId: u("limon"), name: "Bacardi Limon", quantity: 4),
+        PackOrderKey(productId: u("apple"), name: "Apple", quantity: 1),
+    ]
+    let position = [u("cola"): 2, u("limon"): 1]
+    expect(
+        PackListOrder.merge(normal: normal, rebuildOnly: rebuildOnly, position: position),
+        [.rebuildOnly(u("limon")), .normal(u("cola")), .rebuildOnly(u("apple")), .normal(u("water"))],
+        "positioned first, then the rest by name"
+    )
+    expect(
+        PackListOrder.merge(normal: normal, rebuildOnly: rebuildOnly, position: [:]),
+        [.normal(u("water")), .normal(u("cola")), .rebuildOnly(u("limon")), .rebuildOnly(u("apple"))],
+        "no positions: quantity descending"
+    )
+}
+
+do { // rebuild units per product, only for the machines in view
+    let committed: [UUID: [UUID: Int]] = [
+        u("m1"): [u("limon"): 4, u("cola"): 2],
+        u("m2"): [u("limon"): 9, u("water"): 0],
+        u("m3"): [u("cola"): 7],
+    ]
+    expect(SlotChange.rebuildByProduct(committed, machineIds: [u("m1"), u("m2")]),
+           byName([("limon", 13), ("cola", 2)]), "summed over the machines, zero dropped")
+    expect(SlotChange.rebuildByProduct(committed, machineIds: [u("m3")]),
+           byName([("cola", 7)]), "one machine")
+    expect(SlotChange.rebuildByProduct(committed, machineIds: [u("m9")]), [:], "unknown machine")
+}
+
+// ── tour: leftovers booked at the end of the tour ───────────────────────────
+
+do { // summed per product across the machines, in tour order
+    let byMachine: [UUID: [TourLeftover]] = [
+        u("m2"): [
+            TourLeftover(productId: u("cola"), name: "Cola", imagePath: "c.png", van: 1, machine: 3),
+            TourLeftover(productId: u("limon"), name: "Limon", imagePath: nil, van: 2, machine: 0),
+        ],
+        u("m1"): [
+            TourLeftover(productId: u("limon"), name: "Limon", imagePath: "l.png", van: 0, machine: 5),
+            TourLeftover(productId: u("water"), name: "Water", imagePath: nil, van: 0, machine: 0),
+        ],
+    ]
+    let totals = SlotChange.aggregateTourLeftovers(byMachine, machineOrder: [u("m1"), u("m2")])
+    expect(totals.map(\.productId), [u("limon"), u("cola")], "machine order, nothing-left dropped")
+    expect(totals.first?.van, 2, "van summed")
+    expect(totals.first?.machine, 5, "machine summed")
+    expect(totals.first?.machineIds, [u("m1")], "only machines the goods came out of")
+    expect(totals.first?.imagePath, "l.png", "first known image")
+    expect(totals.last?.machineIds, [u("m2")], "cola came out of m2")
+    expect(SlotChange.aggregateTourLeftovers([:], machineOrder: [u("m1")]), [], "no leftovers")
+    expect(SlotChange.aggregateTourLeftovers(byMachine, machineOrder: []).count, 2, "unknown order still counts")
+}
+
+do { // a skipped machine: every packed rebuild unit rides along as van goods
+    let items = [item("i1", "t1", "cola", "limon", 10, 10)]
+    let left = SlotChange.computeLeftovers(
+        items,
+        outcome: [u("i1"): SlotItemOutcome(action: .skip, removed: 0, filled: 0)],
+        packedByProduct: byName([("limon", 6)])
+    )
+    expect(left, [u("limon"): SlotLeftoverSplit(van: 6, machine: 0)], "skip leaves the packed units")
+}
+
+do { // tour leftovers survive the persisted tour state
+    let state: [UUID: [TourLeftover]] = [
+        u("m1"): [TourLeftover(productId: u("cola"), name: "Cola", imagePath: nil, van: 1, machine: 2)],
+    ]
+    let back = try JSONDecoder().decode([UUID: [TourLeftover]].self, from: JSONEncoder().encode(state))
+    expect(back, state, "round trip")
+} catch {
+    failures += 1
+    print("FAIL tour leftovers round trip threw: \(error)")
+}
+
 if failures > 0 {
     print("\(failures) of \(checks) checks failed")
     exit(1)

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   planFromTrays, planChanges, productReach, slotNeeds, removalCandidates, firstEmpty,
   rebuildPackNeeds, fillPlan, computeLeftovers, priceChanges, widthWarning,
-  ageChanged, type PlanTray, type ChangeItem,
+  ageChanged, aggregateTourLeftovers, sortPackRows, type PlanTray, type ChangeItem,
 } from '../slotChange'
 
 const trays: PlanTray[] = [
@@ -180,5 +180,33 @@ describe('ageChanged', () => {
     expect(ageChanged({ from_min_age: 18, to_min_age: 18 })).toBe(false)
     expect(ageChanged({ from_min_age: null, to_min_age: null })).toBe(false)
     expect(ageChanged({})).toBe(false)
+  })
+})
+
+describe('aggregateTourLeftovers', () => {
+  it('sums the leftovers of all machines per product and remembers where machine goods came from', () => {
+    expect(aggregateTourLeftovers([
+      { machine_id: 'm1', product_id: 'cola', name: 'Cola', image_path: null, van: 2, machine: 3 },
+      { machine_id: 'm2', product_id: 'cola', name: 'Cola', image_path: 'c.png', van: 1, machine: 0 },
+      { machine_id: 'm2', product_id: 'mate', name: 'Mate', image_path: null, van: 0, machine: 4 },
+      { machine_id: 'm3', product_id: 'tea', name: 'Tea', image_path: null, van: 0, machine: 0 },
+    ])).toEqual([
+      { product_id: 'cola', name: 'Cola', image_path: 'c.png', van: 3, machine: 3, machine_ids: ['m1'] },
+      { product_id: 'mate', name: 'Mate', image_path: null, van: 0, machine: 4, machine_ids: ['m2'] },
+    ])
+  })
+})
+
+describe('sortPackRows', () => {
+  const rows = [
+    { product_id: 'b', product_name: 'Bacardi' },
+    { product_id: 'z', product_name: 'Zitrone' },
+    { product_id: 'a', product_name: 'Apfel' },
+  ]
+  it('follows the warehouse positions, unpositioned products after them by name', () => {
+    expect(sortPackRows(rows, new Map([['z', 0]])).map(r => r.product_id)).toEqual(['z', 'a', 'b'])
+  })
+  it('keeps the given order without positions', () => {
+    expect(sortPackRows(rows, new Map()).map(r => r.product_id)).toEqual(['b', 'z', 'a'])
   })
 })

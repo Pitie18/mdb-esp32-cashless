@@ -498,7 +498,7 @@ object RefillTourLogic {
      * genuinely different strings, so callers must keep running the
      * `productId` tiebreaker after this one to stay a total order.
      */
-    private fun defaultProductNameComparator(): Comparator<String?> {
+    internal fun defaultProductNameComparator(): Comparator<String?> {
         val collator = Collator.getInstance().apply { strength = Collator.SECONDARY }
         return nullsLast(Comparator(collator::compare))
     }

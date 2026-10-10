@@ -301,3 +301,66 @@ export function computeLeftovers(
   }
   return out
 }
+
+// ── End of tour ─────────────────────────────────────────────────────────────
+
+/** Leftovers of one machine, recorded when its rebuild is quit. */
+export interface TourLeftoverEntry {
+  machine_id: string
+  product_id: string
+  name: string | null
+  image_path: string | null
+  van: number
+  machine: number
+}
+
+export interface TourLeftover {
+  product_id: string
+  name: string | null
+  image_path: string | null
+  van: number
+  machine: number
+  /** Machines the goods came out of (machine > 0), for the best-before suggestion. */
+  machine_ids: string[]
+}
+
+/**
+ * Leftovers of the whole tour per product, booked back at the warehouse once
+ * every machine is done. Products with nothing left over are dropped.
+ */
+export function aggregateTourLeftovers(entries: TourLeftoverEntry[]): TourLeftover[] {
+  const byProduct = new Map<string, TourLeftover>()
+  for (const e of entries) {
+    if (e.van <= 0 && e.machine <= 0) continue
+    const row = byProduct.get(e.product_id) ?? {
+      product_id: e.product_id, name: e.name, image_path: e.image_path, van: 0, machine: 0, machine_ids: [],
+    }
+    row.van += Math.max(0, e.van)
+    row.machine += Math.max(0, e.machine)
+    if (e.machine > 0 && !row.machine_ids.includes(e.machine_id)) row.machine_ids.push(e.machine_id)
+    row.name ??= e.name
+    row.image_path ??= e.image_path
+    byProduct.set(e.product_id, row)
+  }
+  return [...byProduct.values()]
+}
+
+/**
+ * Sort packing rows the way the warehouse is walked: by the product's
+ * warehouse position, unpositioned ones after them by name. Without any
+ * positions the given order is kept (rows only needed for a rebuild last).
+ */
+export function sortPackRows<T extends { product_id: string | null; product_name: string }>(
+  rows: T[],
+  order: Map<string, number>,
+): T[] {
+  if (order.size === 0) return rows
+  return [...rows].sort((a, b) => {
+    const posA = a.product_id ? order.get(a.product_id) : undefined
+    const posB = b.product_id ? order.get(b.product_id) : undefined
+    if (posA !== undefined && posB !== undefined) return posA - posB
+    if (posA !== undefined) return -1
+    if (posB !== undefined) return 1
+    return a.product_name.localeCompare(b.product_name)
+  })
+}

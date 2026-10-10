@@ -24,9 +24,11 @@ import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,11 +67,11 @@ import java.util.Locale
 import xyz.vmflow.R
 import xyz.vmflow.data.LeftoverDestination
 import xyz.vmflow.data.RebuildAction
-import xyz.vmflow.data.RebuildLeftover
 import xyz.vmflow.data.RebuildSlot
 import xyz.vmflow.data.SlotChangeItem
 import xyz.vmflow.ui.components.ProductImage
 import xyz.vmflow.ui.deals.formatEuro
+import xyz.vmflow.ui.theme.RebuildViolet
 import xyz.vmflow.ui.theme.StockGreen
 import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
@@ -80,32 +82,27 @@ import xyz.vmflow.ui.theme.StockRed
  *
  *  - [ChangeNoteCard] on the pack step: the machine's change note. The
  *    refiller accepts (default) or declines each slot; accepted slots add
- *    their rebuild units to the van. Web `RefillChangeNote.vue`.
+ *    their rebuild units to the van — as violet lines in the normal packing
+ *    list, not in the note. Web `RefillChangeNote.vue`.
  *  - [RebuildSection] on the refill step: rebuild each accepted slot at the
  *    machine — count what comes out, fill the new product, set the price,
- *    mark it rebuilt or not — and decide where the leftovers go. Nothing is
- *    booked until the machine is confirmed. Web `RefillRebuildSection.vue`.
+ *    mark it rebuilt or not. Nothing is booked until the machine is
+ *    confirmed; what is left over rides in the van. Web `RefillRebuildSection.vue`.
+ *  - [TourLeftoverCard] on the summary: the leftovers of every rebuild of
+ *    the tour, counted and booked back at the warehouse in one go.
  *
  * Same contract as the steps: plain state in, callbacks out, no ViewModel.
  * Accent colour is [StockOrange] (the web uses amber) — a fixed token, never
  * a scheme role, for the same dark-mode reason as the rest of the wizard.
  */
 
-/** Units a machine's rebuild needs of one product, and what the warehouse covers. */
-data class RebuildPackLine(
-    val productId: String,
-    val name: String?,
-    val imagePath: String?,
-    val need: Int,
-    val packed: Int
-)
-
 /** One machine's change note on the pack step. */
 data class ChangeNoteState(
     val machineId: String,
     val machineName: String,
     val items: List<SlotChangeItem>,
-    val pack: List<RebuildPackLine>
+    /** The accepted slots need goods from the warehouse — they are in the packing list, marked violet. */
+    val hasRebuildGoods: Boolean
 )
 
 @Composable
@@ -164,52 +161,14 @@ fun ChangeNoteCard(
                 ChangeNoteItemRow(item = item, enabled = enabled, onToggle = { onToggleItem(item.id) })
             }
 
-            if (note.pack.isNotEmpty()) {
+            if (note.hasRebuildGoods) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 Text(
-                    text = stringResource(R.string.refill_rebuild_pack_for_rebuild),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = stringResource(R.string.refill_rebuild_goods_in_pack_list),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = RebuildViolet
                 )
-                note.pack.forEach { line ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        ProductImage(imagePath = line.imagePath, contentDescription = null, size = 32.dp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = line.name ?: stringResource(R.string.refill_pack_unknown_product),
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (line.need > 0) {
-                            Text(
-                                text = stringResource(R.string.refill_rebuild_packed_qty, line.packed),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            if (line.packed < line.need) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = stringResource(R.string.refill_rebuild_needed, line.need),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = StockOrange
-                                )
-                            }
-                        } else {
-                            Text(
-                                text = stringResource(R.string.refill_rebuild_moves_over),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
             }
         }
     }
@@ -296,11 +255,11 @@ private fun ChangeNoteItemRow(item: SlotChangeItem, enabled: Boolean, onToggle: 
 /** Everything [RebuildSection] shows, resolved by the caller from `RefillUiState`. */
 data class RebuildSectionState(
     val slots: List<RebuildSlot>,
-    val leftovers: List<RebuildLeftover>,
-    val destinations: Map<String, LeftoverDestination>,
-    val expiry: Map<String, String>,
-    /** Leftovers can only be booked with a warehouse; without one the panel is hidden. */
-    val showLeftovers: Boolean
+    /**
+     * Leftovers are booked back at the end of the tour, which needs a
+     * warehouse; without one the "take it with you" hint is not shown.
+     */
+    val showReturnHint: Boolean
 )
 
 /** [RebuildSection]'s callbacks, bundled so the refill step's signature stays readable. */
@@ -309,9 +268,7 @@ data class RebuildActions(
     val onFilled: (itemId: String, value: Int) -> Unit,
     val onAction: (itemId: String, action: RebuildAction?) -> Unit,
     val onPriceSet: (itemId: String, value: Boolean) -> Unit,
-    val onAgeSet: (itemId: String, value: Boolean) -> Unit,
-    val onDestination: (productId: String, destination: LeftoverDestination) -> Unit,
-    val onExpiry: (productId: String, date: String?) -> Unit
+    val onAgeSet: (itemId: String, value: Boolean) -> Unit
 )
 
 @Composable
@@ -338,18 +295,16 @@ fun RebuildSection(
             )
         }
 
-        state.slots.forEach { slot ->
-            RebuildSlotCard(slot = slot, actions = actions, enabled = enabled)
+        if (state.showReturnHint) {
+            Text(
+                text = stringResource(R.string.refill_rebuild_take_along_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
-        if (state.showLeftovers && state.leftovers.isNotEmpty()) {
-            LeftoverCard(
-                leftovers = state.leftovers,
-                destinations = state.destinations,
-                expiry = state.expiry,
-                enabled = enabled,
-                actions = actions
-            )
+        state.slots.forEach { slot ->
+            RebuildSlotCard(slot = slot, actions = actions, enabled = enabled)
         }
     }
 }
@@ -601,7 +556,7 @@ private fun DecisionButton(
  * means unbounded — "removed" is whatever physically came out.
  */
 @Composable
-private fun NumberStepperField(
+internal fun NumberStepperField(
     label: String,
     value: Int,
     max: Int?,
@@ -644,68 +599,123 @@ private fun NumberStepperField(
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// End of the tour, back at the warehouse
+// ─────────────────────────────────────────────────────────────────────────
+
+/** One product of the summary's leftover card, with the refiller's current edits applied. */
+data class TourLeftoverRow(
+    val productId: String,
+    val name: String?,
+    val imagePath: String?,
+    /** Unused (van) units — the computed default until the refiller changes it. */
+    val van: Int,
+    /** Units taken out of machines — likewise. */
+    val machine: Int,
+    val destination: LeftoverDestination,
+    /** Best-before date for the machine units, `null` = none. */
+    val expiry: String?
+)
+
+/** [TourLeftoverCard]'s callbacks. */
+data class TourLeftoverActions(
+    val onVan: (productId: String, value: Int) -> Unit,
+    val onMachine: (productId: String, value: Int) -> Unit,
+    val onDestination: (productId: String, destination: LeftoverDestination) -> Unit,
+    val onExpiry: (productId: String, date: String?) -> Unit,
+    val onReturn: () -> Unit
+)
+
+/**
+ * "Leftover goods from rebuilds" — everything the tour's slot rebuilds left
+ * in the van, per product across all machines. Shown on the summary, when
+ * the refiller is back at the warehouse and can count what is really there:
+ * both quantities are editable, then one "Book back" books everything
+ * (`return_slot_change_leftovers`). Once booked only the confirmation stays.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LeftoverCard(
-    leftovers: List<RebuildLeftover>,
-    destinations: Map<String, LeftoverDestination>,
-    expiry: Map<String, String>,
-    enabled: Boolean,
-    actions: RebuildActions
+fun TourLeftoverCard(
+    rows: List<TourLeftoverRow>,
+    returned: Boolean,
+    isReturning: Boolean,
+    error: String?,
+    actions: TourLeftoverActions,
+    modifier: Modifier = Modifier
 ) {
+    val enabled = !returned && !isReturning
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
+        border = BorderStroke(1.5.dp, (if (returned) StockGreen else StockOrange).copy(alpha = 0.6f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (returned) Icons.Default.Check else Icons.Default.SwapHoriz,
+                    contentDescription = null,
+                    tint = if (returned) StockGreen else StockOrange,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = stringResource(
+                        if (returned) R.string.refill_leftover_booked else R.string.refill_leftover_title
+                    ),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            if (returned) return@Column
+
             Text(
-                text = stringResource(R.string.refill_rebuild_leftover_title),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = stringResource(R.string.refill_rebuild_leftover_hint),
+                text = stringResource(R.string.refill_leftover_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            leftovers.forEachIndexed { index, leftover ->
-                if (index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) else Spacer(Modifier.height(8.dp))
-                val destination = destinations[leftover.productId] ?: LeftoverDestination.WAREHOUSE
+            rows.forEachIndexed { index, row ->
+                if (index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp)) else Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    ProductImage(imagePath = leftover.imagePath, contentDescription = null, size = 32.dp)
+                    ProductImage(imagePath = row.imagePath, contentDescription = null, size = 32.dp)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = (leftover.name ?: stringResource(R.string.refill_pack_unknown_product)) +
-                                " · " + stringResource(R.string.refill_rebuild_units, leftover.van + leftover.machine),
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        val origin = buildList {
-                            if (leftover.machine > 0) add(stringResource(R.string.refill_rebuild_from_machine, leftover.machine))
-                            if (leftover.van > 0) add(stringResource(R.string.refill_rebuild_from_van, leftover.van))
-                        }
-                        Text(
-                            text = origin.joinToString(" · "),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        text = row.name ?: stringResource(R.string.refill_pack_unknown_product),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                NumberStepperField(
+                    label = stringResource(R.string.refill_leftover_van),
+                    value = row.van,
+                    max = null,
+                    enabled = enabled,
+                    onValue = { actions.onVan(row.productId, it) }
+                )
                 Spacer(modifier = Modifier.height(6.dp))
+                NumberStepperField(
+                    label = stringResource(R.string.refill_leftover_machine),
+                    value = row.machine,
+                    max = null,
+                    enabled = enabled,
+                    onValue = { actions.onMachine(row.productId, it) }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     SegmentedButton(
-                        selected = destination == LeftoverDestination.WAREHOUSE,
-                        onClick = { actions.onDestination(leftover.productId, LeftoverDestination.WAREHOUSE) },
+                        selected = row.destination == LeftoverDestination.WAREHOUSE,
+                        onClick = { actions.onDestination(row.productId, LeftoverDestination.WAREHOUSE) },
                         enabled = enabled,
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
                     ) {
                         Text(stringResource(R.string.refill_rebuild_to_warehouse), maxLines = 1)
                     }
                     SegmentedButton(
-                        selected = destination == LeftoverDestination.WASTE,
-                        onClick = { actions.onDestination(leftover.productId, LeftoverDestination.WASTE) },
+                        selected = row.destination == LeftoverDestination.WASTE,
+                        onClick = { actions.onDestination(row.productId, LeftoverDestination.WASTE) },
                         enabled = enabled,
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         colors = SegmentedButtonDefaults.colors(
@@ -716,18 +726,18 @@ private fun LeftoverCard(
                         Text(stringResource(R.string.refill_rebuild_write_off), maxLines = 1)
                     }
                 }
-                if (destination == LeftoverDestination.WAREHOUSE) {
-                    if (leftover.machine > 0) {
+                if (row.destination == LeftoverDestination.WAREHOUSE) {
+                    if (row.machine > 0) {
                         Spacer(modifier = Modifier.height(6.dp))
                         BestBeforeField(
-                            dateIso = expiry[leftover.productId],
+                            dateIso = row.expiry,
                             enabled = enabled,
-                            onChange = { actions.onExpiry(leftover.productId, it) }
+                            onChange = { actions.onExpiry(row.productId, it) }
                         )
                     }
                     val hints = buildList {
-                        if (leftover.van > 0) add(stringResource(R.string.refill_rebuild_van_back_hint))
-                        if (leftover.machine > 0) add(stringResource(R.string.refill_rebuild_machine_back_hint))
+                        if (row.van > 0) add(stringResource(R.string.refill_rebuild_van_back_hint))
+                        if (row.machine > 0) add(stringResource(R.string.refill_rebuild_machine_back_hint))
                     }
                     if (hints.isNotEmpty()) {
                         Text(
@@ -739,13 +749,39 @@ private fun LeftoverCard(
                     }
                 }
             }
+
+            if (error != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = stringResource(
+                        R.string.refill_leftover_error,
+                        error.ifBlank { stringResource(R.string.refill_error_unknown) }
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = StockRed
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = actions.onReturn,
+                enabled = enabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp)
+            ) {
+                if (isReturning) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.refill_leftover_book))
+                }
+            }
         }
     }
 }
 
 /**
- * Best-before date of goods taken out of the machine, pre-filled from the
- * batch of the last refill of that product into this machine. No lower
+ * Best-before date of goods taken out of a machine, pre-filled from the
+ * batch of the last refill of that product into the machine. No lower
  * bound, unlike the warehouse intake's: goods coming *out* of a machine can
  * be past their date, and the record should say so.
  */

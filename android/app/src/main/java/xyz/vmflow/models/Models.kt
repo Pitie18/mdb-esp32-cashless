@@ -636,7 +636,15 @@ data class PersistedTourState(
     val selectedWarehouseId: String?,
     val tourId: String,
     val tourLog: List<TourLogEntry>,
-    val savedAt: String
+    val savedAt: String,
+    /**
+     * Slot change leftovers riding in the van, `machineId -> per product`
+     * ([xyz.vmflow.data.TourLeftover]), booked at the end of the tour. Empty
+     * for a tour persisted before this field existed.
+     */
+    val tourLeftovers: Map<String, List<xyz.vmflow.data.TourLeftover>> = emptyMap(),
+    /** [tourLeftovers] have been booked back (`return_slot_change_leftovers`). */
+    val leftoversReturned: Boolean = false
 )
 
 /**

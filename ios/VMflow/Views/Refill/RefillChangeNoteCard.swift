@@ -3,7 +3,8 @@ import SwiftUI
 /// Packing step: a machine's change note ("Änderungsvermerk") — the slots the
 /// office wants switched to another product or spiral. The refiller accepts
 /// (default) or declines each slot; accepted slots leave the normal refill and
-/// add their rebuild units to the packing list. Declined slots stay open for a
+/// their rebuild units join the normal packing list below, marked violet (a
+/// "+N rebuild" badge or a row of their own). Declined slots stay open for a
 /// later tour. Mirrors the PWA's `RefillChangeNote.vue`.
 struct RefillChangeNoteCard: View {
     @ObservedObject var viewModel: RefillWizardViewModel
@@ -18,8 +19,6 @@ struct RefillChangeNoteCard: View {
     }
 
     var body: some View {
-        let packLines = viewModel.rebuildPackLines(machineId: machine.id)
-
         VStack(alignment: .leading, spacing: 10) {
             if showsMachineName {
                 Text(machine.machine.displayName)
@@ -50,14 +49,12 @@ struct RefillChangeNoteCard: View {
                 }
             }
 
-            if !packLines.isEmpty {
+            if acceptedCount > 0 {
                 Divider()
-                Text("Pack for the rebuild")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                ForEach(packLines) { line in
-                    packRow(line)
-                }
+                Text("The goods for it are marked violet in the packing list.")
+                    .font(.caption)
+                    .foregroundStyle(Color.rebuildViolet)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(12)
@@ -134,34 +131,6 @@ struct RefillChangeNoteCard: View {
         }
         .buttonStyle(.plain)
     }
-
-    // MARK: - Pack Row
-
-    private func packRow(_ line: RebuildPackLine) -> some View {
-        HStack(spacing: 8) {
-            ProductImage(imagePath: line.imagePath, size: 28)
-            Text(line.name ?? "")
-                .font(.subheadline)
-                .lineLimit(1)
-            Spacer(minLength: 4)
-            if line.need > 0 {
-                Text("\(line.packed)×")
-                    .font(.subheadline.weight(.bold))
-                    .monospacedDigit()
-                    .foregroundStyle(.blue)
-            } else {
-                Text("nothing, moves over")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            if line.packed < line.need {
-                Text("(\(line.need) needed)")
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(.orange)
-            }
-        }
-    }
 }
 
 // MARK: - Age Restriction Labels
@@ -177,4 +146,18 @@ extension SlotChangeRequestItem {
     var ageChangeLabel: String {
         "\(Self.ageLabel(fromMinAge)) → \(Self.ageLabel(toMinAge))"
     }
+}
+
+// MARK: - Rebuild Accent
+
+extension Color {
+    /// Violet of slot rebuild goods in the packing list (text / icons) —
+    /// the PWA's violet-700 in light mode, violet-300 in dark mode.
+    static let rebuildViolet = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.769, green: 0.710, blue: 0.992, alpha: 1)
+            : UIColor(red: 0.427, green: 0.157, blue: 0.851, alpha: 1)
+    })
+    /// Violet-500, for tinted backgrounds and borders (use with opacity).
+    static let rebuildVioletFill = Color(red: 0.545, green: 0.361, blue: 0.965)
 }

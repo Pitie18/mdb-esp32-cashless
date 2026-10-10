@@ -12,7 +12,8 @@ import kotlinx.serialization.Serializable
  * refiller accepts (default) or declines each slot while packing, packs what
  * the new slots need ([SlotChange.rebuildPackNeeds]), rebuilds them at the
  * machine ([SlotChange.fillPlan]) and books what is left over
- * ([SlotChange.computeLeftovers]) through `apply_slot_change`.
+ * ([SlotChange.computeLeftovers]) — carried in the van and booked at the end of
+ * the tour through `return_slot_change_leftovers`.
  *
  * Bookkeeping rule: until the refiller quits the rebuild at the machine the
  * old product stays in the slot, so sales keep decrementing it. The units
@@ -151,7 +152,199 @@ data class RebuildLeftover(
     val machine: Int
 )
 
+/**
+ * What one machine stop left over for the van, kept in the tour state until
+ * the refiller is back at the warehouse ([SlotChange.aggregateTourLeftovers],
+ * `return_slot_change_leftovers`). Stored per machine and **overwritten** on
+ * every successful quit of that machine, so a retried confirm never counts
+ * twice. Persisted with the resumable tour.
+ *
+ * @property van packed for the rebuild but not used.
+ * @property machine taken out of a slot and not put into another one.
+ * @property suggestedExpiry best-before date suggested for [machine] units:
+ *   the batch of the last refill of this product into that machine.
+ */
+@Serializable
+data class TourLeftover(
+    val productId: String,
+    val name: String? = null,
+    val imagePath: String? = null,
+    val van: Int = 0,
+    val machine: Int = 0,
+    val suggestedExpiry: String? = null
+)
+
+/**
+ * One product line on the pack step that exists because of slot rebuilds:
+ * [need] = units the accepted slots ask the warehouse for, [committed] =
+ * what the warehouse covers (and what is deducted at tour start).
+ */
+data class RebuildPackRow(
+    val productId: String,
+    val name: String?,
+    val imagePath: String?,
+    val need: Int,
+    val committed: Int
+)
+
+/** A slot quit as rebuilt and filled, for the `stock_refill_tour` activity row. */
+data class RebuiltSlotLine(
+    val productId: String,
+    val productName: String?,
+    val quantity: Int,
+    val itemNumber: Int
+)
+
 object SlotChange {
+
+    // ── Tour end: leftovers booked at the warehouse ─────────────────────
+
+    /**
+     * The tour's leftovers per product, summed over every machine in tour
+     * order (first seen first). The suggested best-before date is the
+     * earliest one any machine suggested — the conservative pick for goods
+     * that are mixed into one return batch. Products with nothing left are
+     * dropped.
+     */
+    fun aggregateTourLeftovers(byMachine: Map<String, List<TourLeftover>>): List<TourLeftover> {
+        val out = LinkedHashMap<String, TourLeftover>()
+        for (entries in byMachine.values) {
+            for (e in entries) {
+                val prev = out[e.productId]
+                out[e.productId] = if (prev == null) {
+                    e
+                } else {
+                    prev.copy(
+                        name = prev.name ?: e.name,
+                        imagePath = prev.imagePath ?: e.imagePath,
+                        van = prev.van + e.van,
+                        machine = prev.machine + e.machine,
+                        suggestedExpiry = listOfNotNull(prev.suggestedExpiry, e.suggestedExpiry).minOrNull()
+                    )
+                }
+            }
+        }
+        return out.values.filter { it.van + it.machine > 0 }
+    }
+
+    /**
+     * `p_leftovers` for `return_slot_change_leftovers`. The quantities the
+     * refiller counted at the warehouse ([vanQty] / [machineQty], missing =
+     * the computed default) win; products where both are 0 are left out. The
+     * best-before date only travels with machine units going back to stock:
+     * the one set in [expiry] (blank = explicitly none), else the suggestion.
+     */
+    fun tourReturnPayload(
+        aggregated: List<TourLeftover>,
+        vanQty: Map<String, Int>,
+        machineQty: Map<String, Int>,
+        destinations: Map<String, LeftoverDestination>,
+        expiry: Map<String, String>,
+        batchNumber: String?
+    ): List<SlotChangeLeftoverPayload> = aggregated.mapNotNull { l ->
+        val van = maxOf(0, vanQty[l.productId] ?: l.van)
+        val machine = maxOf(0, machineQty[l.productId] ?: l.machine)
+        if (van == 0 && machine == 0) return@mapNotNull null
+        val destination = destinations[l.productId] ?: LeftoverDestination.WAREHOUSE
+        SlotChangeLeftoverPayload(
+            productId = l.productId,
+            vanQty = van,
+            machineQty = machine,
+            destination = destination,
+            expirationDate = if (destination == LeftoverDestination.WAREHOUSE && machine > 0) {
+                // A key with a blank value is the refiller's explicit "no date".
+                if (l.productId in expiry) expiry[l.productId]?.takeIf { it.isNotBlank() } else l.suggestedExpiry
+            } else {
+                null
+            },
+            batchNumber = batchNumber
+        )
+    }
+
+    /**
+     * Slots quit as rebuilt with a new product and something filled in — the
+     * lines the `stock_refill_tour` row lists next to the normal refill, slot
+     * order.
+     */
+    fun rebuiltLines(slots: List<RebuildSlot>): List<RebuiltSlotLine> =
+        slots
+            .filter { it.action == RebuildAction.DONE && it.item.toProductId != null && it.filled > 0 }
+            .sortedBy { it.item.itemNumber }
+            .map {
+                RebuiltSlotLine(
+                    productId = it.item.toProductId!!,
+                    productName = it.item.toName,
+                    quantity = it.filled,
+                    itemNumber = it.item.itemNumber
+                )
+            }
+
+    // ── Pack step: rebuild units in the normal packing list ──────────────
+
+    /**
+     * What the rebuilds put into the packing list, per product, summed over
+     * [needsByMachine] (already narrowed to the machines in scope). A product
+     * whose new slots are fully covered by stock moving inside its machine
+     * (need 0) gets no row.
+     *
+     * @param needsByMachine `machineId -> productId -> units needed` ([rebuildPackNeeds]).
+     * @param committed `machineId -> productId -> units committed` ([commitRebuild]).
+     * @param items change items to read product names and images from.
+     */
+    fun rebuildPackRows(
+        needsByMachine: List<Pair<String, Map<String, Int>>>,
+        committed: Map<String, Map<String, Int>>,
+        items: List<SlotChangeItem>
+    ): List<RebuildPackRow> {
+        val need = LinkedHashMap<String, Int>()
+        val packed = HashMap<String, Int>()
+        for ((machineId, needs) in needsByMachine) {
+            for ((pid, n) in needs) {
+                if (n <= 0) continue
+                need[pid] = (need[pid] ?: 0) + n
+                packed[pid] = (packed[pid] ?: 0) + (committed[machineId]?.get(pid) ?: 0)
+            }
+        }
+        return need.map { (pid, n) ->
+            val ref = items.firstOrNull { it.toProductId == pid }
+            RebuildPackRow(
+                productId = pid,
+                name = ref?.toName,
+                imagePath = ref?.toImagePath,
+                need = n,
+                committed = packed[pid] ?: 0
+            )
+        }
+    }
+
+    /**
+     * Sorts pack-list rows the way [RefillTourLogic.buildCombinedPackingList]
+     * does — warehouse walk order when the warehouse has one, otherwise
+     * quantity descending — then name, then id. The sort is stable, so rows
+     * the packing list already ordered keep their order and rebuild-only rows
+     * slot in where the warehouse walk puts them.
+     */
+    fun <T> sortForPacking(
+        rows: List<T>,
+        pickOrder: Map<String, Int>,
+        productId: (T) -> String,
+        name: (T) -> String?,
+        quantity: (T) -> Int,
+        nameComparator: Comparator<String?> = RefillTourLogic.defaultProductNameComparator()
+    ): List<T> =
+        if (pickOrder.isEmpty()) {
+            rows.sortedWith(
+                compareByDescending<T> { quantity(it) }
+                    .thenBy(nameComparator) { name(it) }
+                    .thenBy { productId(it) }
+            )
+        } else {
+            rows.sortedWith(
+                compareBy<T> { pickOrder[productId(it)] ?: Int.MAX_VALUE }
+                    .thenBy(nameComparator) { name(it) }
+                    .thenBy { productId(it) }
+            )
+        }
 
     /**
      * Units to pack for the rebuild, per product: the capacity of its new

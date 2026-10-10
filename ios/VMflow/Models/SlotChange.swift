@@ -6,8 +6,10 @@ import Foundation
 // and saves it as a change request (`save_slot_change_request`), never as a
 // tray update. The next refill tour shows the request as a change note: it
 // packs what the new slots need (`rebuildPackNeeds`), suggests how to fill them
-// at the machine (`fillPlan`) and books what is left over (`computeLeftovers`)
-// through `apply_slot_change`.
+// at the machine (`fillPlan`), quits the slots through `apply_slot_change` and
+// books what is left over (`computeLeftovers`, summed per tour by
+// `aggregateTourLeftovers`) at the end of the tour through
+// `return_slot_change_leftovers`.
 //
 // Bookkeeping rule: until the refiller quits the rebuild at the machine the old
 // product stays in the slot, so sales keep decrementing it. The units actually
@@ -156,6 +158,132 @@ enum SlotChange {
                 return a.offset < b.offset
             }
             .map(\.element)
+    }
+}
+
+// MARK: - Tour leftovers (booked at the end of the tour)
+//
+// At the machine `apply_slot_change` only switches the slots; what is left
+// over rides along in the van and is booked once, back at the warehouse, with
+// `return_slot_change_leftovers`. Mirrors the web's `useRefillWizard.ts`.
+
+/// What one machine left over of one product, kept in the tour state until
+/// the end of the tour. Overwritten per machine, so a retried confirm never
+/// counts twice.
+struct TourLeftover: Codable, Equatable {
+    let productId: UUID
+    let name: String?
+    let imagePath: String?
+    /// Packed for the rebuild but not used.
+    let van: Int
+    /// Taken out of a slot and not put into another one.
+    let machine: Int
+}
+
+/// A product's leftovers summed over every machine of the tour.
+struct TourLeftoverTotal: Equatable, Identifiable {
+    let productId: UUID
+    let name: String?
+    let imagePath: String?
+    let van: Int
+    let machine: Int
+    /// Machines the `machine` units came out of (best-before suggestion).
+    let machineIds: [UUID]
+
+    var id: UUID { productId }
+}
+
+/// Sort key of one packing-list row.
+struct PackOrderKey: Equatable {
+    let productId: UUID
+    let name: String
+    let quantity: Int
+}
+
+/// A row of the merged packing list: a normal refill product (which may carry
+/// rebuild units too) or a product packed only for a rebuild.
+enum PackListEntry: Equatable {
+    case normal(UUID)
+    case rebuildOnly(UUID)
+}
+
+enum PackListOrder {
+    /// Warehouse pick order: positioned products first (in position order),
+    /// then the rest alphabetically. Without positions: quantity descending,
+    /// then name. Always a total order (product id breaks ties) so rows never
+    /// swap between renders.
+    static func isOrderedBefore(_ a: PackOrderKey, _ b: PackOrderKey, position: [UUID: Int]) -> Bool {
+        if position.isEmpty {
+            if a.quantity != b.quantity { return a.quantity > b.quantity }
+        } else {
+            switch (position[a.productId], position[b.productId]) {
+            case let (pa?, pb?) where pa != pb:
+                return pa < pb
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            default:
+                break
+            }
+        }
+        let nameCompare = a.name.localizedCaseInsensitiveCompare(b.name)
+        if nameCompare != .orderedSame { return nameCompare == .orderedAscending }
+        return a.productId.uuidString < b.productId.uuidString
+    }
+
+    /// The normal rows and the rebuild-only rows in one list, in pick order.
+    static func merge(normal: [PackOrderKey], rebuildOnly: [PackOrderKey], position: [UUID: Int]) -> [PackListEntry] {
+        let tagged = normal.map { ($0, PackListEntry.normal($0.productId)) }
+            + rebuildOnly.map { ($0, PackListEntry.rebuildOnly($0.productId)) }
+        return tagged
+            .sorted { isOrderedBefore($0.0, $1.0, position: position) }
+            .map(\.1)
+    }
+}
+
+extension SlotChange {
+    /// Rebuild units per product, summed over the given machines.
+    static func rebuildByProduct(_ byMachine: [UUID: [UUID: Int]], machineIds: [UUID]) -> [UUID: Int] {
+        var out: [UUID: Int] = [:]
+        for machineId in machineIds {
+            for (pid, qty) in byMachine[machineId] ?? [:] where qty > 0 {
+                out[pid, default: 0] += qty
+            }
+        }
+        return out
+    }
+
+    /// The tour's leftovers per product, summed over the machines. Order:
+    /// machines in tour order, products as they first appear. Products with
+    /// nothing left are dropped.
+    static func aggregateTourLeftovers(_ byMachine: [UUID: [TourLeftover]], machineOrder: [UUID]) -> [TourLeftoverTotal] {
+        let order = machineOrder.filter { byMachine[$0] != nil }
+            + byMachine.keys.filter { !machineOrder.contains($0) }.sorted { $0.uuidString < $1.uuidString }
+        var products: [UUID] = []
+        var totals: [UUID: (name: String?, image: String?, van: Int, machine: Int, machines: [UUID])] = [:]
+        for machineId in order {
+            for left in byMachine[machineId] ?? [] {
+                let van = max(0, left.van)
+                let machine = max(0, left.machine)
+                guard van + machine > 0 else { continue }
+                var t = totals[left.productId] ?? (name: nil, image: nil, van: 0, machine: 0, machines: [])
+                if t.name == nil { t.name = left.name }
+                if t.image == nil { t.image = left.imagePath }
+                t.van += van
+                t.machine += machine
+                if machine > 0 && !t.machines.contains(machineId) { t.machines.append(machineId) }
+                if totals[left.productId] == nil { products.append(left.productId) }
+                totals[left.productId] = t
+            }
+        }
+        return products.compactMap { pid in
+            guard let t = totals[pid] else { return nil }
+            return TourLeftoverTotal(
+                productId: pid, name: t.name, imagePath: t.image,
+                van: t.van, machine: t.machine, machineIds: t.machines
+            )
+        }
     }
 }
 
