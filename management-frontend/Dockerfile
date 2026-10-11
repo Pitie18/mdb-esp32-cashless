@@ -13,7 +13,8 @@ ENV GIT_HASH=${GIT_HASH}
 ENV BUILD_DATE=${BUILD_DATE}
 # Nuxt's client build needs more than Node's default heap on small hosts
 # ("JavaScript heap out of memory" around 1.4 GB). This only raises the
-# ceiling; override with --build-arg NODE_MAX_OLD_SPACE=<MB> if the host has
+# ceiling (the build fits in it since server sourcemaps are off, see
+# nuxt.config.ts); override with --build-arg NODE_MAX_OLD_SPACE=<MB> if the host has
 # less RAM (and add swap).
 ARG NODE_MAX_OLD_SPACE=3072
 ENV NODE_OPTIONS=--max-old-space-size=${NODE_MAX_OLD_SPACE}

@@ -15,6 +15,13 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   modules: ['@nuxtjs/supabase', '@nuxtjs/tailwindcss', 'shadcn-nuxt', '@vite-pwa/nuxt', '@nuxtjs/i18n'],
   devtools: { enabled: true },
+  // Nuxt emits server sourcemaps by default. Nitro then has to carry the
+  // sourcemap of every SSR chunk through its own Rollup pass, which pushed the
+  // production build past a 3 GB heap (OOM in "Building Nuxt Nitro server").
+  // Without them the whole build peaks around 3.5 GB RSS instead of 7.7 GB.
+  // The client never shipped sourcemaps (Nuxt's default), so nothing visible
+  // changes; only server stack traces point into the bundled .mjs files.
+  sourcemap: { server: false, client: false },
   vue: {
     compilerOptions: {
       isCustomElement: (tag: string) => tag.startsWith('esp-'),
