@@ -1,0 +1,73 @@
+BOÎTIER WROOM-U1 — PROTOTYPE V1
+
+Conçu à partir du fichier wroom-u1.step fourni le 11 octobre 2026.
+Unités : millimètres. PCB d'origine : environ 149,83 × 38,50 mm.
+Corps : 170 × 48 mm. Fond avec pattes : 208 × 48 × 31 mm.
+Hauteur fermée : 33,4 mm, hors têtes de vis.
+
+CONTENU
+fond.stl : fond, quatre entretoises PCB, quatre colonnettes de couvercle,
+deux pattes latérales, oblongs et passages pour colsons.
+couvercle.stl : couvercle vissé avec fenêtres d'accès aux connecteurs.
+test_inserts.stl : coupon avec quatre logements identifiés 3,1 / 3,2 / 3,3 / 3,4.
+Les STEP individuels sont éditables dans un logiciel de CAO.
+boitier_assemble.step : boîtier assemblé sans électronique.
+wroom-u1.step : modèle original de la PCB (repère Z original conservé).
+build_case.py : source paramétrique CadQuery (nécessite CadQuery 2.x).
+verification.json : contrôles géométriques sur les modèles.
+
+INSERTS ET VIS
+Interprétation de M2.5x5x3.5 : filetage M2,5, longueur 5, diamètre extérieur 3,5.
+8 inserts thermiques : 4 pour la carte + 4 pour le couvercle optionnel.
+Logements prévus : diamètre nominal 3,2 mm, profondeur 5,6 mm, entrée évasée.
+Imprimer d'abord le coupon, même matériau et mêmes paramètres que le fond.
+Le diamètre final dépend des inserts et du calibrage de l'imprimante. Si 3,2
+ne convient pas, modifier INSERT_BORE dans la source et régénérer les pièces.
+Ne pas forcer un insert à froid. Le poser droit, à fleur, sans dépasser.
+Vis suggérées : M2,5 × 6 mm, tête cylindrique, sans rondelle épaisse.
+Engagement théorique : ~4,48 mm pour la PCB et 3,6 mm pour le couvercle.
+Vérifier la profondeur utilisable réelle de l'insert avant de serrer.
+
+IMPRESSION — POINT DE DÉPART
+PETG pour ce prototype. Buse 0,4 mm, couches de 0,20 mm, 4 périmètres,
+5 couches supérieures/inférieures, remplissage 20 à 25 %.
+Températures et ventilation : profil du fabricant du filament utilisé.
+Fond à plat sur sa face inférieure ; couvercle à plat ; STL déjà posés à Z=0.
+Pas de supports prévus ; les petits tunnels sous les pattes nécessitent
+un pontage de ~9,4 mm. Vérifier l'aperçu du trancheur.
+Les dimensions sont nominales : aucun retrait spécifique ABS appliqué.
+
+MONTAGE
+1. Essayer un insert dans le coupon puis poser les inserts dans le fond.
+2. Placer la PCB, composants vers le haut, et la visser sans contrainte.
+   Les quatre entretoises reprennent les trous Ø2,7 mm du STEP, asymétriques.
+   La face inférieure de la PCB est à 9 mm du dessous du fond.
+   Dégagement entre les broches les plus basses et le plancher : ~3,70 mm.
+3. Fixer le fond au support par les deux oblongs 10 × 4,5 mm, ou par colsons.
+   Centres des oblongs : X = ±95 mm, Y = 0 (entraxe central 190 mm).
+   Chaque patte comporte deux fentes 9 × 3 mm et un tunnel dessous de 1,8 mm.
+   Colsons jusqu'à ~7,6 mm de largeur, si leur épaisseur passe dans le tunnel.
+   Les vis, rondelles et colsons ne sont pas représentés dans le STEP.
+4. Brancher les connecteurs par les ouvertures latérales et supérieures.
+5. Passer le câble d'antenne dans l'encoche 2,2 × 2,2 mm du bord supérieur
+   du grand côté, près de l'ESP32, avant de poser le couvercle. Cette encoche
+   n'est ni un serre-câble ni un logement de connecteur SMA. Un câble de plus
+   de 2 mm de diamètre demandera un agrandissement.
+6. Poser et visser le couvercle. Le fond peut aussi s'utiliser sans couvercle.
+
+LIMITES À VÉRIFIER SUR PLACE
+Le contrôle de collision concerne la géométrie présente dans le STEP fourni.
+Les fiches accouplées, câbles, outils et leurs rayons de courbure ne sont pas
+modélisés : vérifier leur accès et le débattement réel au montage.
+Les ouvertures donnent accès aux connecteurs et aux vis des borniers ;
+retirer le couvercle pour intervenir sur les petits boutons et l'électronique.
+L'emplacement dans le distributeur n'a pas été mesuré : vérifier 208 × 48 mm
+ainsi que l'espace supplémentaire nécessaire aux câbles et au tournevis.
+Boîtier ajouré sans étanchéité ni indice IP, à placer dans un compartiment sec.
+
+RÉGÉNÉRATION
+Installer CadQuery puis : python build_case.py dossier_sortie
+Modifier les paramètres en tête de script pour adapter les logements.
+La source génère le boîtier et le coupon. L'aperçu n'est pas régénéré par ce
+script. Pour superposer la PCB originale au boîtier assemblé : translation
+de +9 mm en Z, aucun décalage en X ou Y.

@@ -1,0 +1,28 @@
+{
+  "fond": {
+    "valid": true,
+    "solids": 1,
+    "volume_mm3": 36600.7,
+    "size_mm": [
+      195.11,
+      54.7,
+      26.0
+    ],
+    "stl_ok": true
+  },
+  "couvercle": {
+    "valid": true,
+    "solids": 1,
+    "volume_mm3": 13915.9,
+    "size_mm": [
+      155.11,
+      54.7,
+      10.3
+    ],
+    "stl_ok": true
+  },
+  "fond_couvercle_intersection_mm3": 0.0,
+  "pcb_collisions": [],
+  "hauteur_fond_mm": 26.0,
+  "clip_colonnette_ecart_min_mm": 0.7
+}

@@ -1,0 +1,54 @@
+BOÎTIER WROOM-U1 — V3 (FreeCAD, fermeture à clips seule)
+
+Généré par build_case_v3.py (FreeCAD 1.1, module Part) à partir de
+kicad/mdb_slave_esp32s3-wroom-1u/wroom-u1.step. Unités : mm. PETG, parois 2 mm.
+Différence avec la v2 : plus de colonnettes ni de vis pour le couvercle, qui tient
+uniquement par ses 4 clips. Le reste est identique.
+
+DIMENSIONS
+Fond : 195 × 43,5 × 26 mm (pattes comprises). Corps : 155 × 43,5 mm.
+Fermé : 28 mm de haut. Dessous de la PCB à 7 mm du dessous du fond.
+
+FICHIERS
+fond.stl / fond.step            fond, entretoises PCB, pattes de fixation
+couvercle.stl / couvercle.step  couvercle (STL retourné : face extérieure sur le plateau)
+assemblage.step                 fond + couvercle + PCB, pour contrôle
+verification.json               validité des solides, collisions PCB (aucune)
+render_preview.py               régénère les aperçus apercu_*.png (freecad.exe)
+
+OUVERTURES
+USB-C : 12,8 × 7,2 mm, mur ouest, la prise affleure (paroi 2 mm).
+MDB (Mini-Fit 2×3) : fenêtre 15,6 × 12,5 mm, mur sud.
+Borniers : une fenêtre 4,8 × 8,4 mm par pôle (30), sur les murs sud, nord et est,
+plus un trou Ø4,8 dans le couvercle au-dessus de chaque vis.
+LED D0 (WS2812B) : trou Ø4 dans le couvercle.
+Antenne : fente 3 × 2 mm en haut du mur nord, entre fond et couvercle, près de l'ESP32.
+Ventilation : fentes 1,6 × 3,4 mm sous la carte (murs nord et sud) + fentes 1,6 × 12 mm
+dans le couvercle (au-dessus des relais et de la zone centrale) : tirage naturel bas → haut.
+
+FERMETURE
+4 clips : languettes 8 × 1,2 mm, bossage 0,6 mm, à X = -64,5 et X = 60 sur les murs
+nord et sud (un clip près de chaque coin). Fermer en appuyant sur le couvercle.
+Ouvrir : pousser le bossage vers l'intérieur par la fenêtre du mur avec un petit
+tournevis, clip par clip, en soulevant le couvercle de ce côté.
+Retenue trop faible ou trop forte : ajuster BUMP (0,6) et CLIP_T (1,2) dans le script.
+
+FIXATION
+Deux pattes de 4 mm, chacune avec un oblong 10 × 4,5 mm (vis M4) et deux fentes
+9 × 3,2 mm pour colson, reliées par un tunnel de 1,8 mm sous la patte.
+
+INSERTS
+4 inserts M2,5 × 5 × Ø3,5 pour la PCB uniquement. Logement Ø3,2 × 5,6 mm avec chanfrein.
+Valider le diamètre avec ../test_inserts.stl (v1) et modifier INSERT_BORE si besoin.
+
+IMPRESSION (point de départ)
+PETG, buse 0,4, couches 0,2 mm, 3 périmètres, 20 % de remplissage, sans supports.
+Fond posé sur sa face inférieure ; couvercle face extérieure sur le plateau, clips vers le haut.
+Fenêtres murales : petits ponts (≤ 15,6 mm), à vérifier dans l'aperçu du trancheur.
+
+LIMITES
+Collisions contrôlées sur la géométrie du STEP. Les fiches, les câbles et les
+outils ne sont pas modélisés. La LED WS2812B n'a pas de modèle 3D dans le STEP :
+sa position vient du fichier .kicad_pcb. Les boutons RST/BOOT ne sont accessibles
+que couvercle retiré. Sans vis, le couvercle peut sauter sous un choc ou une
+vibration forte : tester la retenue des clips en situation.

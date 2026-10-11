@@ -1,0 +1,39 @@
+{
+  "fond": {
+    "valid": true,
+    "solids": 1,
+    "volume_mm3": 47862.11656877741,
+    "size_mm": [
+      208.0,
+      48.0,
+      31.000000000000007
+    ]
+  },
+  "couvercle": {
+    "valid": true,
+    "solids": 1,
+    "volume_mm3": 12788.192495197472,
+    "size_mm": [
+      170.0,
+      48.0,
+      2.3999999999999986
+    ]
+  },
+  "test_inserts": {
+    "valid": true,
+    "solids": 1,
+    "volume_mm3": 4938.813427266494,
+    "size_mm": [
+      46.0000002,
+      14.0000002,
+      8.350000099999999
+    ]
+  },
+  "base_lid_intersection_mm3": 0.0,
+  "pcb_collisions": [],
+  "stl_edge_checks": {
+    "fond": "closed manifold: every edge shared by two triangles",
+    "couvercle": "closed manifold: every edge shared by two triangles",
+    "test_inserts": "closed manifold: every edge shared by two triangles"
+  }
+}
