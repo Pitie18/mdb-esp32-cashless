@@ -13,7 +13,7 @@ For a version with optional lid screws, see [`../screw-clips`](../screw-clips).
 | `base.stl` / `base.step` | Base with board standoffs and mounting ears |
 | `lid.stl` / `lid.step` | Lid. The STL is flipped: outer face on the bed, clips up |
 | `build_case.py` | Parametric FreeCAD source for both parts |
-| `3Dcase_wroom-u1-clips.3mf` | Slicer project (base + lid) |
+| `case_wroom-u1-clips.3mf` | Slicer project (base + lid) |
 
 ## Dimensions
 
