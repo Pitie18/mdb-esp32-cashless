@@ -6,6 +6,12 @@ For a version with optional lid screws, see [`../screw-clips`](../screw-clips).
 
 ![Exploded view](preview_exploded.png)
 
+## Printed result
+
+| Parts before assembly | Board screwed in the base | Closed |
+|:---:|:---:|:---:|
+| ![Before assembly](before_assembly.jpeg) | ![Board screwed in the base](screwed_assembly.png) | ![Closed enclosure](printed_assembled.png) |
+
 ## Files
 
 | File | Content |
