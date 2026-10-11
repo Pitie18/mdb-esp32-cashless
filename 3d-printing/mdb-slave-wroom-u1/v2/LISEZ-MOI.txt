@@ -35,8 +35,8 @@ Deux pattes de 4 mm, chacune avec un oblong 10 × 4,5 mm (vis M4) et deux fentes
 9 × 3,2 mm pour colson, reliées par un tunnel de 1,8 mm sous la patte.
 
 INSERTS
-8 inserts M2,5 (4 PCB + 4 couvercle). Logement Ø3,2 × 5,6 mm avec chanfrein.
-Valider le diamètre avec ../test_inserts.stl (v1) et modifier INSERT_BORE si besoin.
+8 inserts M2,5 (4 PCB + 4 couvercle). Logement Ø3,3 × 5,6 mm avec chanfrein (validé sur coupon).
+Diamètre validé avec v1/test_inserts.stl : 3,3 retenu, 3,4 trop large.
 
 IMPRESSION (point de départ)
 PETG, buse 0,4, couches 0,2 mm, 3 périmètres, 20 % de remplissage, sans supports.

@@ -29,7 +29,7 @@ STANDOFF = 5.0        # hauteur entretoises (broches traversantes : -2.9 mm)
 PCB_Z = FLOOR + STANDOFF
 PCB_T = 1.52
 TOP_CLEAR = 1.4       # jeu au-dessus du composant le plus haut (relais 17.6)
-INSERT_BORE = 3.2     # insert M2.5 x 5 x OD3.5 (PCB uniquement) (valider avec test_inserts.stl de la v1)
+INSERT_BORE = 3.3     # insert M2.5 x 5 x OD3.5 (PCB uniquement), valide sur test_inserts.stl (v1)
 INSERT_DEPTH = 5.6
 FIT = 0.25            # jeu levre couvercle / paroi
 
