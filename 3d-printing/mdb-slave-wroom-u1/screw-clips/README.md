@@ -6,6 +6,13 @@ For a lid held by clips only, see [`../clips`](../clips).
 
 ![Exploded view](preview_exploded.png)
 
+## Board mounting
+
+Photo taken on the printed [clips](../clips) variant. The board sits on the same
+four standoffs with M2.5 heat inserts in this variant.
+
+![Board screwed in the base](../clips/screwed_assembly.png)
+
 ## Files
 
 | File | Content |
