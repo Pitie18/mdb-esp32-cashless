@@ -297,7 +297,7 @@ The custom PCB connects directly to the vending machine's MDB bus via the standa
 - **Connectors:** MDB, USB-C (programming & debug), UART debug and JTAG headers; all field connectors on the board edge
 - **Payments add-ons:** serial RFID card reader for prepaid cards ([guide](docs/integrations/rfid-card-reader.md))
 - **PCB design:** KiCad — sources in [`kicad/`](kicad/), hardware licensed under **CERN-OHL-S v2**
-- **Enclosure:** 3D-printable brackets — STL/STEP in [`3d-printing/`](3d-printing/)
+- **Enclosure:** 3D-printable closed cases and mounting brackets — STL/STEP in [`3d-printing/`](3d-printing/) ([details](#3d-printed-enclosures))
 
 ### Board variants
 
@@ -335,7 +335,54 @@ All boards run the **same firmware** ([`mdb-slave-esp32s3/`](mdb-slave-esp32s3/)
 </tr>
 </table>
 
-**3D-printed holders** — three variants in [`3d-printing/`](3d-printing/): the original [`mdb-slave`](3d-printing/mdb-slave/) bracket, a [`mdb-slave-more-stable`](3d-printing/mdb-slave-more-stable/) version with extra support at the MDB connector, and [`mdb-slave-sim`](3d-printing/mdb-slave-sim/) with holes for two SMA antenna connectors (cellular board).
+### 3D-printed enclosures
+
+Five printable designs in [`3d-printing/`](3d-printing/), with STL files ready to slice and STEP (or F3D) sources to edit.
+
+| Design | Board | Type | Highlights |
+|---|---|---|---|
+| [`mdb-slave-wroom-u1/clips`](3d-printing/mdb-slave-wroom-u1/clips/) | WROOM-1U | Closed case | Lid held by 4 snap clips, no screws. Narrow body (195 × 43.5 × 28 mm). |
+| [`mdb-slave-wroom-u1/screw-clips`](3d-printing/mdb-slave-wroom-u1/screw-clips/) | WROOM-1U | Closed case | Same snap clips, plus 4 optional M2.5 lid screws in external bosses for high-vibration machines (195 × 54.7 × 28 mm). |
+| [`mdb-slave`](3d-printing/mdb-slave/) | MDB ESP32-S3 | Open bracket | Original mounting bracket (Fusion 360). |
+| [`mdb-slave-more-stable`](3d-printing/mdb-slave-more-stable/) | MDB ESP32-S3 | Open bracket | Extra support under the MDB connector. |
+| [`mdb-slave-sim`](3d-printing/mdb-slave-sim/) | MDB ESP32-S3 + SIM7080G | Open bracket | Holes for two SMA antenna connectors. |
+
+**WROOM-1U cases** — both variants share these features:
+
+- **Every connector reachable with the lid closed:** USB-C, MDB (Mini-Fit 2×3) and one wire window per terminal-block pole, plus a hole in the lid above each terminal screw.
+- **Status LED visible** through a hole in the lid.
+- **External antenna and UART debug cables** exit through slots under the lid.
+- **Passive cooling:** low vents in the long walls and high vents in the lid above the relays.
+- **Mounting:** two ears, each with an M4 screw slot and zip-tie slots.
+- **Board fixing:** four M2.5 heat inserts.
+- **Print:** PETG, 0.2 mm layers, no supports. A slicer project (`.3mf`) with base and lid is included.
+- **Parametric:** a FreeCAD script (`build_case.py`) regenerates the parts from the board STEP and checks collisions with the board.
+
+<table>
+<tr>
+<td width="33%" align="center" valign="top">
+
+![WROOM-1U case — exploded view](3d-printing/mdb-slave-wroom-u1/clips/preview_exploded.png)
+
+**WROOM-1U case** — exploded view
+
+</td>
+<td width="33%" align="center" valign="top">
+
+![WROOM-1U board screwed in the printed base](3d-printing/mdb-slave-wroom-u1/clips/screwed_assembly.png)
+
+**Board in the base** — four M2.5 heat inserts
+
+</td>
+<td width="33%" align="center" valign="top">
+
+![Closed WROOM-1U case](3d-printing/mdb-slave-wroom-u1/clips/printed_assembled.png)
+
+**Closed** — clips variant, printed in PETG
+
+</td>
+</tr>
+</table>
 
 > 🛒 **Order the PCB:** [**MDB ESP32-S3-WROOM-1U on PCBWay**](https://www.pcbway.com/project/shareproject/MDB_Slave_ESP32_S3_WROOM_1U_4_layer_cashless_telemetry_board_for_vending_mac_cb2e3ef8.html) (or upload the [gerbers](kicad/mdb_slave_esp32s3-wroom-1u/gerber_to_order/) to JLCPCB / PCBWay) · other boards — [PCBWay shared project](https://www.pcbway.com/project/shareproject/mdb_esp32_cashless_bc6bf8d8.html) · [PCBWay project store](https://www.pcbway.com/project/member/?bmbno=1B3B95CB-4E28-4D)
 
@@ -512,7 +559,7 @@ mdb-esp32-cashless/
 │   ├── mdb-slave-esp32s3/            # Original board
 │   ├── mdb-slave-esp32s3-sim7080g/   # Cellular board (SIM7080G)
 │   └── mdb_slave_esp32s3-wroom-1u/   # WROOM-1U board (gerbers, iBOM)
-├── 3d-printing/             # Mounting brackets (STL/STEP/F3D), 3 variants
+├── 3d-printing/             # WROOM-1U cases (2 variants) + mounting brackets (3 variants), STL/STEP/F3D
 ├── docs/                    # Screenshots, integrations, extension points
 ├── scripts/                 # Demo seed, prod→test data sync, git hooks
 ├── n8n-workflows-store/     # Example n8n workflows (e.g. send credit via MQTT)
