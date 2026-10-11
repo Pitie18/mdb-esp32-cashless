@@ -69,6 +69,7 @@ MDB = (10.04, 24.04, -1.9, 12.3)                          # x0 x1 z0 z1 (board f
 USB_C = (0.38, 2.78)                                      # centre y, z (board frame)
 LEDS = [(-47.76, -3.43)]                                  # WS2812B-2121 "LED D0"
 ANTENNA_X = -46.0                                         # U.FL cable slot, north wall
+UART_X, UART_W = -33.15, 8.0                              # J1 UART debug cable slot, north wall
 SCREW_BOSSES = ([(x, s * (Y1 + WALL + 2.2)) for x in (-73.0, 73.0) for s in (-1, 1)]
                 if LID_SCREWS else [])
 
@@ -151,6 +152,8 @@ for (px, py), side in TERMINALS:
     cuts.append(wall_window(side, a - 2.4, a + 2.4, PCB_Z + WIRE_Z[0], PCB_Z + WIRE_Z[1], 1.0))
 # Antenna: 3 x 2 mm slot at the top of the north wall, under the lid
 cuts.append(box(ANTENNA_X - 1.5, ANTENNA_X + 1.5, Y1 - 1, Y1 + WALL + 1, H - 2.0, H + 1))
+# UART debug wires: 8 x 2 mm slot at the top of the north wall, above J1
+cuts.append(box(UART_X - UART_W / 2, UART_X + UART_W / 2, Y1 - 1, Y1 + WALL + 1, H - 2.0, H + 1))
 # Low ventilation: 1.6 x 3.4 vertical slots below the board, north and south walls
 for x in [i * 5.0 for i in range(-14, 15)]:
     if any(abs(x - bx) < 5 for bx, _ in SCREW_BOSSES):
@@ -174,6 +177,7 @@ LIP_D, LIP_T = 2.5, 1.6
 lip = rbox(X0 + FIT, X1 - FIT, Y0 + FIT, Y1 - FIT, H - LIP_D, H + 0.01, 1.0).cut(
     rbox(X0 + FIT + LIP_T, X1 - FIT - LIP_T, Y0 + FIT + LIP_T, Y1 - FIT - LIP_T, H - LIP_D - 1, H + 1, 0.5))
 lip = lip.cut(box(ANTENNA_X - 2.0, ANTENNA_X + 2.0, Y1 - 3, Y1 + 1, H - LIP_D - 1, H + 1))
+lip = lip.cut(box(UART_X - UART_W / 2 - 0.5, UART_X + UART_W / 2 + 0.5, Y1 - 3, Y1 + 1, H - LIP_D - 1, H + 1))
 for x in CLIP_X:                                  # lip relief around the clip tabs
     for yw in (Y0, Y1):
         lip = lip.cut(box(x - CLIP_W / 2 - 1.0, x + CLIP_W / 2 + 1.0, yw - 3, yw + 3, H - LIP_D - 1, H + 1))

@@ -36,6 +36,8 @@ For a version with optional lid screws, see [`../screw-clips`](../screw-clips).
 - **LED D0 (WS2812B):** Ø4 hole in the lid.
 - **Antenna:** 3 × 2 mm slot at the top of the north wall, under the lid, close to the
   ESP32 U.FL connector.
+- **UART debug:** 8 × 2 mm slot at the top of the north wall, under the lid, above
+  the J1 header (EN/TXD/RXD/IO0). Lets debug wires out with the lid closed.
 - **Ventilation:** 1.6 × 3.4 mm slots below the board in the long walls, and
   1.6 × 12 mm slots in the lid above the relays and the centre area. Air flows in at
   the bottom and out at the top.
