@@ -2550,6 +2550,8 @@
     "confirmAgeFirst": "Confirm the age setting first",
     "rebuildBadge": "+{n} rebuild",
     "rebuildRow": "Rebuild",
+    "packLess": "Pack one less for the rebuild",
+    "packMore": "Pack one more for the rebuild",
     "forRebuildIn": "For rebuild: {machines}",
     "packInListHint": "The goods for it are marked violet in the packing list.",
     "takeAlongHint": "Take removed goods with you – they are booked back at the end of the tour.",

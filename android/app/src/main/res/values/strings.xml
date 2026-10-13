@@ -695,6 +695,9 @@
     <string name="refill_rebuild_return_batch">Machine return</string>
     <string name="refill_pack_rebuild_badge">+%1$d rebuild</string>
     <string name="refill_pack_rebuild_label">Rebuild</string>
+    <string name="refill_pack_rebuild_needs">Rebuild · needs %1$d</string>
+    <string name="refill_pack_rebuild_decrement">Pack one less for the rebuild in %1$s</string>
+    <string name="refill_pack_rebuild_increment">Pack one more for the rebuild in %1$s</string>
     <string name="refill_rebuild_goods_in_pack_list">The goods for it are marked violet in the packing list.</string>
     <string name="refill_rebuild_take_along_hint">Take removed goods with you – they are booked back at the end of the tour.</string>
     <string name="refill_leftover_title">Leftover goods from rebuilds</string>

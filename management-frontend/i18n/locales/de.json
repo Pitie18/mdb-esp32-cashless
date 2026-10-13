@@ -2550,6 +2550,8 @@
     "confirmAgeFirst": "Erst die Alterseinstellung bestätigen",
     "rebuildBadge": "+{n} Umbau",
     "rebuildRow": "Umbau",
+    "packLess": "Eins weniger für den Umbau packen",
+    "packMore": "Eins mehr für den Umbau packen",
     "forRebuildIn": "Für Umbau: {machines}",
     "packInListHint": "Die Ware dafür steht violett markiert in der Packliste.",
     "takeAlongHint": "Entnommene Ware mitnehmen – Rückbuchung am Ende der Tour im Lager.",

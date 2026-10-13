@@ -2550,6 +2550,8 @@
     "confirmAgeFirst": "Bevestig eerst de leeftijdsinstelling",
     "rebuildBadge": "+{n} ombouw",
     "rebuildRow": "Ombouw",
+    "packLess": "Eén minder inpakken voor de ombouw",
+    "packMore": "Eén meer inpakken voor de ombouw",
     "forRebuildIn": "Voor ombouw: {machines}",
     "packInListHint": "De goederen hiervoor staan paars gemarkeerd in de paklijst.",
     "takeAlongHint": "Neem verwijderde goederen mee – ze worden aan het einde van de ronde teruggeboekt.",

@@ -140,7 +140,8 @@ fun PackingStep(
     onPackAllForMachine: (machineId: String) -> Unit,
     onStartTour: () -> Unit,
     modifier: Modifier = Modifier,
-    onToggleRebuildItem: (machineId: String, itemId: String) -> Unit = { _, _ -> }
+    onToggleRebuildItem: (machineId: String, itemId: String) -> Unit = { _, _ -> },
+    onSetRebuildQuantity: (machineId: String, productId: String, quantity: Int) -> Unit = { _, _, _ -> }
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -215,6 +216,8 @@ fun PackingStep(
     // machines in scope — merged into the normal list below rather than
     // listed separately, so the warehouse walk stays one pass.
     val rebuildRows = rebuildPackRows(uiState, activeChip)
+    // The same units per machine, each with its own stepper.
+    val rebuildLines = rebuildLines(uiState, activeChip)
 
     // "Packed" tick of a rebuild-only line. Visual only: the rebuild units are
     // committed and deducted at tour start regardless, exactly like before.
@@ -311,6 +314,11 @@ fun PackingStep(
                             val row = entry.row
                             ProductPackCard(
                                 row = row,
+                                rebuildLines = rebuildLines[row.productId].orEmpty(),
+                                showMachineNames = activeChip == null,
+                                onSetRebuildQuantity = { machineId, quantity ->
+                                    onSetRebuildQuantity(machineId, row.productId, quantity)
+                                },
                                 showAllMachinesToggle = activeChip == null,
                                 onTogglePackedAll = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -329,6 +337,11 @@ fun PackingStep(
                             val productId = entry.row.productId
                             RebuildPackCard(
                                 row = entry.row,
+                                lines = rebuildLines[productId].orEmpty(),
+                                showMachineNames = activeChip == null,
+                                onSetQuantity = { machineId, quantity ->
+                                    onSetRebuildQuantity(machineId, productId, quantity)
+                                },
                                 isTicked = productId in rebuildTicked,
                                 onToggle = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -388,6 +401,18 @@ private data class NeedRowState(
     val maxQuantity: Int,
     val isPacked: Boolean,
     val isOutOfStock: Boolean
+)
+
+/** One machine's rebuild units of a product, with the stepper's bounds. */
+private data class RebuildLineState(
+    val machineId: String,
+    val machineName: String,
+    /** What the machine's accepted slots need from the warehouse. */
+    val need: Int,
+    /** What is packed ([RefillUiState.rebuildCommitted]). */
+    val quantity: Int,
+    /** Stepper's upper bound, [maxRebuildQuantity]. */
+    val maxQuantity: Int
 )
 
 /** One product card. */
@@ -589,6 +614,28 @@ private fun rebuildNeeds(uiState: RefillUiState, activeChip: String?): List<Pair
                 machine.trays.associate { it.tray.id to it.tray.currentStock }
             )
         }
+
+/**
+ * `productId -> one line per machine in scope` whose accepted slots need the
+ * product from the warehouse, in tour order — what the rebuild steppers show.
+ */
+private fun rebuildLines(uiState: RefillUiState, activeChip: String?): Map<String, List<RebuildLineState>> {
+    val out = LinkedHashMap<String, MutableList<RebuildLineState>>()
+    for ((machineId, needs) in rebuildNeeds(uiState, activeChip)) {
+        val name = uiState.machines.find { it.machine.id == machineId }?.machine?.displayName.orEmpty()
+        for ((productId, need) in needs) {
+            if (need <= 0) continue
+            out.getOrPut(productId) { mutableListOf() } += RebuildLineState(
+                machineId = machineId,
+                machineName = name,
+                need = need,
+                quantity = uiState.rebuildCommitted[machineId]?.get(productId) ?: 0,
+                maxQuantity = uiState.maxRebuildQuantity(machineId, productId)
+            )
+        }
+    }
+    return out
+}
 
 /**
  * Rebuild units per product for the machines in scope: what the accepted
@@ -938,6 +985,9 @@ private fun PackHeaderStrip(
 @Composable
 private fun ProductPackCard(
     row: PackRowState,
+    rebuildLines: List<RebuildLineState>,
+    showMachineNames: Boolean,
+    onSetRebuildQuantity: (machineId: String, quantity: Int) -> Unit,
     showAllMachinesToggle: Boolean,
     onTogglePackedAll: () -> Unit,
     onTogglePackedForMachine: (machineId: String) -> Unit,
@@ -1047,6 +1097,16 @@ private fun ProductPackCard(
                     onSetQuantity = { quantity -> onSetQuantity(need.machineId, quantity) }
                 )
             }
+            // Units of the same product for slot rebuilds, adjustable per
+            // machine like the refill itself.
+            rebuildLines.forEach { line ->
+                HorizontalDivider(modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+                RebuildQuantityRow(
+                    line = line,
+                    showMachineName = showMachineNames,
+                    onSetQuantity = { quantity -> onSetRebuildQuantity(line.machineId, quantity) }
+                )
+            }
         }
     }
 }
@@ -1078,6 +1138,9 @@ private fun RebuildBadge(text: String) {
 @Composable
 private fun RebuildPackCard(
     row: RebuildPackRow,
+    lines: List<RebuildLineState>,
+    showMachineNames: Boolean,
+    onSetQuantity: (machineId: String, quantity: Int) -> Unit,
     isTicked: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
@@ -1089,47 +1152,135 @@ private fun RebuildPackCard(
         border = BorderStroke(1.5.dp, RebuildViolet.copy(alpha = if (isTicked) 0.9f else 0.45f)),
         colors = CardDefaults.cardColors(containerColor = RebuildViolet.copy(alpha = 0.07f))
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onToggle) {
-                Icon(
-                    imageVector = if (isTicked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                    contentDescription = stringResource(
-                        R.string.refill_pack_toggle_all_machines,
-                        row.name ?: unknownProduct
-                    ),
-                    tint = if (isTicked) RebuildViolet else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            ProductImage(imagePath = row.imagePath, contentDescription = null, size = 40.dp)
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = row.name ?: unknownProduct,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                RebuildBadge(text = stringResource(R.string.refill_pack_rebuild_label))
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(horizontalAlignment = Alignment.End) {
-                QuantityPill(
-                    text = stringResource(R.string.refill_pack_total_quantity, row.committed),
-                    color = RebuildViolet
-                )
-                if (row.committed < row.need) {
-                    Text(
-                        text = stringResource(R.string.refill_rebuild_needed, row.need),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = StockOrange
+        Column(modifier = Modifier.padding(bottom = if (lines.isEmpty()) 0.dp else 8.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onToggle) {
+                    Icon(
+                        imageVector = if (isTicked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                        contentDescription = stringResource(
+                            R.string.refill_pack_toggle_all_machines,
+                            row.name ?: unknownProduct
+                        ),
+                        tint = if (isTicked) RebuildViolet else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                ProductImage(imagePath = row.imagePath, contentDescription = null, size = 40.dp)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = row.name ?: unknownProduct,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    RebuildBadge(text = stringResource(R.string.refill_pack_rebuild_label))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(horizontalAlignment = Alignment.End) {
+                    QuantityPill(
+                        text = stringResource(R.string.refill_pack_total_quantity, row.committed),
+                        color = RebuildViolet
+                    )
+                    if (row.committed < row.need) {
+                        Text(
+                            text = stringResource(R.string.refill_rebuild_needed, row.need),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = StockOrange
+                        )
+                    }
+                }
             }
+            // What to pack per machine — the driver can take less, e.g. only
+            // half a spiral of a new product.
+            lines.forEach { line ->
+                HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
+                RebuildQuantityRow(
+                    line = line,
+                    showMachineName = showMachineNames,
+                    onSetQuantity = { quantity -> onSetQuantity(line.machineId, quantity) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * One machine's rebuild units of a product with a violet stepper: the driver
+ * can pack less than the slots need (e.g. only half a spiral of a new
+ * product to see how it sells, or to spread scarce stock over several
+ * machines). Mirrors the PWA's `RefillRebuildQuantity.vue`.
+ */
+@Composable
+private fun RebuildQuantityRow(
+    line: RebuildLineState,
+    showMachineName: Boolean,
+    onSetQuantity: (Int) -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 4.dp, top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            if (showMachineName) {
+                Text(
+                    text = line.machineName,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Text(
+                text = stringResource(R.string.refill_pack_rebuild_needs, line.need),
+                style = MaterialTheme.typography.labelSmall,
+                color = RebuildViolet
+            )
+        }
+        IconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onSetQuantity(line.quantity - 1)
+            },
+            enabled = line.quantity > 0
+        ) {
+            Icon(
+                imageVector = Icons.Default.Remove,
+                contentDescription = stringResource(R.string.refill_pack_rebuild_decrement, line.machineName),
+                tint = if (line.quantity > 0) RebuildViolet else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Box(
+            modifier = Modifier
+                .defaultMinSize(minWidth = 36.dp, minHeight = 32.dp)
+                .background(color = RebuildViolet.copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = line.quantity.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = RebuildViolet,
+                modifier = Modifier.padding(horizontal = 6.dp)
+            )
+        }
+        IconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onSetQuantity(line.quantity + 1)
+            },
+            enabled = line.quantity < line.maxQuantity
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = stringResource(R.string.refill_pack_rebuild_increment, line.machineName),
+                tint = if (line.quantity < line.maxQuantity) RebuildViolet else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

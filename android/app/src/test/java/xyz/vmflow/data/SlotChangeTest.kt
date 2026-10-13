@@ -170,6 +170,38 @@ class SlotChangeTest {
     }
 
     @Test
+    fun `the driver can pack fewer rebuild units, never more than the need`() {
+        val committed = SlotChange.commitRebuild(
+            needsByMachine = listOf(
+                "m1" to mapOf("cola" to 10),
+                "m2" to mapOf("cola" to 6)
+            ),
+            warehouseStock = mapOf("cola" to 30),
+            stockLoaded = true,
+            // half a spiral in m1, an overshoot in m2 is capped at the need
+            custom = mapOf("m1" to mapOf("cola" to 5), "m2" to mapOf("cola" to 99))
+        )
+        assertEquals(mapOf("m1" to mapOf("cola" to 5), "m2" to mapOf("cola" to 6)), committed)
+
+        val zero = SlotChange.commitRebuild(
+            needsByMachine = listOf("m1" to mapOf("cola" to 10)),
+            warehouseStock = emptyMap(),
+            stockLoaded = false,
+            custom = mapOf("m1" to mapOf("cola" to 0))
+        )
+        assertEquals(emptyMap<String, Map<String, Int>>(), zero)
+    }
+
+    @Test
+    fun `the rebuild stepper is capped by the stock the other machines leave`() {
+        val committed = mapOf("m1" to mapOf("cola" to 10), "m2" to mapOf("cola" to 2))
+        assertEquals(10, SlotChange.maxRebuildQuantity(10, "m1", "cola", committed, mapOf("cola" to 12), true))
+        assertEquals(2, SlotChange.maxRebuildQuantity(6, "m2", "cola", committed, mapOf("cola" to 12), true))
+        assertEquals(0, SlotChange.maxRebuildQuantity(6, "m2", "mate", committed, emptyMap(), true))
+        assertEquals(6, SlotChange.maxRebuildQuantity(6, "m2", "cola", committed, emptyMap(), false))
+    }
+
+    @Test
     fun `one deduction per machine and product, normal plus rebuild`() {
         // web useRefillWizard.rebuild.test: 8 cola for the refill + 10 for the rebuild = one deduction of 18
         val merged = SlotChange.mergeDeductions(

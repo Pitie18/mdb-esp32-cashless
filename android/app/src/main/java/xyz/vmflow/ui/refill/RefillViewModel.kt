@@ -180,6 +180,12 @@ data class RefillUiState(
      */
     val rebuildCommitted: Map<String, Map<String, Int>> = emptyMap(),
     /**
+     * Packing step: `machineId -> productId -> rebuild units` the driver
+     * dialled in (e.g. only half a spiral of a new product); missing = the
+     * full need. Feeds [rebuildCommitted].
+     */
+    val rebuildCustomQuantities: Map<String, Map<String, Int>> = emptyMap(),
+    /**
      * [warehouseStock] minus [rebuildCommitted]: the stock the normal packing
      * math ([RefillTourLogic]) may still hand out. Same keys as
      * [warehouseStock], so it is empty exactly when that is.
@@ -274,6 +280,28 @@ fun RefillUiState.leftoverExpiryFor(leftover: TourLeftover): String? =
 /** Rebuild units committed to a product across every machine (packing step). */
 fun RefillUiState.rebuildCommittedTotal(productId: String): Int =
     rebuildCommitted.values.sumOf { it[productId] ?: 0 }
+
+/** Units the accepted change-note slots of one machine need of a product from the warehouse. */
+fun RefillUiState.rebuildNeed(machineId: String, productId: String): Int {
+    val machine = machines.find { it.machine.id == machineId } ?: return 0
+    val items = machine.acceptedChangeItems
+    if (items.isEmpty()) return 0
+    return SlotChange.rebuildPackNeeds(
+        items,
+        machine.trays.associate { it.tray.id to it.tray.currentStock }
+    )[productId] ?: 0
+}
+
+/** Upper bound of the packing step's rebuild stepper ([SlotChange.maxRebuildQuantity]). */
+fun RefillUiState.maxRebuildQuantity(machineId: String, productId: String): Int =
+    SlotChange.maxRebuildQuantity(
+        need = rebuildNeed(machineId, productId),
+        machineId = machineId,
+        productId = productId,
+        committed = rebuildCommitted,
+        warehouseStock = warehouseStock,
+        stockLoaded = stockLoaded
+    )
 
 /**
  * Drives the refill wizard. This half of it loads machines/trays,
@@ -676,7 +704,8 @@ class RefillViewModel : ViewModel() {
                 )
             },
             warehouseStock = warehouseStock,
-            stockLoaded = stockLoaded
+            stockLoaded = stockLoaded,
+            custom = rebuildCustomQuantities
         )
 
     /**
@@ -1173,6 +1202,22 @@ class RefillViewModel : ViewModel() {
      */
     fun setPackingQuantity(machineId: String, productId: String, quantity: Int) {
         _uiState.update { it.withPinnedQuantity(machineId, productId, quantity).withPackingList() }
+    }
+
+    /**
+     * Rebuild units of [productId] for one machine's accepted change-note
+     * slots, as the driver dials them (packing step) — e.g. only half a
+     * spiral of a new product. Clamped to `0..`[maxRebuildQuantity]; 0 still
+     * rebuilds the slot, the driver fills what is at hand.
+     */
+    fun setRebuildQuantity(machineId: String, productId: String, quantity: Int) {
+        _uiState.update { state ->
+            if (state.step != RefillStep.PACKING || isTourInMemory(state)) return@update state
+            val clamped = quantity.coerceIn(0, state.maxRebuildQuantity(machineId, productId))
+            val machineMap = state.rebuildCustomQuantities[machineId].orEmpty() + (productId to clamped)
+            state.copy(rebuildCustomQuantities = state.rebuildCustomQuantities + (machineId to machineMap))
+                .withPackingList()
+        }
     }
 
     /**

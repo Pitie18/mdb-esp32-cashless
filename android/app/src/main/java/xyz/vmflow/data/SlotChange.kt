@@ -448,13 +448,17 @@ object SlotChange {
      *
      * @param needsByMachine `machineId -> productId -> units needed`, in the
      *   order machines get served.
+     * @param custom `machineId -> productId -> units` the refiller dialled in
+     *   (e.g. only half a spiral of a new product); missing = the full need,
+     *   never more than the need.
      * @return `machineId -> productId -> units committed`; machines and
      *   products with nothing committed are left out.
      */
     fun commitRebuild(
         needsByMachine: List<Pair<String, Map<String, Int>>>,
         warehouseStock: Map<String, Int>,
-        stockLoaded: Boolean
+        stockLoaded: Boolean,
+        custom: Map<String, Map<String, Int>> = emptyMap()
     ): Map<String, Map<String, Int>> {
         val remaining = HashMap(warehouseStock)
         val out = LinkedHashMap<String, Map<String, Int>>()
@@ -462,7 +466,8 @@ object SlotChange {
             val machineMap = LinkedHashMap<String, Int>()
             for ((pid, need) in needs) {
                 if (need <= 0) continue
-                val qty = if (stockLoaded) minOf(need, remaining[pid] ?: 0) else need
+                val wanted = minOf(custom[machineId]?.get(pid) ?: need, need)
+                val qty = if (stockLoaded) minOf(wanted, remaining[pid] ?: 0) else wanted
                 if (qty > 0) {
                     machineMap[pid] = qty
                     if (stockLoaded) remaining[pid] = (remaining[pid] ?: 0) - qty
@@ -471,6 +476,24 @@ object SlotChange {
             if (machineMap.isNotEmpty()) out[machineId] = machineMap
         }
         return out
+    }
+
+    /**
+     * Most rebuild units [machineId] can pack of [productId]: what its slots
+     * need, capped (with loaded stock) by what the other machines' rebuilds
+     * leave in the warehouse. The upper bound of the packing step's stepper.
+     */
+    fun maxRebuildQuantity(
+        need: Int,
+        machineId: String,
+        productId: String,
+        committed: Map<String, Map<String, Int>>,
+        warehouseStock: Map<String, Int>,
+        stockLoaded: Boolean
+    ): Int {
+        if (!stockLoaded) return need
+        val others = committed.filterKeys { it != machineId }.values.sumOf { it[productId] ?: 0 }
+        return (minOf(need, (warehouseStock[productId] ?: 0) - others)).coerceAtLeast(0)
     }
 
     /**

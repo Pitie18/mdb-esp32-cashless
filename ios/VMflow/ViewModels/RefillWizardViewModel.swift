@@ -272,6 +272,15 @@ struct RebuildPackRow: Identifiable, Equatable {
     var id: UUID { productId }
 }
 
+/// What one machine's accepted slots need of a product from the warehouse
+/// (packing step, one rebuild stepper each).
+struct RebuildMachineNeed: Identifiable, Equatable {
+    let machineId: UUID
+    let need: Int
+
+    var id: UUID { machineId }
+}
+
 /// One row of the packing list.
 enum PackRow: Identifiable, Equatable {
     /// A normal refill product; `rebuild` = rebuild units committed for it
@@ -401,6 +410,10 @@ final class RefillWizardViewModel: ObservableObject {
     @Published var rebuildDecisions: [UUID: Bool] = [:]
     /// Machine id → product id → units packed (deducted) for rebuilds.
     @Published var rebuildPacked: [UUID: [UUID: Int]] = [:]
+    /// Packing step: machine id → product id → rebuild units the refiller
+    /// dialled in (e.g. only half a spiral of a new product). Missing = the
+    /// full need.
+    @Published var rebuildCustomQuantities: [UUID: [UUID: Int]] = [:]
     /// Rebuild cards of the machine in `currentRebuildMachineId`.
     @Published var currentRebuild: [RebuildSlot] = []
     @Published private(set) var currentRebuildMachineId: UUID?
@@ -2029,14 +2042,16 @@ final class RefillWizardViewModel: ObservableObject {
         var out: [UUID: [UUID: Int]] = [:]
         for machine in machines {
             var machineMap: [UUID: Int] = [:]
+            let custom = rebuildCustomQuantities[machine.id] ?? [:]
             for (pid, need) in rebuildNeeds(machineId: machine.id) where need > 0 {
+                let wanted = min(custom[pid] ?? need, need)
                 let qty: Int
                 if restrict {
                     let available = remaining[pid] ?? 0
-                    qty = min(need, available)
+                    qty = min(wanted, available)
                     remaining[pid] = available - qty
                 } else {
-                    qty = need
+                    qty = wanted
                 }
                 if qty > 0 { machineMap[pid] = qty }
             }
@@ -2048,6 +2063,42 @@ final class RefillWizardViewModel: ObservableObject {
     /// Units of a product committed to slot rebuilds across all machines.
     func rebuildCommittedTotal(productId: UUID) -> Int {
         committedRebuild.values.reduce(0) { $0 + ($1[productId] ?? 0) }
+    }
+
+    /// Rebuild units of a product committed for one machine (packing step).
+    func rebuildQuantity(machineId: UUID, productId: UUID) -> Int {
+        committedRebuild[machineId]?[productId] ?? 0
+    }
+
+    /// Machines (of `machineIds`, in that order) whose accepted slots need
+    /// the product from the warehouse, with that need.
+    func rebuildMachineNeeds(productId: UUID, machineIds: [UUID]) -> [RebuildMachineNeed] {
+        machineIds.compactMap { machineId in
+            let need = rebuildNeeds(machineId: machineId)[productId] ?? 0
+            return need > 0 ? RebuildMachineNeed(machineId: machineId, need: need) : nil
+        }
+    }
+
+    /// Most rebuild units a machine can pack of a product: what its slots
+    /// need, capped by the warehouse stock the other machines' rebuilds leave.
+    func maxRebuildQuantity(machineId: UUID, productId: UUID) -> Int {
+        let need = rebuildNeeds(machineId: machineId)[productId] ?? 0
+        guard selectedWarehouseId != nil, !warehouseStock.isEmpty else { return need }
+        let total = warehouseStockFor(productId: productId)?.totalQuantity ?? 0
+        let others = committedRebuild
+            .filter { $0.key != machineId }
+            .reduce(0) { $0 + ($1.value[productId] ?? 0) }
+        return max(0, min(need, total - others))
+    }
+
+    /// Pack fewer (or again more) rebuild units of a product for one machine,
+    /// e.g. only half a spiral of a new product. 0 is allowed: the slot is
+    /// still rebuilt, the refiller fills what is at hand.
+    func setRebuildQuantity(machineId: UUID, productId: UUID, quantity: Int) {
+        let clamped = max(0, min(maxRebuildQuantity(machineId: machineId, productId: productId), quantity))
+        var machineMap = rebuildCustomQuantities[machineId] ?? [:]
+        machineMap[productId] = clamped
+        rebuildCustomQuantities[machineId] = machineMap
     }
 
     /// Open change requests with their pending slots, keyed by machine id.
@@ -3150,6 +3201,7 @@ final class RefillWizardViewModel: ObservableObject {
         rebuildDecisions = [:]
         rebuildPacked = [:]
         rebuildPackTicks = [:]
+        rebuildCustomQuantities = [:]
         tourLeftovers = [:]
         tourLeftoversReturned = false
         leftoverVanQty = [:]
