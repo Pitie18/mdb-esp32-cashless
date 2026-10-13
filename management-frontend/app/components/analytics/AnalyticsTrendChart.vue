@@ -1,57 +1,55 @@
 <script setup lang="ts">
-import { VisAxis, VisStackedBar, VisXYContainer } from '@unovis/vue'
+import BarChart, { type BarChartPoint } from '@/components/charts/BarChart.vue'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import { average } from '~/lib/barChart'
 import { chartBucket, metricValue } from '~/lib/analytics'
+import { formatCurrency } from '~/lib/utils'
 
 const { t, locale } = useI18n()
 const { summary, metric, bucketedDaily } = useAnalytics()
 
-interface Point { date: Date; value: number }
+const bucket = computed(() => chartBucket(summary.value?.range.days ?? 30))
 
-const points = computed<Point[]>(() =>
+const money = (v: number) => formatCurrency(v, locale.value)
+const formatValue = (v: number) =>
+  metric.value === 'units' ? String(Math.round(v * 10) / 10) : money(v)
+
+// Same tooltip as the iOS trend chart: all three figures for the bucket,
+// whichever metric the bars show.
+const points = computed<BarChartPoint[]>(() =>
   bucketedDaily.value.map(p => ({
     date: new Date(`${p.day}T00:00:00`),
     value: metricValue(p, metric.value),
+    rows: [
+      { label: t('charts.revenue'), value: money(p.revenue_gross) },
+      { label: t('charts.units'), value: String(p.units) },
+      { label: t('charts.grossProfit'), value: money(p.gross_profit) },
+    ],
   })))
 
-const isWeekly = computed(() => chartBucket(summary.value?.range.days ?? 30) === 'week')
-
-// unovis' default x scale is linear (core/xy-component: `Scale.scaleLinear()`),
-// so `.ticks()` hands the formatter NUMBERS — epoch milliseconds — even though
-// the accessor returns Dates. Calling a Date method on that throws inside the
-// axis render and unovis then draws nothing at all, card and axes included.
-const tickFormat = (d: number) =>
-  new Date(d).toLocaleDateString(locale.value, { day: '2-digit', month: '2-digit' })
+// Average per drawn bucket, so with weekly bars it is the weekly average.
+const avg = computed(() => average(points.value.map(p => p.value)))
 </script>
 
 <template>
-  <Card>
-    <CardHeader class="pb-2">
-      <CardDescription>{{ t('analytics.trend') }}</CardDescription>
+  <Card class="gap-3">
+    <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-0">
+      <CardDescription class="text-xs uppercase tracking-wide">{{ t('analytics.trend') }}</CardDescription>
+      <span v-if="avg > 0" class="text-xs font-semibold tabular-nums" style="color: var(--chart-average)">
+        Ø {{ formatValue(avg) }}
+      </span>
     </CardHeader>
     <CardContent>
       <p v-if="!points.length" class="text-muted-foreground py-8 text-center text-sm">
         {{ t('analytics.noSales') }}
       </p>
-      <VisXYContainer v-else :data="points" class="h-56 w-full">
-        <VisStackedBar
-          :x="(d: Point) => d.date"
-          :y="[(d: Point) => d.value]"
-          color="var(--primary)"
-          :bar-padding="isWeekly ? 0.3 : 0.2"
-          :rounded-corners="4"
-        />
-        <VisAxis
-          type="x"
-          :x="(d: Point) => d.date"
-          :tick-format="tickFormat"
-          :tick-line="false"
-          :domain-line="false"
-          :grid-line="false"
-          :num-ticks="6"
-        />
-        <VisAxis type="y" :num-ticks="3" :tick-line="false" :domain-line="false" />
-      </VisXYContainer>
+      <BarChart
+        v-else
+        :data="points"
+        :bucket="bucket"
+        :format-value="formatValue"
+        :height="200"
+      />
     </CardContent>
   </Card>
 </template>

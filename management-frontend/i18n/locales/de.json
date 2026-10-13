@@ -2556,5 +2556,11 @@
     "bookBack": "Rückbuchen",
     "booked": "Übrige Ware gebucht",
     "unbookedConfirm": "Übrige Ware ist noch nicht zurückgebucht. Trotzdem beenden?"
+  },
+  "charts": {
+    "revenue": "Umsatz",
+    "sales": "Verkäufe",
+    "units": "Stück",
+    "grossProfit": "Rohertrag"
   }
 }

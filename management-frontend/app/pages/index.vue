@@ -3,6 +3,7 @@ definePageMeta({ middleware: 'auth' })
 
 import SectionCards from "@/components/SectionCards.vue"
 import ChartAreaInteractive from "@/components/ChartAreaInteractive.vue"
+import { dailySeries, type DailyBucket } from "~/lib/barChart"
 import DashboardTopProducts from "@/components/DashboardTopProducts.vue"
 import DashboardMachineList from "@/components/DashboardMachineList.vue"
 import DashboardRecentSales from "@/components/DashboardRecentSales.vue"
@@ -84,7 +85,7 @@ function toggleCompanyHistoryEntry(id: string) {
 }
 
 // ── Chart + sections ──────────────────────────────────────────────────────────
-const dailySalesChart = ref<{ date: Date; total: number }[]>([])
+const dailySalesChart = ref<DailyBucket[]>([])
 const topProducts = ref<TopProduct[]>([])
 const dashboardMachines = ref<DashboardMachine[]>([])
 const recentSales = ref<RecentSale[]>([])
@@ -284,21 +285,9 @@ async function loadDashboard() {
   lastMonthSalesCount.value = (lastMonthSalesRes.data ?? []).length
 
   // ── 7-day sales chart ──────────────────────────────────────────────────────
-  {
-    const dailyMap = new Map<string, number>()
-    for (const s of (weekSalesRes.data ?? []) as { item_price: number; created_at: string }[]) {
-      const day = new Date(s.created_at).toISOString().slice(0, 10)
-      dailyMap.set(day, (dailyMap.get(day) ?? 0) + (s.item_price ?? 0))
-    }
-    // Fill all 7 days (including zero days)
-    const chartData: { date: Date; total: number }[] = []
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-      const key = d.toISOString().slice(0, 10)
-      chartData.push({ date: d, total: dailyMap.get(key) ?? 0 })
-    }
-    dailySalesChart.value = chartData
-  }
+  // Local calendar days, zero days included (dailySeries).
+  dailySalesChart.value = dailySeries(
+    (weekSalesRes.data ?? []) as { item_price: number; created_at: string }[], 7, now)
 
   // ── Top products (30 days) ─────────────────────────────────────────────────
   {

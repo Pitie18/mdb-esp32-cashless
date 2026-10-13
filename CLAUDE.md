@@ -482,6 +482,10 @@ Public routes (no auth check): `/auth/login`, `/auth/register`, `/onboarding/*`
 - `useModalForm()` – generic reusable modal form state (open/close, form data, loading, error, submit)
 - `useTableSort()` – generic table sorting with key + direction toggle
 
+### Charts
+
+Bar charts (dashboard, machine sales tab, product detail, analytics trend) use `components/charts/BarChart.vue`, a plain-SVG port of the iOS app's Swift Charts style: gradient bars (`--chart-blue` / `--chart-purple`, iOS system colours in `tailwind.css`), weekend bars at 45 % opacity, a dashed orange `Ø` average line, a leading y axis with grid lines, and hover/tap selection with a tooltip card. `ChartAreaInteractive.vue` wraps it in a card with the period total in the header. Pure helpers (local-day bucketing via `dailySeries`, nice ticks, label stride) live in `app/lib/barChart.ts` and are unit-tested. Bucket days by the **local** calendar day (`localDayKey`), never `toISOString().slice(0, 10)` — that is the UTC day and moves early-morning sales onto the previous bar.
+
 ### Plugins
 
 - `supabase-url.client.ts` – rewrites Supabase URL to browser hostname (client-only, required for LAN access)

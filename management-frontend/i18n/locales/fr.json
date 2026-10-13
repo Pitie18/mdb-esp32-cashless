@@ -2556,5 +2556,11 @@
     "bookBack": "Réintégrer",
     "booked": "Marchandise restante enregistrée",
     "unbookedConfirm": "La marchandise restante n'a pas encore été réintégrée. Terminer quand même ?"
+  },
+  "charts": {
+    "revenue": "Revenu",
+    "sales": "Ventes",
+    "units": "Unités",
+    "grossProfit": "Marge brute"
   }
 }

@@ -2556,5 +2556,11 @@
     "bookBack": "Terugboeken",
     "booked": "Overgebleven goederen geboekt",
     "unbookedConfirm": "Overgebleven goederen zijn nog niet teruggeboekt. Toch afsluiten?"
+  },
+  "charts": {
+    "revenue": "Omzet",
+    "sales": "Verkopen",
+    "units": "Stuks",
+    "grossProfit": "Brutowinst"
   }
 }

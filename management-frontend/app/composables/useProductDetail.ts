@@ -90,7 +90,7 @@ export interface TransactionEntry {
   notes: string | null
 }
 
-export interface SalesByDay { date: Date; total: number }
+export interface SalesByDay { date: Date; total: number; count?: number }
 
 export function useProductDetail(productId: Ref<string>) {
   const supabase = useSupabaseClient()
@@ -320,7 +320,7 @@ export function useProductDetail(productId: Ref<string>) {
         const day = Number(parts[2])
         return new Date(y, m - 1, day)
       }
-      chartRevenue.value = [...buckets.entries()].map(([k, v]) => ({ date: parseLocalDayKey(k), total: v.revenue }))
+      chartRevenue.value = [...buckets.entries()].map(([k, v]) => ({ date: parseLocalDayKey(k), total: v.revenue, count: v.units }))
       chartUnits.value = [...buckets.entries()].map(([k, v]) => ({ date: parseLocalDayKey(k), total: v.units }))
     } catch (e: any) {
       error.value = e?.message ?? 'failed to load product detail'
