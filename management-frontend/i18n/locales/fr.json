@@ -2550,6 +2550,8 @@
     "confirmAgeFirst": "Confirmez d'abord le réglage d'âge",
     "rebuildBadge": "+{n} réaménagement",
     "rebuildRow": "Réaménagement",
+    "packLess": "Emballer une unité de moins pour le réaménagement",
+    "packMore": "Emballer une unité de plus pour le réaménagement",
     "forRebuildIn": "Pour réaménagement : {machines}",
     "packInListHint": "La marchandise correspondante est marquée en violet dans la liste de préparation.",
     "takeAlongHint": "Emportez la marchandise retirée – elle sera réintégrée à la fin de la tournée.",

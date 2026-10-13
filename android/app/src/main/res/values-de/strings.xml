@@ -691,6 +691,9 @@
     <string name="refill_rebuild_return_batch">Rückgabe aus Automat</string>
     <string name="refill_pack_rebuild_badge">+%1$d Umbau</string>
     <string name="refill_pack_rebuild_label">Umbau</string>
+    <string name="refill_pack_rebuild_needs">Umbau · benötigt %1$d</string>
+    <string name="refill_pack_rebuild_decrement">Eins weniger für den Umbau in %1$s packen</string>
+    <string name="refill_pack_rebuild_increment">Eins mehr für den Umbau in %1$s packen</string>
     <string name="refill_rebuild_goods_in_pack_list">Die Ware dafür steht violett markiert in der Packliste.</string>
     <string name="refill_rebuild_take_along_hint">Entnommene Ware mitnehmen – Rückbuchung am Ende der Tour im Lager.</string>
     <string name="refill_leftover_title">Übrige Ware aus Umbauten</string>
