@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Notes for the next tour ("Notiz für nächste Tour")
 //
 // Written at a machine from the refill step's "⋯" menu, shown at the top of
-// the next tour's packing step, marked done when that tour starts. Same
+// the packing step of every tour until it is ticked off there. Same
 // behaviour as the PWA's refill wizard and the Android app.
 
 /// Refill step: write (or overwrite) this tour's note for a machine. Prefills
@@ -109,6 +109,9 @@ struct MachineTourNoteSheet: View {
 /// Packing step: the open notes from earlier tours, one row per note.
 struct TourNotesCard: View {
     let notes: [MachineTourNote]
+    var error: String? = nil
+    /// Tick a note off; it stays on every tour until then.
+    let onDone: (UUID) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -117,7 +120,7 @@ struct TourNotesCard: View {
                 .textCase(.uppercase)
                 .foregroundStyle(.blue)
 
-            Text("Checked off when the tour starts.")
+            Text("Tick off once done. Until then they show on every tour.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -128,6 +131,12 @@ struct TourNotesCard: View {
                     noteRow(note)
                 }
             }
+
+            if let error {
+                Text(verbatim: error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -136,6 +145,24 @@ struct TourNotesCard: View {
     }
 
     private func noteRow(_ note: MachineTourNote) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Button {
+                HapticFeedback.light.fire()
+                onDone(note.id)
+            } label: {
+                Image(systemName: "circle")
+                    .font(.title3)
+                    .foregroundStyle(.blue)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Done"))
+
+            noteText(note)
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func noteText(_ note: MachineTourNote) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(verbatim: note.machineName ?? "—")
@@ -152,6 +179,5 @@ struct TourNotesCard: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
         }
-        .padding(.vertical, 8)
     }
 }

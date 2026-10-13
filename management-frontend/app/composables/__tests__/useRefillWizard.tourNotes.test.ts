@@ -2,16 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref as vueRef, computed as vueComputed } from 'vue'
 
 // Notes for the next tour: written at the machine, shown at the top of the
-// next tour's packing step, marked done once that tour starts. A failing note
+// packing step of every tour until the refiller ticks it off. A failing note
 // lookup never blocks the tour.
 
 ;(globalThis as any).ref = vueRef
 ;(globalThis as any).computed = vueComputed
 
-const { rpcCalls, notes, notesFail } = vi.hoisted(() => ({
+const { rpcCalls, notes, notesFail, rpcFail } = vi.hoisted(() => ({
   rpcCalls: [] as { fn: string; args: any }[],
   notes: [] as any[],
   notesFail: { value: false },
+  rpcFail: { value: false },
 }))
 
 const TRAYS = [
@@ -39,6 +40,7 @@ const supabase = {
   from: (table: string) => query(table),
   rpc: (fn: string, args: any) => {
     rpcCalls.push({ fn, args })
+    if (rpcFail.value) return Promise.resolve({ data: null, error: new Error('denied') })
     return Promise.resolve({ data: fn === 'refill_machine_trays' ? [] : null, error: null })
   },
   auth: { getSession: async () => ({ data: { session: { user: { id: 'u1', email: 'a@b.c', user_metadata: {} } } } }) },
@@ -64,28 +66,40 @@ describe('notes for the next tour', () => {
     rpcCalls.length = 0
     notes.length = 0
     notesFail.value = false
+    rpcFail.value = false
     try { localStorage.clear() } catch { /* ignore */ }
   })
 
-  it('shows the open notes while packing and marks them done when the tour starts', async () => {
+  it('keeps a note across tours until it is ticked off', async () => {
     notes.push(NOTE_ROW)
     const w = useRefillWizard()
     await w.initTour()
     expect(w.tourNotes.value).toEqual([
       { id: 'n1', machine_id: 'm1', machine_name: 'M1', note: '2 neue Spiralen', written_in_tour: 'T0', created_at: '2026-10-12T10:00:00Z' },
     ])
-    expect(rpcCalls.some(c => c.fn === 'complete_machine_tour_notes')).toBe(false)
 
+    // Starting the tour does not check it off
     w.selectedWarehouseId.value = 'wh1'
     await w.loadWarehouseStock()
     w.togglePacked('m1', w.machines.value[0]!.tray_summary[0]!)
     await w.startTour()
+    expect(rpcCalls.some(c => c.fn === 'complete_machine_tour_notes')).toBe(false)
+  })
 
+  it('ticks a note off right away and puts it back when the server refuses', async () => {
+    notes.push(NOTE_ROW)
+    const w = useRefillWizard()
+    await w.initTour()
+
+    rpcFail.value = true
+    await expect(w.completeTourNote('n1')).rejects.toThrow()
+    expect(w.tourNotes.value.map(n => n.id)).toEqual(['n1'])
+
+    rpcFail.value = false
+    await w.completeTourNote('n1')
+    expect(w.tourNotes.value).toEqual([])
     const done = rpcCalls.filter(c => c.fn === 'complete_machine_tour_notes')
-    expect(done).toHaveLength(1)
-    const tourId = rpcCalls.find(c => c.fn === 'deduct_warehouse_stock_fifo')!.args.p_metadata.tour_id
-    expect(tourId).toBeTruthy()
-    expect(done[0]!.args).toEqual({ p_note_ids: ['n1'], p_tour_id: tourId })
+    expect(done.at(-1)!.args).toEqual({ p_note_ids: ['n1'], p_tour_id: '' })
   })
 
   it('starts the tour without notes when the lookup fails', async () => {

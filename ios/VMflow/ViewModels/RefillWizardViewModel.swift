@@ -450,13 +450,16 @@ final class RefillWizardViewModel: ObservableObject {
 
     // MARK: Notes for the next tour
     //
-    // Open `machine_tour_notes`, shown at the top of the packing step and
-    // marked done once the tour starts (`complete_machine_tour_notes`). Only
-    // needed until `startTour()`, so they are not part of the persisted
-    // tour state. Mirrors the PWA's `useRefillWizard.ts`.
+    // Open `machine_tour_notes`, shown at the top of the packing step of
+    // every tour until the refiller ticks them off
+    // (`complete_machine_tour_notes`). Only the packing step reads them, so
+    // they are not part of the persisted tour state. Mirrors the PWA's
+    // `useRefillWizard.ts`.
 
     /// Open notes shown on the packing step (oldest first).
     @Published var tourNotes: [MachineTourNote] = []
+    /// Last failure ticking a note off, shown under the notes card.
+    @Published var tourNoteError: String?
 
     /// Raw data of the last load, kept so the tour list can be rebuilt when
     /// the refiller accepts or declines a slot of a change note.
@@ -2513,24 +2516,21 @@ final class RefillWizardViewModel: ObservableObject {
         }
     }
 
-    /// Mark the notes shown while packing as done, once the tour started.
-    /// Fire-and-forget: the RPC is idempotent and a failure is only logged
-    /// (the notes then simply show again on the next tour).
-    private func completeShownTourNotes() {
-        let ids = tourNotes.map(\.id)
-        tourNotes = []
-        guard !ids.isEmpty, !tourId.isEmpty else { return }
-        let tour = tourId
-        let client = self.client
-        Task {
-            do {
-                try await client.rpc("complete_machine_tour_notes", params: [
-                    "p_note_ids": AnyJSON.array(ids.map { AnyJSON.string($0.uuidString) }),
-                    "p_tour_id": AnyJSON.string(tour),
-                ]).execute()
-            } catch {
-                print("[RefillWizard] complete_machine_tour_notes failed: \(error)")
-            }
+    /// Tick a note off while packing. It is removed right away and put
+    /// back (with an error) if the server refuses.
+    func completeTourNote(_ noteId: UUID) async {
+        guard let note = tourNotes.first(where: { $0.id == noteId }) else { return }
+        tourNoteError = nil
+        tourNotes.removeAll { $0.id == noteId }
+        do {
+            try await client.rpc("complete_machine_tour_notes", params: [
+                "p_note_ids": AnyJSON.array([AnyJSON.string(noteId.uuidString)]),
+                "p_tour_id": tourId.isEmpty ? AnyJSON.null : AnyJSON.string(tourId),
+            ]).execute()
+        } catch {
+            print("[RefillWizard] complete_machine_tour_notes failed: \(error)")
+            tourNotes = MachineTourNotes.notesForPacking(tourNotes + [note], currentTourId: tourId)
+            tourNoteError = error.localizedDescription
         }
     }
 
@@ -2851,9 +2851,6 @@ final class RefillWizardViewModel: ObservableObject {
             tourMeta["warehouse_name"] = .string(warehouseName)
         }
         await writeActivityLog(machineId: nil, machineName: nil, action: "tour_started", extraMetadata: tourMeta)
-
-        // The notes shown while packing are done now (fire-and-forget).
-        completeShownTourNotes()
 
         currentMachineIndex = 0
         isSaving = false
@@ -3339,6 +3336,7 @@ final class RefillWizardViewModel: ObservableObject {
         expirySuggestionsLoaded = false
         replacementNotice = nil
         tourNotes = []
+        tourNoteError = nil
         resetCurrentRebuild()
         // Re-arm the entry gate so the next Refill-tab appearance reloads
         // fresh machine data for a brand-new tour instead of being skipped.

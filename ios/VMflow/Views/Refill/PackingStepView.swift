@@ -19,7 +19,9 @@ struct PackingStepView: View {
                 VStack(spacing: 12) {
                     // Notes written on earlier tours ("bring new spirals")
                     if !viewModel.tourNotes.isEmpty {
-                        TourNotesCard(notes: viewModel.tourNotes)
+                        TourNotesCard(notes: viewModel.tourNotes, error: viewModel.tourNoteError) { id in
+                            Task { await viewModel.completeTourNote(id) }
+                        }
                     }
 
                     if !viewModel.warehouses.isEmpty {

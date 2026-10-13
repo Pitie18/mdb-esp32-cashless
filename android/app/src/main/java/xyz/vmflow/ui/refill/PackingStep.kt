@@ -141,7 +141,8 @@ fun PackingStep(
     modifier: Modifier = Modifier,
     onToggleRebuildItem: (machineId: String, itemId: String) -> Unit = { _, _ -> },
     onSetRebuildQuantity: (machineId: String, productId: String, quantity: Int) -> Unit = { _, _, _ -> },
-    onToggleRebuildTick: (productId: String, machineIds: List<String>) -> Unit = { _, _ -> }
+    onToggleRebuildTick: (productId: String, machineIds: List<String>) -> Unit = { _, _ -> },
+    onCompleteTourNote: (noteId: String) -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -244,7 +245,9 @@ fun PackingStep(
                 item(key = "tour-notes") {
                     TourNotesCard(
                         notes = uiState.tourNotes,
-                        machineNames = uiState.machines.associate { it.machine.id to it.machine.displayName }
+                        machineNames = uiState.machines.associate { it.machine.id to it.machine.displayName },
+                        onDone = onCompleteTourNote,
+                        error = uiState.tourNoteError
                     )
                 }
             }

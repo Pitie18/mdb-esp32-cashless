@@ -474,7 +474,8 @@
     <string name="refill_tour_note_save_failed">Could not save the note.</string>
     <string name="refill_tour_note_save_failed_detail">Could not save the note: %1$s</string>
     <string name="refill_tour_notes_title">Notes from last time</string>
-    <string name="refill_tour_notes_subtitle">Checked off when the tour starts.</string>
+    <string name="refill_tour_notes_subtitle">Tick off once done. Until then they show on every tour.</string>
+    <string name="refill_tour_notes_mark_done">Done</string>
     <string name="refill_step_confirm">Confirm refill</string>
     <string name="refill_step_saving">Saving…</string>
     <string name="refill_error_unknown">unknown error</string>

@@ -984,13 +984,6 @@ export function useRefillWizard() {
       if (firstError) throw firstError.error
       rebuildPacked.value = newRebuildPacked
 
-      // The notes were in front of the refiller while packing: done now.
-      const shownNoteIds = tourNotes.value.map(n => n.id)
-      if (shownNoteIds.length > 0) {
-        tourNoteApi.completeNotes(shownNoteIds, tourId.value)
-          .catch((err: unknown) => console.warn('[refillWizard] completing tour notes failed:', err))
-      }
-
       // Filter machines list to those with packed items or an accepted
       // rebuild (a pure swap needs no units but still a visit), preserve order.
       // Only accepted items of the change note travel with the tour.
@@ -1585,6 +1578,22 @@ export function useRefillWizard() {
 
   // ── Note for the next tour ─────────────────────────────────────────────
 
+  /**
+   * Tick a note off while packing. It stays on every tour until ticked;
+   * removed right away and put back if the server refuses.
+   */
+  async function completeTourNote(noteId: string): Promise<void> {
+    const note = tourNotes.value.find(n => n.id === noteId)
+    if (!note) return
+    tourNotes.value = tourNotes.value.filter(n => n.id !== noteId)
+    try {
+      await tourNoteApi.completeNotes([noteId], tourId.value)
+    } catch (err) {
+      tourNotes.value = notesForPacking([...tourNotes.value, note], tourId.value)
+      throw err
+    }
+  }
+
   /** This tour's note for the machine, '' when there is none yet. */
   async function loadTourNote(machineId: string): Promise<string> {
     if (!tourId.value) return ''
@@ -2074,6 +2083,7 @@ export function useRefillWizard() {
     confirmError,
     skipMachine,
     tourNotes,
+    completeTourNote,
     loadTourNote,
     saveTourNote,
     goToMachine,

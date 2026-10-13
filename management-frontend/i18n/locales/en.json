@@ -2574,7 +2574,8 @@
     "hint": "Shown at the top of the packing step on the next tour.",
     "placeholder": "e.g. new spirals, can risers …",
     "packingTitle": "Notes from last time",
-    "packingHint": "Checked off when the tour starts.",
-    "moreActions": "More actions"
+    "packingHint": "Tick off once done. Until then they show on every tour.",
+    "moreActions": "More actions",
+    "markDone": "Done"
   }
 }

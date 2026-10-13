@@ -4,8 +4,8 @@ import { useSupabaseClient } from '#imports'
 // Notes for the next refill tour
 //
 // At the machine the refiller writes down what to bring next time (new
-// spirals, can risers, ...). The next tour shows every open note at the top of
-// the packing step and marks them done when it starts. Writes go through the
+// spirals, can risers, ...). Every tour shows the open notes at the top of the
+// packing step until the refiller ticks them off. Writes go through the
 // SECURITY DEFINER RPCs in 20261013200000_machine_tour_notes.sql, which iOS and
 // Android call the same way.
 // ─────────────────────────────────────────────────────────────────────────────

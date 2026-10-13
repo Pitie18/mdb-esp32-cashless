@@ -40,11 +40,20 @@ const {
   setRebuildRemoved, setRebuildFilled, setRebuildAction, setRebuildPriceSet, setRebuildAgeSet,
   tourLeftoverRows, hasPendingLeftovers, leftoversReturned, returningLeftovers, returnLeftoversError,
   setLeftoverDestination, setLeftoverExpiry, setLeftoverCount, loadTourExpirySuggestions, returnTourLeftovers,
-  tourNotes, loadTourNote, saveTourNote,
+  tourNotes, completeTourNote, loadTourNote, saveTourNote,
 } = useRefillWizard()
 
 // Note for the next tour, written at the current machine.
 const noteDialogOpen = ref(false)
+const noteDoneError = ref<string | null>(null)
+async function onNoteDone(noteId: string) {
+  noteDoneError.value = null
+  try {
+    await completeTourNote(noteId)
+  } catch (err: any) {
+    noteDoneError.value = err?.message ?? String(err)
+  }
+}
 
 returnBatchLabel.value = t('refillRebuild.returnBatch')
 
@@ -150,7 +159,7 @@ const currentMachineDone = computed(() =>
       </div>
 
       <template v-else>
-        <RefillTourNotes v-if="tourNotes.length > 0" :notes="tourNotes" />
+        <RefillTourNotes v-if="tourNotes.length > 0" :notes="tourNotes" :error="noteDoneError" @done="onNoteDone" />
 
         <!-- Warehouse selector -->
         <div v-if="warehouses.length > 0" class="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2.5">

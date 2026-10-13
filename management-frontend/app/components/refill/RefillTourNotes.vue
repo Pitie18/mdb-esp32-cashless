@@ -4,9 +4,10 @@ import type { TourNote } from '@/composables/useTourNotes'
 import { timeAgo } from '@/lib/utils'
 
 // Packing step: the notes written at the machines on the last tours
-// ("bring new spirals"). They are checked off when this tour starts.
+// ("bring new spirals"). Each stays on every tour until it is ticked off.
 
-defineProps<{ notes: TourNote[] }>()
+defineProps<{ notes: TourNote[]; error?: string | null }>()
+const emit = defineEmits<{ (e: 'done', noteId: string): void }>()
 const { t } = useI18n()
 </script>
 
@@ -18,13 +19,23 @@ const { t } = useI18n()
     </p>
     <p class="text-xs text-muted-foreground">{{ t('refillNotes.packingHint') }}</p>
     <ul class="divide-y divide-sky-500/20">
-      <li v-for="note in notes" :key="note.id" class="py-2 first:pt-1 last:pb-0">
-        <div class="flex items-baseline justify-between gap-2">
-          <span class="truncate text-sm font-semibold">{{ note.machine_name ?? '—' }}</span>
-          <span class="shrink-0 text-xs text-muted-foreground">{{ timeAgo(note.created_at, t) }}</span>
+      <li v-for="note in notes" :key="note.id" class="flex gap-2.5 py-2 first:pt-1 last:pb-0">
+        <button
+          type="button"
+          class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 border-sky-600/50 transition-colors hover:bg-sky-500/15"
+          :aria-label="t('refillNotes.markDone')"
+          :title="t('refillNotes.markDone')"
+          @click="emit('done', note.id)"
+        />
+        <div class="min-w-0 flex-1">
+          <div class="flex items-baseline justify-between gap-2">
+            <span class="truncate text-sm font-semibold">{{ note.machine_name ?? '—' }}</span>
+            <span class="shrink-0 text-xs text-muted-foreground">{{ timeAgo(note.created_at, t) }}</span>
+          </div>
+          <p class="whitespace-pre-line break-words text-sm">{{ note.note }}</p>
         </div>
-        <p class="whitespace-pre-line break-words text-sm">{{ note.note }}</p>
       </li>
     </ul>
+    <p v-if="error" role="alert" class="text-xs text-destructive">{{ error }}</p>
   </div>
 </template>

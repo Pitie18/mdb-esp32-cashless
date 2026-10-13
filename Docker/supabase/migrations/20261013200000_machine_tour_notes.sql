@@ -3,12 +3,12 @@
 --
 -- Standing at a machine, the refiller often notices something to bring next
 -- time (new spirals, can risers, ...). From the refill step they write a free
--- text note for that machine; the next tour shows every open note at the top
--- of the packing step. Starting that tour marks the notes it showed as done.
+-- text note for that machine. Every tour shows the open notes at the top of
+-- the packing step until the refiller ticks them off.
 --
 --   machine_tour_notes          one row per note, open while done_at IS NULL
 --   save_machine_tour_note      write/overwrite the machine's note of a tour
---   complete_machine_tour_notes mark shown notes done when a tour starts
+--   complete_machine_tour_notes tick notes off (packing step)
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.machine_tour_notes (
@@ -99,7 +99,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.save_machine_tour_note(uuid, text, text) TO authenticated;
 
 -- ── complete_machine_tour_notes ─────────────────────────────────────────────
--- Mark the notes the packing step showed as done once the tour starts.
+-- Tick notes off; p_tour_id records the tour (if any) they were ticked in.
 -- Notes of other companies and notes already done are left alone, so a retry
 -- is a no-op. Returns the number of notes marked done.
 CREATE OR REPLACE FUNCTION public.complete_machine_tour_notes(

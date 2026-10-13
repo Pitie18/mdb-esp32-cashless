@@ -18530,24 +18530,24 @@
         }
       }
     },
-    "Checked off when the tour starts.": {
+    "Tick off once done. Until then they show on every tour.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Werden mit dem Start der Tour abgehakt."
+            "value": "Abhaken, sobald erledigt. Bis dahin stehen sie bei jeder Tour hier."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cochées au démarrage de la tournée."
+            "value": "Cochez une fois fait. D'ici là, elles s'affichent à chaque tournée."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Worden afgevinkt zodra de ronde start."
+            "value": "Vink af zodra het gedaan is. Tot dan staan ze bij elke ronde hier."
           }
         }
       }

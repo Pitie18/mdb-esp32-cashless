@@ -2574,7 +2574,8 @@
     "hint": "Wordt bij het inpakken van de volgende ronde bovenaan getoond.",
     "placeholder": "bijv. nieuwe spiralen, verhogingen voor blikjes …",
     "packingTitle": "Notities van vorige keer",
-    "packingHint": "Worden afgevinkt bij de start van de ronde.",
-    "moreActions": "Meer acties"
+    "packingHint": "Vink af zodra het gedaan is. Tot dan staan ze bij elke ronde hier.",
+    "moreActions": "Meer acties",
+    "markDone": "Gedaan"
   }
 }

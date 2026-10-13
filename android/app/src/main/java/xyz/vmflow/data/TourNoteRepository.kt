@@ -77,7 +77,7 @@ object TourNoteRepository {
         }
     }
 
-    /** Marks the notes a tour showed as done. Idempotent on the server. */
+    /** Ticks notes off ([tourId] empty outside a tour). Idempotent on the server. */
     suspend fun completeNotes(noteIds: List<String>, tourId: String): Result<Unit> {
         return try {
             if (noteIds.isEmpty()) return Result.success(Unit)

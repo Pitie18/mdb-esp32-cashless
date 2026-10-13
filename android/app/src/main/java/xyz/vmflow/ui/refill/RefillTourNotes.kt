@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -22,6 +23,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -55,7 +57,9 @@ import xyz.vmflow.ui.theme.VMflowBlue
 fun TourNotesCard(
     notes: List<MachineTourNote>,
     machineNames: Map<String, String>,
-    modifier: Modifier = Modifier
+    onDone: (noteId: String) -> Unit,
+    modifier: Modifier = Modifier,
+    error: String? = null
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -87,26 +91,46 @@ fun TourNotesCard(
                 if (index > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 else Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.Top) {
-                    Text(
-                        text = note.machineName
-                            ?: machineNames[note.machineId]
-                            ?: stringResource(R.string.product_unnamed),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (note.createdAt.isNotEmpty()) {
-                        Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = { onDone(note.id) }, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.RadioButtonUnchecked,
+                            contentDescription = stringResource(R.string.refill_tour_notes_mark_done),
+                            tint = VMflowBlue
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.Top) {
+                            Text(
+                                text = note.machineName
+                                    ?: machineNames[note.machineId]
+                                    ?: stringResource(R.string.product_unnamed),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (note.createdAt.isNotEmpty()) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = relativeTimeAgo(note.createdAt),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                         Text(
-                            text = relativeTimeAgo(note.createdAt),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = note.note,
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
+            }
+            if (error != null) {
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = note.note,
-                    style = MaterialTheme.typography.bodyMedium
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
                 )
             }
         }

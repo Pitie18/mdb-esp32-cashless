@@ -11,8 +11,8 @@ data class TourNoteMachine(val name: String? = null)
 /**
  * One "note for the next tour" (`machine_tour_notes`,
  * `Docker/supabase/migrations/20261013200000_machine_tour_notes.sql`): free
- * text a refiller wrote at a machine, shown at the top of the next tour's
- * packing step until that tour starts. Open while [doneAt] is `null`.
+ * text a refiller wrote at a machine, shown at the top of every tour's
+ * packing step until it is ticked off. Open while [doneAt] is `null`.
  */
 @Serializable
 data class MachineTourNote(

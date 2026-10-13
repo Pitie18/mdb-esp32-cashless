@@ -470,7 +470,8 @@
     <string name="refill_tour_note_save_failed">Die Notiz konnte nicht gespeichert werden.</string>
     <string name="refill_tour_note_save_failed_detail">Die Notiz konnte nicht gespeichert werden: %1$s</string>
     <string name="refill_tour_notes_title">Notizen vom letzten Mal</string>
-    <string name="refill_tour_notes_subtitle">Werden mit dem Start der Tour abgehakt.</string>
+    <string name="refill_tour_notes_subtitle">Abhaken, sobald erledigt. Bis dahin stehen sie bei jeder Tour hier.</string>
+    <string name="refill_tour_notes_mark_done">Erledigt</string>
     <string name="refill_step_confirm">Befüllung bestätigen</string>
     <string name="refill_step_saving">Wird gespeichert…</string>
     <string name="refill_error_unknown">unbekannter Fehler</string>

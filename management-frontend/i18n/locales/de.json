@@ -2574,7 +2574,8 @@
     "hint": "Wird beim Packen der nächsten Tour oben angezeigt.",
     "placeholder": "z. B. neue Spiralen, Erhöhungen für Dosen …",
     "packingTitle": "Notizen vom letzten Mal",
-    "packingHint": "Werden mit dem Start der Tour abgehakt.",
-    "moreActions": "Weitere Aktionen"
+    "packingHint": "Abhaken, sobald erledigt. Bis dahin stehen sie bei jeder Tour hier.",
+    "moreActions": "Weitere Aktionen",
+    "markDone": "Erledigt"
   }
 }
