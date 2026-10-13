@@ -90,7 +90,8 @@ describe('refill tour with a change note', () => {
     // Slot 12 is being rebuilt, so only cola's normal deficit (8) is listed
     expect(machine.tray_summary.map(i => [i.product_id, i.deficit])).toEqual([['cola', 8]])
     expect(w.rebuildNeeds('m1')).toEqual(new Map([['cola', 10]]))
-    expect(w.rebuildCommitted('m1', 'cola')).toBe(10)
+    // Nothing is booked until cola is ticked as packed
+    expect(w.rebuildCommitted('m1', 'cola')).toBe(0)
 
     // The rebuild units sit on cola's normal packing row, not in a list of their own
     expect(w.machinePackRows(machine)).toEqual([
@@ -101,6 +102,7 @@ describe('refill tour with a change note', () => {
     ])
 
     w.togglePacked('m1', machine.tray_summary[0]!)
+    expect(w.rebuildCommitted('m1', 'cola')).toBe(10)
     await w.startTour()
 
     const deductions = rpcCalls.filter(c => c.fn === 'deduct_warehouse_stock_fifo')
@@ -177,6 +179,7 @@ describe('refill tour with a change note', () => {
     const w = await startedTour()
     const machine = w.machines.value[0]!
     expect(w.maxRebuildQuantity('m1', 'cola')).toBe(10)
+    w.togglePacked('m1', machine.tray_summary[0]!)
     // Only half a spiral of the new product for now
     w.setRebuildQuantity('m1', 'cola', 5)
     expect(w.rebuildCommitted('m1', 'cola')).toBe(5)
@@ -190,7 +193,6 @@ describe('refill tour with a change note', () => {
     expect(w.rebuildCommitted('m1', 'cola')).toBe(0)
     w.setRebuildQuantity('m1', 'cola', 5)
 
-    w.togglePacked('m1', machine.tray_summary[0]!)
     await w.startTour()
     const deductions = rpcCalls.filter(c => c.fn === 'deduct_warehouse_stock_fifo')
     expect(deductions.map(d => [d.args.p_product_id, d.args.p_quantity])).toEqual([['cola', 13]])
@@ -209,6 +211,39 @@ describe('refill tour with a change note', () => {
     expect(w.rebuildCommitted('m1', 'mate')).toBe(0)
   })
 
+  it('an unticked rebuild-only product is not booked out of the warehouse', async () => {
+    fetchOpenRequests.mockResolvedValue(new Map([['m1', { id: 'r1', machine_id: 'm1', created_at: '', updated_at: '', note: null, items: [
+      { ...ITEM, to_product_id: 'mate', to_name: 'Mate' },
+    ] }]]))
+    // 20 mate in the warehouse
+    const w = await startedTour()
+    w.warehouseStock.value = new Map([['cola', 30], ['mate', 20]])
+    const machine = w.machines.value[0]!
+    w.togglePacked('m1', machine.tray_summary[0]!)
+    // The row still shows what would be packed
+    expect(w.machinePackRows(machine).find(r => r.kind === 'rebuild')).toMatchObject({ row: { need: 10, packed: 10 } })
+    expect(w.rebuildCommitted('m1', 'mate')).toBe(0)
+    await w.startTour()
+    const deductions = rpcCalls.filter(c => c.fn === 'deduct_warehouse_stock_fifo')
+    expect(deductions.map(d => d.args.p_product_id)).toEqual(['cola'])
+    // At the machine nothing comes from the van; the slot is still rebuilt
+    expect(w.currentRebuild.value.map(s => [s.item.id, s.filled])).toEqual([['i12', 0]])
+  })
+
+  it('a ticked rebuild-only product is booked with the dialled amount', async () => {
+    fetchOpenRequests.mockResolvedValue(new Map([['m1', { id: 'r1', machine_id: 'm1', created_at: '', updated_at: '', note: null, items: [
+      { ...ITEM, to_product_id: 'mate', to_name: 'Mate' },
+    ] }]]))
+    const w = await startedTour()
+    w.warehouseStock.value = new Map([['cola', 30], ['mate', 20]])
+    w.setRebuildQuantity('m1', 'mate', 4)
+    w.toggleRebuildTick('m1', 'mate')
+    expect(w.rebuildCommitted('m1', 'mate')).toBe(4)
+    await w.startTour()
+    const deductions = rpcCalls.filter(c => c.fn === 'deduct_warehouse_stock_fifo')
+    expect(deductions.map(d => [d.args.p_product_id, d.args.p_quantity])).toEqual([['mate', 4]])
+  })
+
   it('a declined slot is refilled normally and packs nothing for the rebuild', async () => {
     const w = await startedTour()
     w.toggleRebuildItem('m1', 'i12')
@@ -219,6 +254,7 @@ describe('refill tour with a change note', () => {
 
   it('skipping the machine leaves the slots open and returns the packed units at the end of the tour', async () => {
     const w = await startedTour()
+    w.togglePacked('m1', w.machines.value[0]!.tray_summary[0]!)
     await w.startTour()
     await w.skipMachine()
     const input = applySlotChange.mock.calls[0]![0] as any

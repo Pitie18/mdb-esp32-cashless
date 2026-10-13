@@ -57,7 +57,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -141,7 +140,8 @@ fun PackingStep(
     onStartTour: () -> Unit,
     modifier: Modifier = Modifier,
     onToggleRebuildItem: (machineId: String, itemId: String) -> Unit = { _, _ -> },
-    onSetRebuildQuantity: (machineId: String, productId: String, quantity: Int) -> Unit = { _, _, _ -> }
+    onSetRebuildQuantity: (machineId: String, productId: String, quantity: Int) -> Unit = { _, _, _ -> },
+    onToggleRebuildTick: (productId: String, machineIds: List<String>) -> Unit = { _, _ -> }
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -219,9 +219,6 @@ fun PackingStep(
     // The same units per machine, each with its own stepper.
     val rebuildLines = rebuildLines(uiState, activeChip)
 
-    // "Packed" tick of a rebuild-only line. Visual only: the rebuild units are
-    // committed and deducted at tour start regardless, exactly like before.
-    var rebuildTicked by rememberSaveable { mutableStateOf(listOf<String>()) }
 
     val rows = packRows(
         uiState = uiState,
@@ -335,21 +332,22 @@ fun PackingStep(
                         }
                         is PackEntry.Rebuild -> {
                             val productId = entry.row.productId
+                            val lines = rebuildLines[productId].orEmpty()
+                            val machineIds = lines.map { it.machineId }
                             RebuildPackCard(
                                 row = entry.row,
-                                lines = rebuildLines[productId].orEmpty(),
+                                lines = lines,
                                 showMachineNames = activeChip == null,
                                 onSetQuantity = { machineId, quantity ->
                                     onSetRebuildQuantity(machineId, productId, quantity)
                                 },
-                                isTicked = productId in rebuildTicked,
+                                // Like a normal product: only a ticked line is
+                                // taken along and booked.
+                                isTicked = machineIds.isNotEmpty() &&
+                                    machineIds.all { uiState.rebuildTicks[it]?.contains(productId) == true },
                                 onToggle = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    rebuildTicked = if (productId in rebuildTicked) {
-                                        rebuildTicked - productId
-                                    } else {
-                                        rebuildTicked + productId
-                                    }
+                                    onToggleRebuildTick(productId, machineIds)
                                 }
                             )
                         }
@@ -409,7 +407,7 @@ private data class RebuildLineState(
     val machineName: String,
     /** What the machine's accepted slots need from the warehouse. */
     val need: Int,
-    /** What is packed ([RefillUiState.rebuildCommitted]). */
+    /** What is (or, unticked, would be) packed ([rebuildDisplayQuantity]). */
     val quantity: Int,
     /** Stepper's upper bound, [maxRebuildQuantity]. */
     val maxQuantity: Int
@@ -629,7 +627,7 @@ private fun rebuildLines(uiState: RefillUiState, activeChip: String?): Map<Strin
                 machineId = machineId,
                 machineName = name,
                 need = need,
-                quantity = uiState.rebuildCommitted[machineId]?.get(productId) ?: 0,
+                quantity = uiState.rebuildDisplayQuantity(machineId, productId),
                 maxQuantity = uiState.maxRebuildQuantity(machineId, productId)
             )
         }
@@ -646,7 +644,12 @@ private fun rebuildLines(uiState: RefillUiState, activeChip: String?): Map<Strin
 private fun rebuildPackRows(uiState: RefillUiState, activeChip: String?): List<RebuildPackRow> =
     SlotChange.rebuildPackRows(
         needsByMachine = rebuildNeeds(uiState, activeChip),
-        committed = uiState.rebuildCommitted,
+        // What is (or would be) packed: committed once ticked, else the dialled amount.
+        committed = rebuildNeeds(uiState, activeChip).associate { (machineId, needs) ->
+            machineId to needs.filterValues { it > 0 }.mapValues { (pid, _) ->
+                uiState.rebuildDisplayQuantity(machineId, pid)
+            }
+        },
         items = uiState.machines.flatMap { it.changeRequest?.items.orEmpty() }
     )
 
@@ -1132,8 +1135,8 @@ private fun RebuildBadge(text: String) {
 /**
  * A product only the slot rebuilds need: violet-tinted, the committed units
  * as its quantity, the shortfall when the warehouse covers less than the
- * slots ask for. The tick is the driver's own "packed" mark and nothing
- * else — the units are committed (and deducted at tour start) either way.
+ * slots ask for. Like a normal product, only a ticked line is taken along
+ * and deducted at tour start.
  */
 @Composable
 private fun RebuildPackCard(

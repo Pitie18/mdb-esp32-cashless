@@ -4,8 +4,8 @@ import { getProductImageUrl } from '@/composables/useProducts'
 import type { RebuildPackRow } from '@/composables/useRefillWizard'
 
 // Packing step: a product that only a slot rebuild needs, shown in the normal
-// packing list (violet). The tick is a packing aid; the units are committed
-// for the rebuild either way.
+// packing list (violet). Like a normal product, only a ticked row is taken
+// along and booked out of the warehouse.
 
 defineProps<{
   row: RebuildPackRow

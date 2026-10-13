@@ -984,8 +984,8 @@ private struct RebuildBadge: View {
 }
 
 /// A product packed only for slot rebuilds: its own violet row in the packing
-/// list. The tick is a packing aid — the units are committed and deducted at
-/// tour start either way, like before. Mirrors the PWA's
+/// list. Like a normal product, only a ticked row is taken along and booked
+/// out of the warehouse at tour start. Mirrors the PWA's
 /// `RefillRebuildPackRow.vue`.
 private struct RebuildPackRowView: View {
     @ObservedObject var viewModel: RefillWizardViewModel

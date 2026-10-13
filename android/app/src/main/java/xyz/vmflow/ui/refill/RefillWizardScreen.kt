@@ -252,7 +252,8 @@ fun RefillWizardScreen(
                         onPackAllForMachine = viewModel::packAllForMachine,
                         onStartTour = viewModel::startTour,
                         onToggleRebuildItem = viewModel::toggleRebuildItem,
-                        onSetRebuildQuantity = viewModel::setRebuildQuantity
+                        onSetRebuildQuantity = viewModel::setRebuildQuantity,
+                        onToggleRebuildTick = viewModel::toggleRebuildTick
                     )
 
                     RefillStep.REFILL -> {
