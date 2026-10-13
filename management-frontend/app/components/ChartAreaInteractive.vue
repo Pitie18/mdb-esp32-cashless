@@ -61,11 +61,14 @@ const sum = computed(() => props.data.reduce((s, d) => s + d.total, 0))
           {{ description ?? t('dashboard.revenuePerDay') }}
         </CardDescription>
       </div>
-      <span
-        v-if="data.length"
-        class="text-sm font-semibold tabular-nums"
-        :style="{ color: color === 'purple' ? 'var(--chart-purple)' : 'var(--chart-blue)' }"
-      >{{ formatValue(sum) }}</span>
+      <div class="flex flex-col items-end gap-2">
+        <slot name="actions" />
+        <span
+          v-if="data.length"
+          class="text-sm font-semibold tabular-nums"
+          :style="{ color: color === 'purple' ? 'var(--chart-purple)' : 'var(--chart-blue)' }"
+        >{{ formatValue(sum) }}</span>
+      </div>
     </CardHeader>
     <CardContent class="px-4 pb-2 sm:px-6">
       <div v-if="data.length === 0" class="flex h-[220px] items-center justify-center rounded-xl bg-muted/50 text-sm text-muted-foreground">
