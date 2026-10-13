@@ -59,6 +59,8 @@ interface DashboardDataSource {
     suspend fun fetchActivityRows(windowStart: Instant): List<ActivityLogRow>
     suspend fun fetchIntakeRows(windowStart: Instant): List<IntakeTransactionRow>
     suspend fun resolveUserNames(ids: List<String>): Map<String, String>
+    /** Product names by lowercased id, for slot change feed rows; never throws. */
+    suspend fun resolveProductNames(ids: List<String>): Map<String, String> = emptyMap()
     suspend fun fetchNewDealsCount(): Int
     suspend fun fetchCashBookSummary(): CashBookSummary
 }
@@ -71,6 +73,10 @@ private data class UserRow(
     @SerialName("last_name") val lastName: String? = null,
     val email: String? = null,
 )
+
+/** `products` row shape used only to name slot change feed rows. */
+@Serializable
+private data class ProductNameRow(val id: String, val name: String? = null)
 
 /** `cash_books` row shape used only by the dashboard summary tile. */
 @Serializable
@@ -253,12 +259,12 @@ object DashboardRepository : DashboardDataSource {
         return items to sales.size
     }
 
-    /** Refill + tour-start + cash-book rows. RLS scopes to the user's company. */
+    /** Refill + tour-start + slot-change + cash-book rows. RLS scopes to the user's company. */
     override suspend fun fetchActivityRows(windowStart: Instant): List<ActivityLogRow> =
         postgrest.from("activity_log")
-            .select(Columns.raw("id, created_at, action, metadata")) {
+            .select(Columns.raw("id, created_at, user_id, action, metadata")) {
                 filter {
-                    isIn("action", listOf("stock_refill_tour", "tour_started", "cash_book_entry_created"))
+                    isIn("action", listOf("stock_refill_tour", "tour_started", "slot_change_applied", "cash_book_entry_created"))
                     gte("created_at", windowStart.toString())
                 }
                 order("created_at", Order.DESCENDING)
@@ -304,6 +310,28 @@ object DashboardRepository : DashboardDataSource {
                 val display = full.ifEmpty { user.email ?: user.id.take(8) }
                 user.id to display
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyMap()
+        }
+    }
+
+    /**
+     * Product names for the slot change feed rows, keyed by lowercased id.
+     * Degrades to an empty map on any failure: the row then shows the slot
+     * number only.
+     */
+    override suspend fun resolveProductNames(ids: List<String>): Map<String, String> {
+        if (ids.isEmpty()) return emptyMap()
+        return try {
+            postgrest.from("products")
+                .select(Columns.raw("id, name")) {
+                    filter { isIn("id", ids) }
+                }
+                .decodeList<ProductNameRow>()
+                .mapNotNull { p -> p.name?.let { p.id.lowercase() to it } }
+                .toMap()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

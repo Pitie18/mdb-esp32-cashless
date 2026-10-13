@@ -8,12 +8,16 @@ import Foundation
 struct ActivityLogRow: Decodable, Equatable {
     let id: UUID
     let createdAt: Date
+    /// Author; only `slot_change_applied` needs it (the RPC that writes that
+    /// row stores no `_user_display`).
+    var userId: UUID? = nil
     let action: String
     let metadata: ActivityLogMetadata?
 
     enum CodingKeys: String, CodingKey {
         case id, action, metadata
         case createdAt = "created_at"
+        case userId = "user_id"
     }
 }
 
@@ -32,9 +36,14 @@ struct ActivityLogMetadata: Decodable, Equatable {
     let amount: Double?
     let category: String?
     let note: String?
+    // Slot change (Umbau) metadata — only present on slot_change_applied rows,
+    // written by the apply_slot_change RPC.
+    var done: [SlotChangeDoneLine]? = nil
+    var skipped: [SlotChangeSkippedLine]? = nil
 
     enum CodingKeys: String, CodingKey {
         case products
+        case done, skipped
         case amount
         case category
         case tourId = "tour_id"
@@ -57,6 +66,28 @@ struct ActivityProductLine: Decodable, Equatable {
     enum CodingKeys: String, CodingKey {
         case quantity
         case productName = "product_name"
+    }
+}
+
+/// One rebuilt slot of a `slot_change_applied` row. Every field optional:
+/// a decode failure here would take the whole feed down.
+struct SlotChangeDoneLine: Decodable, Equatable {
+    let itemNumber: Int?
+    let toProductId: String?
+    let filled: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case filled
+        case itemNumber = "item_number"
+        case toProductId = "to_product_id"
+    }
+}
+
+struct SlotChangeSkippedLine: Decodable, Equatable {
+    let itemNumber: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case itemNumber = "item_number"
     }
 }
 
@@ -97,6 +128,25 @@ struct RefillActivity: Identifiable, Equatable {
     static func == (lhs: RefillActivity, rhs: RefillActivity) -> Bool {
         lhs.id == rhs.id && lhs.createdAt == rhs.createdAt
     }
+}
+
+/// Slots rebuilt at a machine on a refill tour — a `slot_change_applied` row
+/// (same entry the web history shows as "Slots rebuilt").
+struct SlotChangeActivity: Identifiable, Equatable {
+    struct Slot: Equatable {
+        let itemNumber: Int
+        let productName: String?
+        let filled: Int
+    }
+
+    let id: UUID
+    let createdAt: Date
+    let machineName: String
+    let userDisplay: String?
+    /// Rebuilt slots, by slot number.
+    let slots: [Slot]
+    /// Slots of the change note left as they were this tour.
+    let skippedCount: Int
 }
 
 struct TourActivity: Identifiable, Equatable {
@@ -149,6 +199,7 @@ enum ActivityFeedItem: Identifiable, Equatable {
     case tourStarted(TourActivity)
     case stockIntake(IntakeGroup)
     case cashBookEntry(CashBookActivity)
+    case slotsRebuilt(SlotChangeActivity)
 
     var id: String {
         switch self {
@@ -157,6 +208,7 @@ enum ActivityFeedItem: Identifiable, Equatable {
         case .tourStarted(let t): return "tour-\(t.id.uuidString)"
         case .stockIntake(let g): return "intake-\(g.id.uuidString)"
         case .cashBookEntry(let c): return "cashentry-\(c.id.uuidString)"
+        case .slotsRebuilt(let r): return "slotchange-\(r.id.uuidString)"
         }
     }
 
@@ -167,6 +219,7 @@ enum ActivityFeedItem: Identifiable, Equatable {
         case .tourStarted(let t): return t.createdAt
         case .stockIntake(let g): return g.date
         case .cashBookEntry(let c): return c.createdAt
+        case .slotsRebuilt(let r): return r.createdAt
         }
     }
 }
@@ -222,10 +275,42 @@ enum ActivityFeedBuilder {
         return groups
     }
 
+    /// Authors and target products of the `slot_change_applied` rows, which
+    /// carry ids only — resolved to names before `makeActivityItems`.
+    static func slotChangeLookupIds(_ rows: [ActivityLogRow]) -> (users: [UUID], products: [String]) {
+        let changes = rows.filter { $0.action == "slot_change_applied" }
+        let users = Set(changes.compactMap(\.userId))
+        let products = Set(changes.flatMap { $0.metadata?.done ?? [] }.compactMap { $0.toProductId?.lowercased() })
+        return (Array(users), Array(products))
+    }
+
     /// Map activity_log rows to feed items. Unknown actions are skipped.
-    static func makeActivityItems(_ rows: [ActivityLogRow]) -> [ActivityFeedItem] {
+    /// `userNames` / `productNames` (product id lowercased) name the authors
+    /// and products of `slot_change_applied` rows.
+    static func makeActivityItems(
+        _ rows: [ActivityLogRow],
+        userNames: [UUID: String] = [:],
+        productNames: [String: String] = [:]
+    ) -> [ActivityFeedItem] {
         rows.compactMap { row in
             switch row.action {
+            case "slot_change_applied":
+                let slots = (row.metadata?.done ?? []).compactMap { line -> SlotChangeActivity.Slot? in
+                    guard let n = line.itemNumber else { return nil }
+                    return SlotChangeActivity.Slot(
+                        itemNumber: n,
+                        productName: line.toProductId.flatMap { productNames[$0.lowercased()] },
+                        filled: line.filled ?? 0
+                    )
+                }.sorted { $0.itemNumber < $1.itemNumber }
+                return .slotsRebuilt(SlotChangeActivity(
+                    id: row.id,
+                    createdAt: row.createdAt,
+                    machineName: row.metadata?.machineName ?? "—",
+                    userDisplay: row.userId.flatMap { userNames[$0] } ?? row.metadata?.userDisplay,
+                    slots: slots,
+                    skippedCount: row.metadata?.skipped?.count ?? 0
+                ))
             case "stock_refill_tour":
                 return .machineRefilled(RefillActivity(
                     id: row.id,
@@ -271,10 +356,12 @@ enum ActivityFeedBuilder {
     static func mergeFeed(
         sales: [SaleWithMachine],
         activityRows: [ActivityLogRow],
-        intakeGroups: [IntakeGroup]
+        intakeGroups: [IntakeGroup],
+        userNames: [UUID: String] = [:],
+        productNames: [String: String] = [:]
     ) -> [ActivityFeedItem] {
         var items: [ActivityFeedItem] = sales.map { .sale($0) }
-        items.append(contentsOf: makeActivityItems(activityRows))
+        items.append(contentsOf: makeActivityItems(activityRows, userNames: userNames, productNames: productNames))
         items.append(contentsOf: intakeGroups.map { .stockIntake($0) })
         return items.sorted { $0.date > $1.date }
     }

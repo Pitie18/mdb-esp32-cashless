@@ -155,6 +155,46 @@ class ActivityFeedBuilderTest {
         assertEquals(1, items.size)
     }
 
+    /** Shape written by the apply_slot_change RPC (plus keys the feed ignores). */
+    private val slotChangeJson = """
+        {"id":"s","created_at":"2026-08-12T10:00:00Z","user_id":"u1","action":"slot_change_applied",
+         "metadata":{"request_id":"r1","tour_id":"t1","machine_id":"m1","machine_name":"Automat 1",
+           "done":[
+             {"item_id":"i2","tray_id":"x","item_number":14,"from_product_id":null,"to_product_id":"P-FANTA",
+              "from_capacity":8,"to_capacity":10,"old_stock":0,"removed":0,"filled":6,"price_set":true,"age_set":false},
+             {"item_id":"i1","tray_id":"y","item_number":12,"from_product_id":"p-old","to_product_id":"p-cola",
+              "from_capacity":8,"to_capacity":8,"old_stock":3,"removed":3,"filled":8,"price_set":false,"age_set":false}],
+           "skipped":[{"item_id":"i3","item_number":21}],
+           "returns":[],"waste":[],"request_status":"open","_user_email":"a@b.c"}}
+    """.trimIndent()
+
+    @Test
+    fun `a slot change row lists its rebuilt slots with product and author names`() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val row = json.decodeFromString(ActivityLogRow.serializer(), slotChangeJson)
+        val lookup = ActivityFeedBuilder.slotChangeLookupIds(listOf(row))
+        assertEquals(listOf("u1"), lookup.users)
+        assertEquals(setOf("p-fanta", "p-cola"), lookup.products.toSet())
+
+        val items = ActivityFeedBuilder.makeActivityItems(
+            listOf(row),
+            userNames = mapOf("u1" to "Lucien"),
+            productNames = mapOf("p-cola" to "Cola"),
+        )
+        val item = items.single() as ActivityFeedItem.SlotsRebuilt
+        assertEquals("slotchange-s", item.id)
+        assertEquals("Automat 1", item.activity.machineName)
+        assertEquals("Lucien", item.activity.userDisplay)
+        assertEquals(1, item.activity.skippedCount)
+        assertEquals(
+            listOf(
+                xyz.vmflow.models.SlotChangeActivity.Slot(12, "Cola", 8),
+                xyz.vmflow.models.SlotChangeActivity.Slot(14, null, 6),
+            ),
+            item.activity.slots,
+        )
+    }
+
     @Test
     fun `missing metadata degrades to defaults instead of throwing`() {
         val items = ActivityFeedBuilder.makeActivityItems(listOf(logRow("r", "stock_refill_tour", 0, null)))

@@ -670,6 +670,18 @@ extension DashboardView {
                 onToggle: { toggleExpanded(item.id) }
             )
 
+        case .slotsRebuilt(let change):
+            ActivityEventRow(
+                icon: "arrow.triangle.swap",
+                tint: Color.rebuildViolet,
+                title: String(localized: "Slots rebuilt"),
+                subtitle: slotChangeSubtitle(change),
+                date: change.createdAt,
+                detailLines: change.slots.map(slotChangeLine),
+                isExpanded: expandedActivityIds.contains(item.id),
+                onToggle: { toggleExpanded(item.id) }
+            )
+
         case .cashBookEntry(let cash):
             ActivityEventRow(
                 icon: cashBookIcon(cash.type),
@@ -698,6 +710,23 @@ extension DashboardView {
             parts.append(String(localized: "Filled by \(user)"))
         }
         parts.append(String(localized: "\(refill.totalAdded) items"))
+        return parts.joined(separator: " · ")
+    }
+
+    private func slotChangeSubtitle(_ change: SlotChangeActivity) -> String {
+        var parts: [String] = [change.machineName]
+        if let user = change.userDisplay { parts.append(user) }
+        if change.skippedCount > 0 {
+            parts.append(String(localized: "\(change.skippedCount) not rebuilt"))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    /// "#12 · Cola · +8" — the product name is left out when it can't be resolved.
+    private func slotChangeLine(_ slot: SlotChangeActivity.Slot) -> String {
+        var parts = ["#\(slot.itemNumber)"]
+        if let name = slot.productName { parts.append(name) }
+        parts.append("+\(slot.filled)")
         return parts.joined(separator: " · ")
     }
 
