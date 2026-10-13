@@ -448,6 +448,16 @@ final class RefillWizardViewModel: ObservableObject {
     /// Machine whose rebuild cards are being loaded (guards double loads).
     private var preparingRebuildFor: UUID?
 
+    // MARK: Notes for the next tour
+    //
+    // Open `machine_tour_notes`, shown at the top of the packing step and
+    // marked done once the tour starts (`complete_machine_tour_notes`). Only
+    // needed until `startTour()`, so they are not part of the persisted
+    // tour state. Mirrors the PWA's `useRefillWizard.ts`.
+
+    /// Open notes shown on the packing step (oldest first).
+    @Published var tourNotes: [MachineTourNote] = []
+
     /// Raw data of the last load, kept so the tour list can be rebuilt when
     /// the refiller accepts or declines a slot of a change note.
     private var lastAllMachines: [VendingMachine] = []
@@ -1621,6 +1631,8 @@ final class RefillWizardViewModel: ObservableObject {
             // Open slot change requests become change notes. A failing lookup
             // must never block a normal tour.
             self.changeRequests = await fetchOpenChangeRequests(machineIds: allMachines.map(\.id))
+            // Notes from the last tour — same rule: never block the tour.
+            await loadTourNotes()
             storeTourSource(allMachines: allMachines, allTrays: allTrays, availability: availability)
             rebuildTourList()
             let traysByMachine = allTraysByMachine
@@ -2481,6 +2493,74 @@ final class RefillWizardViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Notes for the next tour
+
+    /// Load the open notes for the packing step. A failing lookup is only
+    /// logged: the tour goes on without the notes.
+    func loadTourNotes() async {
+        do {
+            let rows: [MachineTourNote] = try await client
+                .from("machine_tour_notes")
+                .select(MachineTourNote.selectColumns)
+                .is("done_at", value: nil)
+                .order("created_at", ascending: true)
+                .execute()
+                .value
+            tourNotes = MachineTourNotes.notesForPacking(rows, currentTourId: tourId)
+        } catch {
+            print("[RefillWizard] tour notes unavailable: \(error)")
+            tourNotes = []
+        }
+    }
+
+    /// Mark the notes shown while packing as done, once the tour started.
+    /// Fire-and-forget: the RPC is idempotent and a failure is only logged
+    /// (the notes then simply show again on the next tour).
+    private func completeShownTourNotes() {
+        let ids = tourNotes.map(\.id)
+        tourNotes = []
+        guard !ids.isEmpty, !tourId.isEmpty else { return }
+        let tour = tourId
+        let client = self.client
+        Task {
+            do {
+                try await client.rpc("complete_machine_tour_notes", params: [
+                    "p_note_ids": AnyJSON.array(ids.map { AnyJSON.string($0.uuidString) }),
+                    "p_tour_id": AnyJSON.string(tour),
+                ]).execute()
+            } catch {
+                print("[RefillWizard] complete_machine_tour_notes failed: \(error)")
+            }
+        }
+    }
+
+    /// This tour's open note for a machine (prefills the note sheet), nil
+    /// when there is none.
+    func currentTourNote(machineId: UUID) async throws -> String? {
+        guard !tourId.isEmpty else { return nil }
+        struct NoteRow: Decodable { let note: String }
+        let rows: [NoteRow] = try await client
+            .from("machine_tour_notes")
+            .select("note")
+            .eq("machine_id", value: machineId.uuidString)
+            .eq("written_in_tour", value: tourId)
+            .is("done_at", value: nil)
+            .limit(1)
+            .execute()
+            .value
+        return rows.first?.note
+    }
+
+    /// Write (or overwrite) this tour's note for a machine via
+    /// `save_machine_tour_note`; an empty text deletes it.
+    func saveTourNote(machineId: UUID, text: String) async throws {
+        try await client.rpc("save_machine_tour_note", params: [
+            "p_machine_id": AnyJSON.string(machineId.uuidString),
+            "p_tour_id": tourId.isEmpty ? AnyJSON.null : AnyJSON.string(tourId),
+            "p_note": AnyJSON.string(MachineTourNotes.normalized(text)),
+        ]).execute()
+    }
+
     // MARK: - Quit the change note
 
     /// Quit the change note of a machine via `apply_slot_change` — before the
@@ -2771,6 +2851,9 @@ final class RefillWizardViewModel: ObservableObject {
             tourMeta["warehouse_name"] = .string(warehouseName)
         }
         await writeActivityLog(machineId: nil, machineName: nil, action: "tour_started", extraMetadata: tourMeta)
+
+        // The notes shown while packing are done now (fire-and-forget).
+        completeShownTourNotes()
 
         currentMachineIndex = 0
         isSaving = false
@@ -3255,6 +3338,7 @@ final class RefillWizardViewModel: ObservableObject {
         leftoverExpiry = [:]
         expirySuggestionsLoaded = false
         replacementNotice = nil
+        tourNotes = []
         resetCurrentRebuild()
         // Re-arm the entry gate so the next Refill-tab appearance reloads
         // fresh machine data for a brand-new tour instead of being skipped.

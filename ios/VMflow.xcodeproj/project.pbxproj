@@ -22,6 +22,7 @@
 		0C7698AD6ED222844A1255F5 /* Tray.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D260DBBBEC69D0AD7B73C46 /* Tray.swift */; };
 		C0FFEE11ABCD22EF33445567 /* MachineStockHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE11ABCD22EF33445566 /* MachineStockHealth.swift */; };
 		45163A517121359541A88C1D /* SlotChange.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCE7796A01E46CBC5B0B535E /* SlotChange.swift */; };
+		9A54122E6D290584B7E741DD /* MachineTourNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85B284831920CF7FAB46AF8 /* MachineTourNote.swift */; };
 		123DDC46EFE39435A5A69CB5 /* RefillWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52A29D496BDB69F848C60674 /* RefillWizardView.swift */; };
 		1254787CC883CE8605189B4B /* PackingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90BC01B0752A47A20DF699E7 /* PackingStepView.swift */; };
 		14E8E7A13B8FB4BBA2CE3AA1 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4757F332F815A5F5300AC8 /* SettingsView.swift */; };
@@ -80,6 +81,7 @@
 		9286828416CA9826CB3474B1 /* ReplacementProductPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24171AEC291F3AA1B07FEB50 /* ReplacementProductPicker.swift */; };
 		F581C6727228F26545BD7DE4 /* RefillRebuildSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EF6A2793E29DE1F38084302 /* RefillRebuildSection.swift */; };
 		1510FDB98370FEF6C8E0D027 /* RefillChangeNoteCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18BBA83AFDC6E6291D4D0004 /* RefillChangeNoteCard.swift */; };
+		CCE03DFF1EF678E2E9FC127B /* MachineTourNoteViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8F75B38028BCC4883AFE1E2 /* MachineTourNoteViews.swift */; };
 		9408C221F48381AE80D82845 /* PurchasePrice.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D6E22DF428CDEE506150A1 /* PurchasePrice.swift */; };
 		98DBB72485FA6701994E86A6 /* VMflowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED1159C55CAF705215AD130 /* VMflowApp.swift */; };
 		994DEA5B68106C882733FA3E /* AddServerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 357877F547C30B7565611780 /* AddServerView.swift */; };
@@ -180,6 +182,7 @@
 		24171AEC291F3AA1B07FEB50 /* ReplacementProductPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplacementProductPicker.swift; sourceTree = "<group>"; };
 		9EF6A2793E29DE1F38084302 /* RefillRebuildSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefillRebuildSection.swift; sourceTree = "<group>"; };
 		18BBA83AFDC6E6291D4D0004 /* RefillChangeNoteCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RefillChangeNoteCard.swift; sourceTree = "<group>"; };
+		A8F75B38028BCC4883AFE1E2 /* MachineTourNoteViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineTourNoteViews.swift; sourceTree = "<group>"; };
 		254111FB4644A0C29A6E97ED /* PurchasePricesSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PurchasePricesSheet.swift; sourceTree = "<group>"; };
 		25C77EB4B16044F00FE97E2E /* ProductDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductDetailSheet.swift; sourceTree = "<group>"; };
 		262B82892D49D5104059509A /* DealDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DealDetailSheet.swift; sourceTree = "<group>"; };
@@ -188,6 +191,7 @@
 		2D260DBBBEC69D0AD7B73C46 /* Tray.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tray.swift; sourceTree = "<group>"; };
 		C0FFEE11ABCD22EF33445566 /* MachineStockHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineStockHealth.swift; sourceTree = "<group>"; };
 		BCE7796A01E46CBC5B0B535E /* SlotChange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotChange.swift; sourceTree = "<group>"; };
+		B85B284831920CF7FAB46AF8 /* MachineTourNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineTourNote.swift; sourceTree = "<group>"; };
 		2E4ECAF4493CB619B2F19A90 /* AdaptiveRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveRootView.swift; sourceTree = "<group>"; };
 		2FAA61B154F7ABC2401C2CCA /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		357877F547C30B7565611780 /* AddServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddServerView.swift; sourceTree = "<group>"; };
@@ -324,6 +328,7 @@
 				2D260DBBBEC69D0AD7B73C46 /* Tray.swift */,
 				C0FFEE11ABCD22EF33445566 /* MachineStockHealth.swift */,
 				BCE7796A01E46CBC5B0B535E /* SlotChange.swift */,
+				B85B284831920CF7FAB46AF8 /* MachineTourNote.swift */,
 				4E7EC46F36DD12575C056A1A /* VendingMachine.swift */,
 				A6908142D65605FE1D58C1AE /* Warehouse.swift */,
 				FDAD3C8C007944B5FDC1D17E /* Supplier.swift */,
@@ -375,6 +380,7 @@
 				24171AEC291F3AA1B07FEB50 /* ReplacementProductPicker.swift */,
 				9EF6A2793E29DE1F38084302 /* RefillRebuildSection.swift */,
 				18BBA83AFDC6E6291D4D0004 /* RefillChangeNoteCard.swift */,
+				A8F75B38028BCC4883AFE1E2 /* MachineTourNoteViews.swift */,
 				C374A772F98B97BE6F2EE986 /* ReviewStepView.swift */,
 			);
 			path = Refill;
@@ -912,6 +918,7 @@
 				9286828416CA9826CB3474B1 /* ReplacementProductPicker.swift in Sources */,
 				F581C6727228F26545BD7DE4 /* RefillRebuildSection.swift in Sources */,
 				1510FDB98370FEF6C8E0D027 /* RefillChangeNoteCard.swift in Sources */,
+				CCE03DFF1EF678E2E9FC127B /* MachineTourNoteViews.swift in Sources */,
 				009EBF498DA30943CF9B822D /* ReviewStepView.swift in Sources */,
 				C2A2406A5D534A262F1CB0BA /* Sale.swift in Sources */,
 				72C90C4ACF2607C4D2195724 /* ServerEntry.swift in Sources */,
@@ -930,6 +937,7 @@
 				0C7698AD6ED222844A1255F5 /* Tray.swift in Sources */,
 				C0FFEE11ABCD22EF33445567 /* MachineStockHealth.swift in Sources */,
 				45163A517121359541A88C1D /* SlotChange.swift in Sources */,
+				9A54122E6D290584B7E741DD /* MachineTourNote.swift in Sources */,
 				5C989AE6260DDA7137C3A923 /* TrayEditSheet.swift in Sources */,
 				75FC6DAC6BC35B6F78317FBC /* TrayListView.swift in Sources */,
 				A1A27831F396EBCD53E5ED9A /* TrayRow.swift in Sources */,

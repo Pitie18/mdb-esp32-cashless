@@ -238,6 +238,17 @@ fun PackingStep(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // "Notes from last time" first: what to bring along decides what
+            // goes into the van before anything else is packed.
+            if (uiState.tourNotes.isNotEmpty()) {
+                item(key = "tour-notes") {
+                    TourNotesCard(
+                        notes = uiState.tourNotes,
+                        machineNames = uiState.machines.associate { it.machine.id to it.machine.displayName }
+                    )
+                }
+            }
+
             if (uiState.warehouses.size > 1) {
                 item(key = "warehouse-picker") {
                     WarehousePickerField(

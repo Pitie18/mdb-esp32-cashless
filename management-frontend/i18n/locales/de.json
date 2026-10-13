@@ -2568,5 +2568,13 @@
     "sales": "Verkäufe",
     "units": "Stück",
     "grossProfit": "Rohertrag"
+  },
+  "refillNotes": {
+    "title": "Notiz für nächste Tour",
+    "hint": "Wird beim Packen der nächsten Tour oben angezeigt.",
+    "placeholder": "z. B. neue Spiralen, Erhöhungen für Dosen …",
+    "packingTitle": "Notizen vom letzten Mal",
+    "packingHint": "Werden mit dem Start der Tour abgehakt.",
+    "moreActions": "Weitere Aktionen"
   }
 }

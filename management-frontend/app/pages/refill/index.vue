@@ -3,7 +3,8 @@ definePageMeta({ middleware: 'auth' })
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { IconArrowLeft, IconCheck, IconPlayerSkipForward, IconTruck } from '@tabler/icons-vue'
+import { IconArrowLeft, IconCheck, IconDotsVertical, IconNote, IconPlayerSkipForward, IconTruck } from '@tabler/icons-vue'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { getProductImageUrl } from '@/composables/useProducts'
 import { useRefillWizard, hasSavedTour } from '@/composables/useRefillWizard'
 import { formatCurrency } from '@/lib/utils'
@@ -12,6 +13,8 @@ import RefillRebuildSection from '@/components/refill/RefillRebuildSection.vue'
 import RefillRebuildPackRow from '@/components/refill/RefillRebuildPackRow.vue'
 import RefillRebuildQuantity from '@/components/refill/RefillRebuildQuantity.vue'
 import RefillTourLeftovers from '@/components/refill/RefillTourLeftovers.vue'
+import RefillTourNotes from '@/components/refill/RefillTourNotes.vue'
+import RefillTourNoteDialog from '@/components/refill/RefillTourNoteDialog.vue'
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -37,7 +40,11 @@ const {
   setRebuildRemoved, setRebuildFilled, setRebuildAction, setRebuildPriceSet, setRebuildAgeSet,
   tourLeftoverRows, hasPendingLeftovers, leftoversReturned, returningLeftovers, returnLeftoversError,
   setLeftoverDestination, setLeftoverExpiry, setLeftoverCount, loadTourExpirySuggestions, returnTourLeftovers,
+  tourNotes, loadTourNote, saveTourNote,
 } = useRefillWizard()
+
+// Note for the next tour, written at the current machine.
+const noteDialogOpen = ref(false)
 
 returnBatchLabel.value = t('refillRebuild.returnBatch')
 
@@ -143,6 +150,8 @@ const currentMachineDone = computed(() =>
       </div>
 
       <template v-else>
+        <RefillTourNotes v-if="tourNotes.length > 0" :notes="tourNotes" />
+
         <!-- Warehouse selector -->
         <div v-if="warehouses.length > 0" class="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2.5">
           <label class="shrink-0 text-sm text-muted-foreground">{{ t('refill.selectWarehouse') }}</label>
@@ -622,25 +631,41 @@ const currentMachineDone = computed(() =>
               <p class="mt-1 text-xs opacity-90">{{ confirmError }}</p>
             </div>
             <p v-if="!rebuildReady" class="text-center text-xs text-amber-600">{{ t('refillRebuild.decideAll') }}</p>
-            <button
-              :disabled="confirmingRefill || !rebuildReady"
-              class="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-medium text-primary-foreground shadow-lg transition-colors hover:bg-primary/90 disabled:opacity-50"
-              @click="confirmMachineRefill"
-            >
-              <IconCheck v-if="!confirmingRefill" class="h-5 w-5" />
-              <span v-if="confirmingRefill">{{ t('refill.confirming') }}</span>
-              <span v-else-if="confirmError">{{ t('refill.retry') }}</span>
-              <span v-else-if="wouldFinishTour">{{ t('refill.confirmAndFinish') }}</span>
-              <span v-else>{{ t('refill.confirmAndNext') }}</span>
-            </button>
-            <button
-              :disabled="confirmingRefill"
-              class="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
-              @click="skipMachine"
-            >
-              <IconPlayerSkipForward class="h-4 w-4" />
-              {{ t('refill.skipMachine') }}
-            </button>
+            <div class="flex gap-2">
+              <button
+                :disabled="confirmingRefill || !rebuildReady"
+                class="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-medium text-primary-foreground shadow-lg transition-colors hover:bg-primary/90 disabled:opacity-50"
+                @click="confirmMachineRefill"
+              >
+                <IconCheck v-if="!confirmingRefill" class="h-5 w-5" />
+                <span v-if="confirmingRefill">{{ t('refill.confirming') }}</span>
+                <span v-else-if="confirmError">{{ t('refill.retry') }}</span>
+                <span v-else-if="wouldFinishTour">{{ t('refill.confirmAndFinish') }}</span>
+                <span v-else>{{ t('refill.confirmAndNext') }}</span>
+              </button>
+              <!-- Skip and the note for the next tour -->
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <button
+                    class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border text-muted-foreground transition-colors hover:bg-muted"
+                    :aria-label="t('refillNotes.moreActions')"
+                    :title="t('refillNotes.moreActions')"
+                  >
+                    <IconDotsVertical class="h-5 w-5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" side="top">
+                  <DropdownMenuItem :disabled="confirmingRefill" @click="skipMachine">
+                    <IconPlayerSkipForward class="h-4 w-4" />
+                    {{ t('refill.skipMachine') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem @click="noteDialogOpen = true">
+                    <IconNote class="h-4 w-4" />
+                    {{ t('refillNotes.title') }}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </template>
         </div>
       </div>
@@ -733,5 +758,12 @@ const currentMachineDone = computed(() =>
         </div>
       </div>
     </template>
+    <RefillTourNoteDialog
+      v-if="currentMachine"
+      v-model:open="noteDialogOpen"
+      :machine-name="currentMachine.name"
+      :load="() => loadTourNote(currentMachine!.id)"
+      :save="(note: string) => saveTourNote(currentMachine!.id, note)"
+    />
   </div>
 </template>
