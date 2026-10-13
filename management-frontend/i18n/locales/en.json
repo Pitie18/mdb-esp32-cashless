@@ -2556,5 +2556,11 @@
     "bookBack": "Book back",
     "booked": "Leftover goods booked",
     "unbookedConfirm": "Leftover goods have not been booked back yet. Finish anyway?"
+  },
+  "charts": {
+    "revenue": "Revenue",
+    "sales": "Sales",
+    "units": "Units",
+    "grossProfit": "Gross profit"
   }
 }

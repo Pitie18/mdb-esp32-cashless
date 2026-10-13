@@ -153,11 +153,14 @@ function onEditSaved() {
         :data="detail.chartRevenue.value"
         :title="t('products.detail.chart.revenueTitle')"
         :description="t('products.detail.chart.revenueDescription')"
+        :count-label="t('charts.units')"
       />
       <ChartAreaInteractive
         :data="detail.chartUnits.value"
         :title="t('products.detail.chart.unitsTitle')"
         :description="t('products.detail.chart.unitsDescription')"
+        kind="units"
+        color="purple"
       />
     </div>
 

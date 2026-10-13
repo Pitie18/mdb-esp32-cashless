@@ -3,7 +3,8 @@ definePageMeta({ middleware: 'auth' })
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { VisAxis, VisStackedBar, VisXYContainer } from '@unovis/vue'
+import ChartAreaInteractive from '@/components/ChartAreaInteractive.vue'
+import { dailySeries } from '~/lib/barChart'
 import { IconCreditCard, IconCoins, IconDeviceMobile, IconSend, IconSparkles, IconLoader2, IconRefresh, IconTrash, IconPlus, IconHistory, IconArrowUp, IconArrowDown, IconExternalLink, IconAlertTriangle } from '@tabler/icons-vue'
 import { NuxtLink } from '#components'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -376,19 +377,8 @@ async function reloadSales(machineId: string) {
   sales.value = data ?? []
 }
 
-// Aggregate sales per day for the chart
-const salesChartData = computed(() => {
-  const byDay: Record<string, number> = {}
-  for (const sale of sales.value) {
-    const day = new Date(sale.created_at).toISOString().slice(0, 10)
-    byDay[day] = (byDay[day] ?? 0) + (sale.item_price ?? 0)
-  }
-  return Object.entries(byDay)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, total]) => ({ date: new Date(date), total }))
-})
-
-type ChartPoint = { date: Date; total: number }
+// Revenue per local calendar day over the loaded 30 days, zero days included.
+const salesChartData = computed(() => dailySeries(sales.value, 30))
 
 // Map item_number → product info from trays (used for tray display AND as fallback for old sales)
 const trayProductMap = computed(() => {
@@ -1484,22 +1474,11 @@ async function handleAddSale() {
             <!-- Sales tab -->
             <TabsContent value="sales" class="mt-4 space-y-6">
               <!-- Sales chart -->
-              <div v-if="salesChartData.length > 0" class="rounded-xl border bg-card p-4 sm:p-6">
-                <h2 class="mb-4 text-sm font-medium">{{ t('machineDetail.dailyRevenue') }}</h2>
-                <VisXYContainer :data="salesChartData" class="h-48 w-full">
-                  <VisStackedBar :x="(d: ChartPoint) => d.date" :y="[(d: ChartPoint) => d.total]" color="var(--primary)" :bar-padding="0.2" :rounded-corners="4" />
-                  <VisAxis
-                    type="x"
-                    :x="(d: ChartPoint) => d.date"
-                    :tick-format="(d: number) => new Date(d).toLocaleDateString(locale, { month: 'short', day: 'numeric' })"
-                    :num-ticks="4"
-                    :tick-line="false"
-                    :domain-line="false"
-                    :grid-line="false"
-                  />
-                  <VisAxis type="y" :num-ticks="3" :tick-line="false" :domain-line="false" />
-                </VisXYContainer>
-              </div>
+              <ChartAreaInteractive
+                v-if="sales.length > 0"
+                :data="salesChartData"
+                :title="t('machineDetail.dailyRevenue')"
+              />
 
               <!-- Sales list -->
               <div>
