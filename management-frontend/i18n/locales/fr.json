@@ -406,6 +406,10 @@
     "companyInsightsLoading": "Analyse des données du parc en cours...",
     "companyInsightsEmpty": "Aucune analyse du parc pour l'instant. Cliquez ci-dessous pour générer une analyse sur toutes vos machines.",
     "salesLast7Days": "Ventes des 7 derniers jours",
+    "salesLast30Days": "Ventes des 30 derniers jours",
+    "chartDays7": "7 jours",
+    "chartDays30": "30 jours",
+    "chartPeriod": "Période du graphique",
     "dailyRevenueOverview": "Aperçu du revenu quotidien",
     "topProducts": "Produits phares (30 jours)",
     "topProductsDesc": "Produits les plus vendus",
@@ -2546,6 +2550,8 @@
     "confirmAgeFirst": "Confirmez d'abord le réglage d'âge",
     "rebuildBadge": "+{n} réaménagement",
     "rebuildRow": "Réaménagement",
+    "packLess": "Emballer une unité de moins pour le réaménagement",
+    "packMore": "Emballer une unité de plus pour le réaménagement",
     "forRebuildIn": "Pour réaménagement : {machines}",
     "packInListHint": "La marchandise correspondante est marquée en violet dans la liste de préparation.",
     "takeAlongHint": "Emportez la marchandise retirée – elle sera réintégrée à la fin de la tournée.",
@@ -2556,5 +2562,11 @@
     "bookBack": "Réintégrer",
     "booked": "Marchandise restante enregistrée",
     "unbookedConfirm": "La marchandise restante n'a pas encore été réintégrée. Terminer quand même ?"
+  },
+  "charts": {
+    "revenue": "Revenu",
+    "sales": "Ventes",
+    "units": "Unités",
+    "grossProfit": "Marge brute"
   }
 }

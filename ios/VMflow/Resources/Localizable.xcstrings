@@ -6132,6 +6132,50 @@
         }
       }
     },
+    "Slots rebuilt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fächer umgebaut"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emplacements réaménagés"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vakken omgebouwd"
+          }
+        }
+      }
+    },
+    "%lld not rebuilt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld nicht umgebaut"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld non réaménagé(s)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld niet omgebouwd"
+          }
+        }
+      }
+    },
     "Finishing up...": {
       "localizations": {
         "de": {
@@ -18328,6 +18372,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "De overgebleven goederen konden niet worden geboekt: %@. Probeer het opnieuw."
+          }
+        }
+      }
+    },
+    "Rebuild · needs %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umbau · benötigt %lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réaménagement · nécessite %lld"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ombouw · nodig %lld"
           }
         }
       }

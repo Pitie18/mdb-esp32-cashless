@@ -10,6 +10,7 @@ import { formatCurrency } from '@/lib/utils'
 import RefillChangeNote from '@/components/refill/RefillChangeNote.vue'
 import RefillRebuildSection from '@/components/refill/RefillRebuildSection.vue'
 import RefillRebuildPackRow from '@/components/refill/RefillRebuildPackRow.vue'
+import RefillRebuildQuantity from '@/components/refill/RefillRebuildQuantity.vue'
 import RefillTourLeftovers from '@/components/refill/RefillTourLeftovers.vue'
 
 const { t, locale } = useI18n()
@@ -30,7 +31,7 @@ const {
   initTour, loadWarehouseStock, startTour,
   adjustFillAmount, confirmMachineRefill, confirmError, skipMachine, goToMachine, isMachineCompleted, resetWizard,
   resumeTour,
-  isItemAccepted, toggleRebuildItem, rebuildCommitted,
+  isItemAccepted, toggleRebuildItem, rebuildCommitted, rebuildNeeds, maxRebuildQuantity, setRebuildQuantity,
   combinedPackRows, machinePackRows, isRebuildTicked, toggleRebuildTick, isRebuildTickedCombined, toggleRebuildTickCombined, allPackedWithRebuild,
   currentRebuild, rebuildReady, returnBatchLabel,
   setRebuildRemoved, setRebuildFilled, setRebuildAction, setRebuildPriceSet, setRebuildAgeSet,
@@ -335,6 +336,11 @@ const currentMachineDone = computed(() =>
                     @click="toggleRebuildTick(machine.id, row.product_id)"
                   >
                     <RefillRebuildPackRow :row="row.row" :ticked="isRebuildTicked(machine.id, row.product_id)" />
+                    <RefillRebuildQuantity
+                      :value="row.row.packed"
+                      :max="maxRebuildQuantity(machine.id, row.product_id)"
+                      @set="setRebuildQuantity(machine.id, row.product_id, $event)"
+                    />
                   </li>
                   <template v-else>
                   <li
@@ -403,8 +409,15 @@ const currentMachineDone = computed(() =>
                           {{ formatCurrency(item.sellprice, locale) }}
                         </span>
                       </template>
-                      <span v-if="row.rebuild > 0" class="mt-0.5 inline-block rounded bg-violet-500/15 px-1 text-xs font-medium text-violet-700 tabular-nums dark:text-violet-300">
-                        {{ t('refillRebuild.rebuildBadge', { n: row.rebuild }) }}
+                      <span v-if="item.product_id && rebuildNeeds(machine.id).get(item.product_id)" class="mt-1 flex items-center gap-2">
+                        <span class="rounded bg-violet-500/15 px-1 text-xs font-medium text-violet-700 dark:text-violet-300">
+                          {{ t('refillRebuild.rebuildRow') }}
+                        </span>
+                        <RefillRebuildQuantity
+                          :value="row.rebuild"
+                          :max="maxRebuildQuantity(machine.id, item.product_id)"
+                          @set="setRebuildQuantity(machine.id, item.product_id!, $event)"
+                        />
                       </span>
                     </span>
                     <!-- Quantity adjuster (shown when item is checked and has warehouse context) -->

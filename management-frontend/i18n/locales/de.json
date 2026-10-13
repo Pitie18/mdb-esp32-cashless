@@ -406,6 +406,10 @@
     "companyInsightsLoading": "Flottendaten werden analysiert...",
     "companyInsightsEmpty": "Noch keine Flottenanalyse vorhanden. Klicke unten um eine Analyse über alle Automaten zu erstellen.",
     "salesLast7Days": "Verkäufe letzte 7 Tage",
+    "salesLast30Days": "Verkäufe letzte 30 Tage",
+    "chartDays7": "7 Tage",
+    "chartDays30": "30 Tage",
+    "chartPeriod": "Zeitraum des Diagramms",
     "dailyRevenueOverview": "Tägliche Umsatzübersicht",
     "topProducts": "Top-Produkte (30 Tage)",
     "topProductsDesc": "Meistverkaufte Artikel",
@@ -2546,6 +2550,8 @@
     "confirmAgeFirst": "Erst die Alterseinstellung bestätigen",
     "rebuildBadge": "+{n} Umbau",
     "rebuildRow": "Umbau",
+    "packLess": "Eins weniger für den Umbau packen",
+    "packMore": "Eins mehr für den Umbau packen",
     "forRebuildIn": "Für Umbau: {machines}",
     "packInListHint": "Die Ware dafür steht violett markiert in der Packliste.",
     "takeAlongHint": "Entnommene Ware mitnehmen – Rückbuchung am Ende der Tour im Lager.",
@@ -2556,5 +2562,11 @@
     "bookBack": "Rückbuchen",
     "booked": "Übrige Ware gebucht",
     "unbookedConfirm": "Übrige Ware ist noch nicht zurückgebucht. Trotzdem beenden?"
+  },
+  "charts": {
+    "revenue": "Umsatz",
+    "sales": "Verkäufe",
+    "units": "Stück",
+    "grossProfit": "Rohertrag"
   }
 }

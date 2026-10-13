@@ -406,6 +406,10 @@
     "companyInsightsLoading": "Analyzing fleet data...",
     "companyInsightsEmpty": "No fleet analysis yet. Click below to generate insights across all your machines.",
     "salesLast7Days": "Sales Last 7 Days",
+    "salesLast30Days": "Sales Last 30 Days",
+    "chartDays7": "7 days",
+    "chartDays30": "30 days",
+    "chartPeriod": "Chart period",
     "dailyRevenueOverview": "Daily revenue overview",
     "topProducts": "Top Products (30 Days)",
     "topProductsDesc": "Best-selling products",
@@ -2546,6 +2550,8 @@
     "confirmAgeFirst": "Confirm the age setting first",
     "rebuildBadge": "+{n} rebuild",
     "rebuildRow": "Rebuild",
+    "packLess": "Pack one less for the rebuild",
+    "packMore": "Pack one more for the rebuild",
     "forRebuildIn": "For rebuild: {machines}",
     "packInListHint": "The goods for it are marked violet in the packing list.",
     "takeAlongHint": "Take removed goods with you – they are booked back at the end of the tour.",
@@ -2556,5 +2562,11 @@
     "bookBack": "Book back",
     "booked": "Leftover goods booked",
     "unbookedConfirm": "Leftover goods have not been booked back yet. Finish anyway?"
+  },
+  "charts": {
+    "revenue": "Revenue",
+    "sales": "Sales",
+    "units": "Units",
+    "grossProfit": "Gross profit"
   }
 }

@@ -22,6 +22,8 @@ data class ActivityLogRow(
     @SerialName("created_at") val createdAt: Instant,
     val action: String,
     val metadata: ActivityLogMetadata? = null,
+    /** Author; only `slot_change_applied` needs it (that RPC stores no `_user_display`). */
+    @SerialName("user_id") val userId: String? = null,
 )
 
 /**
@@ -54,6 +56,23 @@ data class ActivityLogMetadata(
     // NOTE: the wire key really is "description" (see Swift CodingKeys),
     // not "note".
     @SerialName("description") val note: String? = null,
+    // Slot change (Umbau) metadata - only present on slot_change_applied
+    // rows, written by the apply_slot_change RPC.
+    val done: List<SlotChangeDoneLine>? = null,
+    val skipped: List<SlotChangeSkippedLine>? = null,
+)
+
+/** One rebuilt slot of a `slot_change_applied` row. */
+@Serializable
+data class SlotChangeDoneLine(
+    @SerialName("item_number") val itemNumber: Int? = null,
+    @SerialName("to_product_id") val toProductId: String? = null,
+    val filled: Int? = null,
+)
+
+@Serializable
+data class SlotChangeSkippedLine(
+    @SerialName("item_number") val itemNumber: Int? = null,
 )
 
 @Serializable
@@ -94,6 +113,23 @@ data class RefillActivity(
     val tourId: String?,
     val products: List<ProductLine>,
 )
+
+/**
+ * Slots rebuilt at a machine on a refill tour - a `slot_change_applied` row
+ * (the entry the web history shows as "Slots rebuilt").
+ */
+data class SlotChangeActivity(
+    val id: String,
+    val createdAt: Instant,
+    val machineName: String,
+    val userDisplay: String?,
+    /** Rebuilt slots, by slot number. */
+    val slots: List<Slot>,
+    /** Slots of the change note left as they were this tour. */
+    val skippedCount: Int,
+) {
+    data class Slot(val itemNumber: Int, val productName: String?, val filled: Int)
+}
 
 data class TourActivity(
     val id: String,
@@ -207,6 +243,11 @@ sealed interface ActivityFeedItem {
 
     data class CashBookEntry(val activity: CashBookActivity) : ActivityFeedItem {
         override val id: String = "cashentry-${activity.id}"
+        override val date: Instant = activity.createdAt
+    }
+
+    data class SlotsRebuilt(val activity: SlotChangeActivity) : ActivityFeedItem {
+        override val id: String = "slotchange-${activity.id}"
         override val date: Instant = activity.createdAt
     }
 }

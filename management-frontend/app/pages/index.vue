@@ -3,6 +3,8 @@ definePageMeta({ middleware: 'auth' })
 
 import SectionCards from "@/components/SectionCards.vue"
 import ChartAreaInteractive from "@/components/ChartAreaInteractive.vue"
+import { dailySeries, type DailyBucket } from "~/lib/barChart"
+import { useLocalStorage } from "@vueuse/core"
 import DashboardTopProducts from "@/components/DashboardTopProducts.vue"
 import DashboardMachineList from "@/components/DashboardMachineList.vue"
 import DashboardRecentSales from "@/components/DashboardRecentSales.vue"
@@ -84,7 +86,11 @@ function toggleCompanyHistoryEntry(id: string) {
 }
 
 // ── Chart + sections ──────────────────────────────────────────────────────────
-const dailySalesChart = ref<{ date: Date; total: number }[]>([])
+const dailySalesChart7 = ref<DailyBucket[]>([])
+const dailySalesChart30 = ref<DailyBucket[]>([])
+// 7 or 30 days in the dashboard chart; remembered per browser.
+const chartDays = useLocalStorage<7 | 30>('dashboard-chart-days', 7, { initOnMounted: true })
+const dailySalesChart = computed(() => (chartDays.value === 30 ? dailySalesChart30.value : dailySalesChart7.value))
 const topProducts = ref<TopProduct[]>([])
 const dashboardMachines = ref<DashboardMachine[]>([])
 const recentSales = ref<RecentSale[]>([])
@@ -234,6 +240,25 @@ onMounted(async () => {
   realtimeChannel = channel
 })
 
+// The 30-day chart and the top products both read every sale of the last 30
+// days. Paged, because PostgREST caps a response at max_rows (1000) and a busy
+// fleet passes that in 30 days: the chart would silently lose its oldest days.
+async function fetchLast30DaysSales(since: string) {
+  const PAGE = 1000
+  const rows: { item_price: number; created_at: string; machine_id: string | null; item_number: number; product_id: string | null }[] = []
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('sales')
+      .select('item_price, created_at, machine_id, item_number, product_id')
+      .gte('created_at', since)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE - 1)
+    if (error) return { data: rows.length ? rows : null, error }
+    rows.push(...((data ?? []) as typeof rows))
+    if (!data || data.length < PAGE) return { data: rows, error: null }
+  }
+}
+
 async function loadDashboard() {
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
@@ -261,7 +286,7 @@ async function loadDashboard() {
     supabase.from('sales').select('item_price').gte('created_at', lastWeekStart).lt('created_at', weekStart),
     supabase.from('sales').select('item_price').gte('created_at', thisMonthStart),
     supabase.from('sales').select('item_price').gte('created_at', lastMonthStart).lt('created_at', thisMonthStart),
-    supabase.from('sales').select('item_price, machine_id, item_number, product_id').gte('created_at', last30DaysStart),
+    fetchLast30DaysSales(last30DaysStart),
     supabase.from('vendingMachine').select('id, name, embedded, embeddeds(id, status)'),
     supabase.from('sales').select('id, created_at, item_price, item_number, channel, machine_id, product_id, products(name, image_path)').order('created_at', { ascending: false }).limit(10),
     (supabase as any).from('activity_log').select('*').order('created_at', { ascending: false }).limit(8),
@@ -284,21 +309,11 @@ async function loadDashboard() {
   lastMonthSalesCount.value = (lastMonthSalesRes.data ?? []).length
 
   // ── 7-day sales chart ──────────────────────────────────────────────────────
-  {
-    const dailyMap = new Map<string, number>()
-    for (const s of (weekSalesRes.data ?? []) as { item_price: number; created_at: string }[]) {
-      const day = new Date(s.created_at).toISOString().slice(0, 10)
-      dailyMap.set(day, (dailyMap.get(day) ?? 0) + (s.item_price ?? 0))
-    }
-    // Fill all 7 days (including zero days)
-    const chartData: { date: Date; total: number }[] = []
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
-      const key = d.toISOString().slice(0, 10)
-      chartData.push({ date: d, total: dailyMap.get(key) ?? 0 })
-    }
-    dailySalesChart.value = chartData
-  }
+  // Local calendar days, zero days included (dailySeries).
+  const last30 = top30DaysSalesRes.data ?? []
+  dailySalesChart7.value = dailySeries(
+    (weekSalesRes.data ?? []) as { item_price: number; created_at: string }[], 7, now)
+  dailySalesChart30.value = dailySeries(last30, 30, now)
 
   // ── Top products (30 days) ─────────────────────────────────────────────────
   {
@@ -597,9 +612,24 @@ async function loadDashboard() {
         <div class="grid grid-cols-1 gap-4 px-4 lg:grid-cols-2 lg:px-6">
           <ChartAreaInteractive
             :data="dailySalesChart"
-            :title="t('dashboard.salesLast7Days')"
+            :title="chartDays === 30 ? t('dashboard.salesLast30Days') : t('dashboard.salesLast7Days')"
             :description="t('dashboard.dailyRevenueOverview')"
-          />
+          >
+            <template #actions>
+              <div role="radiogroup" :aria-label="t('dashboard.chartPeriod')" class="inline-flex rounded-lg bg-muted p-0.5 text-xs font-medium">
+                <button
+                  v-for="d in ([7, 30] as const)"
+                  :key="d"
+                  type="button"
+                  role="radio"
+                  :aria-checked="chartDays === d"
+                  class="rounded-md px-2.5 py-1 transition-colors"
+                  :class="chartDays === d ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                  @click="chartDays = d"
+                >{{ d === 7 ? t('dashboard.chartDays7') : t('dashboard.chartDays30') }}</button>
+              </div>
+            </template>
+          </ChartAreaInteractive>
           <DashboardTopProducts :products="topProducts" />
         </div>
 

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.MoveToInbox
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,8 +48,10 @@ import xyz.vmflow.models.CashBookActivity
 import xyz.vmflow.models.CashBookEntryType
 import xyz.vmflow.models.IntakeGroup
 import xyz.vmflow.models.RefillActivity
+import xyz.vmflow.models.SlotChangeActivity
 import xyz.vmflow.models.TourActivity
 import xyz.vmflow.ui.components.ProductImage
+import xyz.vmflow.ui.theme.RebuildViolet
 import xyz.vmflow.ui.theme.StockOrange
 import xyz.vmflow.ui.theme.StockRed
 import java.text.NumberFormat
@@ -102,6 +105,8 @@ fun ActivityFeedRow(
             IntakeFeedRow(item.group, isExpanded, modifier) { onToggleExpanded(item.id) }
         is ActivityFeedItem.CashBookEntry ->
             CashBookFeedRow(item.activity, currencyFormat, isExpanded, modifier) { onToggleExpanded(item.id) }
+        is ActivityFeedItem.SlotsRebuilt ->
+            SlotChangeFeedRow(item.activity, isExpanded, modifier) { onToggleExpanded(item.id) }
     }
 }
 
@@ -169,6 +174,36 @@ private fun RefillFeedRow(
         subtitle = subtitle,
         date = activity.createdAt,
         detailLines = activity.products.map { "${it.quantity}× ${it.name}" },
+        isExpanded = isExpanded,
+        onToggle = onToggle,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun SlotChangeFeedRow(
+    activity: SlotChangeActivity,
+    isExpanded: Boolean,
+    modifier: Modifier = Modifier,
+    onToggle: () -> Unit,
+) {
+    val subtitle = buildList {
+        add(activity.machineName)
+        activity.userDisplay?.let { add(it) }
+        if (activity.skippedCount > 0) {
+            add(stringResource(R.string.dashboard_slots_not_rebuilt, activity.skippedCount))
+        }
+    }.joinToString(" · ")
+    GenericActivityRow(
+        icon = Icons.Filled.SwapHoriz,
+        tint = RebuildViolet,
+        title = stringResource(R.string.dashboard_slots_rebuilt),
+        subtitle = subtitle,
+        date = activity.createdAt,
+        // "#12 · Cola · +8" - the product name is left out when it can't be resolved.
+        detailLines = activity.slots.map { slot ->
+            listOfNotNull("#${slot.itemNumber}", slot.productName, "+${slot.filled}").joinToString(" · ")
+        },
         isExpanded = isExpanded,
         onToggle = onToggle,
         modifier = modifier,

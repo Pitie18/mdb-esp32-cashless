@@ -299,6 +299,11 @@ export function useRefillWizard() {
   const committedRebuild = ref(new Map<string, Map<string, number>>())
   /** machineId → productId → units packed (deducted) for rebuilds. */
   const rebuildPacked = ref(new Map<string, Map<string, number>>())
+  /**
+   * machineId → productId → rebuild units the refiller dialled in (packing
+   * step), e.g. only half a spiral of a new product. Missing = the full need.
+   */
+  const rebuildCustomQuantities = ref(new Map<string, Map<string, number>>())
   /** Raw tray rows per machine, kept during packing to recompute summaries. */
   const machineTrayRows = new Map<string, any[]>()
   let warehouseInfo: { warehouseStockMap: Map<string, number>; hasWarehouses: boolean } = { warehouseStockMap: new Map(), hasWarehouses: false }
@@ -309,7 +314,7 @@ export function useRefillWizard() {
   const leftoverExpiry = ref(new Map<string, string>())
   /** Batch number for goods returned from a machine (set localized by the page). */
   const returnBatchLabel = ref('Machine return')
-  /** Packing ticks of rebuild-only rows (`machineId|productId`); visual only, the units are committed anyway. */
+  /** Packing ticks of rebuild-only rows (`machineId|productId`); only ticked units are booked, like a normal product. */
   const rebuildTicks = ref(new Set<string>())
   /**
    * Leftovers of the rebuilds, recorded per machine when it is quit and booked
@@ -417,13 +422,16 @@ export function useRefillWizard() {
     }
 
     // Slot rebuilds first: an accepted change cannot be done without its units.
+    // Only units the refiller takes along count, like a normal product.
     const newRebuild = new Map<string, Map<string, number>>()
     for (const machine of machines.value) {
       const machineMap = new Map<string, number>()
+      const custom = rebuildCustomQuantities.value.get(machine.id)
       for (const [pid, need] of rebuildNeeds(machine.id)) {
-        if (need <= 0) continue
+        if (need <= 0 || !isRebuildTaken(machine.id, pid)) continue
         const avail = remaining.get(pid) ?? 0
-        const qty = Math.min(need, avail)
+        const wanted = Math.min(custom?.get(pid) ?? need, need)
+        const qty = Math.min(wanted, avail)
         if (qty > 0) {
           machineMap.set(pid, qty)
           remaining.set(pid, avail - qty)
@@ -546,9 +554,60 @@ export function useRefillWizard() {
     return rebuildPackNeeds(items, stock)
   }
 
+  /**
+   * The refiller takes a machine's rebuild units of a product along: the
+   * rebuild-only row is ticked, or the product is ticked as packed for that
+   * machine anyway. Unticked units are not booked, like a normal product.
+   */
+  function isRebuildTaken(machineId: string, productId: string): boolean {
+    return rebuildTicks.value.has(`${machineId}|${productId}`)
+      || (packedItems.value.get(machineId)?.has(productId) ?? false)
+  }
+
+  /**
+   * Rebuild units shown for a product: what is committed once it is ticked,
+   * otherwise what would be packed (the dialled amount within what the
+   * warehouse can cover).
+   */
+  function rebuildDisplayQty(machineId: string, productId: string): number {
+    if (isRebuildTaken(machineId, productId)) return rebuildCommitted(machineId, productId)
+    const need = rebuildNeeds(machineId).get(productId) ?? 0
+    const wanted = Math.min(rebuildCustomQuantities.value.get(machineId)?.get(productId) ?? need, need)
+    return Math.min(wanted, maxRebuildQuantity(machineId, productId))
+  }
+
   /** What is committed for a rebuild product (≤ need when the warehouse runs short). */
   function rebuildCommitted(machineId: string, productId: string): number {
     return committedRebuild.value.get(machineId)?.get(productId) ?? 0
+  }
+
+  /**
+   * Most rebuild units a machine can pack of a product: what its slots need,
+   * capped by the warehouse stock the other machines' rebuilds leave.
+   */
+  function maxRebuildQuantity(machineId: string, productId: string): number {
+    const need = rebuildNeeds(machineId).get(productId) ?? 0
+    if (!selectedWarehouseId.value) return need
+    let others = 0
+    for (const [mid, machineMap] of committedRebuild.value) {
+      if (mid !== machineId) others += machineMap.get(productId) ?? 0
+    }
+    return Math.max(0, Math.min(need, (warehouseStock.value.get(productId) ?? 0) - others))
+  }
+
+  /**
+   * Pack fewer (or again more) rebuild units of a product for one machine,
+   * e.g. only half a spiral of a new product. 0 is allowed: the slot is still
+   * rebuilt, the refiller fills what is at hand.
+   */
+  function setRebuildQuantity(machineId: string, productId: string, qty: number) {
+    const clamped = Math.max(0, Math.min(maxRebuildQuantity(machineId, productId), qty))
+    const next = new Map(rebuildCustomQuantities.value)
+    const machineMap = new Map(next.get(machineId) ?? [])
+    machineMap.set(productId, clamped)
+    next.set(machineId, machineMap)
+    rebuildCustomQuantities.value = next
+    recalculateCommittedQuantities()
   }
 
   /** Rebuild units of a machine as packing rows (products that only move inside the machine have none). */
@@ -564,7 +623,7 @@ export function useRefillWizard() {
         product_name: info.get(pid)?.name ?? '?',
         image_path: info.get(pid)?.image_path ?? null,
         need,
-        packed: rebuildCommitted(machine.id, pid),
+        packed: rebuildDisplayQty(machine.id, pid),
       }))
   }
 
@@ -600,6 +659,7 @@ export function useRefillWizard() {
     if (next.has(key)) next.delete(key)
     else next.add(key)
     rebuildTicks.value = next
+    recalculateCommittedQuantities()
   }
 
   /** Rebuild-only row ticked for every machine that needs it (combined mode). */
@@ -618,6 +678,7 @@ export function useRefillWizard() {
       else next.add(key)
     }
     rebuildTicks.value = next
+    recalculateCommittedQuantities()
   }
 
   /** Every packing row of a machine ticked, rebuild-only rows included. */
@@ -1871,6 +1932,7 @@ export function useRefillWizard() {
     rebuildDecisions.value = new Map()
     committedRebuild.value = new Map()
     rebuildPacked.value = new Map()
+    rebuildCustomQuantities.value = new Map()
     currentRebuild.value = []
     leftoverDestinations.value = new Map()
     leftoverExpiry.value = new Map()
@@ -1938,6 +2000,8 @@ export function useRefillWizard() {
     toggleRebuildItem,
     rebuildNeeds,
     rebuildCommitted,
+    maxRebuildQuantity,
+    setRebuildQuantity,
     machinePackRows,
     isRebuildTicked,
     toggleRebuildTick,

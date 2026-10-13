@@ -121,7 +121,7 @@ final class RealtimeService: ObservableObject {
             // stream + activity stream), and unrelated actions (stock_updated,
             // credit_sent, …) would reload it too.
             let action = insert.record["action"]?.stringValue
-            guard action == "stock_refill_tour" || action == "tour_started" else { continue }
+            guard action == "stock_refill_tour" || action == "tour_started" || action == "slot_change_applied" else { continue }
             activityVersion += 1
             print("[Realtime] New activity_log entry detected")
         }
