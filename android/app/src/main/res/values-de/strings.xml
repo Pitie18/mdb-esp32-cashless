@@ -173,6 +173,8 @@
     <string name="dashboard_tour_started">Tour gestartet</string>
     <string name="dashboard_stock_intake">Ware eingebucht</string>
     <string name="dashboard_filled_by">Gefüllt von %1$s</string>
+    <string name="dashboard_slots_rebuilt">Fächer umgebaut</string>
+    <string name="dashboard_slots_not_rebuilt">%1$d nicht umgebaut</string>
     <plurals name="dashboard_items_count">
         <item quantity="one">%1$d Artikel</item>
         <item quantity="other">%1$d Artikel</item>

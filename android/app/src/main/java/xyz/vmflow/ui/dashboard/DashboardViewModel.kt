@@ -98,6 +98,8 @@ internal class DashboardEngine(private val repository: DashboardDataSource) {
 
     /** user_id -> display name cache for intake attribution. Mirrors iOS's `userNameCache`. */
     private val userNameCache = mutableMapOf<String, String>()
+    /** Product names for slot change feed rows, keyed by lowercased product id. */
+    private val productNameCache = mutableMapOf<String, String>()
 
     /**
      * Raw source-row count (sales + activity rows + intake transactions) of
@@ -246,12 +248,19 @@ internal class DashboardEngine(private val repository: DashboardDataSource) {
                 if (uid != null) groups[i] = groups[i].copy(userDisplay = names[uid])
             }
 
+            // Slot change rows carry ids only: name their authors and products.
+            val slotChangeIds = ActivityFeedBuilder.slotChangeLookupIds(activityRows)
+            val slotChangeUsers = resolveUserNames(slotChangeIds.users)
+            val productNames = resolveProductNames(slotChangeIds.products)
+
             val rawBefore = rawSourceRowCount
             rawSourceRowCount = rawSalesCount + activityRows.size + intakeRows.size
             val merged = ActivityFeedBuilder.mergeFeed(
                 sales = sales,
                 activityRows = activityRows,
                 intakeGroups = groups,
+                userNames = slotChangeUsers,
+                productNames = productNames,
             )
 
             _uiState.update { state ->
@@ -274,6 +283,15 @@ internal class DashboardEngine(private val repository: DashboardDataSource) {
             userNameCache.putAll(repository.resolveUserNames(missing))
         }
         return ids.mapNotNull { id -> userNameCache[id]?.let { id to it } }.toMap()
+    }
+
+    /** Resolve + cache product names for slot change rows; never throws. */
+    private suspend fun resolveProductNames(ids: List<String>): Map<String, String> {
+        val missing = ids.filter { it !in productNameCache }.distinct()
+        if (missing.isNotEmpty()) {
+            productNameCache.putAll(repository.resolveProductNames(missing))
+        }
+        return ids.mapNotNull { id -> productNameCache[id]?.let { id to it } }.toMap()
     }
 
     // MARK: - Load more (infinite scroll)

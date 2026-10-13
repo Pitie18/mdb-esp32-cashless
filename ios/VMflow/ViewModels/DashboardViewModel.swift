@@ -55,6 +55,8 @@ final class DashboardViewModel: ObservableObject {
 
     /// user_id → display name cache for intake attribution (users table lookups).
     private var userNameCache: [UUID: String] = [:]
+    /// Product names for slot change feed rows, keyed by lowercased product id.
+    private var productNameCache: [String: String] = [:]
 
     @Published var isLoading = false
     @Published var error: String?
@@ -318,10 +320,17 @@ final class DashboardViewModel: ObservableObject {
             if let uid = groups[i].userId { groups[i].userDisplay = names[uid] }
         }
 
+        // Slot change rows carry ids only: name their authors and products.
+        let slotChangeIds = ActivityFeedBuilder.slotChangeLookupIds(activityRows)
+        let slotChangeUsers = await resolveUserNames(for: slotChangeIds.users)
+        let productNames = await resolveProductNames(for: slotChangeIds.products)
+        try Task.checkCancellation()
+
         let rawBefore = rawSourceRowCount
         rawSourceRowCount = rawSalesCount + activityRows.count + intakeRows.count
         recentActivity = ActivityFeedBuilder.mergeFeed(
-            sales: sales, activityRows: activityRows, intakeGroups: groups
+            sales: sales, activityRows: activityRows, intakeGroups: groups,
+            userNames: slotChangeUsers, productNames: productNames
         )
         loadMoreFailed = false
 
@@ -398,12 +407,12 @@ final class DashboardViewModel: ObservableObject {
         return (items, sales.count)
     }
 
-    /// Refill + tour-start rows. RLS scopes to the user's company.
+    /// Refill + tour-start + slot-change + cash-book rows. RLS scopes to the user's company.
     private func fetchActivityRows(windowStartString: String) async throws -> [ActivityLogRow] {
         try await client
             .from("activity_log")
-            .select("id, created_at, action, metadata")
-            .in("action", values: ["stock_refill_tour", "tour_started", "cash_book_entry_created"])
+            .select("id, created_at, user_id, action, metadata")
+            .in("action", values: ["stock_refill_tour", "tour_started", "slot_change_applied", "cash_book_entry_created"])
             .gte("created_at", value: windowStartString)
             .order("created_at", ascending: false)
             .execute()
@@ -457,6 +466,32 @@ final class DashboardViewModel: ObservableObject {
 
         var out: [UUID: String] = [:]
         for id in ids { out[id] = userNameCache[id] }
+        return out
+    }
+
+    /// Product names for the slot change rows (ids lowercased). Failures
+    /// degrade to no name — the row then shows the slot number only.
+    private func resolveProductNames(for ids: [String]) async -> [String: String] {
+        struct ProductRow: Decodable {
+            let id: UUID
+            let name: String?
+        }
+
+        let missing = Array(Set(ids.filter { productNameCache[$0] == nil }))
+        if !missing.isEmpty {
+            let rows: [ProductRow] = (try? await client
+                .from("products")
+                .select("id, name")
+                .in("id", values: missing)
+                .execute()
+                .value) ?? []
+            for p in rows {
+                if let name = p.name { productNameCache[p.id.uuidString.lowercased()] = name }
+            }
+        }
+
+        var out: [String: String] = [:]
+        for id in ids { out[id] = productNameCache[id] }
         return out
     }
 

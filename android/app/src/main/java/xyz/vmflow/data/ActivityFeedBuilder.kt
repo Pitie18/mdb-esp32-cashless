@@ -12,6 +12,7 @@ import xyz.vmflow.models.IntakeTransactionRow
 import xyz.vmflow.models.ProductLine
 import xyz.vmflow.models.RefillActivity
 import xyz.vmflow.models.SaleWithMachine
+import xyz.vmflow.models.SlotChangeActivity
 import xyz.vmflow.models.TourActivity
 
 /** One calendar day's worth of feed items, newest first. */
@@ -79,11 +80,55 @@ object ActivityFeedBuilder {
         return groups
     }
 
-    /** Map activity_log rows to feed items. Unknown actions are skipped. */
-    fun makeActivityItems(rows: List<ActivityLogRow>): List<ActivityFeedItem> =
+    /** Ids a slot change feed row needs resolved to names. */
+    data class SlotChangeLookup(val users: List<String>, val products: List<String>)
+
+    /**
+     * Authors and target products of the `slot_change_applied` rows, which
+     * carry ids only - resolved to names before [makeActivityItems].
+     */
+    fun slotChangeLookupIds(rows: List<ActivityLogRow>): SlotChangeLookup {
+        val changes = rows.filter { it.action == "slot_change_applied" }
+        return SlotChangeLookup(
+            users = changes.mapNotNull { it.userId }.distinct(),
+            products = changes.flatMap { it.metadata?.done.orEmpty() }
+                .mapNotNull { it.toProductId?.lowercase() }
+                .distinct(),
+        )
+    }
+
+    /**
+     * Map activity_log rows to feed items. Unknown actions are skipped.
+     * [userNames] / [productNames] (product id lowercased) name the authors
+     * and products of `slot_change_applied` rows.
+     */
+    fun makeActivityItems(
+        rows: List<ActivityLogRow>,
+        userNames: Map<String, String> = emptyMap(),
+        productNames: Map<String, String> = emptyMap(),
+    ): List<ActivityFeedItem> =
         rows.mapNotNull { row ->
             val meta = row.metadata
             when (row.action) {
+                "slot_change_applied" -> ActivityFeedItem.SlotsRebuilt(
+                    SlotChangeActivity(
+                        id = row.id,
+                        createdAt = row.createdAt,
+                        machineName = meta?.machineName ?: "—",
+                        userDisplay = row.userId?.let { userNames[it] } ?: meta?.userDisplay,
+                        slots = meta?.done.orEmpty()
+                            .mapNotNull { line ->
+                                val n = line.itemNumber ?: return@mapNotNull null
+                                SlotChangeActivity.Slot(
+                                    itemNumber = n,
+                                    productName = line.toProductId?.let { productNames[it.lowercase()] },
+                                    filled = line.filled ?: 0,
+                                )
+                            }
+                            .sortedBy { it.itemNumber },
+                        skippedCount = meta?.skipped?.size ?: 0,
+                    )
+                )
                 "stock_refill_tour" -> ActivityFeedItem.MachineRefilled(
                     RefillActivity(
                         id = row.id,
@@ -132,9 +177,11 @@ object ActivityFeedBuilder {
         sales: List<SaleWithMachine>,
         activityRows: List<ActivityLogRow>,
         intakeGroups: List<IntakeGroup>,
+        userNames: Map<String, String> = emptyMap(),
+        productNames: Map<String, String> = emptyMap(),
     ): List<ActivityFeedItem> =
         (sales.map { ActivityFeedItem.Sale(it) } +
-            makeActivityItems(activityRows) +
+            makeActivityItems(activityRows, userNames, productNames) +
             intakeGroups.map { ActivityFeedItem.StockIntake(it) })
             .sortedByDescending { it.date }
 

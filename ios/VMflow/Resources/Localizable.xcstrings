@@ -6132,6 +6132,50 @@
         }
       }
     },
+    "Slots rebuilt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fächer umgebaut"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emplacements réaménagés"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vakken omgebouwd"
+          }
+        }
+      }
+    },
+    "%lld not rebuilt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld nicht umgebaut"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld non réaménagé(s)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld niet omgebouwd"
+          }
+        }
+      }
+    },
     "Finishing up...": {
       "localizations": {
         "de": {
