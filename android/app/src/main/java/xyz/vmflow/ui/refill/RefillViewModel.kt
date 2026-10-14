@@ -1,5 +1,6 @@
 package xyz.vmflow.ui.refill
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import java.util.UUID
@@ -35,6 +36,9 @@ import xyz.vmflow.data.SlotChange
 import xyz.vmflow.data.SlotChangeApplyItem
 import xyz.vmflow.data.SlotChangeRepository
 import xyz.vmflow.data.TourLeftover
+import xyz.vmflow.data.MachineTourNote
+import xyz.vmflow.data.TourNoteRepository
+import xyz.vmflow.data.TourNotes
 import xyz.vmflow.data.TourStore
 import xyz.vmflow.data.RebuiltSlotLine
 import xyz.vmflow.data.TrayRepository
@@ -237,6 +241,31 @@ data class RefillUiState(
      * [RefillViewModel.clearQueuedReplacementNotice].
      */
     val queuedReplacementCount: Int? = null,
+    /**
+     * Open "notes for the next tour" shown at the top of the packing step
+     * ([TourNotes.forPacking]). Loaded with the packing data; a failed load
+     * leaves it empty and never blocks the tour. Stays until ticked off
+     * ([RefillViewModel.completeTourNote]). Not persisted: only the packing
+     * step reads it.
+     */
+    val tourNotes: List<MachineTourNote> = emptyList(),
+    /** Last failure ticking a note off; shown under the notes card. */
+    val tourNoteError: String? = null,
+    /** The refill step's "note for next tour" dialog; `null` while closed. */
+    val tourNoteEditor: TourNoteEditorState? = null,
+)
+
+/**
+ * The "note for next tour" dialog of one machine. [initialText] is this
+ * tour's existing open note of the machine, prefilled once [isLoading] ends.
+ * [error] is a raw message; the dialog shows it inline.
+ */
+data class TourNoteEditorState(
+    val machineId: String,
+    val isLoading: Boolean = true,
+    val initialText: String = "",
+    val isSaving: Boolean = false,
+    val error: String? = null
 )
 
 /**
@@ -483,6 +512,8 @@ class RefillViewModel : ViewModel() {
                 _uiState.update {
                     it.copy(machines = RefillTourLogic.tourMachines(machines)).withSyncedPackedState()
                 }
+                // Alongside, never in the way: a failing load shows no notes.
+                viewModelScope.launch { loadTourNotes() }
             },
             onFailure = { e ->
                 _uiState.update {
@@ -535,6 +566,22 @@ class RefillViewModel : ViewModel() {
         }
 
         _uiState.update { it.copy(isLoading = false) }
+    }
+
+    /**
+     * The open notes for the packing step. Errors are logged and leave the
+     * list empty — the notes are a hint, never a gate on the tour.
+     */
+    private suspend fun loadTourNotes() {
+        TourNoteRepository.fetchOpenNotes()
+            .onSuccess { notes ->
+                _uiState.update { state ->
+                    // A tour that started meanwhile has already taken its notes.
+                    if (state.tourId.isNotEmpty()) state
+                    else state.copy(tourNotes = TourNotes.forPacking(notes, state.tourId))
+                }
+            }
+            .onFailure { e -> Log.w(TAG, "Loading tour notes failed", e) }
     }
 
     /**
@@ -1594,11 +1641,88 @@ class RefillViewModel : ViewModel() {
                     step = RefillStep.REFILL,
                     currentMachineId = ordered.firstOrNull { it.isUnfinishedTourStop }?.machine?.id,
                     tourCompanyId = companyId,
-                    isSaving = false
+                    isSaving = false,
+                    tourNotes = emptyList()
                 ).withPackingList()
             }
             tourStore.save(next.toPersistedTourState())
             prepareRebuildForCurrentMachine()
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Note for the next tour (refill step).
+    // ---------------------------------------------------------------------
+
+    /**
+     * Ticks a note off on the packing step. It stays on every tour until
+     * then; removed right away and put back (with an error) if the server
+     * refuses.
+     */
+    fun completeTourNote(noteId: String) {
+        val note = _uiState.value.tourNotes.firstOrNull { it.id == noteId } ?: return
+        _uiState.update { s -> s.copy(tourNotes = s.tourNotes.filterNot { it.id == noteId }, tourNoteError = null) }
+        viewModelScope.launch {
+            TourNoteRepository.completeNotes(listOf(noteId), _uiState.value.tourId)
+                .onFailure { e ->
+                    Log.w(TAG, "Completing tour note failed", e)
+                    _uiState.update { s ->
+                        s.copy(
+                            tourNotes = TourNotes.forPacking(s.tourNotes + note, s.tourId),
+                            tourNoteError = e.message ?: e.toString()
+                        )
+                    }
+                }
+        }
+    }
+
+    /** Opens the note dialog for [machineId], prefilled with this tour's open note of it. */
+    fun openTourNote(machineId: String) {
+        val tourId = _uiState.value.tourId
+        _uiState.update { it.copy(tourNoteEditor = TourNoteEditorState(machineId = machineId, isLoading = tourId.isNotEmpty())) }
+        if (tourId.isEmpty()) return
+        viewModelScope.launch {
+            val existing = TourNoteRepository.fetchTourNote(machineId, tourId)
+                .onFailure { e -> Log.w(TAG, "Loading the tour note failed", e) }
+                .getOrNull()
+            _uiState.update { state ->
+                val editor = state.tourNoteEditor
+                if (editor == null || editor.machineId != machineId) state
+                else state.copy(tourNoteEditor = editor.copy(isLoading = false, initialText = existing?.note.orEmpty()))
+            }
+        }
+    }
+
+    /**
+     * Closes the dialog. Always — a swiped-away sheet must not stay in the
+     * state invisibly; a save still in flight lands (or fails) silently.
+     */
+    fun dismissTourNote() {
+        _uiState.update { it.copy(tourNoteEditor = null) }
+    }
+
+    /** Saves the dialog's text for this tour; empty deletes the note. Closes on success. */
+    fun saveTourNote(text: String) {
+        val state = _uiState.value
+        val editor = state.tourNoteEditor ?: return
+        if (editor.isSaving || state.tourId.isEmpty()) return
+        val machineId = editor.machineId
+        _uiState.update { it.copy(tourNoteEditor = editor.copy(isSaving = true, error = null)) }
+        viewModelScope.launch {
+            val result = TourNoteRepository.saveNote(machineId, state.tourId, TourNotes.normalizedForSave(text))
+            _uiState.update { current ->
+                val open = current.tourNoteEditor
+                when {
+                    open == null || open.machineId != machineId -> current
+                    result.isSuccess -> current.copy(tourNoteEditor = null)
+                    else -> current.copy(
+                        tourNoteEditor = open.copy(
+                            isSaving = false,
+                            error = result.exceptionOrNull()?.message.orEmpty()
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -2525,6 +2649,8 @@ class RefillViewModel : ViewModel() {
     }
 
     private companion object {
+        const val TAG = "RefillViewModel"
+
         /** Attempts per `refill_machine_trays` call — iOS `for attempt in 1...3`. */
         const val MAX_REFILL_ATTEMPTS = 3
 

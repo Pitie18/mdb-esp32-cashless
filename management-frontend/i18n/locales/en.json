@@ -2568,5 +2568,14 @@
     "sales": "Sales",
     "units": "Units",
     "grossProfit": "Gross profit"
+  },
+  "refillNotes": {
+    "title": "Note for next tour",
+    "hint": "Shown at the top of the packing step on the next tour.",
+    "placeholder": "e.g. new spirals, can risers …",
+    "packingTitle": "Notes from last time",
+    "packingHint": "Tick off once done. Until then they show on every tour.",
+    "moreActions": "More actions",
+    "markDone": "Done"
   }
 }

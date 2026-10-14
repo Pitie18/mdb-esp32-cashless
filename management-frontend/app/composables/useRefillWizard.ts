@@ -4,6 +4,7 @@ import { aggregateTourLeftovers, ageChanged, computeLeftovers, fillPlan, rebuild
 import { useOrganization } from './useOrganization'
 import { useSlotChangeRequests, type SlotChangeItem, type SlotChangeLeftover, type SlotChangeRequest } from './useSlotChangeRequests'
 import { useWarehouse } from './useWarehouse'
+import { notesForPacking, useTourNotes, type TourNote } from './useTourNotes'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -245,6 +246,7 @@ export function useRefillWizard() {
   const { organization } = useOrganization()
   const { fetchOrderedProductIds } = useWarehouse()
   const { fetchOpenRequests, applySlotChange, suggestExpiry } = useSlotChangeRequests()
+  const tourNoteApi = useTourNotes()
 
   // Wizard state
   const currentStep = ref<WizardStep>('packing')
@@ -259,6 +261,8 @@ export function useRefillWizard() {
    * Page reads this to show a banner; cleared on next confirm attempt. */
   const confirmError = ref<string | null>(null)
   const tourId = ref('')
+  /** Open notes for this tour ("bring next time"), shown at the top of the packing step. */
+  const tourNotes = ref<TourNote[]>([])
 
   // Packing state: machineId → Set<productKey>
   const packedItems = ref(new Map<string, Set<string>>())
@@ -804,12 +808,13 @@ export function useRefillWizard() {
       const machineIds = (machineData ?? []).map((m: any) => m.id)
       if (machineIds.length === 0) {
         machines.value = []
+        tourNotes.value = []
         return
       }
 
       // Fetch all trays + company-wide warehouse stock (to tell whether a
       // low/empty/fill-below tray is actually refillable, same check /machines uses)
-      const [trayRes, warehouseStockRes, requests] = await Promise.all([
+      const [trayRes, warehouseStockRes, requests, openNotes] = await Promise.all([
         (supabase as any)
           .from('machine_trays')
           .select('id, machine_id, item_number, product_id, capacity, current_stock, min_stock, fill_when_below, products(name, image_path, sellprice)')
@@ -823,7 +828,13 @@ export function useRefillWizard() {
           console.warn('[refillWizard] change requests unavailable:', err)
           return new Map<string, SlotChangeRequest>()
         }),
+        // Same for the notes from the last tours.
+        tourNoteApi.fetchOpenNotes().catch((err: unknown) => {
+          console.warn('[refillWizard] tour notes unavailable:', err)
+          return [] as TourNote[]
+        }),
       ])
+      tourNotes.value = notesForPacking(openNotes, tourId.value)
 
       if (trayRes.error) throw trayRes.error
 
@@ -1565,6 +1576,36 @@ export function useRefillWizard() {
     }
   }
 
+  // ── Note for the next tour ─────────────────────────────────────────────
+
+  /**
+   * Tick a note off while packing. It stays on every tour until ticked;
+   * removed right away and put back if the server refuses.
+   */
+  async function completeTourNote(noteId: string): Promise<void> {
+    const note = tourNotes.value.find(n => n.id === noteId)
+    if (!note) return
+    tourNotes.value = tourNotes.value.filter(n => n.id !== noteId)
+    try {
+      await tourNoteApi.completeNotes([noteId], tourId.value)
+    } catch (err) {
+      tourNotes.value = notesForPacking([...tourNotes.value, note], tourId.value)
+      throw err
+    }
+  }
+
+  /** This tour's note for the machine, '' when there is none yet. */
+  async function loadTourNote(machineId: string): Promise<string> {
+    if (!tourId.value) return ''
+    return tourNoteApi.fetchTourNote(machineId, tourId.value)
+  }
+
+  /** Write the machine's note for the next tour; empty text deletes it. */
+  async function saveTourNote(machineId: string, note: string): Promise<void> {
+    if (!tourId.value) throw new Error('No tour running')
+    await tourNoteApi.saveTourNote(machineId, tourId.value, note)
+  }
+
   async function skipMachine() {
     const machine = currentMachine.value
     if (machine && currentRebuild.value.length > 0) {
@@ -1927,6 +1968,7 @@ export function useRefillWizard() {
     currentTrays.value = []
     tourLog.value = []
     tourId.value = ''
+    tourNotes.value = []
     pickingMode.value = 'per-machine'
     warehouseProductOrder.value = new Map()
     rebuildDecisions.value = new Map()
@@ -2040,6 +2082,10 @@ export function useRefillWizard() {
     confirmMachineRefill,
     confirmError,
     skipMachine,
+    tourNotes,
+    completeTourNote,
+    loadTourNote,
+    saveTourNote,
     goToMachine,
     isMachineCompleted,
     resetWizard,

@@ -462,6 +462,16 @@
     <string name="refill_step_layout_state_low">niedrig</string>
     <string name="refill_step_layout_state_full">gefüllt</string>
     <string name="refill_step_skip">Überspringen</string>
+    <string name="refill_step_skip_machine">Automaten überspringen</string>
+    <string name="refill_step_more_actions">Weitere Aktionen</string>
+    <string name="refill_tour_note_title">Notiz für nächste Tour</string>
+    <string name="refill_tour_note_hint">Wird beim Packen der nächsten Tour oben angezeigt.</string>
+    <string name="refill_tour_note_placeholder">z. B. neue Spiralen, Erhöhungen für Dosen …</string>
+    <string name="refill_tour_note_save_failed">Die Notiz konnte nicht gespeichert werden.</string>
+    <string name="refill_tour_note_save_failed_detail">Die Notiz konnte nicht gespeichert werden: %1$s</string>
+    <string name="refill_tour_notes_title">Notizen vom letzten Mal</string>
+    <string name="refill_tour_notes_subtitle">Abhaken, sobald erledigt. Bis dahin stehen sie bei jeder Tour hier.</string>
+    <string name="refill_tour_notes_mark_done">Erledigt</string>
     <string name="refill_step_confirm">Befüllung bestätigen</string>
     <string name="refill_step_saving">Wird gespeichert…</string>
     <string name="refill_error_unknown">unbekannter Fehler</string>

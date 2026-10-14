@@ -2568,5 +2568,14 @@
     "sales": "Ventes",
     "units": "Unités",
     "grossProfit": "Marge brute"
+  },
+  "refillNotes": {
+    "title": "Note pour la prochaine tournée",
+    "hint": "Affichée en haut de l'étape de préparation lors de la prochaine tournée.",
+    "placeholder": "p. ex. nouvelles spirales, rehausses pour canettes …",
+    "packingTitle": "Notes de la dernière fois",
+    "packingHint": "Cochez une fois fait. D'ici là, elles s'affichent à chaque tournée.",
+    "moreActions": "Plus d'actions",
+    "markDone": "Fait"
   }
 }

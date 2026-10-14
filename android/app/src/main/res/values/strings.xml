@@ -466,6 +466,16 @@
     <string name="refill_step_layout_state_low">low</string>
     <string name="refill_step_layout_state_full">stocked</string>
     <string name="refill_step_skip">Skip</string>
+    <string name="refill_step_skip_machine">Skip machine</string>
+    <string name="refill_step_more_actions">More actions</string>
+    <string name="refill_tour_note_title">Note for next tour</string>
+    <string name="refill_tour_note_hint">Shown at the top of the packing step on the next tour.</string>
+    <string name="refill_tour_note_placeholder">e.g. new spirals, can risers …</string>
+    <string name="refill_tour_note_save_failed">Could not save the note.</string>
+    <string name="refill_tour_note_save_failed_detail">Could not save the note: %1$s</string>
+    <string name="refill_tour_notes_title">Notes from last time</string>
+    <string name="refill_tour_notes_subtitle">Tick off once done. Until then they show on every tour.</string>
+    <string name="refill_tour_notes_mark_done">Done</string>
     <string name="refill_step_confirm">Confirm refill</string>
     <string name="refill_step_saving">Saving…</string>
     <string name="refill_error_unknown">unknown error</string>
