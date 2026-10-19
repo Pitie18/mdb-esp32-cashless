@@ -1139,7 +1139,46 @@
     "velocityDays14": "Letzte 14 Tage",
     "velocityDays30": "Letzte 30 Tage",
     "velocityDays60": "Letzte 60 Tage",
-    "velocityDays90": "Letzte 90 Tage"
+    "velocityDays90": "Letzte 90 Tage",
+    "setupTitle": "Lager einrichten",
+    "setup": "Einrichten",
+    "backToWarehouse": "Zurück zum Lager",
+    "bookStock": "Ware einbuchen",
+    "needsAction": "Handlungsbedarf",
+    "needsActionHint": "{empty} leer · {low} unter Mindestbestand · oder MHD bald",
+    "expiringSoonHint": "MHD in den nächsten 30 Tagen",
+    "activeProductsCount": "{count} aktive Produkte",
+    "totalValue": "Warenwert",
+    "valueSplit": "Lager {warehouse} · Automaten {machines}",
+    "filter": "Filter",
+    "chip": {
+      "all": "Alle",
+      "action": "Handlungsbedarf",
+      "expiring": "MHD bald",
+      "hidden": "Ausgeblendet"
+    },
+    "stockTableHint": "Ein Klick auf ein Produkt zeigt Chargen, Korrekturen und den Mindestbestand. „Ausgeblendet“ zeigt Auslaufartikel und Produkte ohne Automat, die noch Bestand haben.",
+    "setupSection": {
+      "warehouses": "Lager",
+      "positions": "Packreihenfolge",
+      "barcodes": "Barcodes",
+      "calculation": "Berechnung"
+    },
+    "setupSectionHint": {
+      "warehouses": "Name und Adresse",
+      "positions": "Anordnung für die Nachfülltour",
+      "barcodes": "Barcode zu Produkt",
+      "calculation": "Zeitraum der Reichweite"
+    },
+    "openProduct": "Produkt öffnen",
+    "inWarehouse": "Lager",
+    "inMachines": "Automaten",
+    "avgDailySales": "Ø {count} verkauft pro Tag",
+    "batchesInWarehouse": "Chargen im Lager",
+    "noBatches": "Keine Charge auf Lager.",
+    "unitsShort": "{count} Stück",
+    "minStockHint": "Ab diesem Wert gilt das Produkt als knapp, und es kommt eine Push-Benachrichtigung.",
+    "discontinuedHint": "Standardmäßig ausgeblendet und wird nicht mehr nachgefüllt."
   },
   "devices": {
     "title": "Geräte",
