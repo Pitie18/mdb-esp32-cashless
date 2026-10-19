@@ -8,10 +8,15 @@ import UIKit
 struct WarehouseOrderView: View {
     @ObservedObject var viewModel: WarehouseViewModel
     let isAdmin: Bool
+    /// Tapping a line's product image opens the product detail, like in Stock.
+    var onShowProductDetail: (OrderProductInput) -> Void = { _ in }
     /// Opens Incoming (where deliveries are booked).
     var onCheckDelivery: () -> Void = {}
 
     @State private var cancelCandidate: PurchaseOrder?
+    /// Line tapped: its batches view with the order section (supplier, carton size).
+    @State private var openedProduct: OrderProductRoute?
+    @State private var showAddPicker = false
 
     var body: some View {
         let groups = viewModel.orderGroups
@@ -25,6 +30,13 @@ struct WarehouseOrderView: View {
                     OrderBadge(kind: .manual)
                 }
                 .listRowSeparator(.hidden)
+                if !addableProducts.isEmpty {
+                    Button {
+                        showAddPicker = true
+                    } label: {
+                        Label(String(localized: "Add to order list"), systemImage: "cart.badge.plus")
+                    }
+                }
             }
 
             if OrderSuggestion.lineCount(groups) == 0 {
@@ -50,6 +62,20 @@ struct WarehouseOrderView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .navigationDestination(item: $openedProduct) { p in
+            ProductBatchesView(
+                productId: p.id,
+                productName: p.name,
+                productImagePath: p.imagePath,
+                isAdmin: isAdmin
+            )
+            .environmentObject(viewModel)
+        }
+        .sheet(isPresented: $showAddPicker) {
+            AddToOrderListSheet(products: addableProducts) { productId in
+                Task { await viewModel.addToOrderList(productId) }
+            }
+        }
         .alert(
             String(localized: "Cancel order"),
             isPresented: .init(get: { cancelCandidate != nil }, set: { if !$0 { cancelCandidate = nil } }),
@@ -85,6 +111,14 @@ struct WarehouseOrderView: View {
                     line: line,
                     showsSupplierPicker: group.supplier == nil && isAdmin,
                     suppliers: viewModel.orderSuppliers,
+                    onOpen: {
+                        openedProduct = OrderProductRoute(
+                            id: line.product.productId,
+                            name: line.product.productName,
+                            imagePath: line.product.imagePath
+                        )
+                    },
+                    onImageTap: { onShowProductDetail(line.product) },
                     onCartons: { viewModel.setCartons(line.product.productId, $0) },
                     onReset: { viewModel.resetCartons(line.product.productId) },
                     onAssign: { supplierId in Task { await viewModel.assignSupplier(line.product.productId, supplierId: supplierId) } }
@@ -224,6 +258,15 @@ struct WarehouseOrderView: View {
         .padding(.vertical, 4)
     }
 
+    /// Every product not on the order list yet, whatever its supplier (the
+    /// per-supplier "Add product" menu misses products without one).
+    private var addableProducts: [OrderProductInput] {
+        let listed = viewModel.orderListProductIds
+        return viewModel.orderInputs
+            .filter { !$0.discontinued && !listed.contains($0.productId) }
+            .sorted { $0.productName.localizedCaseInsensitiveCompare($1.productName) == .orderedAscending }
+    }
+
     // MARK: - On the way
 
     @ViewBuilder
@@ -266,10 +309,59 @@ struct WarehouseOrderView: View {
 
 // MARK: - Order line
 
+struct OrderProductRoute: Identifiable, Hashable {
+    let id: UUID
+    let name: String
+    let imagePath: String?
+}
+
+/// Searchable list of the products that can go on the order list.
+private struct AddToOrderListSheet: View {
+    let products: [OrderProductInput]
+    let onPick: (UUID) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    private var shown: [OrderProductInput] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return products }
+        return products.filter { $0.productName.localizedCaseInsensitiveContains(q) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List(shown) { p in
+                Button {
+                    onPick(p.productId)
+                    dismiss()
+                } label: {
+                    HStack(spacing: 12) {
+                        ProductImage(imagePath: p.imagePath, size: 32)
+                        Text(p.productName)
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                    }
+                }
+            }
+            .searchable(text: $query, prompt: Text(String(localized: "Search products")))
+            .navigationTitle(String(localized: "Add to order list"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(String(localized: "Cancel")) { dismiss() }
+                }
+            }
+        }
+    }
+}
+
 private struct OrderLineRow: View {
     let line: OrderLine
     let showsSupplierPicker: Bool
     let suppliers: [OrderSupplier]
+    let onOpen: () -> Void
+    let onImageTap: () -> Void
     let onCartons: (Int) -> Void
     let onReset: () -> Void
     let onAssign: (UUID) -> Void
@@ -277,23 +369,36 @@ private struct OrderLineRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                ProductImage(imagePath: line.product.imagePath, size: 40)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(line.product.productName)
-                        .font(.body)
-                        .lineLimit(2)
-                    HStack(spacing: 6) {
-                        OrderBadge(kind: line.manual != nil ? .manual : .auto)
-                        Text(reasonText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Text(stockText)
-                        .font(.caption2)
-                        .foregroundStyle(line.product.warehouseQty == 0 ? Color.red : Color.secondary)
+                Button(action: onImageTap) {
+                    ProductImage(imagePath: line.product.imagePath, size: 40)
+                        .contentShape(Rectangle())
                 }
-                Spacer(minLength: 0)
+                .buttonStyle(.borderless)
+                Button(action: onOpen) {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(line.product.productName)
+                                .font(.body)
+                                .lineLimit(2)
+                            HStack(spacing: 6) {
+                                OrderBadge(kind: line.manual != nil ? .manual : .auto)
+                                Text(reasonText)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Text(stockText)
+                                .font(.caption2)
+                                .foregroundStyle(line.product.warehouseQty == 0 ? Color.red : Color.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
 
             HStack(spacing: 12) {

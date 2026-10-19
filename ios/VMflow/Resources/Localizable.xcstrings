@@ -19981,6 +19981,28 @@
           }
         }
       }
+    },
+    "Batches": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lots"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partijen"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

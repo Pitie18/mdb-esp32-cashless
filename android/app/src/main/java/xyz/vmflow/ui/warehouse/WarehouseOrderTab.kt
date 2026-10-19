@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,13 +23,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -44,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -66,6 +71,7 @@ import androidx.compose.ui.unit.dp
 import xyz.vmflow.R
 import xyz.vmflow.data.OrderGroup
 import xyz.vmflow.data.OrderLine
+import xyz.vmflow.data.OrderProductInput
 import xyz.vmflow.data.OrderSuggestion
 import xyz.vmflow.data.OrderSupplier
 import xyz.vmflow.data.PurchaseOrder
@@ -92,6 +98,8 @@ class OrderTabActions(
     val onCancelOrder: (PurchaseOrder) -> Unit,
     val onCheckDelivery: (PurchaseOrder) -> Unit,
     val onNotice: (String) -> Unit,
+    /** Opens the product sheet (batches, order list, supplier, carton size). */
+    val onOpenProduct: (productId: String) -> Unit,
 )
 
 /**
@@ -124,6 +132,26 @@ fun WarehouseOrderTab(uiState: WarehouseUiState, actions: OrderTabActions) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OrderBadge(manual = false)
                     OrderBadge(manual = true)
+                }
+                val listed = uiState.orderListProductIds
+                val addable = uiState.orderInputs.filter { !it.discontinued && it.productId !in listed }
+                if (addable.isNotEmpty()) {
+                    var pickerOpen by remember { mutableStateOf(false) }
+                    OutlinedButton(onClick = { pickerOpen = true }) {
+                        Icon(Icons.Default.AddShoppingCart, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.warehouse_order_list_add))
+                    }
+                    if (pickerOpen) {
+                        AddToOrderListDialog(
+                            products = addable,
+                            onPick = { id ->
+                                pickerOpen = false
+                                actions.onAdd(id)
+                            },
+                            onDismiss = { pickerOpen = false }
+                        )
+                    }
                 }
             }
         }
@@ -314,37 +342,50 @@ private fun OrderLineRow(
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            ProductImage(imagePath = line.product.imagePath, contentDescription = line.product.productName, size = 40.dp)
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = line.product.productName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OrderBadge(manual = line.manual != null)
-                    Spacer(Modifier.width(6.dp))
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { actions.onOpenProduct(productId) },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ProductImage(imagePath = line.product.imagePath, contentDescription = line.product.productName, size = 40.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = reasonText(line),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        text = line.product.productName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                }
-                val stock = buildString {
-                    append(stringResource(R.string.warehouse_order_available, line.available))
-                    if (line.product.onOrder > 0) {
-                        append(" · ")
-                        append(stringResource(R.string.warehouse_order_on_the_way_units, line.product.onOrder))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OrderBadge(manual = line.manual != null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = reasonText(line),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
+                    val stock = buildString {
+                        append(stringResource(R.string.warehouse_order_available, line.available))
+                        if (line.product.onOrder > 0) {
+                            append(" · ")
+                            append(stringResource(R.string.warehouse_order_on_the_way_units, line.product.onOrder))
+                        }
+                    }
+                    Text(
+                        text = stock,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (line.product.warehouseQty == 0) StockRed else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                Text(
-                    text = stock,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (line.product.warehouseQty == 0) StockRed else MaterialTheme.colorScheme.onSurfaceVariant
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.outline
                 )
             }
             if (line.manual != null || line.overridden) {
@@ -438,6 +479,57 @@ private fun OrderLineRow(
             }
         }
     }
+}
+
+/** Searchable list of every product not on the order list yet, whatever its supplier. */
+@Composable
+private fun AddToOrderListDialog(
+    products: List<OrderProductInput>,
+    onPick: (productId: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    val shown = products
+        .filter { query.isBlank() || it.productName.contains(query.trim(), ignoreCase = true) }
+        .sortedBy { it.productName.lowercase() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.warehouse_order_list_add)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text(stringResource(R.string.warehouse_order_search_product)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+                    items(shown, key = { it.productId }) { p ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPick(p.productId) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ProductImage(imagePath = p.imagePath, contentDescription = p.productName, size = 32.dp)
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = p.productName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
+    )
 }
 
 @Composable

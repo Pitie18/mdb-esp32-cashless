@@ -19,10 +19,15 @@ struct ProductBatchesView: View {
                 ProgressView(String(localized: "Loading batches..."))
             } else {
                 List {
+                    // Order list, supplier and carton size first: this view is
+                    // also where the Order tab's lines lead.
+                    ProductOrderingSection(productId: productId, isAdmin: isAdmin)
                     if viewModel.drilldownBatches.isEmpty {
                         Section {
                             Label(String(localized: "No batches in stock"), systemImage: "shippingbox")
                                 .foregroundStyle(.secondary)
+                        } header: {
+                            Text(String(localized: "Batches"))
                         }
                     } else {
                         Section {
@@ -34,9 +39,10 @@ struct ProductBatchesView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
+                        } header: {
+                            Text(String(localized: "Batches"))
                         }
                     }
-                    ProductOrderingSection(productId: productId, isAdmin: isAdmin)
                 }
                 .listStyle(.insetGrouped)
             }
