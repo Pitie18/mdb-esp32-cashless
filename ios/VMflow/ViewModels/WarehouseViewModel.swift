@@ -69,6 +69,24 @@ final class WarehouseViewModel: ObservableObject {
     @Published var intakeSupplierName: String = ""
     @Published var suppliers: [Supplier] = []
 
+    // Ordering ("Order" segment + expected deliveries under Incoming)
+    @Published var orderSettings: OrderSettings = .default
+    @Published var orderSuppliers: [OrderSupplier] = []
+    @Published var productOrderInfo: [UUID: ProductOrderInfo] = [:]
+    /// Products someone put on the order list by hand (synced via `order_list_items`).
+    @Published var manualEntries: [ManualOrderEntry] = []
+    /// Orders placed and not yet delivered; they count as on the way.
+    @Published var openOrders: [PurchaseOrder] = []
+    /// Units in machine slots per product. Its keys are the assigned products.
+    @Published var machineStock: [UUID: Int] = [:]
+    /// Carton counts changed by hand. Kept on this device only, like on the web:
+    /// the suggestion itself is recomputed everywhere.
+    @Published var orderOverrides: [UUID: Int] = [:]
+    @Published var busySupplierId: UUID?
+    @Published var busyOrderId: UUID?
+    /// A short confirmation ("marked as ordered", "delivery booked") for a banner.
+    @Published var notice: String?
+
     private let client = SupabaseService.shared.client
 
     // MARK: - Computed
@@ -107,6 +125,64 @@ final class WarehouseViewModel: ObservableObject {
             }
             return lhs.productName.localizedCaseInsensitiveCompare(rhs.productName) == .orderedAscending
         }
+    }
+
+    // MARK: - Ordering (computed)
+
+    var selectedCompanyId: UUID? {
+        warehouses.first(where: { $0.id == selectedWarehouseId })?.companyId
+    }
+
+    /// Units of a product in open orders of the selected warehouse.
+    func onOrder(_ productId: UUID) -> Int {
+        openOrders.reduce(0) { sum, order in
+            sum + order.lines.filter { $0.productId == productId }.reduce(0) { $0 + $1.quantity }
+        }
+    }
+
+    func supplierId(for productId: UUID) -> UUID? {
+        productOrderInfo[productId]?.supplierId
+    }
+
+    func manualEntry(for productId: UUID) -> ManualOrderEntry? {
+        manualEntries.first { $0.productId == productId }
+    }
+
+    var orderInputs: [OrderProductInput] {
+        let onOrderById = openOrders.reduce(into: [UUID: Int]()) { acc, order in
+            for line in order.lines { if let id = line.productId { acc[id, default: 0] += line.quantity } }
+        }
+        return productSummaries.map { p in
+            let info = productOrderInfo[p.productId]
+            return OrderProductInput(
+                productId: p.productId,
+                productName: p.productName,
+                imagePath: p.imagePath,
+                discontinued: p.discontinued,
+                warehouseQty: p.totalQuantity,
+                machineQty: machineStock[p.productId] ?? 0,
+                avgDailySales: p.avgDailySales,
+                onOrder: onOrderById[p.productId] ?? 0,
+                unitSize: info?.unitSize ?? 1,
+                supplierId: info?.supplierId,
+                unitPriceNet: info?.latestPriceNet
+            )
+        }
+    }
+
+    var orderGroups: [OrderGroup] {
+        OrderSuggestion.buildGroups(
+            products: orderInputs,
+            suppliers: orderSuppliers,
+            manual: manualEntries,
+            overrides: orderOverrides,
+            settings: orderSettings
+        )
+    }
+
+    /// Products currently on the order list (automatic or manual).
+    var orderListProductIds: Set<UUID> {
+        Set(orderGroups.flatMap { $0.lines.map(\.product.productId) })
     }
 
     // MARK: - Load Warehouses
@@ -205,7 +281,7 @@ final class WarehouseViewModel: ObservableObject {
             }
 
             // Every product gets a summary (even with 0 stock)
-            productSummaries = productRows.map { p in
+            productSummaries = withMachineStock(productRows.map { p in
                 let s = stock[p.id]
                 return WarehouseProductSummary(
                     productId: p.id,
@@ -218,11 +294,21 @@ final class WarehouseViewModel: ObservableObject {
                     expirationStatus: WarehouseProductSummary.expirationStatus(for: s?.earliest),
                     avgDailySales: velocity[p.id] ?? 0
                 )
-            }
+            })
         } catch is CancellationError {
             // Ignore — SwiftUI cancels refreshable tasks routinely
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+
+    /// Reach counts the machine stock too when the company says so
+    /// (`order_count_machine_stock`, web parity).
+    private func withMachineStock(_ summaries: [WarehouseProductSummary]) -> [WarehouseProductSummary] {
+        summaries.map { s in
+            var s = s
+            s.machineQuantity = orderSettings.countMachineStock ? (machineStock[s.productId] ?? 0) : 0
+            return s
         }
     }
 
@@ -283,24 +369,14 @@ final class WarehouseViewModel: ObservableObject {
 
     // MARK: - Load Machine Assignments
 
-    /// Loads the set of products that currently occupy at least one machine
-    /// slot. Warehouse-independent (a product is "in use" no matter which
-    /// warehouse supplies it), so this is not reloaded on warehouse switch.
+    /// Loads the units per product in machine slots; its keys are the products
+    /// that occupy at least one slot. Warehouse-independent (a product is "in
+    /// use" no matter which warehouse supplies it), so this is not reloaded on
+    /// warehouse switch.
     func loadAssignedProductIds() async {
         do {
-            struct TrayProduct: Decodable {
-                let productId: UUID?
-                enum CodingKeys: String, CodingKey { case productId = "product_id" }
-            }
-
-            let rows: [TrayProduct] = try await client
-                .from("machine_trays")
-                .select("product_id")
-                .not("product_id", operator: .is, value: "null")
-                .execute()
-                .value
-
-            assignedProductIds = Set(rows.compactMap(\.productId))
+            machineStock = try await PurchaseOrderService.fetchMachineStock()
+            assignedProductIds = Set(machineStock.keys)
         } catch is CancellationError {
             // Ignore — SwiftUI cancels refreshable tasks routinely
         } catch {
@@ -369,7 +445,8 @@ final class WarehouseViewModel: ObservableObject {
                 .from("warehouse_transactions")
                 .select("id, product_id, quantity_change, created_at, notes, products(name, image_path), suppliers(name)")
                 .eq("warehouse_id", value: warehouseId.uuidString)
-                .eq("transaction_type", value: "intake")
+                // "intake" = booked in the apps, "incoming" = web and delivered orders
+                .in("transaction_type", values: ["intake", "incoming"])
                 .order("created_at", ascending: false)
                 .limit(10)
                 .execute()
@@ -480,8 +557,11 @@ final class WarehouseViewModel: ObservableObject {
         async let productsTask: () = loadProducts()
         async let suppliersTask: () = loadSuppliersForIntake()
         async let assignmentsTask: () = loadAssignedProductIds()
+        async let orderingTask: () = loadOrdering()
 
-        _ = await (summariesTask, intakesTask, productsTask, suppliersTask, assignmentsTask)
+        _ = await (summariesTask, intakesTask, productsTask, suppliersTask, assignmentsTask, orderingTask)
+        // Summaries and machine stock/settings loaded in parallel.
+        productSummaries = withMachineStock(productSummaries)
 
         isLoading = false
     }
@@ -490,9 +570,11 @@ final class WarehouseViewModel: ObservableObject {
 
     func selectWarehouse(_ id: UUID) async {
         selectedWarehouseId = id
+        orderOverrides = [:]
         async let summariesTask: () = loadProductSummaries()
         async let intakesTask: () = loadRecentIntakes()
-        _ = await (summariesTask, intakesTask)
+        async let orderTask: () = loadWarehouseOrdering()
+        _ = await (summariesTask, intakesTask, orderTask)
     }
 
     // MARK: - Barcode Lookup

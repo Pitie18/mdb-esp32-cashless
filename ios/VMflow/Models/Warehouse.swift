@@ -63,6 +63,9 @@ struct WarehouseProductSummary: Identifiable, Equatable {
     /// Fleet-wide average units sold per day (`get_product_sales_velocity`);
     /// 0 when the product didn't sell in the window.
     var avgDailySales: Double = 0
+    /// Units in machine slots that count towards reach; 0 unless the company
+    /// counts machine stock (`order_count_machine_stock`).
+    var machineQuantity: Int = 0
 
     var id: UUID { productId }
 
@@ -72,12 +75,13 @@ struct WarehouseProductSummary: Identifiable, Equatable {
     /// Reach above this is shown as ">90 days" — beyond that the exact figure is noise.
     static let reachDisplayCapDays = 90
 
-    /// Days until this warehouse's stock runs out at the current sales rate,
-    /// `round(quantity / avgDailySales)`; nil without sales. Same formula as
-    /// the web warehouse page (`estimated_days_remaining`) and Android `StockReach`.
+    /// Days until the stock runs out at the current sales rate,
+    /// `round((quantity + machine quantity) / avgDailySales)`; nil without
+    /// sales. Same formula as the web warehouse page (`estimated_days_remaining`)
+    /// and Android `StockReach`.
     var daysRemaining: Int? {
         guard avgDailySales > 0 else { return nil }
-        return Int((Double(totalQuantity) / avgDailySales).rounded())
+        return Int((Double(totalQuantity + machineQuantity) / avgDailySales).rounded())
     }
 
     /// ≤ 7 days critical, ≤ 14 warning — the web page's thresholds.

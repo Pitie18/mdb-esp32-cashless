@@ -66,6 +66,8 @@ fun BatchDrilldownSheet(
     isLoading: Boolean,
     onAdjust: (batchId: String) -> Unit,
     onDismiss: () -> Unit,
+    /** Order list state and, for admins, main supplier + carton size ([ProductOrderingSection]). */
+    orderingSection: @Composable () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -82,6 +84,8 @@ fun BatchDrilldownSheet(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            Spacer(modifier = Modifier.height(12.dp))
+            orderingSection()
             Spacer(modifier = Modifier.height(16.dp))
 
             when {

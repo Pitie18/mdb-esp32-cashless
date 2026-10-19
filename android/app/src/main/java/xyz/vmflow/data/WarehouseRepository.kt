@@ -10,6 +10,9 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
@@ -61,6 +64,34 @@ private data class TrayProductIdRow(
  * select. Mirrors iOS `loadRecentIntakes()`'s private `TransactionWithProduct`
  * (`WarehouseViewModel.swift:274-300`).
  */
+/**
+ * One stock movement for the warehouse history screen (every
+ * `warehouse_transactions` type). Mirrors iOS `WarehouseHistoryView.Entry`.
+ */
+@Serializable
+data class WarehouseHistoryEntry(
+    val id: String,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("transaction_type") val transactionType: String,
+    @SerialName("quantity_change") val quantityChange: Int = 0,
+    @SerialName("batch_number") val batchNumber: String? = null,
+    val notes: String? = null,
+    val products: IntakeTransactionProductRef? = null,
+    /** Free-form jsonb — read defensively through [user]. */
+    val metadata: JsonElement? = null
+) {
+    val productName: String? get() = products?.name
+    val imagePath: String? get() = products?.imagePath
+
+    /** Who booked it (`_user_display`, else `_user_email`), when recorded. */
+    val user: String?
+        get() {
+            val meta = metadata as? JsonObject ?: return null
+            fun str(key: String) = (meta[key] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
+            return str("_user_display") ?: str("_user_email")
+        }
+}
+
 @Serializable
 private data class IntakeTransactionRow(
     val id: String,
@@ -73,7 +104,7 @@ private data class IntakeTransactionRow(
 )
 
 @Serializable
-private data class IntakeTransactionProductRef(
+data class IntakeTransactionProductRef(
     val name: String? = null,
     @SerialName("image_path") val imagePath: String? = null
 )
@@ -263,7 +294,8 @@ object WarehouseRepository {
                 .select(Columns.raw("id, product_id, quantity_change, created_at, notes, products(name, image_path), suppliers(name)")) {
                     filter {
                         eq("warehouse_id", warehouseId)
-                        eq("transaction_type", "intake")
+                        // "incoming" = a delivery booked through `receive_purchase_order`.
+                        isIn("transaction_type", listOf("intake", "incoming"))
                     }
                     order("created_at", Order.DESCENDING)
                     limit(10)
@@ -282,6 +314,34 @@ object WarehouseRepository {
                 )
             }
             Result.success(entries)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * One page of a warehouse's stock movements, newest first; [types] null =
+     * every type. Ordered by `created_at` then `id` so paging is stable.
+     */
+    suspend fun fetchHistory(
+        warehouseId: String,
+        types: List<String>?,
+        offset: Long,
+        pageSize: Long
+    ): Result<List<WarehouseHistoryEntry>> {
+        return try {
+            val rows = postgrest.from("warehouse_transactions")
+                .select(Columns.raw("id, created_at, transaction_type, quantity_change, batch_number, notes, metadata, products(name, image_path)")) {
+                    filter {
+                        eq("warehouse_id", warehouseId)
+                        if (types != null) isIn("transaction_type", types)
+                    }
+                    order("created_at", Order.DESCENDING)
+                    order("id", Order.DESCENDING)
+                    range(offset, offset + pageSize - 1)
+                }
+                .decodeList<WarehouseHistoryEntry>()
+            Result.success(rows)
         } catch (e: Exception) {
             Result.failure(e)
         }
