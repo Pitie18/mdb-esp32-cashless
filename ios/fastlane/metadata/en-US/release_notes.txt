@@ -1,9 +1,10 @@
-New
-• Per-machine "linked selections" setting
-• Judge stock per product instead of per slot
-
 Improved
-• iOS: change notes in the refill tour, swaps queue as change requests
-
-Fixed
-• Align stock logic with the PWA, drop the native stock map
+• Warehouse: order list, ordering and expected deliveries
+• Refill review: flag products recently removed from the machine
+• Tour notes: keep them until ticked off
+• Refill tour: note for the next tour
+• iOS/Android: show rebuilt slots in the activity feed
+• Book rebuild units only when they are ticked as packed
+• Let the refiller dial down rebuild units while packing
+• Refill tour: rebuild units in the packing list, leftovers booked at tour end
+• iOS: confirm a changed age setting before a rebuilt slot can be quit
