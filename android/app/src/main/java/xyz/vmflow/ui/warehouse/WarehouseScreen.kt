@@ -113,7 +113,12 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
             selectedTab = 2
             receiveOrderId = order.id
         },
-        onNotice = viewModel::showNotice
+        onNotice = viewModel::showNotice,
+        onOpenProduct = { productId ->
+            drilldownProductId = productId
+            adjustBatchId = null
+            viewModel.loadBatchesForProduct(productId)
+        }
     )
 
     Scaffold(

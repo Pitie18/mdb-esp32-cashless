@@ -86,9 +86,18 @@ struct WarehouseView: View {
                 case .stock:
                     stockOverviewTab
                 case .order:
-                    WarehouseOrderView(viewModel: viewModel, isAdmin: isAdmin) {
-                        selectedTab = .incoming
-                    }
+                    WarehouseOrderView(
+                        viewModel: viewModel,
+                        isAdmin: isAdmin,
+                        onShowProductDetail: { p in
+                            productDetailSelection = ProductDetailSelection(
+                                id: p.productId,
+                                name: p.productName,
+                                imagePath: p.imagePath
+                            )
+                        },
+                        onCheckDelivery: { selectedTab = .incoming }
+                    )
                 case .incoming:
                     incomingTab
                 }
