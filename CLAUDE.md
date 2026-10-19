@@ -337,7 +337,7 @@ Tables:
 - `warehouse_transactions` – stock movement log (intake, refill, adjustment, waste)
 - `product_min_stock` – per-warehouse minimum stock levels for alerts
 - `warehouse_product_positions` – physical layout ordering: `warehouse_id`, `product_id`, `sort_order`, `location_label`
-- `order_list_items` – products someone put on a warehouse's order list by hand (`added_by_name`, `added_via` web/ios/android; one per warehouse and product). The order suggestion itself is computed in the clients (`app/lib/orderSuggestion.ts`): avg daily sales × (supplier `order_interval_days` + `lead_time_days` + company `order_buffer_days`) minus warehouse, machine (`companies.order_count_machine_stock`) and on-order stock, rounded up to `products.order_unit_size` cartons; the supplier is `products.preferred_supplier_id`, else the supplier of the latest purchase price
+- `order_list_items` – products someone put on a warehouse's order list by hand (`added_by_name`, `added_via` web/ios/android; one per warehouse and product). The order suggestion itself is computed in the clients (`app/lib/orderSuggestion.ts`, ported 1:1 to iOS `Models/OrderSuggestion.swift`): avg daily sales × (supplier `order_interval_days` + `lead_time_days` + company `order_buffer_days`) minus warehouse, machine (`companies.order_count_machine_stock`) and on-order stock, rounded up to `products.order_unit_size` cartons; the supplier is `products.preferred_supplier_id`, else the supplier of the latest purchase price
 - `purchase_orders` / `purchase_order_lines` – orders marked as placed (`status` ordered → received / closed / cancelled); open lines count as "on the way" in the suggestion. `place_purchase_order` (admin, clears the ordered products' manual entries), `receive_purchase_order` (every member; books each delivered line as an `incoming` transaction with the supplier, `reference_id` = order id; a retry books nothing), `close_purchase_order` (every member; marks delivered without booking, for goods booked by hand or with an older app), `cancel_purchase_order` (admin)
 - `low_stock_notifications` – queue table for push alerts when stock drops below minimum; auto-enqueued via trigger
 - `stock_decrement_log` – audit log for stock decrements
@@ -553,7 +553,7 @@ npx vitest run --watch  # watch mode
 
 Slot re-assignment: `app/lib/__tests__/slotChange.test.ts`, `app/components/__tests__/SlotPlanPanel.test.ts`, `app/composables/__tests__/useRefillWizard.rebuild.test.ts`; DB side `Docker/supabase/tests/slot_change_requests.test.sql` and `category_min_age.test.sql`, `slot_change_tour_returns.test.sql`, `slot_change_offerings.test.sql` (a product that only moves keeps its `machine_product_offerings` row, so it does not drop back into "testing"), `recent_product_removals.test.sql`.
 
-Warehouse ordering: `app/lib/__tests__/orderSuggestion.test.ts`, `app/components/__tests__/WarehouseOrderTab.test.ts`; DB side `Docker/supabase/tests/purchase_ordering.test.sql`.
+Warehouse ordering: `app/lib/__tests__/orderSuggestion.test.ts`, `app/components/__tests__/WarehouseOrderTab.test.ts`; DB side `Docker/supabase/tests/purchase_ordering.test.sql`; iOS port `ios/HostTests/OrderSuggestion/run.sh` (same cases as the web test).
 
 Firmware host-side tests need no board and compile the real sources:
 - `mdb-slave-esp32s3/test/rfid/run.sh` — the F02DC frame parser
