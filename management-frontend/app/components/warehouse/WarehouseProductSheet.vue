@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
-import { IconAdjustments, IconExternalLink } from '@tabler/icons-vue'
+import { IconAdjustments, IconExternalLink, IconShoppingCartPlus, IconX } from '@tabler/icons-vue'
 import { formatDate } from '@/lib/utils'
 import { getProductImageUrl } from '@/composables/useProducts'
 import {
   expirationStatus, expirationBadgeClass,
   type StockBatch, type WarehouseProductSummary,
 } from '@/composables/useWarehouse'
+import type { ManualEntry, OrderSupplier } from '@/lib/orderSuggestion'
 
 /**
  * Product detail on the warehouse stock tab: batches with their corrections,
@@ -21,6 +22,15 @@ const props = defineProps<{
   machineStock: number
   assigned: boolean
   isAdmin: boolean
+  /** Units on open purchase orders. */
+  onOrder?: number
+  /** The suggestion lists this product on its own. */
+  autoOrder?: boolean
+  manualEntry?: ManualEntry | null
+  suppliers?: OrderSupplier[]
+  /** Preferred supplier, else the supplier of the latest purchase price. */
+  supplierId?: string | null
+  unitSize?: number
 }>()
 
 const emit = defineEmits<{
@@ -28,6 +38,9 @@ const emit = defineEmits<{
   adjust: [batch: StockBatch]
   saveMinStock: [value: number]
   toggleDiscontinued: [value: boolean]
+  addToOrderList: []
+  removeFromOrderList: []
+  saveOrdering: [updates: { preferred_supplier_id?: string | null; order_unit_size?: number }]
 }>()
 
 const { t, locale } = useI18n()
@@ -39,6 +52,24 @@ watch(() => [props.summary?.product_id, props.summary?.min_stock], () => {
 }, { immediate: true })
 
 const minDirty = computed(() => (props.summary?.min_stock ?? 0) !== minStock.value)
+
+const unitSizeDraft = ref(1)
+watch(() => [props.summary?.product_id, props.unitSize], () => {
+  unitSizeDraft.value = props.unitSize ?? 1
+}, { immediate: true })
+
+function saveUnitSize() {
+  const n = Math.max(1, Math.floor(Number(unitSizeDraft.value) || 1))
+  unitSizeDraft.value = n
+  if (n !== (props.unitSize ?? 1)) emit('saveOrdering', { order_unit_size: n })
+}
+
+function onSupplierChange(e: Event) {
+  const v = (e.target as HTMLSelectElement).value
+  emit('saveOrdering', { preferred_supplier_id: v || null })
+}
+
+const supplierName = computed(() => props.suppliers?.find(s => s.id === props.supplierId)?.name ?? null)
 
 async function saveMin() {
   savingMin.value = true
@@ -86,6 +117,61 @@ async function saveMin() {
           </div>
           <p v-if="summary.avg_daily_sales > 0" class="-mt-3 text-xs text-muted-foreground">
             {{ t('warehouse.avgDailySales', { count: summary.avg_daily_sales.toLocaleString(locale, { maximumFractionDigits: 1 }) }) }}
+          </p>
+
+          <section class="flex flex-col gap-2">
+            <p v-if="(onOrder ?? 0) > 0" class="text-sm text-violet-700 dark:text-violet-400">
+              {{ t('warehouse.order.onTheWayHint', { count: onOrder }) }}
+            </p>
+            <div v-if="manualEntry" class="flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-400">
+                {{ t('warehouse.order.manualOnList', { name: manualEntry.added_by_name || '?', via: t(`warehouse.order.via.${manualEntry.added_via}`) }) }}
+              </span>
+              <button class="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground" @click="emit('removeFromOrderList')">
+                <IconX class="size-3.5" />
+                {{ t('warehouse.order.removeFromList') }}
+              </button>
+            </div>
+            <div v-else-if="autoOrder" class="flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400">
+                {{ t('warehouse.order.autoOnList') }}
+              </span>
+            </div>
+            <button
+              v-else-if="!summary.discontinued"
+              class="inline-flex h-8 w-fit items-center gap-1.5 rounded-md border px-3 text-sm font-medium hover:bg-muted"
+              @click="emit('addToOrderList')"
+            >
+              <IconShoppingCartPlus class="size-4" />
+              {{ t('warehouse.order.addToList') }}
+            </button>
+          </section>
+
+          <section v-if="isAdmin" class="grid grid-cols-2 gap-3">
+            <label class="flex flex-col gap-1 text-sm">
+              <span class="font-semibold">{{ t('warehouse.order.preferredSupplier') }}</span>
+              <select
+                class="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                :value="supplierId ?? ''"
+                @change="onSupplierChange"
+              >
+                <option value="">{{ t('warehouse.order.noSupplier') }}</option>
+                <option v-for="s in suppliers ?? []" :key="s.id" :value="s.id">{{ s.name }}</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1 text-sm">
+              <span class="font-semibold">{{ t('warehouse.order.unitSize') }}</span>
+              <input
+                v-model.number="unitSizeDraft"
+                type="number"
+                min="1"
+                class="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                @change="saveUnitSize"
+              />
+            </label>
+          </section>
+          <p v-else-if="supplierName" class="text-sm">
+            <span class="text-muted-foreground">{{ t('warehouse.order.preferredSupplier') }}:</span> {{ supplierName }}
           </p>
 
           <section class="flex flex-col gap-2">

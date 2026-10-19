@@ -75,4 +75,27 @@ describe('WarehouseProductSheet', () => {
     expect(document.body.querySelector('[role="switch"]')).toBeNull()
     expect([...document.body.querySelectorAll('button')].some(b => b.textContent?.includes('warehouse.adjust'))).toBe(false)
   })
+
+  it('lets every member put the product on the order list', async () => {
+    const wrapper = mountSheet(false)
+    await flushPromises()
+    const add = [...document.body.querySelectorAll('button')].find(b => b.textContent?.includes('warehouse.order.addToList'))!
+    add.click()
+    expect(wrapper.emitted('addToOrderList')).toHaveLength(1)
+  })
+
+  it('shows who put it on the list and lets them remove it', async () => {
+    const wrapper = mount(WarehouseProductSheet, {
+      attachTo: document.body,
+      props: {
+        open: true, summary: SUMMARY, batches: BATCHES, machineStock: 11, assigned: true, isAdmin: true,
+        manualEntry: { product_id: 'p1', added_by_name: 'Lucien', added_via: 'ios', created_at: '2026-10-19T08:00:00Z' },
+      },
+      global: { stubs: { NuxtLink: { template: '<a><slot /></a>' } } },
+    })
+    await flushPromises()
+    expect(document.body.textContent).toContain('warehouse.order.manualOnList:Lucien,warehouse.order.via.ios')
+    ;[...document.body.querySelectorAll('button')].find(b => b.textContent?.includes('warehouse.order.removeFromList'))!.click()
+    expect(wrapper.emitted('removeFromOrderList')).toHaveLength(1)
+  })
 })
