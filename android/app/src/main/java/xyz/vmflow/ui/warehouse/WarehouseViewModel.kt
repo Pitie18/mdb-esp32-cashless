@@ -8,7 +8,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import xyz.vmflow.data.AuthRepository
 import xyz.vmflow.data.ExpirationStatus
+import xyz.vmflow.data.ManualOrderEntry
+import xyz.vmflow.data.OrderGroup
+import xyz.vmflow.data.OrderProductInput
+import xyz.vmflow.data.OrderSettings
+import xyz.vmflow.data.OrderSuggestion
+import xyz.vmflow.data.OrderSupplier
+import xyz.vmflow.data.ProductOrderInfo
+import xyz.vmflow.data.PurchaseOrder
+import xyz.vmflow.data.PurchaseOrderRepository
+import xyz.vmflow.data.ReceiveLineInput
 import xyz.vmflow.data.TrayRepository
 import xyz.vmflow.data.WarehouseIntakeLogic
 import xyz.vmflow.data.WarehouseRepository
@@ -56,8 +67,76 @@ data class WarehouseUiState(
      * duplicate resubmission of a delivery that already landed.
      */
     val intakeBookedTick: Int = 0,
-    val error: String? = null
+    val error: String? = null,
+    // ── Ordering ("Order" tab + expected deliveries under Incoming) ──
+    val isAdmin: Boolean = false,
+    val orderSettings: OrderSettings = OrderSettings(),
+    val orderSuppliers: List<OrderSupplier> = emptyList(),
+    val productOrderInfo: Map<String, ProductOrderInfo> = emptyMap(),
+    /** Units in machine slots per product, company-wide (`machine_trays.current_stock`). */
+    val machineStock: Map<String, Int> = emptyMap(),
+    val manualEntries: List<ManualOrderEntry> = emptyList(),
+    val openOrders: List<PurchaseOrder> = emptyList(),
+    /** Cartons changed by hand, per product — client-side only, like on the web. */
+    val orderOverrides: Map<String, Int> = emptyMap(),
+    val busySupplierId: String? = null,
+    val busyOrderId: String? = null,
+    /** One-off confirmation for the snackbar ("Copied", "Delivery booked: …"). */
+    val notice: String? = null
 ) {
+    /** Summaries with the machine stock counted towards the reach when the company setting says so. */
+    private val summariesWithMachineStock: List<WarehouseProductSummary>
+        get() = productSummaries.map {
+            it.copy(machineQuantity = if (orderSettings.countMachineStock) machineStock[it.productId] ?: 0 else 0)
+        }
+
+    /** Units of a product on open orders (on the way). */
+    val onOrderByProduct: Map<String, Int>
+        get() {
+            val acc = mutableMapOf<String, Int>()
+            for (order in openOrders) for (line in order.rawLines) {
+                val id = line.productId ?: continue
+                acc[id] = (acc[id] ?: 0) + line.quantity
+            }
+            return acc
+        }
+
+    val orderInputs: List<OrderProductInput>
+        get() {
+            val onOrder = onOrderByProduct
+            return productSummaries.map { p ->
+                val info = productOrderInfo[p.productId]
+                OrderProductInput(
+                    productId = p.productId,
+                    productName = p.productName,
+                    imagePath = p.imagePath,
+                    discontinued = p.discontinued,
+                    warehouseQty = p.totalQuantity,
+                    machineQty = machineStock[p.productId] ?: 0,
+                    avgDailySales = p.avgDailySales,
+                    onOrder = onOrder[p.productId] ?: 0,
+                    unitSize = info?.unitSize ?: 1,
+                    supplierId = info?.supplierId,
+                    unitPriceNet = info?.latestPriceNet
+                )
+            }
+        }
+
+    val orderGroups: List<OrderGroup>
+        get() = OrderSuggestion.buildGroups(
+            products = orderInputs,
+            suppliers = orderSuppliers,
+            manual = manualEntries,
+            overrides = orderOverrides,
+            settings = orderSettings
+        )
+
+    /** Products currently on the order list (automatic or manual). */
+    val orderListProductIds: Set<String>
+        get() = orderGroups.flatMap { g -> g.lines.map { it.product.productId } }.toSet()
+
+    fun manualEntry(productId: String): ManualOrderEntry? = manualEntries.firstOrNull { it.productId == productId }
+
     /**
      * Product summaries after search + the three filters, sorted alphabetically
      * by product name (case-insensitive) — or, with [sortByReach], shortest
@@ -73,7 +152,7 @@ data class WarehouseUiState(
      */
     val filteredSummaries: List<WarehouseProductSummary>
         get() {
-            var items = productSummaries
+            var items = summariesWithMachineStock
 
             if (searchText.isNotEmpty()) {
                 val query = searchText.lowercase()
@@ -143,9 +222,11 @@ class WarehouseViewModel : ViewModel() {
             coroutineScope {
                 launch { refreshProductSummaries(warehouseId) }
                 launch { refreshRecentIntakes(warehouseId) }
-                launch { loadAssignedProductIds() }
+                launch { loadMachineStock() }
                 launch { loadSuppliers() }
                 launch { loadProducts() }
+                launch { loadRole() }
+                launch { loadOrdering() }
             }
 
             _uiState.update { it.copy(isLoading = false) }
@@ -155,10 +236,11 @@ class WarehouseViewModel : ViewModel() {
     /** Switches the active warehouse and reloads its scoped data. Mirrors iOS `selectWarehouse(_:)`. */
     fun selectWarehouse(id: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(selectedWarehouseId = id) }
+            _uiState.update { it.copy(selectedWarehouseId = id, orderOverrides = emptyMap()) }
             coroutineScope {
                 launch { refreshProductSummaries(id) }
                 launch { refreshRecentIntakes(id) }
+                launch { loadWarehouseOrdering() }
             }
         }
     }
@@ -186,11 +268,19 @@ class WarehouseViewModel : ViewModel() {
         )
     }
 
-    private suspend fun loadAssignedProductIds() {
-        WarehouseRepository.fetchAssignedProductIds().fold(
-            onSuccess = { ids -> _uiState.update { it.copy(assignedProductIds = ids) } },
+    /** Machine stock per product; its keys are also the products assigned to a slot. */
+    private suspend fun loadMachineStock() {
+        PurchaseOrderRepository.fetchMachineStock().fold(
+            onSuccess = { stock -> _uiState.update { it.copy(machineStock = stock, assignedProductIds = stock.keys) } },
             onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
         )
+    }
+
+    /** Best-effort: a failed role fetch leaves isAdmin false, which hides the admin-only actions. */
+    private suspend fun loadRole() {
+        AuthRepository.fetchOrganization().onSuccess { response ->
+            _uiState.update { it.copy(isAdmin = response.role == "admin") }
+        }
     }
 
     /** Non-critical for the intake form (mirrors iOS `loadSuppliersForIntake()` swallowing errors) — a failed fetch just leaves the picker empty. */
@@ -404,6 +494,209 @@ class WarehouseViewModel : ViewModel() {
                 onSuccess = { productId -> if (productId != null) onFound(productId) else onNotFound() },
                 onFailure = { onNotFound() }
             )
+        }
+    }
+
+    // ── Ordering ───────────────────────────────────────────────────────────
+    // Mirrors iOS `WarehouseViewModel+Ordering.swift` and the web's order
+    // handlers in `pages/warehouse/index.vue`.
+
+    /** Settings, suppliers and product info (company-wide), then the selected warehouse's list and orders. */
+    private suspend fun loadOrdering() {
+        val state = _uiState.value
+        val companyId = state.warehouses.firstOrNull { it.id == state.selectedWarehouseId }?.companyId
+            ?: state.warehouses.firstOrNull()?.companyId
+        // Best-effort: the stock list keeps working without ordering data
+        // (e.g. a backend that has not been updated yet).
+        if (companyId != null) {
+            PurchaseOrderRepository.fetchSettings(companyId).onSuccess { settings ->
+                _uiState.update { it.copy(orderSettings = settings) }
+            }
+        }
+        PurchaseOrderRepository.fetchSuppliers().onSuccess { suppliers ->
+            _uiState.update { it.copy(orderSuppliers = suppliers) }
+            PurchaseOrderRepository.fetchProductInfo(suppliers).onSuccess { info ->
+                _uiState.update { it.copy(productOrderInfo = info) }
+            }
+        }
+        loadWarehouseOrdering()
+    }
+
+    /** Manual entries and open orders of the selected warehouse. */
+    private suspend fun loadWarehouseOrdering() {
+        val warehouseId = _uiState.value.selectedWarehouseId
+        if (warehouseId == null) {
+            _uiState.update { it.copy(manualEntries = emptyList(), openOrders = emptyList()) }
+            return
+        }
+        coroutineScope {
+            launch {
+                PurchaseOrderRepository.fetchManualEntries(warehouseId).onSuccess { entries ->
+                    _uiState.update { it.copy(manualEntries = entries) }
+                }
+            }
+            launch {
+                PurchaseOrderRepository.fetchOpenOrders(warehouseId).onSuccess { orders ->
+                    _uiState.update { it.copy(openOrders = orders) }
+                }
+            }
+        }
+    }
+
+    fun clearNotice() {
+        _uiState.update { it.copy(notice = null) }
+    }
+
+    fun showNotice(text: String) {
+        _uiState.update { it.copy(notice = text) }
+    }
+
+    fun addToOrderList(productId: String) {
+        val warehouseId = _uiState.value.selectedWarehouseId ?: return
+        viewModelScope.launch {
+            PurchaseOrderRepository.addToOrderList(warehouseId, productId).fold(
+                onSuccess = { refreshManualEntries(warehouseId) },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+        }
+    }
+
+    fun removeFromOrderList(productId: String) {
+        val warehouseId = _uiState.value.selectedWarehouseId ?: return
+        viewModelScope.launch {
+            PurchaseOrderRepository.removeFromOrderList(warehouseId, productId).fold(
+                onSuccess = {
+                    _uiState.update { it.copy(orderOverrides = it.orderOverrides - productId) }
+                    refreshManualEntries(warehouseId)
+                },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+        }
+    }
+
+    private suspend fun refreshManualEntries(warehouseId: String) {
+        PurchaseOrderRepository.fetchManualEntries(warehouseId).fold(
+            onSuccess = { entries -> _uiState.update { it.copy(manualEntries = entries) } },
+            onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+        )
+    }
+
+    fun setCartons(productId: String, cartons: Int) {
+        _uiState.update { it.copy(orderOverrides = it.orderOverrides + (productId to maxOf(0, cartons))) }
+    }
+
+    fun resetCartons(productId: String) {
+        _uiState.update { it.copy(orderOverrides = it.orderOverrides - productId) }
+    }
+
+    /**
+     * Admins: moves a product to a supplier ("no supplier" group's inline
+     * picker, product sheet). `null` clears the main supplier.
+     */
+    fun assignSupplier(productId: String, supplierId: String?, confirmation: ((product: String, supplier: String) -> String)? = null) {
+        viewModelScope.launch {
+            PurchaseOrderRepository.setPreferredSupplier(productId, supplierId).fold(
+                onSuccess = {
+                    _uiState.update { s ->
+                        val info = s.productOrderInfo[productId] ?: ProductOrderInfo()
+                        val supplierName = s.orderSuppliers.firstOrNull { it.id == supplierId }?.name
+                        val productName = s.productSummaries.firstOrNull { it.productId == productId }?.productName.orEmpty()
+                        s.copy(
+                            productOrderInfo = s.productOrderInfo + (productId to info.copy(preferredSupplierId = supplierId)),
+                            orderOverrides = s.orderOverrides - productId,
+                            notice = if (supplierName != null && confirmation != null) confirmation(productName, supplierName) else s.notice
+                        )
+                    }
+                },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+        }
+    }
+
+    /** Admins: units per carton. */
+    fun saveUnitSize(productId: String, size: Int) {
+        val clamped = maxOf(1, size)
+        viewModelScope.launch {
+            PurchaseOrderRepository.setUnitSize(productId, clamped).fold(
+                onSuccess = {
+                    _uiState.update { s ->
+                        val info = s.productOrderInfo[productId] ?: ProductOrderInfo()
+                        s.copy(
+                            productOrderInfo = s.productOrderInfo + (productId to info.copy(unitSize = clamped)),
+                            orderOverrides = s.orderOverrides - productId
+                        )
+                    }
+                },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+        }
+    }
+
+    /**
+     * "Mark as ordered" (admins): the lines with cartons become an open order
+     * and count as on the way; their manual entries are cleared server-side.
+     */
+    fun placeOrder(group: OrderGroup, confirmation: String) {
+        val warehouseId = _uiState.value.selectedWarehouseId ?: return
+        val supplier = group.supplier ?: return
+        val lines = group.lines.filter { it.cartons > 0 }
+        if (lines.isEmpty() || _uiState.value.busySupplierId != null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(busySupplierId = supplier.id) }
+            PurchaseOrderRepository.placeOrder(warehouseId, supplier.id, lines).fold(
+                onSuccess = {
+                    val ids = group.lines.map { it.product.productId }.toSet()
+                    _uiState.update { it.copy(orderOverrides = it.orderOverrides - ids) }
+                    loadWarehouseOrdering()
+                    _uiState.update { it.copy(notice = confirmation) }
+                },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+            _uiState.update { it.copy(busySupplierId = null) }
+        }
+    }
+
+    /** Admins only. */
+    fun cancelOrder(order: PurchaseOrder) {
+        runOrderAction(order) { PurchaseOrderRepository.cancelOrder(order.id) }
+    }
+
+    /** "Already booked · mark as delivered": closes without booking anything. */
+    fun closeOrder(order: PurchaseOrder, onDone: () -> Unit = {}) {
+        runOrderAction(order, onDone) { PurchaseOrderRepository.closeOrder(order.id) }
+    }
+
+    private fun runOrderAction(order: PurchaseOrder, onDone: () -> Unit = {}, action: suspend () -> Result<Unit>) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(busyOrderId = order.id) }
+            action().fold(
+                onSuccess = {
+                    loadWarehouseOrdering()
+                    onDone()
+                },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+            _uiState.update { it.copy(busyOrderId = null) }
+        }
+    }
+
+    /** Books what was delivered into the warehouse as batches; [onBooked] gets the booked units. */
+    fun receiveOrder(order: PurchaseOrder, lines: List<ReceiveLineInput>, onBooked: (units: Int) -> Unit) {
+        val warehouseId = _uiState.value.selectedWarehouseId ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(busyOrderId = order.id) }
+            PurchaseOrderRepository.receiveOrder(order.id, lines).fold(
+                onSuccess = { result ->
+                    coroutineScope {
+                        launch { loadWarehouseOrdering() }
+                        launch { refreshProductSummaries(warehouseId) }
+                        launch { refreshRecentIntakes(warehouseId) }
+                    }
+                    onBooked(result.units)
+                },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+            _uiState.update { it.copy(busyOrderId = null) }
         }
     }
 }

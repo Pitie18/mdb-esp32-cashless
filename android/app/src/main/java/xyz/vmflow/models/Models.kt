@@ -681,13 +681,18 @@ data class WarehouseProductSummary(
     val discontinued: Boolean,
     val expirationStatus: ExpirationStatus,
     /** Fleet-wide average units sold per day (`get_product_sales_velocity`); 0 when the product didn't sell in the window. */
-    val avgDailySales: Double = 0.0
+    val avgDailySales: Double = 0.0,
+    /**
+     * Units in machine slots counted towards the reach — 0 unless the company
+     * setting `order_count_machine_stock` is on (same as web and iOS).
+     */
+    val machineQuantity: Int = 0
 ) {
     val isLow: Boolean get() = totalQuantity > 0 && totalQuantity < 10
     val isOutOfStock: Boolean get() = totalQuantity == 0
 
-    /** Days until this warehouse's stock runs out at the current sales rate; null without sales. */
-    val daysRemaining: Int? get() = StockReach.daysRemaining(totalQuantity, avgDailySales)
+    /** Days until warehouse (+ counted machine) stock runs out at the current sales rate; null without sales. */
+    val daysRemaining: Int? get() = StockReach.daysRemaining(totalQuantity + machineQuantity, avgDailySales)
 
     val reachLevel: ReachLevel get() = StockReach.level(daysRemaining)
 }
