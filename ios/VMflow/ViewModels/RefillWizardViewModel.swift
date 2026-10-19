@@ -205,6 +205,49 @@ struct ReplacementSuggestion: Identifiable, Equatable, Codable {
     var id: UUID { trayId }
 }
 
+/// A product taken out of a machine within the company's cool-down
+/// (`companies.product_removal_cooldown_days`, default 30) and not back in it
+/// since. The replacement picker marks it and sorts it last, so a slow seller
+/// with warehouse stock left does not walk straight back into the machine it
+/// was just taken out of. Read from `get_recent_product_removals` — Android
+/// reads the same RPC (`RecentRemovals.kt`).
+struct RecentRemoval: Decodable, Equatable {
+    let machineId: UUID
+    let productId: UUID
+    let removedAt: Date
+    /// Start of the offering that ended; `nil` only for one that predates the
+    /// offering history.
+    let offeredSince: Date?
+    /// Whole days between `offeredSince` and `removedAt`, at least 1.
+    let daysOffered: Int?
+    /// Sales of the product in this machine during that offering.
+    let unitsSold: Int
+    /// Removed before removals were recorded: the date is the slot change
+    /// that took it out, else its last sale.
+    let estimated: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case machineId = "machine_id"
+        case productId = "product_id"
+        case removedAt = "removed_at"
+        case offeredSince = "offered_since"
+        case daysOffered = "days_offered"
+        case unitsSold = "units_sold"
+        case estimated
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        machineId = try c.decode(UUID.self, forKey: .machineId)
+        productId = try c.decode(UUID.self, forKey: .productId)
+        removedAt = try c.decode(Date.self, forKey: .removedAt)
+        offeredSince = try c.decodeIfPresent(Date.self, forKey: .offeredSince)
+        daysOffered = try c.decodeIfPresent(Int.self, forKey: .daysOffered)
+        unitsSold = try c.decodeIfPresent(Int.self, forKey: .unitsSold) ?? 0
+        estimated = try c.decodeIfPresent(Bool.self, forKey: .estimated) ?? false
+    }
+}
+
 // MARK: - Slot Rebuild (change note)
 
 /// One slot of the change note, as handled at the machine.
@@ -358,6 +401,10 @@ final class RefillWizardViewModel: ObservableObject {
     /// Product categories used to label/group products in the replacement
     /// picker. Loaded alongside `availableProducts` in `loadData()`.
     @Published var productCategories: [ProductCategory] = []
+    /// machine id → product id → removal: products taken out of a machine
+    /// within the cool-down, marked and sorted last in the replacement
+    /// picker. Empty when the lookup fails — advice, never a blocker.
+    @Published var recentRemovals: [UUID: [UUID: RecentRemoval]] = [:]
     /// Set after review step completes, so re-loading data doesn't re-trigger review.
     private var reviewCompleted = false
     @Published var warehouses: [Warehouse] = []
@@ -1757,6 +1804,11 @@ final class RefillWizardViewModel: ObservableObject {
 
                 self.replacements = suggestions
                 print("[RefillWizard] Found \(suggestions.count) replacement suggestions")
+                if !suggestions.isEmpty {
+                    self.recentRemovals = await fetchRecentRemovals(
+                        machineIds: Array(Set(suggestions.map(\.machineId)))
+                    )
+                }
 
                 // If no replacements needed, skip review step
                 if suggestions.isEmpty {
@@ -1777,6 +1829,30 @@ final class RefillWizardViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    /// Products recently taken out of these machines, for the replacement
+    /// picker (`get_recent_product_removals`). A failing lookup returns
+    /// nothing rather than blocking the review.
+    private func fetchRecentRemovals(machineIds: [UUID]) async -> [UUID: [UUID: RecentRemoval]] {
+        struct Response: Decodable {
+            let removals: [RecentRemoval]
+        }
+        do {
+            let response: Response = try await client.rpc("get_recent_product_removals", params: [
+                "p_machine_ids": AnyJSON.array(machineIds.map { AnyJSON.string($0.uuidString) }),
+            ]).execute().value
+            var result: [UUID: [UUID: RecentRemoval]] = [:]
+            for removal in response.removals {
+                if let known = result[removal.machineId]?[removal.productId],
+                   known.removedAt >= removal.removedAt { continue }
+                result[removal.machineId, default: [:]][removal.productId] = removal
+            }
+            return result
+        } catch {
+            print("[RefillWizard] get_recent_product_removals failed: \(error)")
+            return [:]
+        }
     }
 
     /// Load stock for a specific warehouse. Also loads the physical pick

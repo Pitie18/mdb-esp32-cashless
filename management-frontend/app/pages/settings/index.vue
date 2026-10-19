@@ -18,6 +18,7 @@ const isAdmin = computed(() => role.value === 'admin')
       <SettingsImprintCard />
       <SettingsAiKeyCard />
       <SettingsLowStockCard />
+      <SettingsRemovalCooldownCard />
       <SettingsStripeCard />
       <SettingsDealSearchCard />
       <SettingsTaxCard />

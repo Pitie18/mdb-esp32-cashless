@@ -27,6 +27,8 @@ import xyz.vmflow.data.PlannedChange
 import xyz.vmflow.data.RebuildAction
 import xyz.vmflow.data.RebuildLeftover
 import xyz.vmflow.data.RebuildSlot
+import xyz.vmflow.data.RecentRemoval
+import xyz.vmflow.data.RecentRemovalRepository
 import xyz.vmflow.data.RefillRepository
 import xyz.vmflow.data.RefillReviewLogic
 import xyz.vmflow.data.RefillTourLogic
@@ -166,6 +168,12 @@ data class RefillUiState(
     val replacements: List<ReplacementSuggestion> = emptyList(),
     val availableProducts: List<Product> = emptyList(),
     val productCategories: List<ProductCategory> = emptyList(),
+    /**
+     * `machineId -> productId -> removal`: products taken out of a machine
+     * within the company's cool-down, marked and sorted last in the
+     * replacement picker. Empty on a failed fetch — advice, never a blocker.
+     */
+    val recentRemovals: Map<String, Map<String, RecentRemoval>> = emptyMap(),
     val isApplyingReplacements: Boolean = false,
     val currentMachineId: String? = null,
     val tourId: String = "",
@@ -888,10 +896,20 @@ class RefillViewModel : ViewModel() {
             found.filter { it.trayId !in pendingTrayIds }
         }
 
+        // Only when there is something to review; one call for every
+        // machine with a suggestion.
+        val removals = if (suggestions.isEmpty()) {
+            emptyMap()
+        } else {
+            RecentRemovalRepository.fetch(suggestions.map { it.machineId }.distinct())
+                .getOrDefault(emptyMap())
+        }
+
         _uiState.update {
             it.copy(
                 availableProducts = products,
                 productCategories = categories,
+                recentRemovals = removals,
                 replacements = suggestions,
                 step = if (suggestions.isEmpty()) RefillStep.PACKING else RefillStep.REVIEW
             )
