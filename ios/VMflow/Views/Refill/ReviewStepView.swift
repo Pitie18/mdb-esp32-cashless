@@ -62,6 +62,7 @@ struct ReviewStepView: View {
                     },
                     currentCategoryId: viewModel.currentCategoryId(forTrayId: trayId),
                     categories: viewModel.productCategories,
+                    recentRemovals: recentRemovals(forTrayId: trayId),
                     onSelect: { productId in
                         viewModel.setReplacement(trayId: trayId, productId: productId)
                         pickerTrayId = nil
@@ -301,6 +302,15 @@ struct ReviewStepView: View {
         else { return nil }
         return viewModel.allTraysByMachine[suggestion.machineId]?
             .first(where: { $0.id == trayId })
+    }
+
+    // MARK: - Recent Removals
+
+    /// Products recently taken out of the machine of the tray being replaced.
+    private func recentRemovals(forTrayId trayId: UUID) -> [UUID: RecentRemoval] {
+        guard let suggestion = viewModel.replacements.first(where: { $0.trayId == trayId })
+        else { return [:] }
+        return viewModel.recentRemovals[suggestion.machineId] ?? [:]
     }
 
     // MARK: - Existing Slots

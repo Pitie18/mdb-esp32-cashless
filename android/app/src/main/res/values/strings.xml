@@ -548,6 +548,15 @@
     </plurals>
     <string name="refill_picker_slot_badge">Slot %1$s</string>
     <string name="refill_picker_slot_badge_overflow">Slot %1$s +%2$d</string>
+    <string name="refill_picker_removed_badge">Removed %1$s</string>
+    <plurals name="refill_picker_removed_units">
+        <item quantity="one">%d sold</item>
+        <item quantity="other">%d sold</item>
+    </plurals>
+    <plurals name="refill_picker_removed_units_in_days">
+        <item quantity="one">%1$s in %2$d day</item>
+        <item quantity="other">%1$s in %2$d days</item>
+    </plurals>
     <plurals name="refill_picker_slot_badge_a11y">
         <item quantity="one">Already in slot %1$s</item>
         <item quantity="other">Already in slots %1$s</item>
