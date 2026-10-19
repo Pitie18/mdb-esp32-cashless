@@ -17,6 +17,11 @@ import {
   IconArrowUp, IconArrowDown, IconArrowsSort, IconArrowLeft, IconSettings,
 } from '@tabler/icons-vue'
 import WarehouseProductSheet from '@/components/warehouse/WarehouseProductSheet.vue'
+import WarehouseOrderTab from '@/components/warehouse/WarehouseOrderTab.vue'
+import WarehouseExpectedDeliveries from '@/components/warehouse/WarehouseExpectedDeliveries.vue'
+import WarehouseSupplierSettings from '@/components/warehouse/WarehouseSupplierSettings.vue'
+import { usePurchaseOrders, type PurchaseOrder, type ReceiveLineInput } from '@/composables/usePurchaseOrders'
+import { buildOrderGroups, orderLineCount, type OrderGroup, type OrderProductInput, type OrderSettings } from '@/lib/orderSuggestion'
 import {
   chipCounts, matchesChip, resolveWarehouseView,
   type StockChip, type WarehouseTab, type SetupSection,
@@ -33,7 +38,7 @@ const { t, locale } = useI18n()
 const { organization, role } = useOrganization()
 const { products, categories, fetchProducts, createProduct, uploadProductImage, toggleDiscontinued } = useProducts()
 const {
-  warehouses, batches, transactions, productSummaries, barcodes,
+  warehouses, batches, transactions, productSummaries: rawSummaries, barcodes,
   loading, transactionLoading, transactionHasMore,
   fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse,
   fetchBarcodes, lookupBarcode, addBarcode, removeBarcode,
@@ -45,13 +50,17 @@ const {
   subscribeToStockUpdates,
   transactionTypeLabel, transactionTypeBadgeClass,
 } = useWarehouse()
+const ordering = usePurchaseOrders()
+const {
+  suppliers: orderSuppliers, settings: orderSettings, manualEntries, openOrders, productInfo,
+} = ordering
 
 const isAdmin = computed(() => role.value === 'admin')
 
 const route = useRoute()
 const router = useRouter()
 const STOCK_CHIPS: StockChip[] = ['all', 'action', 'expiring', 'hidden']
-const SETUP_SECTIONS: SetupSection[] = ['warehouses', 'positions', 'barcodes', 'calculation']
+const SETUP_SECTIONS: SetupSection[] = ['warehouses', 'positions', 'suppliers', 'barcodes', 'calculation']
 const initialView = resolveWarehouseView(route.query.tab, route.query.section, isAdmin.value)
 const activeTab = ref<WarehouseTab>(initialView.tab)
 const setupSection = ref<SetupSection>(initialView.section)
@@ -90,7 +99,7 @@ const selectedWarehouse = computed(() =>
 )
 
 const pullRefreshHandler = async () => {
-  await Promise.all([fetchWarehouses(), fetchProducts(), fetchMachineStockValue()])
+  await Promise.all([fetchWarehouses(), fetchProducts(), fetchMachineStockValue(), loadOrderingBase()])
   if (selectedWarehouseId.value) await loadWarehouseData()
 }
 usePullToRefresh(pullRefreshHandler)
@@ -104,13 +113,14 @@ if (import.meta.client) {
 }
 
 let unsubscribe: (() => void) | null = null
+let unsubscribeOrdering: (() => void) | null = null
 
 onMounted(async () => {
   // Load sortablejs client-side only
   const mod = await import('sortablejs')
   _Sortable = mod.default
 
-  await Promise.all([fetchWarehouses(), fetchProducts(), fetchMachineStockValue(), fetchVelocityDays()])
+  await Promise.all([fetchWarehouses(), fetchProducts(), fetchMachineStockValue(), fetchVelocityDays(), loadOrderingBase()])
   const first = warehouses.value[0]
   if (first) {
     selectedWarehouseId.value = first.id
@@ -120,13 +130,16 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unsubscribe?.()
+  unsubscribeOrdering?.()
 })
 
 watch(selectedWarehouseId, async (id) => {
   unsubscribe?.()
+  unsubscribeOrdering?.()
   if (id) {
     await loadWarehouseData()
     unsubscribe = subscribeToStockUpdates(id)
+    unsubscribeOrdering = ordering.subscribe(id, () => {})
     // A deep link (?tab=history, ?tab=setup&section=positions) opens before
     // the warehouse is known; load that view's data now.
     if (activeTab.value === 'history') loadHistory()
@@ -141,8 +154,31 @@ async function loadWarehouseData() {
     fetchProductSummaries(id),
     fetchBatches(id),
     fetchMinStocks(id),
+    ordering.fetchManualEntries(id).catch(() => {}),
+    ordering.fetchOpenOrders(id).catch(() => {}),
   ])
 }
+
+// Suppliers first: the latest purchase price names its supplier.
+async function loadOrderingBase() {
+  try {
+    await Promise.all([ordering.fetchSuppliers(), ordering.fetchSettings()])
+    await ordering.fetchProductInfo()
+  } catch {
+    // Ordering is optional on the page; the stock tab works without it.
+  }
+}
+
+/**
+ * Reach counts machine stock when the company says so (Setup › Calculation),
+ * the same rule the order suggestion uses.
+ */
+const productSummaries = computed<WarehouseProductSummary[]>(() => {
+  if (!orderSettings.value.countMachineStock) return rawSummaries.value
+  return rawSummaries.value.map(p => p.avg_daily_sales > 0
+    ? { ...p, estimated_days_remaining: Math.round((p.total_quantity + machineStockFor(p.product_id)) / p.avg_daily_sales) }
+    : p)
+})
 
 // ── KPIs ────────────────────────────────────────────────────────────────────
 
@@ -196,8 +232,14 @@ const machineStockValue = computed(() =>
 
 const assignedProductIds = computed(() => new Set(machineTrays.value.map(t => t.product_id)))
 
+const machineStockByProduct = computed(() => {
+  const map = new Map<string, number>()
+  for (const t of machineTrays.value) map.set(t.product_id, (map.get(t.product_id) ?? 0) + t.current_stock)
+  return map
+})
+
 function machineStockFor(productId: string): number {
-  return machineTrays.value.reduce((sum, t) => t.product_id === productId ? sum + t.current_stock : sum, 0)
+  return machineStockByProduct.value.get(productId) ?? 0
 }
 
 function isAssignedToMachine(productId: string): boolean {
@@ -313,6 +355,214 @@ function sortSummaries(items: WarehouseProductSummary[]) {
 function batchesForProduct(productId: string): StockBatch[] {
   return batches.value.filter(b => b.product_id === productId)
 }
+
+// ── Order tab ───────────────────────────────────────────────────────────────
+
+/** Quantities changed in the order tab, in cartons. Kept until ordered. */
+const orderOverrides = ref<Record<string, number>>({})
+const placingSupplierId = ref<string | null>(null)
+const receivingOrderId = ref<string | null>(null)
+const focusOrderId = ref<string | null>(null)
+const notice = ref<{ kind: 'ok' | 'error'; text: string } | null>(null)
+let noticeTimer: ReturnType<typeof setTimeout> | null = null
+
+function showNotice(kind: 'ok' | 'error', text: string) {
+  notice.value = { kind, text }
+  if (noticeTimer) clearTimeout(noticeTimer)
+  noticeTimer = setTimeout(() => { notice.value = null }, 5000)
+}
+
+const productById = computed(() => new Map(products.value.map(p => [p.id, p])))
+
+const orderInputs = computed<OrderProductInput[]>(() => productSummaries.value.map(p => {
+  const info = productInfo.value.get(p.product_id)
+  return {
+    product_id: p.product_id,
+    product_name: p.product_name,
+    image_path: p.product_image_path,
+    discontinued: p.discontinued,
+    warehouse_qty: p.total_quantity,
+    machine_qty: machineStockFor(p.product_id),
+    avg_daily_sales: p.avg_daily_sales,
+    on_order: ordering.onOrderFor(p.product_id),
+    unit_size: info?.order_unit_size ?? 1,
+    supplier_id: ordering.supplierFor(p.product_id),
+    unit_price_net: info?.latest_price_net ?? null,
+  }
+}))
+
+const orderGroups = computed<OrderGroup[]>(() => buildOrderGroups({
+  products: orderInputs.value,
+  suppliers: orderSuppliers.value,
+  manual: manualEntries.value,
+  overrides: orderOverrides.value,
+  settings: orderSettings.value,
+}))
+
+const orderCount = computed(() => orderLineCount(orderGroups.value))
+
+const supplierProductCounts = computed(() => {
+  const counts: Record<string, number> = {}
+  for (const p of orderInputs.value) {
+    if (p.supplier_id && !p.discontinued) counts[p.supplier_id] = (counts[p.supplier_id] ?? 0) + 1
+  }
+  return counts
+})
+
+function errorText(e: unknown): string {
+  return (e as { message?: string })?.message ?? String(e)
+}
+
+function onSetCartons(productId: string, cartons: number) {
+  orderOverrides.value = { ...orderOverrides.value, [productId]: Math.max(0, cartons) }
+}
+
+function onResetCartons(productId: string) {
+  const next = { ...orderOverrides.value }
+  delete next[productId]
+  orderOverrides.value = next
+}
+
+async function onAddToOrderList(productId: string) {
+  if (!selectedWarehouseId.value) return
+  try {
+    await ordering.addToOrderList(selectedWarehouseId.value, productId)
+  } catch (e) {
+    showNotice('error', errorText(e))
+  }
+}
+
+async function onRemoveFromOrderList(productId: string) {
+  if (!selectedWarehouseId.value) return
+  try {
+    await ordering.removeFromOrderList(selectedWarehouseId.value, productId)
+    onResetCartons(productId)
+  } catch (e) {
+    showNotice('error', errorText(e))
+  }
+}
+
+async function onSaveOrdering(productId: string, updates: { preferred_supplier_id?: string | null; order_unit_size?: number }) {
+  try {
+    await ordering.updateProductOrdering(productId, updates)
+    onResetCartons(productId)
+  } catch (e) {
+    showNotice('error', errorText(e))
+  }
+}
+
+async function onAssignSupplier(productId: string, supplierId: string) {
+  await onSaveOrdering(productId, { preferred_supplier_id: supplierId })
+  const name = orderSuppliers.value.find(s => s.id === supplierId)?.name ?? ''
+  const product = productById.value.get(productId)?.name ?? ''
+  showNotice('ok', t('warehouse.order.assigned', { product, supplier: name }))
+}
+
+async function onPlaceOrder(group: OrderGroup) {
+  if (!selectedWarehouseId.value || !group.supplier) return
+  const lines = group.lines.filter(l => l.cartons > 0).map(l => ({
+    product_id: l.product.product_id,
+    quantity: l.units,
+    unit_size: Math.max(1, l.product.unit_size),
+    unit_price_net: l.product.unit_price_net,
+  }))
+  if (!lines.length) return
+  placingSupplierId.value = group.supplier.id
+  try {
+    await ordering.placeOrder(selectedWarehouseId.value, group.supplier.id, lines)
+    const next = { ...orderOverrides.value }
+    for (const l of group.lines) delete next[l.product.product_id]
+    orderOverrides.value = next
+    showNotice('ok', t('warehouse.order.placed', { supplier: group.supplier.name }))
+  } catch (e) {
+    showNotice('error', errorText(e))
+  } finally {
+    placingSupplierId.value = null
+  }
+}
+
+async function onCancelOrder(order: PurchaseOrder) {
+  if (!window.confirm(t('warehouse.order.cancelConfirm', { supplier: order.supplier_name ?? '' }))) return
+  try {
+    await ordering.cancelOrder(order)
+  } catch (e) {
+    showNotice('error', errorText(e))
+  }
+}
+
+function onCheckDelivery(order: PurchaseOrder) {
+  focusOrderId.value = order.id
+  setTab('incoming')
+}
+
+async function onReceiveOrder(order: PurchaseOrder, lines: ReceiveLineInput[]) {
+  if (!selectedWarehouseId.value) return
+  receivingOrderId.value = order.id
+  try {
+    const res = await ordering.receiveOrder(order, lines)
+    focusOrderId.value = null
+    showNotice('ok', t('warehouse.order.received', { count: res.units }))
+    await Promise.all([fetchProductSummaries(selectedWarehouseId.value), fetchBatches(selectedWarehouseId.value)])
+  } catch (e) {
+    showNotice('error', errorText(e))
+  } finally {
+    receivingOrderId.value = null
+  }
+}
+
+async function onCloseOrder(order: PurchaseOrder) {
+  if (!window.confirm(t('warehouse.order.closeConfirm'))) return
+  receivingOrderId.value = order.id
+  try {
+    await ordering.closeOrder(order)
+    focusOrderId.value = null
+  } catch (e) {
+    showNotice('error', errorText(e))
+  } finally {
+    receivingOrderId.value = null
+  }
+}
+
+async function onUpdateSupplier(id: string, updates: Record<string, string | number | null>) {
+  try {
+    await ordering.updateSupplier(id, updates)
+  } catch (e) {
+    showNotice('error', errorText(e))
+  }
+}
+
+async function onCreateSupplier(name: string) {
+  try {
+    await ordering.createSupplier(name)
+  } catch (e) {
+    showNotice('error', errorText(e))
+  }
+}
+
+async function onSaveOrderSettings(patch: Partial<OrderSettings>) {
+  try {
+    await ordering.saveSettings({ ...orderSettings.value, ...patch })
+  } catch (e) {
+    showNotice('error', errorText(e))
+  }
+}
+
+function onOrderSettingNumber(key: 'bufferDays' | 'defaultLeadDays' | 'defaultIntervalDays', e: Event) {
+  const n = parseInt((e.target as HTMLInputElement).value, 10)
+  const min = key === 'defaultIntervalDays' ? 1 : 0
+  if (!Number.isFinite(n) || n < min) return
+  onSaveOrderSettings({ [key]: Math.min(365, n) })
+}
+
+const detailOrderLine = computed(() => {
+  const id = detailProductId.value
+  if (!id) return null
+  for (const g of orderGroups.value) {
+    const l = g.lines.find(x => x.product.product_id === id)
+    if (l) return l
+  }
+  return null
+})
 
 // ── Positions tab state ─────────────────────────────────────────────────────
 
@@ -1153,15 +1403,32 @@ async function onVelocityDaysChange(e: Event) {
       </button>
     </div>
 
+    <div
+      v-if="notice"
+      role="status"
+      class="rounded-md border px-3 py-2 text-sm"
+      :class="notice.kind === 'ok' ? 'border-green-300 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300' : 'border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300'"
+    >
+      {{ notice.text }}
+    </div>
+
     <!-- Tabs -->
     <Tabs v-if="warehouses.length > 0 && activeTab !== 'setup'" :model-value="activeTab" @update:model-value="setTab($event as WarehouseTab)">
       <div class="overflow-x-auto -mx-4 px-4 scrollbar-none">
         <TabsList>
           <TabsTrigger value="stock">{{ t('warehouse.stockTab') }}</TabsTrigger>
-          <TabsTrigger value="incoming">{{ t('warehouse.incoming') }}</TabsTrigger>
+          <TabsTrigger value="order" class="gap-1.5">
+            {{ t('warehouse.order.tab') }}
+            <span v-if="orderCount" class="min-w-[1.125rem] rounded-full bg-violet-100 px-1.5 text-[11px] font-semibold leading-[1.125rem] text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">{{ orderCount }}</span>
+          </TabsTrigger>
+          <TabsTrigger value="incoming" class="gap-1.5">
+            {{ t('warehouse.incoming') }}
+            <span v-if="openOrders.length" class="min-w-[1.125rem] rounded-full bg-violet-100 px-1.5 text-[11px] font-semibold leading-[1.125rem] text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">{{ openOrders.length }}</span>
+          </TabsTrigger>
           <TabsTrigger value="history">{{ t('warehouse.historyTab') }}</TabsTrigger>
         </TabsList>
       </div>
+
 
       <!-- ═══════════════════════════════════════════════════════════════════ -->
       <!-- STOCK TAB (was: overview + stock)                                  -->
@@ -1329,7 +1596,13 @@ async function onVelocityDaysChange(e: Event) {
                         {{ expirationLabel(p.expiration_status) }}
                       </span>
                       <span
-                        v-if="p.total_quantity > 0 && p.expiration_status === 'ok' && !p.is_below_min && !p.discontinued && isAssignedToMachine(p.product_id)"
+                        v-if="ordering.onOrderFor(p.product_id) > 0"
+                        class="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                      >
+                        {{ t('warehouse.order.onTheWayUnits', { count: ordering.onOrderFor(p.product_id) }) }}
+                      </span>
+                      <span
+                        v-if="p.total_quantity > 0 && p.expiration_status === 'ok' && !p.is_below_min && !p.discontinued && isAssignedToMachine(p.product_id) && ordering.onOrderFor(p.product_id) === 0"
                         class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/40 dark:text-green-400"
                       >
                         {{ t('warehouse.ok') }}
@@ -1350,10 +1623,42 @@ async function onVelocityDaysChange(e: Event) {
           :machine-stock="detailProductId ? machineStockFor(detailProductId) : 0"
           :assigned="detailProductId ? isAssignedToMachine(detailProductId) : false"
           :is-admin="isAdmin"
+          :on-order="detailProductId ? ordering.onOrderFor(detailProductId) : 0"
+          :auto-order="!!detailOrderLine?.auto"
+          :manual-entry="detailOrderLine?.manual ?? manualEntries.find(m => m.product_id === detailProductId) ?? null"
+          :suppliers="orderSuppliers"
+          :supplier-id="detailProductId ? ordering.supplierFor(detailProductId) : null"
+          :unit-size="detailProductId ? (productInfo.get(detailProductId)?.order_unit_size ?? 1) : 1"
           @update:open="(v: boolean) => { if (!v) detailProductId = null }"
           @adjust="openAdjust"
           @save-min-stock="onSaveMinStock"
           @toggle-discontinued="onToggleDiscontinued"
+          @add-to-order-list="detailProductId && onAddToOrderList(detailProductId)"
+          @remove-from-order-list="detailProductId && onRemoveFromOrderList(detailProductId)"
+          @save-ordering="(u: { preferred_supplier_id?: string | null; order_unit_size?: number }) => detailProductId && onSaveOrdering(detailProductId, u)"
+        />
+      </TabsContent>
+
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <!-- ORDER TAB                                                          -->
+      <!-- ═══════════════════════════════════════════════════════════════════ -->
+      <TabsContent value="order">
+        <WarehouseOrderTab
+          :groups="orderGroups"
+          :open-orders="openOrders"
+          :suppliers="orderSuppliers"
+          :settings="orderSettings"
+          :is-admin="isAdmin"
+          :busy-supplier-id="placingSupplierId"
+          @set-cartons="onSetCartons"
+          @reset-cartons="onResetCartons"
+          @remove-manual="onRemoveFromOrderList"
+          @add-product="onAddToOrderList"
+          @assign-supplier="onAssignSupplier"
+          @place="onPlaceOrder"
+          @cancel-order="onCancelOrder"
+          @check-delivery="onCheckDelivery"
+          @open-setup="(s: SetupSection) => { setupSection = s; setTab('setup') }"
         />
       </TabsContent>
 
@@ -1362,8 +1667,17 @@ async function onVelocityDaysChange(e: Event) {
       <!-- INCOMING TAB                                                       -->
       <!-- ═══════════════════════════════════════════════════════════════════ -->
       <TabsContent value="incoming">
-        <div class="mx-auto flex max-w-lg flex-col gap-4">
-          <h2 class="text-lg font-semibold">{{ t('warehouse.incomingGoods') }}</h2>
+        <div class="grid gap-8" :class="openOrders.length ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)]' : ''">
+        <WarehouseExpectedDeliveries
+          v-if="openOrders.length"
+          :orders="openOrders"
+          :focus-order-id="focusOrderId"
+          :busy-order-id="receivingOrderId"
+          @receive="onReceiveOrder"
+          @close="onCloseOrder"
+        />
+        <div class="flex w-full flex-col gap-4" :class="openOrders.length ? '' : 'mx-auto max-w-lg'">
+          <h2 class="text-lg font-semibold">{{ openOrders.length ? t('warehouse.order.singleIntake') : t('warehouse.incomingGoods') }}</h2>
 
           <!-- Barcode scanner area -->
           <div class="flex flex-col gap-2">
@@ -1488,9 +1802,10 @@ async function onVelocityDaysChange(e: Event) {
                 <div v-else class="flex size-5 items-center justify-center rounded bg-muted text-[10px] font-medium text-muted-foreground">{{ item.product_name.charAt(0) }}</div>
                 <span>{{ item.quantity }}x {{ item.product_name }}</span>
               </NuxtLink>
-              <span v-if="item.expiration" class="text-muted-foreground">{{ t('warehouse.mhd', { date: formatDate(item.expiration, locale.value) }) }}</span>
+              <span v-if="item.expiration" class="text-muted-foreground">{{ t('warehouse.mhd', { date: formatDate(item.expiration, locale) }) }}</span>
             </div>
           </div>
+        </div>
         </div>
       </TabsContent>
 
@@ -1911,6 +2226,17 @@ async function onVelocityDaysChange(e: Event) {
           </div>
         </div>
 
+        <div v-else-if="setupSection === 'suppliers'" class="flex flex-col gap-6">
+          <h2 class="text-lg font-semibold">{{ t('warehouse.setupSection.suppliers') }}</h2>
+          <WarehouseSupplierSettings
+            :suppliers="orderSuppliers"
+            :product-counts="supplierProductCounts"
+            :settings="orderSettings"
+            @update="onUpdateSupplier"
+            @create="onCreateSupplier"
+          />
+        </div>
+
         <div v-else-if="setupSection === 'barcodes'" class="flex flex-col gap-6">
           <!-- Barcode management -->
           <div>
@@ -1988,6 +2314,46 @@ async function onVelocityDaysChange(e: Event) {
                 <option :value="90">{{ t('warehouse.velocityDays90') }}</option>
               </select>
             </div>
+          </div>
+
+          <!-- Order suggestion -->
+          <div class="flex flex-col gap-4">
+            <div>
+              <h2 class="text-lg font-semibold">{{ t('warehouse.order.calcTitle') }}</h2>
+              <p class="text-sm text-muted-foreground">{{ t('warehouse.order.calcDescription') }}</p>
+            </div>
+            <div class="flex items-start justify-between gap-4 rounded-lg border p-4">
+              <div>
+                <div class="text-sm font-medium">{{ t('warehouse.order.countMachineStock') }}</div>
+                <p class="text-xs text-muted-foreground">{{ t('warehouse.order.countMachineStockHint') }}</p>
+              </div>
+              <button
+                role="switch"
+                :aria-checked="orderSettings.countMachineStock"
+                :aria-label="t('warehouse.order.countMachineStock')"
+                class="relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors"
+                :class="orderSettings.countMachineStock ? 'bg-primary' : 'bg-input'"
+                @click="onSaveOrderSettings({ countMachineStock: !orderSettings.countMachineStock })"
+              >
+                <span class="inline-block size-4 rounded-full bg-background shadow transition-transform" :class="orderSettings.countMachineStock ? 'translate-x-4' : 'translate-x-0.5'" />
+              </button>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-3">
+              <label class="flex flex-col gap-1 text-sm">
+                <span class="font-medium">{{ t('warehouse.order.bufferDays') }}</span>
+                <input type="number" min="0" :value="orderSettings.bufferDays" class="h-9 rounded-md border border-input bg-background px-3 text-sm" @change="onOrderSettingNumber('bufferDays', $event)" />
+                <span class="text-xs text-muted-foreground">{{ t('warehouse.order.bufferDaysHint') }}</span>
+              </label>
+              <label class="flex flex-col gap-1 text-sm">
+                <span class="font-medium">{{ t('warehouse.order.defaultLead') }}</span>
+                <input type="number" min="0" :value="orderSettings.defaultLeadDays" class="h-9 rounded-md border border-input bg-background px-3 text-sm" @change="onOrderSettingNumber('defaultLeadDays', $event)" />
+              </label>
+              <label class="flex flex-col gap-1 text-sm">
+                <span class="font-medium">{{ t('warehouse.order.defaultInterval') }}</span>
+                <input type="number" min="1" :value="orderSettings.defaultIntervalDays" class="h-9 rounded-md border border-input bg-background px-3 text-sm" @change="onOrderSettingNumber('defaultIntervalDays', $event)" />
+              </label>
+            </div>
+            <p class="text-xs text-muted-foreground">{{ t('warehouse.order.defaultsHint') }}</p>
           </div>
         </div>
       </div>

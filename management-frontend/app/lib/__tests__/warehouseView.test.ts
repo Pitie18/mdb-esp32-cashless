@@ -64,13 +64,15 @@ describe('resolveWarehouseView', () => {
     expect(resolveWarehouseView('settings', undefined, true)).toEqual({ tab: 'setup', section: 'warehouses' })
   })
 
-  it('keeps incoming and history', () => {
+  it('keeps order, incoming and history', () => {
+    expect(resolveWarehouseView('order', undefined, false).tab).toBe('order')
     expect(resolveWarehouseView('incoming', undefined, false).tab).toBe('incoming')
     expect(resolveWarehouseView('history', undefined, false).tab).toBe('history')
   })
 
   it('opens a setup section', () => {
     expect(resolveWarehouseView('setup', 'barcodes', true)).toEqual({ tab: 'setup', section: 'barcodes' })
+    expect(resolveWarehouseView('setup', 'suppliers', true)).toEqual({ tab: 'setup', section: 'suppliers' })
     expect(resolveWarehouseView('setup', 'nope', true)).toEqual({ tab: 'setup', section: 'warehouses' })
   })
 

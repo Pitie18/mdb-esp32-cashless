@@ -3,8 +3,9 @@
  * shows, and which view an incoming `?tab=` link opens.
  *
  * The page used to have six tabs (overview, stock, incoming, history,
- * positions, settings) and three filter checkboxes. It now has three tabs
- * (stock, incoming, history) plus a separate setup view, and one row of chips.
+ * positions, settings) and three filter checkboxes. It now has four tabs
+ * (stock, order, incoming, history) plus a separate setup view, and one row
+ * of chips.
  */
 
 export type StockChip = 'all' | 'action' | 'expiring' | 'hidden'
@@ -57,10 +58,10 @@ export function chipCounts(items: StockChipItem[], assignedIds: Set<string>): Re
   return counts
 }
 
-export type WarehouseTab = 'stock' | 'incoming' | 'history' | 'setup'
-export type SetupSection = 'warehouses' | 'positions' | 'barcodes' | 'calculation'
+export type WarehouseTab = 'stock' | 'order' | 'incoming' | 'history' | 'setup'
+export type SetupSection = 'warehouses' | 'positions' | 'suppliers' | 'barcodes' | 'calculation'
 
-const SETUP_SECTIONS: SetupSection[] = ['warehouses', 'positions', 'barcodes', 'calculation']
+const SETUP_SECTIONS: SetupSection[] = ['warehouses', 'positions', 'suppliers', 'barcodes', 'calculation']
 
 /**
  * Map a `?tab=` (and `?section=`) query to a view. Old links keep working:
@@ -75,6 +76,7 @@ export function resolveWarehouseView(
   const s = SETUP_SECTIONS.includes(section as SetupSection) ? (section as SetupSection) : 'warehouses'
   let resolved: { tab: WarehouseTab; section: SetupSection }
   switch (tab) {
+    case 'order': resolved = { tab: 'order', section: s }; break
     case 'incoming': resolved = { tab: 'incoming', section: s }; break
     case 'history': resolved = { tab: 'history', section: s }; break
     case 'positions': resolved = { tab: 'setup', section: 'positions' }; break
