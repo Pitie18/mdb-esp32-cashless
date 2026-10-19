@@ -138,7 +138,7 @@ private data class PurchaseSummaryRow(
 )
 
 @Serializable
-private data class TrayStockRow(
+private data class OrderTrayStockRow(
     @SerialName("product_id") val productId: String? = null,
     @SerialName("current_stock") val currentStock: Int? = null,
 )
@@ -148,7 +148,7 @@ private data class TrayStockRow(
  * deliveries under Incoming: suppliers with their ordering rhythm, the
  * company's calculation settings, manual order-list entries and open
  * purchase orders. The suggestion itself is [OrderSuggestion]. Same queries
- * and RPCs (`Docker/supabase/migrations/*_purchase_ordering.sql`) as the
+ * and RPCs (the purchase ordering migration in `Docker/supabase/migrations`) as the
  * web's `usePurchaseOrders` and iOS `PurchaseOrderService`.
  */
 object PurchaseOrderRepository {
@@ -261,7 +261,7 @@ object PurchaseOrderRepository {
                     order("id", Order.ASCENDING)
                     range(from, to)
                 }
-                .decodeList<TrayStockRow>()
+                .decodeList<OrderTrayStockRow>()
         }
         val stock = mutableMapOf<String, Int>()
         for (r in rows) {
