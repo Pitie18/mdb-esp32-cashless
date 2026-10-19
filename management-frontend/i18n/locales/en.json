@@ -1139,7 +1139,46 @@
     "velocityDays14": "Last 14 days",
     "velocityDays30": "Last 30 days",
     "velocityDays60": "Last 60 days",
-    "velocityDays90": "Last 90 days"
+    "velocityDays90": "Last 90 days",
+    "setupTitle": "Warehouse setup",
+    "setup": "Setup",
+    "backToWarehouse": "Back to warehouse",
+    "bookStock": "Book stock",
+    "needsAction": "Needs attention",
+    "needsActionHint": "{empty} empty · {low} below minimum · or expiring",
+    "expiringSoonHint": "Best before within 30 days",
+    "activeProductsCount": "{count} active products",
+    "totalValue": "Stock value",
+    "valueSplit": "Warehouse {warehouse} · machines {machines}",
+    "filter": "Filter",
+    "chip": {
+      "all": "All",
+      "action": "Needs attention",
+      "expiring": "Expiring soon",
+      "hidden": "Hidden"
+    },
+    "stockTableHint": "Click a product for batches, corrections and its minimum stock. \"Hidden\" lists discontinued products and products in no machine that still have stock.",
+    "setupSection": {
+      "warehouses": "Warehouses",
+      "positions": "Packing order",
+      "barcodes": "Barcodes",
+      "calculation": "Calculation"
+    },
+    "setupSectionHint": {
+      "warehouses": "Name and address",
+      "positions": "Shelf layout for refill tours",
+      "barcodes": "Barcode to product",
+      "calculation": "Coverage period"
+    },
+    "openProduct": "Open product",
+    "inWarehouse": "Warehouse",
+    "inMachines": "Machines",
+    "avgDailySales": "Ø {count} sold per day",
+    "batchesInWarehouse": "Batches in this warehouse",
+    "noBatches": "No batch in stock.",
+    "unitsShort": "{count} units",
+    "minStockHint": "At or below this level the product shows as low and a push alert is sent.",
+    "discontinuedHint": "Hidden by default and no longer refilled."
   },
   "devices": {
     "title": "Devices",

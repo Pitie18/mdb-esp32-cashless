@@ -1139,7 +1139,46 @@
     "velocityDays14": "Laatste 14 dagen",
     "velocityDays30": "Laatste 30 dagen",
     "velocityDays60": "Laatste 60 dagen",
-    "velocityDays90": "Laatste 90 dagen"
+    "velocityDays90": "Laatste 90 dagen",
+    "setupTitle": "Magazijn inrichten",
+    "setup": "Inrichten",
+    "backToWarehouse": "Terug naar magazijn",
+    "bookStock": "Voorraad boeken",
+    "needsAction": "Actie nodig",
+    "needsActionHint": "{empty} leeg · {low} onder minimum · of vervalt binnenkort",
+    "expiringSoonHint": "THT binnen 30 dagen",
+    "activeProductsCount": "{count} actieve producten",
+    "totalValue": "Voorraadwaarde",
+    "valueSplit": "Magazijn {warehouse} · automaten {machines}",
+    "filter": "Filter",
+    "chip": {
+      "all": "Alle",
+      "action": "Actie nodig",
+      "expiring": "Vervalt binnenkort",
+      "hidden": "Verborgen"
+    },
+    "stockTableHint": "Klik op een product voor partijen, correcties en minimumvoorraad. „Verborgen“ toont uitlopende producten en producten zonder automaat die nog voorraad hebben.",
+    "setupSection": {
+      "warehouses": "Magazijnen",
+      "positions": "Pakvolgorde",
+      "barcodes": "Barcodes",
+      "calculation": "Berekening"
+    },
+    "setupSectionHint": {
+      "warehouses": "Naam en adres",
+      "positions": "Indeling voor bijvultochten",
+      "barcodes": "Barcode naar product",
+      "calculation": "Periode voor dekking"
+    },
+    "openProduct": "Product openen",
+    "inWarehouse": "Magazijn",
+    "inMachines": "Automaten",
+    "avgDailySales": "Ø {count} verkocht per dag",
+    "batchesInWarehouse": "Partijen in het magazijn",
+    "noBatches": "Geen partij op voorraad.",
+    "unitsShort": "{count} stuks",
+    "minStockHint": "Op of onder dit niveau geldt het product als laag en volgt een pushmelding.",
+    "discontinuedHint": "Standaard verborgen en wordt niet meer aangevuld."
   },
   "devices": {
     "title": "Toestellen",

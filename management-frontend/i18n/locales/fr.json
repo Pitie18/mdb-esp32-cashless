@@ -1139,7 +1139,46 @@
     "velocityDays14": "14 derniers jours",
     "velocityDays30": "30 derniers jours",
     "velocityDays60": "60 derniers jours",
-    "velocityDays90": "90 derniers jours"
+    "velocityDays90": "90 derniers jours",
+    "setupTitle": "Configurer l’entrepôt",
+    "setup": "Configurer",
+    "backToWarehouse": "Retour à l’entrepôt",
+    "bookStock": "Enregistrer une entrée",
+    "needsAction": "À traiter",
+    "needsActionHint": "{empty} vides · {low} sous le minimum · ou bientôt périmés",
+    "expiringSoonHint": "DLUO dans les 30 jours",
+    "activeProductsCount": "{count} produits actifs",
+    "totalValue": "Valeur du stock",
+    "valueSplit": "Entrepôt {warehouse} · distributeurs {machines}",
+    "filter": "Filtre",
+    "chip": {
+      "all": "Tous",
+      "action": "À traiter",
+      "expiring": "Bientôt périmés",
+      "hidden": "Masqués"
+    },
+    "stockTableHint": "Cliquez sur un produit pour ses lots, corrections et son stock minimum. « Masqués » liste les produits arrêtés et ceux hors distributeur qui ont encore du stock.",
+    "setupSection": {
+      "warehouses": "Entrepôts",
+      "positions": "Ordre de préparation",
+      "barcodes": "Codes-barres",
+      "calculation": "Calcul"
+    },
+    "setupSectionHint": {
+      "warehouses": "Nom et adresse",
+      "positions": "Rangement pour les tournées",
+      "barcodes": "Code-barres vers produit",
+      "calculation": "Période de couverture"
+    },
+    "openProduct": "Ouvrir le produit",
+    "inWarehouse": "Entrepôt",
+    "inMachines": "Distributeurs",
+    "avgDailySales": "Ø {count} vendus par jour",
+    "batchesInWarehouse": "Lots dans l’entrepôt",
+    "noBatches": "Aucun lot en stock.",
+    "unitsShort": "{count} unités",
+    "minStockHint": "À ce niveau ou en dessous, le produit apparaît comme bas et une alerte push est envoyée.",
+    "discontinuedHint": "Masqué par défaut et plus réapprovisionné."
   },
   "devices": {
     "title": "Appareils",

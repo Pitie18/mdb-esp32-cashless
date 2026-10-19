@@ -7,21 +7,24 @@ let _Sortable: typeof import('sortablejs').default | null = null
 definePageMeta({ middleware: 'auth' })
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import {
-  IconPlus, IconBarcode, IconAdjustments, IconTrash,
+  IconPlus, IconBarcode, IconTrash,
   IconPackageImport, IconChevronDown, IconChevronRight,
-  IconAlertTriangle, IconSearch, IconX,
+  IconSearch, IconX,
   IconGripVertical,
   IconFolder, IconFolderPlus, IconChevronDown as IconChevronDownSmall, IconChevronRight as IconChevronRightSmall,
   IconEdit, IconSquareCheck, IconSquare,
-  IconArrowUp, IconArrowDown, IconArrowsSort,
+  IconArrowUp, IconArrowDown, IconArrowsSort, IconArrowLeft, IconSettings,
 } from '@tabler/icons-vue'
+import WarehouseProductSheet from '@/components/warehouse/WarehouseProductSheet.vue'
+import {
+  chipCounts, matchesChip, resolveWarehouseView,
+  type StockChip, type WarehouseTab, type SetupSection,
+} from '@/lib/warehouseView'
 import { timeAgo, formatCurrency, formatDate } from '@/lib/utils'
 import { getProductImageUrl } from '@/composables/useProducts'
 import {
-  expirationStatus, expirationBadgeClass, expirationLabel,
+  expirationBadgeClass, expirationLabel,
   type Warehouse, type StockBatch, type WarehouseProductSummary,
   type WarehouseProductPosition, type WarehousePositionGroup,
 } from '@/composables/useWarehouse'
@@ -30,7 +33,7 @@ const { t, locale } = useI18n()
 const { organization, role } = useOrganization()
 const { products, categories, fetchProducts, createProduct, uploadProductImage, toggleDiscontinued } = useProducts()
 const {
-  warehouses, batches, transactions, productSummaries, barcodes, minStocks,
+  warehouses, batches, transactions, productSummaries, barcodes,
   loading, transactionLoading, transactionHasMore,
   fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse,
   fetchBarcodes, lookupBarcode, addBarcode, removeBarcode,
@@ -46,7 +49,40 @@ const {
 const isAdmin = computed(() => role.value === 'admin')
 
 const route = useRoute()
-const activeTab = ref((route.query.tab as string) || 'overview')
+const router = useRouter()
+const STOCK_CHIPS: StockChip[] = ['all', 'action', 'expiring', 'hidden']
+const SETUP_SECTIONS: SetupSection[] = ['warehouses', 'positions', 'barcodes', 'calculation']
+const initialView = resolveWarehouseView(route.query.tab, route.query.section, isAdmin.value)
+const activeTab = ref<WarehouseTab>(initialView.tab)
+const setupSection = ref<SetupSection>(initialView.section)
+const positionsVisible = computed(() => activeTab.value === 'setup' && setupSection.value === 'positions')
+
+function syncQuery() {
+  const query: Record<string, string> = { ...(route.query as Record<string, string>) }
+  delete query.section
+  if (activeTab.value === 'stock') delete query.tab
+  else query.tab = activeTab.value
+  if (activeTab.value === 'setup') query.section = setupSection.value
+  router.replace({ query })
+}
+
+function setTab(tab: WarehouseTab) {
+  activeTab.value = tab === 'setup' && !isAdmin.value ? 'stock' : tab
+  syncQuery()
+}
+
+function setSection(section: SetupSection) {
+  setupSection.value = section
+  syncQuery()
+}
+
+// The role can arrive after the first render; re-resolve so an admin's
+// setup link (or an old ?tab=positions) still lands in setup.
+watch(isAdmin, (admin) => {
+  const view = resolveWarehouseView(route.query.tab, route.query.section, admin)
+  activeTab.value = view.tab
+  setupSection.value = view.section
+})
 const selectedWarehouseId = ref<string | null>(null)
 
 const selectedWarehouse = computed(() =>
@@ -62,8 +98,8 @@ usePullToRefresh(pullRefreshHandler)
 // Disable pull-to-refresh on positions tab (conflicts with touch drag-and-drop)
 if (import.meta.client) {
   const pullRefreshState = useState<(() => Promise<void> | void) | null>('pull-refresh-handler')
-  watch(activeTab, (tab) => {
-    pullRefreshState.value = tab === 'positions' ? null : pullRefreshHandler
+  watch(positionsVisible, (visible) => {
+    pullRefreshState.value = visible ? null : pullRefreshHandler
   }, { immediate: true })
 }
 
@@ -91,6 +127,10 @@ watch(selectedWarehouseId, async (id) => {
   if (id) {
     await loadWarehouseData()
     unsubscribe = subscribeToStockUpdates(id)
+    // A deep link (?tab=history, ?tab=setup&section=positions) opens before
+    // the warehouse is known; load that view's data now.
+    if (activeTab.value === 'history') loadHistory()
+    if (positionsVisible.value) loadPositions()
   }
 })
 
@@ -106,26 +146,18 @@ async function loadWarehouseData() {
 
 // ── KPIs ────────────────────────────────────────────────────────────────────
 
-const showDiscontinued = ref(true)
-const showUnassigned = ref(true)
 /**
- * When false (the default), zero-stock products are hidden **unless the product
- * still occupies a machine slot** — there a zero warehouse stock is the
- * actionable signal (the slot needs refilling and there is nothing to refill it
- * with). Zero-stock products in no machine are catalogue noise. Mirrors the iOS
- * warehouse tab.
+ * One chip replaces the old discontinued / unassigned / all-out-of-stock
+ * checkboxes. "all" hides discontinued products and products in no machine;
+ * "hidden" lists those that still have stock (see lib/warehouseView.ts).
  */
-const showAllOutOfStock = ref(false)
+const stockChip = ref<StockChip>('all')
 
-const activeProductSummaries = computed(() => {
-  let items = productSummaries.value
-  if (!showDiscontinued.value) items = items.filter(p => !p.discontinued)
-  if (!showUnassigned.value) items = items.filter(p => assignedProductIds.value.has(p.product_id))
-  if (!showAllOutOfStock.value) {
-    items = items.filter(p => p.total_quantity > 0 || assignedProductIds.value.has(p.product_id))
-  }
-  return items
-})
+const activeProductSummaries = computed(() =>
+  productSummaries.value.filter(p => matchesChip(p, assignedProductIds.value.has(p.product_id), stockChip.value))
+)
+
+const chipCountsAll = computed(() => chipCounts(productSummaries.value, assignedProductIds.value))
 
 const totalProducts = computed(() => productSummaries.value.filter(p => !p.discontinued).length)
 const totalUnits = computed(() => productSummaries.value.filter(p => !p.discontinued).reduce((s, p) => s + p.total_quantity, 0))
@@ -164,6 +196,10 @@ const machineStockValue = computed(() =>
 
 const assignedProductIds = computed(() => new Set(machineTrays.value.map(t => t.product_id)))
 
+function machineStockFor(productId: string): number {
+  return machineTrays.value.reduce((sum, t) => t.product_id === productId ? sum + t.current_stock : sum, 0)
+}
+
 function isAssignedToMachine(productId: string): boolean {
   return assignedProductIds.value.has(productId)
 }
@@ -171,10 +207,8 @@ function isAssignedToMachine(productId: string): boolean {
 // ── Stock tab state ─────────────────────────────────────────────────────────
 
 const stockSearch = ref('')
-const stockFilter = ref<'all' | 'warning' | 'critical'>('all')
 const stockSortKey = ref<'name' | 'quantity' | 'min_stock' | 'range' | 'expiration' | 'status'>('name')
 const stockSortDir = ref<'asc' | 'desc'>('asc')
-const expandedProducts = ref(new Set<string>())
 
 function toggleSort(key: 'name' | 'quantity' | 'min_stock' | 'range' | 'expiration' | 'status') {
   if (stockSortKey.value === key) {
@@ -185,12 +219,26 @@ function toggleSort(key: 'name' | 'quantity' | 'min_stock' | 'range' | 'expirati
   }
 }
 
-function toggleExpand(productId: string) {
-  if (expandedProducts.value.has(productId)) {
-    expandedProducts.value.delete(productId)
-  } else {
-    expandedProducts.value.add(productId)
-  }
+// Product detail sheet (batches, corrections, min stock, discontinued)
+const detailProductId = ref<string | null>(null)
+const detailSummary = computed(() =>
+  productSummaries.value.find(p => p.product_id === detailProductId.value) ?? null
+)
+
+function openDetail(productId: string) {
+  detailProductId.value = productId
+}
+
+async function onSaveMinStock(value: number) {
+  if (!selectedWarehouseId.value || !detailProductId.value) return
+  await setMinStock({ product_id: detailProductId.value, warehouse_id: selectedWarehouseId.value, min_quantity: value })
+  await Promise.all([fetchProductSummaries(selectedWarehouseId.value), fetchMinStocks(selectedWarehouseId.value)])
+}
+
+async function onToggleDiscontinued(value: boolean) {
+  if (!detailProductId.value) return
+  await toggleDiscontinued(detailProductId.value, value)
+  if (selectedWarehouseId.value) await fetchProductSummaries(selectedWarehouseId.value)
 }
 
 import { fuzzyFilter } from '@/lib/fuzzySearch'
@@ -200,11 +248,6 @@ const filteredSummaries = computed(() => {
   let items = activeProductSummaries.value
   if (stockSearch.value) {
     items = fuzzyFilter(items, stockSearch.value, [p => p.product_name])
-  }
-  if (stockFilter.value === 'warning') {
-    items = items.filter(p => p.expiration_status === 'warning' || p.expiration_status === 'critical')
-  } else if (stockFilter.value === 'critical') {
-    items = items.filter(p => p.expiration_status === 'critical')
   }
   return sortSummaries(items)
 })
@@ -266,7 +309,6 @@ function sortSummaries(items: WarehouseProductSummary[]) {
   })
 }
 
-const sortedProductSummaries = computed(() => sortSummaries(activeProductSummaries.value))
 
 function batchesForProduct(productId: string): StockBatch[] {
   return batches.value.filter(b => b.product_id === productId)
@@ -593,11 +635,11 @@ function initGroupSortable() {
 watch(expandedGroups, () => { nextTick(() => initSortables()) }, { deep: true })
 
 // Load positions when tab switches to positions
-watch(activeTab, (tab) => {
-  if (tab === 'positions' && selectedWarehouseId.value) {
+watch(positionsVisible, (visible) => {
+  if (visible && selectedWarehouseId.value) {
     loadPositions()
   }
-})
+}, { immediate: true })
 
 // ── Incoming tab state ──────────────────────────────────────────────────────
 
@@ -883,6 +925,15 @@ async function submitAdjust() {
 // ── History tab state ───────────────────────────────────────────────────────
 
 const historyFilterType = ref('')
+const HISTORY_TYPES = [
+  { value: '', label: 'warehouse.allTypes' },
+  { value: 'incoming', label: 'warehouse.incomingFilter' },
+  { value: 'outgoing_refill', label: 'warehouse.refillFilter' },
+  { value: 'adjustment_damage', label: 'warehouse.damagedFilter' },
+  { value: 'adjustment_expired', label: 'warehouse.expiredFilter' },
+  { value: 'adjustment_correction', label: 'warehouse.correctionFilter' },
+  { value: 'adjustment_refill_return', label: 'warehouse.refillReturnFilter' },
+]
 const historyFilterProduct = ref('')
 const historyLoaded = ref(false)
 
@@ -997,9 +1048,9 @@ async function loadBarcodeSettings() {
   }
 }
 
-watch(activeTab, (tab) => {
-  if (tab === 'settings') loadBarcodeSettings()
-})
+watch([activeTab, setupSection], ([tab, section]) => {
+  if (tab === 'setup' && section === 'barcodes') loadBarcodeSettings()
+}, { immediate: true })
 
 async function submitBarcode() {
   if (!barcodeForm.value.product_id || !barcodeForm.value.barcode.trim()) {
@@ -1022,24 +1073,6 @@ async function submitBarcode() {
   }
 }
 
-// ── Min stock editing ───────────────────────────────────────────────────────
-
-const minStockEdits = ref(new Map<string, number>())
-
-function getMinStockValue(productId: string): number {
-  if (minStockEdits.value.has(productId)) return minStockEdits.value.get(productId)!
-  const entry = minStocks.value.find(m => m.product_id === productId)
-  return entry?.min_quantity ?? 0
-}
-
-async function saveMinStock(productId: string) {
-  if (!selectedWarehouseId.value) return
-  const val = minStockEdits.value.get(productId) ?? 0
-  await setMinStock({ product_id: productId, warehouse_id: selectedWarehouseId.value, min_quantity: val })
-  minStockEdits.value.delete(productId)
-  await fetchProductSummaries(selectedWarehouseId.value)
-}
-
 async function onVelocityDaysChange(e: Event) {
   const val = Number((e.target as HTMLSelectElement).value)
   setVelocityDays(val)
@@ -1054,24 +1087,50 @@ async function onVelocityDaysChange(e: Event) {
   <div class="flex flex-col gap-4 p-4 md:p-6 overflow-x-hidden">
     <!-- Header -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <h1 class="text-2xl font-bold">{{ t('warehouse.title') }}</h1>
-      <div class="flex items-center gap-2">
-        <!-- Warehouse selector -->
+      <div class="min-w-0">
+        <h1 class="text-2xl font-bold">{{ activeTab === 'setup' ? t('warehouse.setupTitle') : t('warehouse.title') }}</h1>
+        <!-- One warehouse is the common case: show its name, offer a picker only from two on -->
+        <p v-if="selectedWarehouse && warehouses.length === 1" class="text-sm text-muted-foreground">
+          {{ selectedWarehouse.name }}<template v-if="selectedWarehouse.address"> · {{ selectedWarehouse.address }}</template>
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
         <select
-          v-if="warehouses.length > 0"
+          v-if="warehouses.length > 1"
           v-model="selectedWarehouseId"
+          :aria-label="t('warehouse.warehouses')"
           class="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <option v-for="wh in warehouses" :key="wh.id" :value="wh.id">{{ wh.name }}</option>
         </select>
-        <button
-          v-if="isAdmin"
-          class="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          @click="openAddWarehouse"
-        >
-          <IconPlus class="size-4" />
-          <span class="hidden sm:inline">{{ t('warehouse.addWarehouse') }}</span>
-        </button>
+        <template v-if="warehouses.length > 0">
+          <button
+            v-if="activeTab === 'setup'"
+            class="inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium hover:bg-muted"
+            @click="setTab('stock')"
+          >
+            <IconArrowLeft class="size-4" />
+            {{ t('warehouse.backToWarehouse') }}
+          </button>
+          <template v-else>
+            <button
+              v-if="isAdmin"
+              class="inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium hover:bg-muted"
+              @click="setTab('setup')"
+            >
+              <IconSettings class="size-4" />
+              {{ t('warehouse.setup') }}
+            </button>
+            <button
+              v-if="activeTab !== 'incoming'"
+              class="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              @click="setTab('incoming')"
+            >
+              <IconPlus class="size-4" />
+              {{ t('warehouse.bookStock') }}
+            </button>
+          </template>
+        </template>
       </div>
     </div>
 
@@ -1095,130 +1154,80 @@ async function onVelocityDaysChange(e: Event) {
     </div>
 
     <!-- Tabs -->
-    <Tabs v-if="warehouses.length > 0" v-model="activeTab">
+    <Tabs v-if="warehouses.length > 0 && activeTab !== 'setup'" :model-value="activeTab" @update:model-value="setTab($event as WarehouseTab)">
       <div class="overflow-x-auto -mx-4 px-4 scrollbar-none">
         <TabsList>
-          <TabsTrigger value="overview">{{ t('warehouse.overview') }}</TabsTrigger>
           <TabsTrigger value="stock">{{ t('warehouse.stockTab') }}</TabsTrigger>
           <TabsTrigger value="incoming">{{ t('warehouse.incoming') }}</TabsTrigger>
           <TabsTrigger value="history">{{ t('warehouse.historyTab') }}</TabsTrigger>
-          <TabsTrigger v-if="isAdmin" value="positions">{{ t('warehouse.positionsTab') }}</TabsTrigger>
-          <TabsTrigger v-if="isAdmin" value="settings">{{ t('warehouse.settings') }}</TabsTrigger>
         </TabsList>
       </div>
 
       <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <!-- OVERVIEW TAB                                                       -->
+      <!-- STOCK TAB (was: overview + stock)                                  -->
       <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <TabsContent value="overview">
+      <TabsContent value="stock">
         <div class="flex flex-col gap-4">
           <!-- KPI cards -->
-          <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
-            <Card>
-              <CardHeader class="pb-2">
-                <CardTitle class="text-sm font-medium text-muted-foreground">{{ t('warehouse.activeProducts') }}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div class="text-2xl font-bold">{{ totalProducts }}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader class="pb-2">
-                <CardTitle class="text-sm font-medium text-muted-foreground">{{ t('warehouse.totalUnits') }}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div class="text-2xl font-bold">{{ totalUnits }}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader class="pb-2">
-                <CardTitle class="text-sm font-medium text-muted-foreground">{{ t('warehouse.outOfStockCount') }}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div class="text-2xl font-bold" :class="outOfStockCount > 0 ? 'text-red-600 dark:text-red-400' : ''">{{ outOfStockCount }}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader class="pb-2">
-                <CardTitle class="text-sm font-medium text-muted-foreground">{{ t('warehouse.belowMinStock') }}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div class="text-2xl font-bold" :class="belowMinCount > 0 ? 'text-red-600 dark:text-red-400' : ''">{{ belowMinCount }}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader class="pb-2">
-                <CardTitle class="text-sm font-medium text-muted-foreground">{{ t('warehouse.expiringSoon') }}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div class="text-2xl font-bold" :class="expiringSoonCount > 0 ? 'text-amber-600 dark:text-amber-400' : ''">{{ expiringSoonCount }}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader class="pb-2">
-                <CardTitle class="text-sm font-medium text-muted-foreground">{{ t('warehouse.stockValue') }}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div class="text-2xl font-bold">{{ formatCurrency(totalValue, locale) }}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader class="pb-2">
-                <CardTitle class="text-sm font-medium text-muted-foreground">{{ t('warehouse.machineStockValue') }}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div class="text-2xl font-bold">{{ formatCurrency(machineStockValue, locale) }}</div>
-              </CardContent>
-            </Card>
+          <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <button
+              type="button"
+              class="rounded-xl border bg-card p-4 text-left transition-colors hover:bg-muted/40"
+              @click="stockChip = 'action'"
+            >
+              <div class="text-sm text-muted-foreground">{{ t('warehouse.needsAction') }}</div>
+              <div class="text-2xl font-bold tabular-nums" :class="chipCountsAll.action > 0 ? 'text-red-600 dark:text-red-400' : ''">{{ chipCountsAll.action }}</div>
+              <div class="text-xs text-muted-foreground">{{ t('warehouse.needsActionHint', { empty: outOfStockCount, low: belowMinCount }) }}</div>
+            </button>
+            <button
+              type="button"
+              class="rounded-xl border bg-card p-4 text-left transition-colors hover:bg-muted/40"
+              @click="stockChip = 'expiring'"
+            >
+              <div class="text-sm text-muted-foreground">{{ t('warehouse.expiringSoon') }}</div>
+              <div class="text-2xl font-bold tabular-nums" :class="expiringSoonCount > 0 ? 'text-amber-600 dark:text-amber-400' : ''">{{ expiringSoonCount }}</div>
+              <div class="text-xs text-muted-foreground">{{ t('warehouse.expiringSoonHint') }}</div>
+            </button>
+            <div class="rounded-xl border bg-card p-4">
+              <div class="text-sm text-muted-foreground">{{ t('warehouse.totalUnits') }}</div>
+              <div class="text-2xl font-bold tabular-nums">{{ totalUnits }}</div>
+              <div class="text-xs text-muted-foreground">{{ t('warehouse.activeProductsCount', { count: totalProducts }) }}</div>
+            </div>
+            <div class="rounded-xl border bg-card p-4">
+              <div class="text-sm text-muted-foreground">{{ t('warehouse.totalValue') }}</div>
+              <div class="text-2xl font-bold tabular-nums">{{ formatCurrency(totalValue + machineStockValue, locale) }}</div>
+              <div class="text-xs text-muted-foreground">{{ t('warehouse.valueSplit', { warehouse: formatCurrency(totalValue, locale), machines: formatCurrency(machineStockValue, locale) }) }}</div>
+            </div>
           </div>
 
-          <!-- MHD warnings -->
-          <div v-if="productSummaries.some(p => !p.discontinued && p.expiration_status !== 'ok')" class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/20">
-            <div class="flex items-center gap-2 font-medium text-amber-800 dark:text-amber-300">
-              <IconAlertTriangle class="size-5" />
-              {{ t('warehouse.expirationWarnings') }}
-            </div>
-            <div class="mt-3 space-y-2">
-              <div
-                v-for="p in productSummaries.filter(p => !p.discontinued && p.expiration_status !== 'ok')"
-                :key="p.product_id"
-                class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between rounded-md bg-white/60 px-3 py-2 dark:bg-white/5"
+          <!-- Chips + search -->
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-wrap gap-1.5" role="group" :aria-label="t('warehouse.filter')">
+              <button
+                v-for="chip in STOCK_CHIPS"
+                :key="chip"
+                type="button"
+                class="inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors"
+                :class="stockChip === chip ? 'border-primary bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'"
+                :aria-pressed="stockChip === chip"
+                @click="stockChip = chip"
               >
-                <div class="flex items-center gap-2 min-w-0">
-                  <span :class="[expirationBadgeClass(p.expiration_status), 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium']">
-                    {{ expirationLabel(p.expiration_status) }}
-                  </span>
-                  <NuxtLink
-                    :to="`/products/${p.product_id}`"
-                    class="flex items-center gap-2 hover:underline"
-                  >
-                    <img v-if="p.product_image_path" :src="getProductImageUrl(p.product_image_path)" class="size-5 rounded object-cover" alt="" />
-                    <span class="text-sm font-medium">{{ p.product_name }}</span>
-                  </NuxtLink>
-                  <span class="text-xs text-muted-foreground">{{ t('warehouse.unitsCount', { count: p.total_quantity }) }}</span>
-                </div>
-                <span class="text-sm text-muted-foreground">{{ t('warehouse.mhd', { date: formatDate(p.earliest_expiration, locale.value) }) }}</span>
-              </div>
+                {{ t(`warehouse.chip.${chip}`) }}
+                <span class="tabular-nums opacity-70">{{ chipCountsAll[chip] }}</span>
+              </button>
+            </div>
+            <div class="relative">
+              <IconSearch class="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                v-model="stockSearch"
+                type="text"
+                :placeholder="t('warehouse.searchProducts')"
+                class="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:w-64"
+              />
             </div>
           </div>
 
-          <!-- Discontinued filter toggle -->
-          <div class="flex items-center justify-end gap-4">
-            <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-              <input type="checkbox" v-model="showUnassigned" class="rounded border-input" />
-              {{ t('warehouse.showUnassigned') }}
-            </label>
-            <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-              <input type="checkbox" v-model="showDiscontinued" class="rounded border-input" />
-              {{ t('warehouse.showDiscontinued') }}
-            </label>
-            <label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-              <input type="checkbox" v-model="showAllOutOfStock" class="rounded border-input" />
-              {{ t('warehouse.showAllOutOfStock') }}
-            </label>
-          </div>
-
-          <!-- Product summary table -->
+          <!-- Stock table -->
           <div class="overflow-x-auto rounded-md border">
             <table class="w-full text-sm">
               <thead>
@@ -1229,25 +1238,25 @@ async function onVelocityDaysChange(e: Event) {
                       <component :is="stockSortKey === 'name' ? (stockSortDir === 'asc' ? IconArrowUp : IconArrowDown) : IconArrowsSort" class="size-3.5 text-muted-foreground" />
                     </div>
                   </th>
-                  <th class="px-4 py-3 font-medium text-right cursor-pointer select-none hover:text-foreground" @click="toggleSort('quantity')">
+                  <th class="px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground text-right" @click="toggleSort('quantity')">
                     <div class="flex items-center justify-end gap-1">
                       {{ t('warehouse.quantityCol') }}
                       <component :is="stockSortKey === 'quantity' ? (stockSortDir === 'asc' ? IconArrowUp : IconArrowDown) : IconArrowsSort" class="size-3.5 text-muted-foreground" />
                     </div>
                   </th>
-                  <th class="hidden px-4 py-3 font-medium text-right md:table-cell cursor-pointer select-none hover:text-foreground" @click="toggleSort('min_stock')">
+                  <th class="hidden px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground text-right md:table-cell" @click="toggleSort('min_stock')">
                     <div class="flex items-center justify-end gap-1">
                       {{ t('warehouse.minStockCol') }}
                       <component :is="stockSortKey === 'min_stock' ? (stockSortDir === 'asc' ? IconArrowUp : IconArrowDown) : IconArrowsSort" class="size-3.5 text-muted-foreground" />
                     </div>
                   </th>
-                  <th class="hidden px-4 py-3 font-medium text-right md:table-cell cursor-pointer select-none hover:text-foreground" @click="toggleSort('range')">
+                  <th class="hidden px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground text-right md:table-cell" @click="toggleSort('range')">
                     <div class="flex items-center justify-end gap-1">
                       {{ t('warehouse.estimatedRange') }}
                       <component :is="stockSortKey === 'range' ? (stockSortDir === 'asc' ? IconArrowUp : IconArrowDown) : IconArrowsSort" class="size-3.5 text-muted-foreground" />
                     </div>
                   </th>
-                  <th class="hidden px-4 py-3 font-medium md:table-cell cursor-pointer select-none hover:text-foreground" @click="toggleSort('expiration')">
+                  <th class="hidden px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground md:table-cell" @click="toggleSort('expiration')">
                     <div class="flex items-center gap-1">
                       {{ t('warehouse.earliestMhd') }}
                       <component :is="stockSortKey === 'expiration' ? (stockSortDir === 'asc' ? IconArrowUp : IconArrowDown) : IconArrowsSort" class="size-3.5 text-muted-foreground" />
@@ -1262,23 +1271,25 @@ async function onVelocityDaysChange(e: Event) {
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="loading && sortedProductSummaries.length === 0">
+                <tr v-if="loading && filteredSummaries.length === 0">
                   <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">{{ t('common.loading') }}</td>
                 </tr>
-                <tr v-else-if="sortedProductSummaries.length === 0">
-                  <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">{{ t('warehouse.noStockInWarehouse') }}</td>
+                <tr v-else-if="filteredSummaries.length === 0">
+                  <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">
+                    {{ stockSearch || stockChip !== 'all' ? t('warehouse.noMatchingProducts') : t('warehouse.noStock') }}
+                  </td>
                 </tr>
                 <tr
-                  v-for="p in sortedProductSummaries"
+                  v-for="p in filteredSummaries"
                   :key="p.product_id"
-                  class="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                  class="cursor-pointer border-b transition-colors last:border-0 hover:bg-muted/30"
                   :class="{ 'opacity-50': p.discontinued, 'opacity-70': !p.discontinued && !isAssignedToMachine(p.product_id) }"
+                  tabindex="0"
+                  @click="openDetail(p.product_id)"
+                  @keydown.enter="openDetail(p.product_id)"
                 >
                   <td class="px-4 py-3">
-                    <NuxtLink
-                      :to="`/products/${p.product_id}`"
-                      class="flex items-center gap-2 hover:underline"
-                    >
+                    <div class="flex items-center gap-2">
                       <img
                         v-if="p.product_image_path"
                         :src="getProductImageUrl(p.product_image_path)"
@@ -1289,51 +1300,36 @@ async function onVelocityDaysChange(e: Event) {
                         {{ p.product_name.charAt(0) }}
                       </div>
                       <span class="font-medium" :class="{ 'line-through': p.discontinued }">{{ p.product_name }}</span>
-                      <span
-                        v-if="p.discontinued"
-                        class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                      >
-                        {{ t('warehouse.discontinuedBadge') }}
-                      </span>
-                      <span
-                        v-if="!p.discontinued && !isAssignedToMachine(p.product_id)"
-                        class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-950/30 dark:text-blue-400"
-                      >
-                        {{ t('warehouse.notAssignedBadge') }}
-                      </span>
-                    </NuxtLink>
+                    </div>
                   </td>
-                  <td class="px-4 py-3 text-right tabular-nums">{{ p.total_quantity }}</td>
-                  <td class="hidden px-4 py-3 text-right tabular-nums md:table-cell">{{ p.min_stock || '—' }}</td>
+                  <td class="px-4 py-3 text-right font-medium tabular-nums">{{ p.total_quantity }}</td>
+                  <td class="hidden px-4 py-3 text-right tabular-nums text-muted-foreground md:table-cell">{{ p.min_stock || '—' }}</td>
                   <td class="hidden px-4 py-3 text-right tabular-nums md:table-cell">
                     <span v-if="p.estimated_days_remaining !== null" :class="p.estimated_days_remaining <= 7 ? 'text-red-600 dark:text-red-400 font-medium' : p.estimated_days_remaining <= 14 ? 'text-amber-600 dark:text-amber-400' : ''">
                       {{ t('warehouse.daysRemaining', { days: p.estimated_days_remaining }) }}
                     </span>
                     <span v-else class="text-muted-foreground">{{ p.total_quantity > 0 ? t('warehouse.noSalesData') : '—' }}</span>
                   </td>
-                  <td class="hidden px-4 py-3 md:table-cell">{{ formatDate(p.earliest_expiration, locale.value) }}</td>
+                  <td class="hidden px-4 py-3 md:table-cell">{{ formatDate(p.earliest_expiration, locale) }}</td>
                   <td class="px-4 py-3">
                     <div class="flex flex-wrap gap-1.5">
-                      <span
-                        v-if="p.total_quantity === 0 && !p.discontinued"
-                        class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400"
-                      >
+                      <span v-if="p.discontinued" class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                        {{ t('warehouse.discontinuedBadge') }}
+                      </span>
+                      <span v-else-if="!isAssignedToMachine(p.product_id)" class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
+                        {{ t('warehouse.notAssignedBadge') }}
+                      </span>
+                      <span v-if="p.total_quantity === 0 && !p.discontinued" class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400">
                         {{ t('warehouse.outOfStock') }}
                       </span>
-                      <span
-                        v-if="p.expiration_status !== 'ok'"
-                        :class="[expirationBadgeClass(p.expiration_status), 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium']"
-                      >
+                      <span v-else-if="p.is_below_min" class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400">
+                        {{ t('warehouse.lowStock') }}
+                      </span>
+                      <span v-if="p.expiration_status !== 'ok' && p.total_quantity > 0" :class="[expirationBadgeClass(p.expiration_status), 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium']">
                         {{ expirationLabel(p.expiration_status) }}
                       </span>
                       <span
-                        v-if="p.is_below_min"
-                        class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400"
-                      >
-                        {{ t('warehouse.lowStock') }}
-                      </span>
-                      <span
-                        v-if="p.total_quantity > 0 && p.expiration_status === 'ok' && !p.is_below_min && !p.discontinued"
+                        v-if="p.total_quantity > 0 && p.expiration_status === 'ok' && !p.is_below_min && !p.discontinued && isAssignedToMachine(p.product_id)"
                         class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/40 dark:text-green-400"
                       >
                         {{ t('warehouse.ok') }}
@@ -1344,226 +1340,23 @@ async function onVelocityDaysChange(e: Event) {
               </tbody>
             </table>
           </div>
+          <p class="text-xs text-muted-foreground">{{ t('warehouse.stockTableHint') }}</p>
         </div>
+
+        <WarehouseProductSheet
+          :open="detailProductId !== null"
+          :summary="detailSummary"
+          :batches="detailProductId ? batchesForProduct(detailProductId) : []"
+          :machine-stock="detailProductId ? machineStockFor(detailProductId) : 0"
+          :assigned="detailProductId ? isAssignedToMachine(detailProductId) : false"
+          :is-admin="isAdmin"
+          @update:open="(v: boolean) => { if (!v) detailProductId = null }"
+          @adjust="openAdjust"
+          @save-min-stock="onSaveMinStock"
+          @toggle-discontinued="onToggleDiscontinued"
+        />
       </TabsContent>
 
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <!-- STOCK TAB                                                          -->
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <TabsContent value="stock">
-        <div class="flex flex-col gap-4">
-          <!-- Filters -->
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex items-center gap-2 flex-wrap">
-              <div class="relative">
-                <IconSearch class="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  v-model="stockSearch"
-                  type="text"
-                  :placeholder="t('warehouse.searchProducts')"
-                  class="h-9 rounded-md border border-input bg-background pl-8 pr-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                />
-              </div>
-              <select
-                v-model="stockFilter"
-                class="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="all">{{ t('warehouse.all') }}</option>
-                <option value="warning">{{ t('warehouse.expiringSoonFilter') }}</option>
-                <option value="critical">{{ t('warehouse.criticalFilter') }}</option>
-              </select>
-              <label class="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
-                <input type="checkbox" v-model="showUnassigned" class="rounded border-input" />
-                {{ t('warehouse.showUnassigned') }}
-              </label>
-              <label class="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
-                <input type="checkbox" v-model="showDiscontinued" class="rounded border-input" />
-                {{ t('warehouse.showDiscontinued') }}
-              </label>
-              <!-- Off by default; zero-stock products still sitting in a
-                   machine slot are shown regardless — hence "all". -->
-              <label class="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
-                <input type="checkbox" v-model="showAllOutOfStock" class="rounded border-input" />
-                {{ t('warehouse.showAllOutOfStock') }}
-              </label>
-            </div>
-            <button
-              v-if="isAdmin"
-              class="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              @click="activeTab = 'incoming'"
-            >
-              <IconPlus class="size-4" />
-              {{ t('warehouse.addStock') }}
-            </button>
-          </div>
-
-          <!-- Expandable stock table -->
-          <div class="overflow-x-auto rounded-md border">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b bg-muted/50 text-left">
-                  <th class="w-8 px-2 py-3"></th>
-                  <th class="px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="toggleSort('name')">
-                    <div class="flex items-center gap-1">
-                      {{ t('warehouse.productCol') }}
-                      <component :is="stockSortKey === 'name' ? (stockSortDir === 'asc' ? IconArrowUp : IconArrowDown) : IconArrowsSort" class="size-3.5 text-muted-foreground" />
-                    </div>
-                  </th>
-                  <th class="px-4 py-3 font-medium text-right cursor-pointer select-none hover:text-foreground" @click="toggleSort('quantity')">
-                    <div class="flex items-center justify-end gap-1">
-                      {{ t('warehouse.totalQty') }}
-                      <component :is="stockSortKey === 'quantity' ? (stockSortDir === 'asc' ? IconArrowUp : IconArrowDown) : IconArrowsSort" class="size-3.5 text-muted-foreground" />
-                    </div>
-                  </th>
-                  <th class="hidden px-4 py-3 font-medium text-right md:table-cell cursor-pointer select-none hover:text-foreground" @click="toggleSort('range')">
-                    <div class="flex items-center justify-end gap-1">
-                      {{ t('warehouse.estimatedRange') }}
-                      <component :is="stockSortKey === 'range' ? (stockSortDir === 'asc' ? IconArrowUp : IconArrowDown) : IconArrowsSort" class="size-3.5 text-muted-foreground" />
-                    </div>
-                  </th>
-                  <th class="hidden px-4 py-3 font-medium md:table-cell cursor-pointer select-none hover:text-foreground" @click="toggleSort('expiration')">
-                    <div class="flex items-center gap-1">
-                      {{ t('warehouse.earliestMhd') }}
-                      <component :is="stockSortKey === 'expiration' ? (stockSortDir === 'asc' ? IconArrowUp : IconArrowDown) : IconArrowsSort" class="size-3.5 text-muted-foreground" />
-                    </div>
-                  </th>
-                  <th class="px-4 py-3 font-medium cursor-pointer select-none hover:text-foreground" @click="toggleSort('status')">
-                    <div class="flex items-center gap-1">
-                      {{ t('warehouse.statusCol') }}
-                      <component :is="stockSortKey === 'status' ? (stockSortDir === 'asc' ? IconArrowUp : IconArrowDown) : IconArrowsSort" class="size-3.5 text-muted-foreground" />
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="filteredSummaries.length === 0">
-                  <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">
-                    {{ stockSearch || stockFilter !== 'all' ? t('warehouse.noMatchingProducts') : t('warehouse.noStock') }}
-                  </td>
-                </tr>
-                <template v-for="p in filteredSummaries" :key="p.product_id">
-                  <!-- Product row -->
-                  <tr
-                    class="border-b cursor-pointer hover:bg-muted/30 transition-colors"
-                    :class="{ 'opacity-50': p.discontinued, 'opacity-70': !p.discontinued && !isAssignedToMachine(p.product_id) }"
-                    @click="p.batch_count > 0 ? toggleExpand(p.product_id) : undefined"
-                  >
-                    <td class="px-2 py-3 text-center">
-                      <component
-                        v-if="p.batch_count > 0"
-                        :is="expandedProducts.has(p.product_id) ? IconChevronDown : IconChevronRight"
-                        class="size-4 text-muted-foreground"
-                      />
-                    </td>
-                    <td class="px-4 py-3">
-                      <div class="flex items-center gap-2">
-                        <NuxtLink
-                          :to="`/products/${p.product_id}`"
-                          class="flex items-center gap-2 hover:underline"
-                          @click.stop
-                        >
-                          <img
-                            v-if="p.product_image_path"
-                            :src="getProductImageUrl(p.product_image_path)"
-                            class="size-8 rounded object-cover"
-                            alt=""
-                          />
-                          <div v-else class="flex size-8 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">
-                            {{ p.product_name.charAt(0) }}
-                          </div>
-                          <span
-                            class="font-medium"
-                            :class="{ 'line-through': p.discontinued }"
-                          >
-                            {{ p.product_name }}
-                          </span>
-                        </NuxtLink>
-                        <span v-if="p.discontinued" class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                          {{ t('warehouse.discontinuedBadge') }}
-                        </span>
-                        <span
-                          v-if="!p.discontinued && !isAssignedToMachine(p.product_id)"
-                          class="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-950/30 dark:text-blue-400"
-                        >
-                          {{ t('warehouse.notAssignedBadge') }}
-                        </span>
-                        <span v-if="p.batch_count > 0" class="text-xs text-muted-foreground">{{ t('warehouse.batchCount', { count: p.batch_count }, p.batch_count) }}</span>
-                      </div>
-                    </td>
-                    <td class="px-4 py-3 text-right tabular-nums font-medium">{{ p.total_quantity }}</td>
-                    <td class="hidden px-4 py-3 text-right tabular-nums md:table-cell">
-                      <span v-if="p.estimated_days_remaining !== null" :class="p.estimated_days_remaining <= 7 ? 'text-red-600 dark:text-red-400 font-medium' : p.estimated_days_remaining <= 14 ? 'text-amber-600 dark:text-amber-400' : ''">
-                        {{ t('warehouse.daysRemaining', { days: p.estimated_days_remaining }) }}
-                      </span>
-                      <span v-else class="text-muted-foreground">{{ p.total_quantity > 0 ? t('warehouse.noSalesData') : '—' }}</span>
-                    </td>
-                    <td class="hidden px-4 py-3 md:table-cell">{{ formatDate(p.earliest_expiration, locale.value) }}</td>
-                    <td class="px-4 py-3">
-                      <div class="flex flex-wrap gap-1.5">
-                        <span
-                          v-if="p.total_quantity === 0 && !p.discontinued"
-                          class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400"
-                        >
-                          {{ t('warehouse.outOfStock') }}
-                        </span>
-                        <span
-                          v-if="p.expiration_status !== 'ok'"
-                          :class="[expirationBadgeClass(p.expiration_status), 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium']"
-                        >
-                          {{ expirationLabel(p.expiration_status) }}
-                        </span>
-                        <span
-                          v-if="p.is_below_min"
-                          class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400"
-                        >
-                          {{ t('warehouse.lowStock') }}
-                        </span>
-                        <span
-                          v-if="p.total_quantity > 0 && p.expiration_status === 'ok' && !p.is_below_min && !p.discontinued"
-                          class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/40 dark:text-green-400"
-                        >
-                          {{ t('warehouse.ok') }}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                  <!-- Expanded batch rows -->
-                  <tr
-                    v-if="expandedProducts.has(p.product_id)"
-                    v-for="batch in batchesForProduct(p.product_id)"
-                    :key="batch.id"
-                    class="border-b bg-muted/20"
-                  >
-                    <td></td>
-                    <td class="px-4 py-2 pl-12">
-                      <span class="text-muted-foreground">{{ batch.batch_number || t('warehouse.noBatchNumber') }}</span>
-                    </td>
-                    <td class="px-4 py-2 text-right tabular-nums">{{ batch.quantity }}</td>
-                    <td class="hidden md:table-cell"></td>
-                    <td class="hidden px-4 py-2 md:table-cell">
-                      <span
-                        :class="[expirationBadgeClass(expirationStatus(batch.expiration_date)), 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium']"
-                      >
-                        {{ formatDate(batch.expiration_date, locale.value) }}
-                      </span>
-                    </td>
-                    <td class="px-4 py-2">
-                      <button
-                        v-if="isAdmin"
-                        class="inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs hover:bg-muted"
-                        @click.stop="openAdjust(batch)"
-                      >
-                        <IconAdjustments class="size-3.5" />
-                        {{ t('warehouse.adjust') }}
-                      </button>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </TabsContent>
 
       <!-- ═══════════════════════════════════════════════════════════════════ -->
       <!-- INCOMING TAB                                                       -->
@@ -1707,19 +1500,20 @@ async function onVelocityDaysChange(e: Event) {
       <TabsContent value="history">
         <div class="flex flex-col gap-4">
           <!-- Filters -->
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <select
-              v-model="historyFilterType"
-              class="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="">{{ t('warehouse.allTypes') }}</option>
-              <option value="incoming">{{ t('warehouse.incomingFilter') }}</option>
-              <option value="outgoing_refill">{{ t('warehouse.refillFilter') }}</option>
-              <option value="adjustment_damage">{{ t('warehouse.damagedFilter') }}</option>
-              <option value="adjustment_expired">{{ t('warehouse.expiredFilter') }}</option>
-              <option value="adjustment_correction">{{ t('warehouse.correctionFilter') }}</option>
-              <option value="adjustment_refill_return">{{ t('warehouse.refillReturnFilter') }}</option>
-            </select>
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-wrap gap-1.5" role="group" :aria-label="t('warehouse.typeCol')">
+              <button
+                v-for="opt in HISTORY_TYPES"
+                :key="opt.value"
+                type="button"
+                class="inline-flex h-7 items-center rounded-full border px-3 text-xs font-medium transition-colors"
+                :class="historyFilterType === opt.value ? 'border-primary bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'"
+                :aria-pressed="historyFilterType === opt.value"
+                @click="historyFilterType = opt.value"
+              >
+                {{ t(opt.label) }}
+              </button>
+            </div>
             <select
               v-model="historyFilterProduct"
               class="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -1794,293 +1588,27 @@ async function onVelocityDaysChange(e: Event) {
           </button>
         </div>
       </TabsContent>
+    </Tabs>
 
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <!-- POSITIONS TAB                                                       -->
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <TabsContent v-if="isAdmin" value="positions">
-        <div class="relative flex flex-col gap-4">
-          <!-- Saving indicator -->
-          <div v-if="positionsSaving" class="absolute -top-5 right-0 text-xs text-muted-foreground">
-            {{ t('common.saving') }}...
-          </div>
-
-          <div class="flex items-center justify-between">
-            <p class="text-sm text-muted-foreground">{{ t('warehouse.positionsDescription') }}</p>
-            <button
-              class="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-              @click="openAddGroup(null)"
-            >
-              <IconFolderPlus class="size-3.5" />
-              {{ t('warehouse.addGroup') }}
-            </button>
-          </div>
-
-          <!-- Loading -->
-          <div v-if="positionsLoading" class="flex items-center justify-center py-12">
-            <div class="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
-
-          <!-- Empty state -->
-          <div v-else-if="positions.length === 0 && groups.length === 0" class="rounded-lg border border-dashed p-8 text-center">
-            <p class="text-muted-foreground">{{ t('warehouse.positionsEmpty') }}</p>
-          </div>
-
-          <template v-else>
-            <!-- ── Group tree (sortable container) ─────────────────────── -->
-            <div data-sortable-groups class="flex flex-col gap-3">
-              <div v-for="group in groups" :key="group.id" class="rounded-md border transition-colors">
-                <!-- Group header -->
-                <div class="flex items-center gap-2 px-3 py-2 bg-muted/30 cursor-pointer select-none" @click="toggleGroup(group.id)">
-                  <IconGripVertical class="group-drag-handle size-4 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0 touch-none" @click.stop />
-                  <IconFolder class="size-4 text-muted-foreground" />
-                  <component :is="expandedGroups.has(group.id) ? IconChevronDownSmall : IconChevronRightSmall" class="size-4 text-muted-foreground" />
-
-                  <!-- Group name (inline edit) -->
-                  <template v-if="editingGroupId === group.id">
-                    <input
-                      v-model="editingGroupName"
-                      type="text"
-                      class="h-7 flex-1 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      @click.stop
-                      @keyup.enter="saveEditGroup"
-                      @keyup.escape="cancelEditGroup"
-                    />
-                    <button class="h-6 rounded px-1.5 text-xs bg-primary text-primary-foreground" @click.stop="saveEditGroup">OK</button>
-                    <button class="h-6 rounded px-1.5 text-xs border hover:bg-muted" @click.stop="cancelEditGroup">{{ t('common.cancel') }}</button>
-                  </template>
-                  <template v-else>
-                    <span class="flex-1 text-sm font-semibold">{{ group.name }}</span>
-                    <span class="text-xs text-muted-foreground">{{ group.products.length }} {{ group.products.length === 1 ? 'Produkt' : 'Produkte' }}</span>
-                  </template>
-
-                  <!-- Group actions -->
-                  <div v-if="editingGroupId !== group.id" class="flex items-center gap-0.5" @click.stop>
-                    <button class="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted" @click="openAddGroup(group.id)" :title="t('warehouse.addSubGroup')">
-                      <IconFolderPlus class="size-3.5" />
-                    </button>
-                    <button class="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted" @click="startEditGroup(group)" :title="t('warehouse.editGroup')">
-                      <IconEdit class="size-3.5" />
-                    </button>
-                    <button
-                      class="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-red-50 text-red-600 dark:hover:bg-red-950/20 dark:text-red-400"
-                      @click="deletingGroup = group; showDeleteGroupConfirm = true"
-                      :title="t('warehouse.deleteGroup')"
-                    >
-                      <IconTrash class="size-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Group content (products + subgroups) -->
-                <div v-if="expandedGroups.has(group.id)" class="border-t">
-                  <!-- Subgroups (recursive - one level shown inline) -->
-                  <template v-for="child in group.children" :key="child.id">
-                    <div class="ml-4 border-l transition-colors">
-                      <div class="flex items-center gap-2 px-3 py-1.5 bg-muted/20 cursor-pointer select-none" @click="toggleGroup(child.id)">
-                        <IconFolder class="size-3.5 text-muted-foreground" />
-                        <component :is="expandedGroups.has(child.id) ? IconChevronDownSmall : IconChevronRightSmall" class="size-3.5 text-muted-foreground" />
-                        <template v-if="editingGroupId === child.id">
-                          <input v-model="editingGroupName" type="text" class="h-6 flex-1 rounded border border-input bg-background px-2 text-xs" @click.stop @keyup.enter="saveEditGroup" @keyup.escape="cancelEditGroup" />
-                          <button class="h-5 rounded px-1 text-[10px] bg-primary text-primary-foreground" @click.stop="saveEditGroup">OK</button>
-                        </template>
-                        <template v-else>
-                          <span class="flex-1 text-xs font-semibold">{{ child.name }}</span>
-                          <span class="text-[10px] text-muted-foreground">{{ child.products.length }}</span>
-                        </template>
-                        <div v-if="editingGroupId !== child.id" class="flex items-center gap-0.5" @click.stop>
-                          <button class="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-muted" @click="openAddGroup(child.id)"><IconFolderPlus class="size-3" /></button>
-                          <button class="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-muted" @click="startEditGroup(child)"><IconEdit class="size-3" /></button>
-                          <button class="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-red-50 text-red-600 dark:hover:bg-red-950/20 dark:text-red-400" @click="deletingGroup = child; showDeleteGroupConfirm = true"><IconTrash class="size-3" /></button>
-                        </div>
-                      </div>
-                      <!-- Child products (sortable) -->
-                      <div v-if="expandedGroups.has(child.id)" :data-sortable-group="child.id" class="min-h-[2rem]">
-                        <div
-                          v-for="item in child.products"
-                          :key="item.product_id"
-                          :data-product-id="item.product_id"
-                          class="flex items-center gap-2 border-t px-4 py-2 ml-2 hover:bg-muted/30 transition-colors"
-                        >
-                          <button class="shrink-0" @click.stop="toggleSelectProduct(item.product_id)">
-                            <component :is="selectedProducts.has(item.product_id) ? IconSquareCheck : IconSquare" class="size-4 text-muted-foreground" />
-                          </button>
-                          <IconGripVertical class="drag-handle size-3.5 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0 touch-none" />
-                          <NuxtLink
-                            :to="`/products/${item.product_id}`"
-                            class="flex min-w-0 flex-1 items-center gap-2 hover:underline"
-                            @click.stop
-                          >
-                            <img v-if="item.image_path" :src="getProductImageUrl(item.image_path)" class="size-7 shrink-0 rounded object-cover" alt="" />
-                            <div v-else class="flex size-7 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-medium text-muted-foreground">{{ item.product_name.charAt(0) }}</div>
-                            <span class="min-w-0 flex-1 truncate text-xs font-medium">{{ item.product_name }}</span>
-                          </NuxtLink>
-                          <input type="text" :value="item.location_label ?? ''" :placeholder="t('warehouse.locationPlaceholder')" class="h-6 w-24 shrink-0 rounded border border-input bg-background px-1.5 text-[10px] sm:w-28" @input="updateLocationLabel(item, ($event.target as HTMLInputElement).value)" />
-                          <button class="shrink-0 h-6 w-6 inline-flex items-center justify-center rounded border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20" @click="removeFromPositions(item)"><IconX class="size-3" /></button>
-                        </div>
-                      </div>
-                    </div>
-                  </template>
-
-                  <!-- Products directly in this group (sortable) -->
-                  <div :data-sortable-group="group.id" class="min-h-[2rem]">
-                    <div
-                      v-for="item in group.products"
-                      :key="item.product_id"
-                      :data-product-id="item.product_id"
-                      class="flex items-center gap-2 border-t px-3 py-2 hover:bg-muted/30 transition-colors"
-                    >
-                      <button class="shrink-0" @click.stop="toggleSelectProduct(item.product_id)">
-                        <component :is="selectedProducts.has(item.product_id) ? IconSquareCheck : IconSquare" class="size-4 text-muted-foreground" />
-                      </button>
-                      <IconGripVertical class="drag-handle size-4 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0 touch-none" />
-                      <NuxtLink
-                        :to="`/products/${item.product_id}`"
-                        class="flex min-w-0 flex-1 items-center gap-2 hover:underline"
-                        @click.stop
-                      >
-                        <img v-if="item.image_path" :src="getProductImageUrl(item.image_path)" class="size-8 shrink-0 rounded object-cover" alt="" />
-                        <div v-else class="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">{{ item.product_name.charAt(0) }}</div>
-                        <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ item.product_name }}</span>
-                      </NuxtLink>
-                      <input type="text" :value="item.location_label ?? ''" :placeholder="t('warehouse.locationPlaceholder')" class="h-7 w-28 shrink-0 rounded-md border border-input bg-background px-2 text-xs sm:w-36" @input="updateLocationLabel(item, ($event.target as HTMLInputElement).value)" />
-                      <button class="shrink-0 inline-flex h-7 items-center rounded-md border border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20" @click.stop="removeFromPositions(item)"><IconX class="size-3" /></button>
-                    </div>
-                  </div>
-
-                  <!-- Empty group hint -->
-                  <div v-if="group.products.length === 0 && group.children.length === 0" class="px-4 py-3 text-xs text-muted-foreground text-center border-t">
-                    {{ t('warehouse.positionsEmpty') }}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ── Root-level products (no group, sortable) ─────────────── -->
-            <div
-              v-if="ungroupedPositioned.length > 0 || groups.length > 0"
-              class="rounded-md border transition-colors"
-            >
-              <div class="px-3 py-2 bg-muted/20 text-xs font-medium text-muted-foreground">{{ t('warehouse.ungrouped') }}</div>
-              <div data-sortable-group="__root__" class="min-h-[2rem]">
-                <div
-                  v-for="item in ungroupedPositioned"
-                  :key="item.product_id"
-                  :data-product-id="item.product_id"
-                  class="flex items-center gap-2 border-t px-3 py-2 hover:bg-muted/30 transition-colors"
-                >
-                  <button class="shrink-0" @click.stop="toggleSelectProduct(item.product_id)">
-                    <component :is="selectedProducts.has(item.product_id) ? IconSquareCheck : IconSquare" class="size-4 text-muted-foreground" />
-                  </button>
-                  <IconGripVertical class="drag-handle size-4 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0 touch-none" />
-                  <NuxtLink
-                    :to="`/products/${item.product_id}`"
-                    class="flex min-w-0 flex-1 items-center gap-2 hover:underline"
-                    @click.stop
-                  >
-                    <img v-if="item.image_path" :src="getProductImageUrl(item.image_path)" class="size-8 shrink-0 rounded object-cover" alt="" />
-                    <div v-else class="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">{{ item.product_name.charAt(0) }}</div>
-                    <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ item.product_name }}</span>
-                  </NuxtLink>
-                  <input type="text" :value="item.location_label ?? ''" :placeholder="t('warehouse.locationPlaceholder')" class="h-7 w-28 shrink-0 rounded-md border border-input bg-background px-2 text-xs sm:w-36" @input="updateLocationLabel(item, ($event.target as HTMLInputElement).value)" />
-                  <button class="shrink-0 inline-flex h-7 items-center rounded-md border border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20" @click.stop="removeFromPositions(item)"><IconX class="size-3" /></button>
-                </div>
-              </div>
-            </div>
-
-            <!-- ── Unpositioned products ──────────────────────────────── -->
-            <div v-if="unpositionedItems.length > 0">
-              <h3 class="mb-2 text-sm font-medium text-muted-foreground">{{ t('warehouse.unpositioned') }}</h3>
-              <div class="rounded-md border border-dashed">
-                <div
-                  v-for="item in unpositionedItems"
-                  :key="item.product_id"
-                  class="flex items-center gap-3 border-b border-dashed px-3 py-2.5 last:border-0 opacity-60 hover:opacity-100 transition-opacity"
-                >
-                  <NuxtLink
-                    :to="`/products/${item.product_id}`"
-                    class="flex min-w-0 flex-1 items-center gap-3 hover:underline"
-                    @click.stop
-                  >
-                    <img v-if="item.image_path" :src="getProductImageUrl(item.image_path)" class="size-8 shrink-0 rounded object-cover" alt="" />
-                    <div v-else class="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">{{ item.product_name.charAt(0) }}</div>
-                    <span class="min-w-0 flex-1 truncate text-sm">{{ item.product_name }}</span>
-                  </NuxtLink>
-                  <button class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-xs hover:bg-muted" @click.stop="addToPositions(item)">
-                    <IconPlus class="size-3" />
-                    {{ t('warehouse.addToPositions') }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- ── Multi-select floating bar ────────────────────────────── -->
-          <div
-            v-if="selectedProducts.size > 0"
-            class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg border bg-background px-4 py-2.5 shadow-lg"
-          >
-            <span class="text-sm font-medium">{{ t('warehouse.nSelected', { count: selectedProducts.size }) }}</span>
-            <div class="relative">
-              <button
-                class="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                @click="showMoveToGroupMenu = !showMoveToGroupMenu"
-              >
-                <IconFolder class="size-3.5" />
-                {{ t('warehouse.moveToGroup') }}
-              </button>
-              <!-- Dropdown -->
-              <div v-if="showMoveToGroupMenu" class="absolute bottom-full left-0 mb-1 w-56 rounded-md border bg-popover p-1 shadow-md">
-                <button class="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted" @click="moveSelectedToGroup(null)">
-                  {{ t('warehouse.rootLevel') }}
-                </button>
-                <button
-                  v-for="g in allGroupsFlat"
-                  :key="g.id"
-                  class="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
-                  :style="{ paddingLeft: `${(g.depth + 1) * 12 + 8}px` }"
-                  @click="moveSelectedToGroup(g.id)"
-                >
-                  {{ g.name }}
-                </button>
-              </div>
-            </div>
-            <button class="h-8 rounded-md border px-3 text-xs hover:bg-muted" @click="deselectAll">
-              {{ t('warehouse.deselectAll') }}
-            </button>
-          </div>
-        </div>
-      </TabsContent>
-
-      <!-- ── Add group modal ──────────────────────────────────────────── -->
-      <AppModal v-model:open="showAddGroupModal" :title="t('warehouse.addGroup')" size="sm">
-        <form class="flex flex-col gap-3" @submit.prevent="submitAddGroup">
-          <div>
-            <label class="mb-1 block text-sm font-medium">{{ t('warehouse.groupName') }} *</label>
-            <input v-model="addGroupForm.name" type="text" :placeholder="t('warehouse.groupNamePlaceholder')" class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-          </div>
-          <div class="flex justify-end gap-2">
-            <button type="button" class="h-9 rounded-md border px-4 text-sm hover:bg-muted" @click="showAddGroupModal = false">{{ t('common.cancel') }}</button>
-            <button type="submit" class="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90" :disabled="!addGroupForm.name.trim()">{{ t('common.save') }}</button>
-          </div>
-        </form>
-      </AppModal>
-
-      <!-- ── Delete group confirm modal ──────────────────────────────── -->
-      <AppModal v-model:open="showDeleteGroupConfirm" :title="t('warehouse.deleteGroup')" size="sm">
-        <p class="text-sm text-muted-foreground">{{ t('warehouse.deleteGroupConfirm', { name: deletingGroup?.name ?? '' }) }}</p>
-        <div class="flex justify-end gap-2 pt-2">
-          <button class="h-9 rounded-md border px-4 text-sm hover:bg-muted" @click="showDeleteGroupConfirm = false">{{ t('common.cancel') }}</button>
-          <button class="h-9 rounded-md bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700" @click="confirmDeleteGroup">{{ t('common.delete') }}</button>
-        </div>
-      </AppModal>
-
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <!-- SETTINGS TAB                                                       -->
-      <!-- ═══════════════════════════════════════════════════════════════════ -->
-      <TabsContent v-if="isAdmin" value="settings">
-        <div class="flex flex-col gap-6">
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SETUP (admin): warehouses, packing order, barcodes, calculation    -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div v-else-if="warehouses.length > 0 && activeTab === 'setup' && isAdmin" class="grid gap-6 md:grid-cols-[200px_minmax(0,1fr)]">
+      <nav class="flex gap-1 overflow-x-auto md:flex-col" :aria-label="t('warehouse.setup')">
+        <button
+          v-for="s in SETUP_SECTIONS"
+          :key="s"
+          type="button"
+          class="shrink-0 rounded-md px-3 py-2 text-left text-sm transition-colors"
+          :class="setupSection === s ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/50'"
+          @click="setSection(s)"
+        >
+          {{ t(`warehouse.setupSection.${s}`) }}
+          <span class="hidden text-xs font-normal text-muted-foreground md:block">{{ t(`warehouse.setupSectionHint.${s}`) }}</span>
+        </button>
+      </nav>
+      <div class="min-w-0">
+        <div v-if="setupSection === 'warehouses'" class="flex flex-col gap-6">
           <!-- Warehouses management -->
           <div>
             <div class="mb-3 flex items-center justify-between">
@@ -2126,7 +1654,264 @@ async function onVelocityDaysChange(e: Event) {
               </table>
             </div>
           </div>
+        </div>
 
+        <!-- Packing order (was: positions tab) -->
+        <div v-else-if="setupSection === 'positions'">
+          <div class="relative flex flex-col gap-4">
+            <!-- Saving indicator -->
+            <div v-if="positionsSaving" class="absolute -top-5 right-0 text-xs text-muted-foreground">
+              {{ t('common.saving') }}...
+            </div>
+
+            <div class="flex items-center justify-between">
+              <p class="text-sm text-muted-foreground">{{ t('warehouse.positionsDescription') }}</p>
+              <button
+                class="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                @click="openAddGroup(null)"
+              >
+                <IconFolderPlus class="size-3.5" />
+                {{ t('warehouse.addGroup') }}
+              </button>
+            </div>
+
+            <!-- Loading -->
+            <div v-if="positionsLoading" class="flex items-center justify-center py-12">
+              <div class="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+
+            <!-- Empty state -->
+            <div v-else-if="positions.length === 0 && groups.length === 0" class="rounded-lg border border-dashed p-8 text-center">
+              <p class="text-muted-foreground">{{ t('warehouse.positionsEmpty') }}</p>
+            </div>
+
+            <template v-else>
+              <!-- ── Group tree (sortable container) ─────────────────────── -->
+              <div data-sortable-groups class="flex flex-col gap-3">
+                <div v-for="group in groups" :key="group.id" class="rounded-md border transition-colors">
+                  <!-- Group header -->
+                  <div class="flex items-center gap-2 px-3 py-2 bg-muted/30 cursor-pointer select-none" @click="toggleGroup(group.id)">
+                    <IconGripVertical class="group-drag-handle size-4 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0 touch-none" @click.stop />
+                    <IconFolder class="size-4 text-muted-foreground" />
+                    <component :is="expandedGroups.has(group.id) ? IconChevronDownSmall : IconChevronRightSmall" class="size-4 text-muted-foreground" />
+
+                    <!-- Group name (inline edit) -->
+                    <template v-if="editingGroupId === group.id">
+                      <input
+                        v-model="editingGroupName"
+                        type="text"
+                        class="h-7 flex-1 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        @click.stop
+                        @keyup.enter="saveEditGroup"
+                        @keyup.escape="cancelEditGroup"
+                      />
+                      <button class="h-6 rounded px-1.5 text-xs bg-primary text-primary-foreground" @click.stop="saveEditGroup">OK</button>
+                      <button class="h-6 rounded px-1.5 text-xs border hover:bg-muted" @click.stop="cancelEditGroup">{{ t('common.cancel') }}</button>
+                    </template>
+                    <template v-else>
+                      <span class="flex-1 text-sm font-semibold">{{ group.name }}</span>
+                      <span class="text-xs text-muted-foreground">{{ group.products.length }} {{ group.products.length === 1 ? 'Produkt' : 'Produkte' }}</span>
+                    </template>
+
+                    <!-- Group actions -->
+                    <div v-if="editingGroupId !== group.id" class="flex items-center gap-0.5" @click.stop>
+                      <button class="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted" @click="openAddGroup(group.id)" :title="t('warehouse.addSubGroup')">
+                        <IconFolderPlus class="size-3.5" />
+                      </button>
+                      <button class="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted" @click="startEditGroup(group)" :title="t('warehouse.editGroup')">
+                        <IconEdit class="size-3.5" />
+                      </button>
+                      <button
+                        class="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-red-50 text-red-600 dark:hover:bg-red-950/20 dark:text-red-400"
+                        @click="deletingGroup = group; showDeleteGroupConfirm = true"
+                        :title="t('warehouse.deleteGroup')"
+                      >
+                        <IconTrash class="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Group content (products + subgroups) -->
+                  <div v-if="expandedGroups.has(group.id)" class="border-t">
+                    <!-- Subgroups (recursive - one level shown inline) -->
+                    <template v-for="child in group.children" :key="child.id">
+                      <div class="ml-4 border-l transition-colors">
+                        <div class="flex items-center gap-2 px-3 py-1.5 bg-muted/20 cursor-pointer select-none" @click="toggleGroup(child.id)">
+                          <IconFolder class="size-3.5 text-muted-foreground" />
+                          <component :is="expandedGroups.has(child.id) ? IconChevronDownSmall : IconChevronRightSmall" class="size-3.5 text-muted-foreground" />
+                          <template v-if="editingGroupId === child.id">
+                            <input v-model="editingGroupName" type="text" class="h-6 flex-1 rounded border border-input bg-background px-2 text-xs" @click.stop @keyup.enter="saveEditGroup" @keyup.escape="cancelEditGroup" />
+                            <button class="h-5 rounded px-1 text-[10px] bg-primary text-primary-foreground" @click.stop="saveEditGroup">OK</button>
+                          </template>
+                          <template v-else>
+                            <span class="flex-1 text-xs font-semibold">{{ child.name }}</span>
+                            <span class="text-[10px] text-muted-foreground">{{ child.products.length }}</span>
+                          </template>
+                          <div v-if="editingGroupId !== child.id" class="flex items-center gap-0.5" @click.stop>
+                            <button class="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-muted" @click="openAddGroup(child.id)"><IconFolderPlus class="size-3" /></button>
+                            <button class="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-muted" @click="startEditGroup(child)"><IconEdit class="size-3" /></button>
+                            <button class="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-red-50 text-red-600 dark:hover:bg-red-950/20 dark:text-red-400" @click="deletingGroup = child; showDeleteGroupConfirm = true"><IconTrash class="size-3" /></button>
+                          </div>
+                        </div>
+                        <!-- Child products (sortable) -->
+                        <div v-if="expandedGroups.has(child.id)" :data-sortable-group="child.id" class="min-h-[2rem]">
+                          <div
+                            v-for="item in child.products"
+                            :key="item.product_id"
+                            :data-product-id="item.product_id"
+                            class="flex items-center gap-2 border-t px-4 py-2 ml-2 hover:bg-muted/30 transition-colors"
+                          >
+                            <button class="shrink-0" @click.stop="toggleSelectProduct(item.product_id)">
+                              <component :is="selectedProducts.has(item.product_id) ? IconSquareCheck : IconSquare" class="size-4 text-muted-foreground" />
+                            </button>
+                            <IconGripVertical class="drag-handle size-3.5 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0 touch-none" />
+                            <NuxtLink
+                              :to="`/products/${item.product_id}`"
+                              class="flex min-w-0 flex-1 items-center gap-2 hover:underline"
+                              @click.stop
+                            >
+                              <img v-if="item.image_path" :src="getProductImageUrl(item.image_path)" class="size-7 shrink-0 rounded object-cover" alt="" />
+                              <div v-else class="flex size-7 shrink-0 items-center justify-center rounded bg-muted text-[10px] font-medium text-muted-foreground">{{ item.product_name.charAt(0) }}</div>
+                              <span class="min-w-0 flex-1 truncate text-xs font-medium">{{ item.product_name }}</span>
+                            </NuxtLink>
+                            <input type="text" :value="item.location_label ?? ''" :placeholder="t('warehouse.locationPlaceholder')" class="h-6 w-24 shrink-0 rounded border border-input bg-background px-1.5 text-[10px] sm:w-28" @input="updateLocationLabel(item, ($event.target as HTMLInputElement).value)" />
+                            <button class="shrink-0 h-6 w-6 inline-flex items-center justify-center rounded border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20" @click="removeFromPositions(item)"><IconX class="size-3" /></button>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+
+                    <!-- Products directly in this group (sortable) -->
+                    <div :data-sortable-group="group.id" class="min-h-[2rem]">
+                      <div
+                        v-for="item in group.products"
+                        :key="item.product_id"
+                        :data-product-id="item.product_id"
+                        class="flex items-center gap-2 border-t px-3 py-2 hover:bg-muted/30 transition-colors"
+                      >
+                        <button class="shrink-0" @click.stop="toggleSelectProduct(item.product_id)">
+                          <component :is="selectedProducts.has(item.product_id) ? IconSquareCheck : IconSquare" class="size-4 text-muted-foreground" />
+                        </button>
+                        <IconGripVertical class="drag-handle size-4 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0 touch-none" />
+                        <NuxtLink
+                          :to="`/products/${item.product_id}`"
+                          class="flex min-w-0 flex-1 items-center gap-2 hover:underline"
+                          @click.stop
+                        >
+                          <img v-if="item.image_path" :src="getProductImageUrl(item.image_path)" class="size-8 shrink-0 rounded object-cover" alt="" />
+                          <div v-else class="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">{{ item.product_name.charAt(0) }}</div>
+                          <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ item.product_name }}</span>
+                        </NuxtLink>
+                        <input type="text" :value="item.location_label ?? ''" :placeholder="t('warehouse.locationPlaceholder')" class="h-7 w-28 shrink-0 rounded-md border border-input bg-background px-2 text-xs sm:w-36" @input="updateLocationLabel(item, ($event.target as HTMLInputElement).value)" />
+                        <button class="shrink-0 inline-flex h-7 items-center rounded-md border border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20" @click.stop="removeFromPositions(item)"><IconX class="size-3" /></button>
+                      </div>
+                    </div>
+
+                    <!-- Empty group hint -->
+                    <div v-if="group.products.length === 0 && group.children.length === 0" class="px-4 py-3 text-xs text-muted-foreground text-center border-t">
+                      {{ t('warehouse.positionsEmpty') }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── Root-level products (no group, sortable) ─────────────── -->
+              <div
+                v-if="ungroupedPositioned.length > 0 || groups.length > 0"
+                class="rounded-md border transition-colors"
+              >
+                <div class="px-3 py-2 bg-muted/20 text-xs font-medium text-muted-foreground">{{ t('warehouse.ungrouped') }}</div>
+                <div data-sortable-group="__root__" class="min-h-[2rem]">
+                  <div
+                    v-for="item in ungroupedPositioned"
+                    :key="item.product_id"
+                    :data-product-id="item.product_id"
+                    class="flex items-center gap-2 border-t px-3 py-2 hover:bg-muted/30 transition-colors"
+                  >
+                    <button class="shrink-0" @click.stop="toggleSelectProduct(item.product_id)">
+                      <component :is="selectedProducts.has(item.product_id) ? IconSquareCheck : IconSquare" class="size-4 text-muted-foreground" />
+                    </button>
+                    <IconGripVertical class="drag-handle size-4 text-muted-foreground/40 cursor-grab active:cursor-grabbing shrink-0 touch-none" />
+                    <NuxtLink
+                      :to="`/products/${item.product_id}`"
+                      class="flex min-w-0 flex-1 items-center gap-2 hover:underline"
+                      @click.stop
+                    >
+                      <img v-if="item.image_path" :src="getProductImageUrl(item.image_path)" class="size-8 shrink-0 rounded object-cover" alt="" />
+                      <div v-else class="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">{{ item.product_name.charAt(0) }}</div>
+                      <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ item.product_name }}</span>
+                    </NuxtLink>
+                    <input type="text" :value="item.location_label ?? ''" :placeholder="t('warehouse.locationPlaceholder')" class="h-7 w-28 shrink-0 rounded-md border border-input bg-background px-2 text-xs sm:w-36" @input="updateLocationLabel(item, ($event.target as HTMLInputElement).value)" />
+                    <button class="shrink-0 inline-flex h-7 items-center rounded-md border border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20" @click.stop="removeFromPositions(item)"><IconX class="size-3" /></button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── Unpositioned products ──────────────────────────────── -->
+              <div v-if="unpositionedItems.length > 0">
+                <h3 class="mb-2 text-sm font-medium text-muted-foreground">{{ t('warehouse.unpositioned') }}</h3>
+                <div class="rounded-md border border-dashed">
+                  <div
+                    v-for="item in unpositionedItems"
+                    :key="item.product_id"
+                    class="flex items-center gap-3 border-b border-dashed px-3 py-2.5 last:border-0 opacity-60 hover:opacity-100 transition-opacity"
+                  >
+                    <NuxtLink
+                      :to="`/products/${item.product_id}`"
+                      class="flex min-w-0 flex-1 items-center gap-3 hover:underline"
+                      @click.stop
+                    >
+                      <img v-if="item.image_path" :src="getProductImageUrl(item.image_path)" class="size-8 shrink-0 rounded object-cover" alt="" />
+                      <div v-else class="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">{{ item.product_name.charAt(0) }}</div>
+                      <span class="min-w-0 flex-1 truncate text-sm">{{ item.product_name }}</span>
+                    </NuxtLink>
+                    <button class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-xs hover:bg-muted" @click.stop="addToPositions(item)">
+                      <IconPlus class="size-3" />
+                      {{ t('warehouse.addToPositions') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- ── Multi-select floating bar ────────────────────────────── -->
+            <div
+              v-if="selectedProducts.size > 0"
+              class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg border bg-background px-4 py-2.5 shadow-lg"
+            >
+              <span class="text-sm font-medium">{{ t('warehouse.nSelected', { count: selectedProducts.size }) }}</span>
+              <div class="relative">
+                <button
+                  class="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                  @click="showMoveToGroupMenu = !showMoveToGroupMenu"
+                >
+                  <IconFolder class="size-3.5" />
+                  {{ t('warehouse.moveToGroup') }}
+                </button>
+                <!-- Dropdown -->
+                <div v-if="showMoveToGroupMenu" class="absolute bottom-full left-0 mb-1 w-56 rounded-md border bg-popover p-1 shadow-md">
+                  <button class="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted" @click="moveSelectedToGroup(null)">
+                    {{ t('warehouse.rootLevel') }}
+                  </button>
+                  <button
+                    v-for="g in allGroupsFlat"
+                    :key="g.id"
+                    class="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+                    :style="{ paddingLeft: `${(g.depth + 1) * 12 + 8}px` }"
+                    @click="moveSelectedToGroup(g.id)"
+                  >
+                    {{ g.name }}
+                  </button>
+                </div>
+              </div>
+              <button class="h-8 rounded-md border px-3 text-xs hover:bg-muted" @click="deselectAll">
+                {{ t('warehouse.deselectAll') }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="setupSection === 'barcodes'" class="flex flex-col gap-6">
           <!-- Barcode management -->
           <div>
             <div class="mb-3 flex items-center justify-between">
@@ -2183,7 +1968,9 @@ async function onVelocityDaysChange(e: Event) {
               </table>
             </div>
           </div>
+        </div>
 
+        <div v-else-if="setupSection === 'calculation'" class="flex flex-col gap-6">
           <!-- Velocity calculation period -->
           <div>
             <h2 class="mb-3 text-lg font-semibold">{{ t('warehouse.velocitySettingTitle') }}</h2>
@@ -2202,86 +1989,32 @@ async function onVelocityDaysChange(e: Event) {
               </select>
             </div>
           </div>
-
-          <!-- Min stock thresholds -->
-          <div>
-            <h2 class="mb-3 text-lg font-semibold">{{ t('warehouse.minStockThresholds') }}</h2>
-            <p class="mb-3 text-sm text-muted-foreground">{{ t('warehouse.minStockDescription', { name: selectedWarehouse?.name ?? '' }) }}</p>
-            <div class="overflow-x-auto rounded-md border">
-              <table class="w-full text-sm">
-                <thead>
-                  <tr class="border-b bg-muted/50 text-left">
-                    <th class="px-4 py-3 font-medium">{{ t('warehouse.productCol') }}</th>
-                    <th class="px-4 py-3 font-medium">{{ t('warehouse.currentStockCol') }}</th>
-                    <th class="px-4 py-3 font-medium">{{ t('warehouse.minStockCol') }}</th>
-                    <th class="px-4 py-3 font-medium text-center">{{ t('warehouse.discontinuedCol') }}</th>
-                    <th class="px-4 py-3 font-medium text-right">{{ t('common.actions') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="products.length === 0">
-                    <td colspan="5" class="px-4 py-6 text-center text-muted-foreground">{{ t('warehouse.noProducts') }}</td>
-                  </tr>
-                  <tr
-                    v-for="p in products"
-                    :key="p.id"
-                    class="border-b last:border-0 hover:bg-muted/30 transition-colors"
-                    :class="{ 'opacity-50': p.discontinued }"
-                  >
-                    <td class="px-4 py-3">
-                      <NuxtLink
-                        :to="`/products/${p.id}`"
-                        class="flex items-center gap-2 hover:underline"
-                      >
-                        <img v-if="p.image_path" :src="getProductImageUrl(p.image_path)" class="size-6 rounded object-cover" alt="" />
-                        <div v-else class="flex size-6 items-center justify-center rounded bg-muted text-[10px] font-medium text-muted-foreground">{{ p.name.charAt(0) }}</div>
-                        <span class="font-medium" :class="{ 'line-through': p.discontinued }">{{ p.name }}</span>
-                      </NuxtLink>
-                    </td>
-                    <td class="px-4 py-3 tabular-nums">
-                      {{ productSummaries.find(s => s.product_id === p.id)?.total_quantity ?? 0 }}
-                    </td>
-                    <td class="px-4 py-3">
-                      <input
-                        type="number"
-                        min="0"
-                        :value="getMinStockValue(p.id)"
-                        :disabled="p.discontinued"
-                        class="h-8 w-20 rounded-md border border-input bg-background px-2 text-sm tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-                        @input="minStockEdits.set(p.id, Number(($event.target as HTMLInputElement).value))"
-                      />
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                      <button
-                        class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        :class="p.discontinued ? 'bg-gray-400 dark:bg-gray-600' : 'bg-muted'"
-                        role="switch"
-                        :aria-checked="p.discontinued"
-                        @click="toggleDiscontinued(p.id, !p.discontinued).then(() => { if (selectedWarehouseId) fetchProductSummaries(selectedWarehouseId) })"
-                      >
-                        <span
-                          class="pointer-events-none block size-4 rounded-full bg-background shadow-lg ring-0 transition-transform"
-                          :class="p.discontinued ? 'translate-x-4' : 'translate-x-0'"
-                        />
-                      </button>
-                    </td>
-                    <td class="px-4 py-3 text-right">
-                      <button
-                        v-if="minStockEdits.has(p.id)"
-                        class="h-7 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                        @click="saveMinStock(p.id)"
-                      >
-                        {{ t('common.save') }}
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
-      </TabsContent>
-    </Tabs>
+      </div>
+    </div>
+
+    <!-- ── Add group modal ──────────────────────────────────────────── -->
+    <AppModal v-model:open="showAddGroupModal" :title="t('warehouse.addGroup')" size="sm">
+      <form class="flex flex-col gap-3" @submit.prevent="submitAddGroup">
+        <div>
+          <label class="mb-1 block text-sm font-medium">{{ t('warehouse.groupName') }} *</label>
+          <input v-model="addGroupForm.name" type="text" :placeholder="t('warehouse.groupNamePlaceholder')" class="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="h-9 rounded-md border px-4 text-sm hover:bg-muted" @click="showAddGroupModal = false">{{ t('common.cancel') }}</button>
+          <button type="submit" class="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90" :disabled="!addGroupForm.name.trim()">{{ t('common.save') }}</button>
+        </div>
+      </form>
+    </AppModal>
+
+    <!-- ── Delete group confirm modal ──────────────────────────────── -->
+    <AppModal v-model:open="showDeleteGroupConfirm" :title="t('warehouse.deleteGroup')" size="sm">
+      <p class="text-sm text-muted-foreground">{{ t('warehouse.deleteGroupConfirm', { name: deletingGroup?.name ?? '' }) }}</p>
+      <div class="flex justify-end gap-2 pt-2">
+        <button class="h-9 rounded-md border px-4 text-sm hover:bg-muted" @click="showDeleteGroupConfirm = false">{{ t('common.cancel') }}</button>
+        <button class="h-9 rounded-md bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700" @click="confirmDeleteGroup">{{ t('common.delete') }}</button>
+      </div>
+    </AppModal>
 
     <!-- ═══════════════════════════════════════════════════════════════════── -->
     <!-- MODALS                                                               -->
