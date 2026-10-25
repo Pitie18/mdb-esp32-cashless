@@ -15,11 +15,11 @@ func slotBadgeLabel(_ slots: [Int]) -> String {
     let sorted = slots.sorted()
     guard !sorted.isEmpty else { return "" }
     if sorted.count <= 3 {
-        return "Slot \(sorted.map(String.init).joined(separator: ", "))"
+        return String(localized: "Slot \(sorted.map(String.init).joined(separator: ", "))")
     }
     let first = sorted.prefix(3).map(String.init).joined(separator: ", ")
     let extra = sorted.count - 3
-    return "Slot \(first) +\(extra)"
+    return String(localized: "Slot \(first) +\(extra)")
 }
 
 // MARK: - Replacement Product Picker
@@ -298,7 +298,7 @@ struct ReplacementProductPicker: View {
         .selectionDisabled()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(title), \(bucket.totalCount) \(bucket.totalCount == 1 ? "product" : "products")"
+            "\(title), " + String(localized: "\(bucket.totalCount) product")
         )
         .accessibilityAddTraits(.isHeader)
     }
@@ -329,7 +329,7 @@ struct ReplacementProductPicker: View {
         .listRowSeparator(.hidden)
         .selectionDisabled()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(group.isCurrent ? "\(name), current category" : name)
+        .accessibilityLabel(group.isCurrent ? String(localized: "\(name), current category") : name)
         .accessibilityAddTraits(.isHeader)
     }
 
@@ -492,7 +492,9 @@ struct ReplacementProductPicker: View {
                         .padding(.vertical, 2)
                         .background(Capsule().fill(.orange.opacity(0.15)))
                         .foregroundStyle(.orange)
-                        .accessibilityLabel("Already in \(slots.count == 1 ? "slot" : "slots") \(slots.sorted().map(String.init).joined(separator: ", "))")
+                        .accessibilityLabel(slots.count == 1
+                            ? String(localized: "Already in slot \(slots.sorted().map(String.init).joined(separator: ", "))")
+                            : String(localized: "Already in slots \(slots.sorted().map(String.init).joined(separator: ", "))"))
                 }
                 Spacer()
                 if selectedProductId == product.id {

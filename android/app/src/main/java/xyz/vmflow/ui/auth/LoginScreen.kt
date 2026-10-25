@@ -105,7 +105,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Vending Machine Management",
+                    text = stringResource(R.string.login_subtitle),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -116,7 +116,7 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
+                    label = { Text(stringResource(R.string.auth_email)) },
                     leadingIcon = {
                         Icon(Icons.Default.Email, contentDescription = null)
                     },
@@ -137,7 +137,7 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password") },
+                    label = { Text(stringResource(R.string.auth_password)) },
                     leadingIcon = {
                         Icon(Icons.Default.Lock, contentDescription = null)
                     },
@@ -146,7 +146,7 @@ fun LoginScreen(
                             Icon(
                                 if (passwordVisible) Icons.Default.VisibilityOff
                                 else Icons.Default.Visibility,
-                                contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                                contentDescription = stringResource(if (passwordVisible) R.string.auth_hide_password else R.string.auth_show_password)
                             )
                         }
                     },
@@ -186,14 +186,14 @@ fun LoginScreen(
                         )
                     }
                     AnimatedVisibility(visible = !uiState.isLoading) {
-                        Text("Sign In", style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.auth_sign_in), style = MaterialTheme.typography.labelLarge)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 TextButton(onClick = onNavigateToRegister) {
-                    Text("Don't have an account? Register")
+                    Text(stringResource(R.string.auth_no_account_register))
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))

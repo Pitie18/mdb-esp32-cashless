@@ -820,4 +820,65 @@
         <item quantity="one">%1$d slot added to the change request. It is rebuilt at the machine during the tour.</item>
         <item quantity="other">%1$d slots added to the change request. They are rebuilt at the machine during the tour.</item>
     </plurals>
+
+    <!-- Auth, machine list/detail, tray editor -->
+    <string name="login_subtitle">Vending Machine Management</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_show_password">Show password</string>
+    <string name="auth_hide_password">Hide password</string>
+    <string name="auth_sign_in">Sign In</string>
+    <string name="auth_no_account_register">Don\'t have an account? Register</string>
+    <string name="register_title">Create Account</string>
+    <string name="register_success_title">Registration Successful</string>
+    <string name="register_success_message">Please check your email to confirm your account, then sign in.</string>
+    <string name="register_back_to_sign_in">Back to Sign In</string>
+    <string name="register_confirm_password">Confirm Password</string>
+    <string name="register_passwords_mismatch">Passwords do not match</string>
+    <string name="register_have_account">Already have an account? Sign In</string>
+    <string name="status_online">Online</string>
+    <string name="status_offline">Offline</string>
+    <string name="machine_revenue_today">Today</string>
+    <string name="machine_revenue_yesterday">Yesterday</string>
+    <string name="machine_card_sales">Sales</string>
+    <string name="machine_detail_revenue">Revenue</string>
+    <string name="machine_detail_sales_today">Sales Today</string>
+    <string name="machine_detail_visitors">Visitors</string>
+    <string name="machine_detail_device_info">Device Info</string>
+    <string name="machine_detail_status">Status</string>
+    <string name="machine_detail_firmware">Firmware</string>
+    <string name="machine_detail_subdomain">Subdomain</string>
+    <string name="machine_detail_tab_overview">Overview</string>
+    <string name="machine_detail_tab_trays">Trays</string>
+    <string name="machine_detail_tab_sales">Sales</string>
+    <string name="machine_list_search_hint">Search machines…</string>
+    <string name="machine_list_search_clear">Clear search</string>
+    <string name="machine_list_no_match">No machines match your search</string>
+    <string name="machine_list_empty">No machines found</string>
+    <string name="tray_edit_title">Edit Tray #%1$d</string>
+    <string name="tray_add_title">Add Tray</string>
+    <string name="tray_slot_number">Slot Number</string>
+    <string name="tray_product">Product</string>
+    <string name="tray_unnamed_product">Unnamed</string>
+    <string name="tray_capacity">Capacity</string>
+    <string name="tray_stock">Stock</string>
+    <string name="tray_min_stock">Min Stock</string>
+    <string name="tray_fill_below">Fill Below</string>
+    <string name="tray_batch_title">Batch Add Trays</string>
+    <string name="tray_batch_description">Add multiple trays with sequential slot numbers.</string>
+    <string name="tray_batch_start_slot">Starting Slot</string>
+    <string name="tray_batch_count">Number of Trays</string>
+    <string name="tray_batch_capacity_each">Capacity (each)</string>
+    <string name="tray_batch_preview">This will create slots %1$d through %2$d</string>
+    <string name="tray_empty_hint">Add trays to track stock levels</string>
+    <string name="tray_decrease">Decrease</string>
+    <string name="tray_increase">Increase</string>
+    <plurals name="machine_card_visitors">
+        <item quantity="one">%1$d visitor</item>
+        <item quantity="other">%1$d visitors</item>
+    </plurals>
+    <plurals name="tray_batch_submit">
+        <item quantity="one">Add %1$d Tray</item>
+        <item quantity="other">Add %1$d Trays</item>
+    </plurals>
 </resources>

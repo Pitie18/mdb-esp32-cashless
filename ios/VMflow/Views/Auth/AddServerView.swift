@@ -121,7 +121,7 @@ struct AddServerView: View {
 
     @ViewBuilder
     private func formField(
-        label: String,
+        label: LocalizedStringKey,
         placeholder: String,
         text: Binding<String>,
         keyboardType: UIKeyboardType = .default,

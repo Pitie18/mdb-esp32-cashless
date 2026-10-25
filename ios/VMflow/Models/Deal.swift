@@ -82,7 +82,7 @@ struct Deal: Codable, Identifiable {
         if let firstTerm = dealKeywords?.terms?.first, !firstTerm.isEmpty { return firstTerm }
         if let firstLinked = dealKeywords?.linkedProducts.first?.name { return firstLinked }
         if let term = matchedTerm, !term.isEmpty { return term }
-        return "Unknown Product"
+        return String(localized: "Unknown Product")
     }
 
     var productImagePath: String? {

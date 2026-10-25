@@ -515,7 +515,7 @@ struct ProductEditSheet: View {
     private func addBarcode(_ code: String) async {
         let allCodes = barcodes.map(\.barcode) + pendingBarcodes.map(\.code)
         guard !allCodes.contains(code) else {
-            viewModel.error = "Barcode \"\(code)\" is already added."
+            viewModel.error = String(localized: "Barcode \"\(code)\" is already added.")
             return
         }
 

@@ -151,7 +151,7 @@ struct RegisterView: View {
 
     @ViewBuilder
     private func formField<Content: View>(
-        _ label: String,
+        _ label: LocalizedStringKey,
         text: Binding<String>,
         field: Field,
         @ViewBuilder content: () -> Content

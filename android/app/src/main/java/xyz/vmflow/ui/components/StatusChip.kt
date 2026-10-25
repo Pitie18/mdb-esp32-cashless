@@ -13,7 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import xyz.vmflow.R
 import xyz.vmflow.ui.theme.OfflineGray
 import xyz.vmflow.ui.theme.OnlineGreen
 
@@ -23,7 +25,7 @@ fun StatusChip(
     modifier: Modifier = Modifier
 ) {
     val dotColor = if (isOnline) OnlineGreen else OfflineGray
-    val label = if (isOnline) "Online" else "Offline"
+    val label = stringResource(if (isOnline) R.string.status_online else R.string.status_offline)
     val bgColor = if (isOnline) {
         OnlineGreen.copy(alpha = 0.12f)
     } else {

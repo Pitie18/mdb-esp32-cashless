@@ -161,7 +161,7 @@ struct DeleteAccountSheet: View {
     }
 
     private var companyNameDisplay: String {
-        auth.organization?.name ?? "your company"
+        auth.organization?.name ?? String(localized: "your company")
     }
 
     // MARK: - Submit

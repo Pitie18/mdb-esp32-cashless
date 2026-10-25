@@ -1,0 +1,880 @@
+<resources>
+
+    <!-- Navigation bar -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_machines">Machines</string>
+    <string name="nav_refill">Bijvullen</string>
+    <string name="nav_warehouse">Magazijn</string>
+    <string name="action_back">Terug</string>
+
+    <!-- Warehouse screen -->
+    <string name="warehouse_screen_title">Magazijn</string>
+    <string name="warehouse_picker_label">Magazijn</string>
+    <string name="warehouse_tab_stock">Voorraad</string>
+    <string name="warehouse_tab_incoming">Inkomend</string>
+    <string name="warehouse_empty_state">Nog geen magazijnen</string>
+
+    <!-- Warehouse stock tab -->
+    <string name="warehouse_stock_search_hint">Producten zoeken</string>
+    <string name="warehouse_stock_search_clear">Zoekopdracht wissen</string>
+    <string name="warehouse_stock_out_of_stock">Niet op voorraad</string>
+    <string name="warehouse_stock_filter_archived">Gearchiveerd</string>
+    <string name="warehouse_stock_filter_expiring_soon">Verloopt binnenkort</string>
+    <string name="warehouse_stock_filter_critical">Kritiek</string>
+    <string name="warehouse_stock_low">Laag</string>
+    <string name="warehouse_stock_per_day">%1$s / dag</string>
+    <string name="warehouse_stock_no_sales">geen verkopen</string>
+    <plurals name="warehouse_stock_reach_days">
+        <item quantity="one">~%1$d dag</item>
+        <item quantity="other">~%1$d dagen</item>
+    </plurals>
+    <string name="warehouse_stock_reach_under_one">&lt;1 dag</string>
+    <string name="warehouse_stock_reach_over">&gt;%1$d dagen</string>
+    <string name="warehouse_stock_sort_reach">Kortste bereik</string>
+    <string name="warehouse_stock_empty_no_stock">Geen voorraad in dit magazijn</string>
+    <string name="warehouse_stock_empty_search">Geen producten die overeenkomen met \"%1$s\"</string>
+    <string name="warehouse_stock_empty_filtered">Geen producten komen overeen met de huidige filters</string>
+    <plurals name="warehouse_batch_count">
+        <item quantity="one">%1$d partij</item>
+        <item quantity="other">%1$d partijen</item>
+    </plurals>
+
+    <!-- Warehouse incoming (intake) tab -->
+    <string name="warehouse_intake_form_header">Inname boeken</string>
+    <string name="warehouse_intake_product_label">Product</string>
+    <string name="warehouse_intake_product_empty">Geen overeenkomende producten</string>
+    <string name="warehouse_intake_product_change">Product wijzigen</string>
+    <string name="warehouse_intake_scan_button">Barcode scannen</string>
+    <string name="warehouse_intake_scan_title">Barcode scannen</string>
+    <string name="warehouse_intake_scan_hint">Richt de camera op de barcode van het product</string>
+    <string name="warehouse_intake_scan_not_found">Geen product gevonden voor deze barcode</string>
+    <string name="warehouse_intake_quantity_label">Aantal</string>
+    <string name="warehouse_intake_quantity_hint">bijv. 2*12</string>
+    <string name="warehouse_intake_quantity_preview">= %1$d</string>
+    <string name="warehouse_intake_batch_label">Partijnummer</string>
+    <string name="warehouse_intake_optional_hint">Optioneel</string>
+    <string name="warehouse_intake_expiration_label">Ten minste houdbaar tot</string>
+    <string name="warehouse_intake_expiration_clear">Vervaldatum wissen</string>
+    <string name="warehouse_intake_supplier_label">Leverancier</string>
+    <string name="warehouse_intake_submit">Inname boeken</string>
+    <string name="warehouse_intake_recent_header">Recente innames</string>
+    <string name="warehouse_intake_recent_empty">Nog geen recente innames</string>
+
+    <!-- Warehouse batch drilldown sheet -->
+    <string name="warehouse_batch_drilldown_loading">Partijen laden…</string>
+    <string name="warehouse_batch_drilldown_empty">Geen partijen op voorraad</string>
+    <string name="warehouse_batch_no_number">Geen partij</string>
+
+    <!-- Warehouse batch adjust sheet -->
+    <string name="warehouse_adjust_title">Voorraad aanpassen</string>
+    <string name="warehouse_adjust_current_stock_label">Huidige voorraad</string>
+    <string name="warehouse_adjust_direction_remove">Verwijderen</string>
+    <string name="warehouse_adjust_direction_add">Toevoegen</string>
+    <string name="warehouse_adjust_quantity_remove_label">Aantal te verwijderen</string>
+    <string name="warehouse_adjust_quantity_add_label">Aantal toe te voegen</string>
+    <string name="warehouse_adjust_exceeds_stock">Slechts %1$d beschikbaar</string>
+    <string name="warehouse_adjust_reason_label">Reden</string>
+    <string name="warehouse_adjust_reason_damage">Beschadigd</string>
+    <string name="warehouse_adjust_reason_expired">Verlopen</string>
+    <string name="warehouse_adjust_reason_correction">Voorraadcorrectie</string>
+    <string name="warehouse_adjust_reason_refill_return">Retour van bijvulling</string>
+    <string name="warehouse_adjust_notes_label">Notities</string>
+    <string name="warehouse_adjust_submit_remove">Voorraad afboeken</string>
+    <string name="warehouse_adjust_submit_add">Voorraad toevoegen</string>
+
+    <!-- Warehouse ordering (Order tab, expected deliveries, history) -->
+    <string name="warehouse_tab_order">Bestellen</string>
+    <string name="warehouse_tab_order_count">Bestellen (%1$d)</string>
+    <string name="warehouse_order_intro">Voorstel voor de volgende bestelcyclus: houdt het uit tot de levering daarna plus %1$d dagen buffer. Reeds bestelde goederen zijn afgetrokken.</string>
+    <string name="warehouse_order_intro_machines">Voorstel voor de volgende bestelcyclus: houdt het uit tot de levering daarna plus %1$d dagen buffer. Automaatvoorraad en reeds bestelde goederen zijn afgetrokken.</string>
+    <string name="warehouse_order_badge_auto">Automatisch</string>
+    <string name="warehouse_order_badge_manual">Handmatig</string>
+    <string name="warehouse_order_nothing">Alles houdt het uit tot de levering daarna. Niets te bestellen.</string>
+    <string name="warehouse_order_nothing_due">Niets nodig</string>
+    <string name="warehouse_order_no_supplier">Zonder leverancier</string>
+    <string name="warehouse_order_rhythm">Levertijd %1$d dagen · elke %2$d dagen besteld</string>
+    <string name="warehouse_order_no_supplier_hint_admin">Wijs direct in de regel een leverancier toe, dan gaat het product naar diens bestelling.</string>
+    <string name="warehouse_order_no_supplier_hint">Een beheerder kan deze producten aan een leverancier toewijzen.</string>
+    <string name="warehouse_order_has_empty">Bevat lege producten</string>
+    <string name="warehouse_order_below_min">Minimale bestelwaarde %1$s nog niet bereikt</string>
+    <string name="warehouse_order_search_product">Product zoeken</string>
+    <string name="warehouse_order_add_product">Product toevoegen</string>
+    <string name="warehouse_order_available">Beschikbaar %1$d</string>
+    <string name="warehouse_order_on_the_way_units">%1$d onderweg</string>
+    <string name="warehouse_order_lasts">houdt %1$d van %2$d d</string>
+    <string name="warehouse_order_via_ios">iPhone</string>
+    <string name="warehouse_order_via_android">Android</string>
+    <string name="warehouse_order_via_web">web</string>
+    <string name="warehouse_order_more">meer</string>
+    <string name="warehouse_order_less">minder</string>
+    <string name="warehouse_order_more_units">meer</string>
+    <string name="warehouse_order_carton_units">Doos van %1$d = %2$d stuks</string>
+    <string name="warehouse_order_reset_quantity">Hoeveelheid herstellen</string>
+    <string name="warehouse_order_assign_supplier">Leverancier toewijzen …</string>
+    <string name="warehouse_order_assigned">%1$s hoort nu bij %2$s.</string>
+    <string name="warehouse_order_net_cost">Inkoop netto</string>
+    <string name="warehouse_order_copy">Lijst kopiëren</string>
+    <string name="warehouse_order_copied">Gekopieerd</string>
+    <string name="warehouse_order_share">Delen</string>
+    <string name="warehouse_order_customer_no">Klantnr.</string>
+    <string name="warehouse_order_mark_ordered">Als besteld markeren</string>
+    <string name="warehouse_order_marked_ordered">%1$s: als besteld gemarkeerd. De goederen tellen nu als onderweg.</string>
+    <string name="warehouse_order_on_the_way">Onderweg</string>
+    <string name="warehouse_order_ordered_on">besteld %1$s</string>
+    <string name="warehouse_order_cancel">Bestelling annuleren</string>
+    <string name="warehouse_order_cancel_message">Bestelling bij %1$s annuleren? De goederen tellen dan niet meer als onderweg.</string>
+    <string name="warehouse_order_keep">Behouden</string>
+    <string name="warehouse_order_on_list">Op de bestellijst</string>
+    <string name="warehouse_order_list_add">Aan de bestellijst toevoegen</string>
+    <string name="warehouse_order_list_remove">Van de bestellijst verwijderen</string>
+    <string name="warehouse_order_section">Bestellen</string>
+    <string name="warehouse_order_manual_on_list">Handmatig op de bestellijst · %1$s, %2$s</string>
+    <string name="warehouse_order_auto_on_list">Automatisch op de bestellijst</string>
+    <string name="warehouse_order_main_supplier">Hoofdleverancier</string>
+    <string name="warehouse_order_supplier_none">Geen</string>
+    <string name="warehouse_order_unit_size">Stuks per doos</string>
+    <string name="warehouse_order_save">Opslaan</string>
+    <string name="warehouse_order_supplier_value">Leverancier: %1$s</string>
+    <plurals name="warehouse_order_items">
+        <item quantity="one">%1$d artikel</item>
+        <item quantity="other">%1$d artikelen</item>
+    </plurals>
+    <plurals name="warehouse_order_units">
+        <item quantity="one">%1$d stuk</item>
+        <item quantity="other">%1$d stuks</item>
+    </plurals>
+    <plurals name="warehouse_order_units_on_the_way">
+        <item quantity="one">%1$d stuk is besteld en onderweg.</item>
+        <item quantity="other">%1$d stuks zijn besteld en onderweg.</item>
+    </plurals>
+    <string name="warehouse_delivery_expected">Verwachte leveringen</string>
+    <string name="warehouse_delivery_check">Levering controleren</string>
+    <string name="warehouse_delivery_ordered_qty">besteld %1$d</string>
+    <string name="warehouse_delivery_delivered">Geleverd</string>
+    <string name="warehouse_delivery_book_all">Alles inboeken</string>
+    <string name="warehouse_delivery_booked">Levering ingeboekt: %1$d stuks.</string>
+    <string name="warehouse_delivery_close">Al ingeboekt · als geleverd afsluiten</string>
+    <string name="warehouse_delivery_close_hint">Voor goederen die al met de hand zijn ingeboekt, bijvoorbeeld met een oudere app. Boekt niets in.</string>
+    <string name="warehouse_delivery_close_confirm">Bestelling als geleverd afsluiten zonder iets in te boeken?</string>
+    <string name="warehouse_history_title">Geschiedenis</string>
+    <string name="warehouse_history_back">Terug</string>
+    <string name="warehouse_history_empty">Nog geen bewegingen</string>
+    <string name="warehouse_history_load_more">Meer laden</string>
+    <string name="warehouse_history_filter_all">Alle</string>
+    <string name="warehouse_history_filter_corrections">Correcties</string>
+    <string name="warehouse_history_type_refill">Bijvullen</string>
+    <string name="warehouse_history_type_correction">Correctie</string>
+    <string name="warehouse_history_type_transfer_out">Overboeking uit</string>
+    <string name="warehouse_history_type_transfer_in">Overboeking in</string>
+
+    <!-- StockBar accessibility -->
+    <string name="stock_bar_description">Voorraad %1$d van %2$d</string>
+
+    <!-- Server selection -->
+    <string name="server_selected">Server: %1$s</string>
+    <string name="server_select_title">Server selecteren</string>
+    <string name="server_add">Zelf-gehoste server toevoegen</string>
+    <string name="server_edit">Server bewerken</string>
+    <string name="server_delete">Server verwijderen</string>
+    <string name="server_delete_confirm">“%1$s” verwijderen?</string>
+    <string name="server_name">Naam</string>
+    <string name="server_url">Supabase-URL</string>
+    <string name="server_anon_key">Anon-sleutel</string>
+    <string name="server_name_hint">Mijn server</string>
+    <string name="action_save">Opslaan</string>
+    <string name="action_cancel">Annuleren</string>
+    <string name="action_delete">Verwijderen</string>
+    <string name="action_done">Klaar</string>
+
+    <!-- QR scanning -->
+    <string name="qr_scan">QR-code scannen</string>
+    <string name="qr_scan_hint">Scan de code van uw webdashboard</string>
+    <string name="qr_invalid">Deze QR-code is geen serverconfiguratie</string>
+    <string name="qr_permission_needed">Cameratoegang is nodig om een code te scannen</string>
+    <string name="qr_grant_permission">Camera toestaan</string>
+    <string name="action_sign_out">Uitloggen</string>
+
+    <!-- Dashboard: new deals banner -->
+    <plurals name="dashboard_new_deals">
+        <item quantity="one">%1$d nieuwe aanbieding</item>
+        <item quantity="other">%1$d nieuwe aanbiedingen</item>
+    </plurals>
+
+    <!-- Dashboard: KPI cards -->
+    <string name="dashboard_kpi_today">Vandaag</string>
+    <string name="dashboard_kpi_yesterday">Gisteren</string>
+    <string name="dashboard_kpi_this_week">Deze week</string>
+    <string name="dashboard_kpi_last_week">Vorige week</string>
+    <string name="dashboard_kpi_this_month">Deze maand</string>
+    <string name="dashboard_kpi_last_month">Vorige maand</string>
+    <plurals name="dashboard_sales_count">
+        <item quantity="one">%1$d verkoop</item>
+        <item quantity="other">%1$d verkopen</item>
+    </plurals>
+    <string name="dashboard_kpi_stock_title">Voorraad</string>
+    <string name="dashboard_kpi_stock_ok">OK</string>
+    <string name="dashboard_kpi_stock_all_ok">Alle machines zijn bevoorraad</string>
+    <plurals name="dashboard_alerts_count">
+        <item quantity="one">%1$d waarschuwing</item>
+        <item quantity="other">%1$d waarschuwingen</item>
+    </plurals>
+    <string name="dashboard_machines_online">Machines online</string>
+
+    <!-- Dashboard: revenue chart -->
+    <string name="dashboard_chart_title">Omzet (30 dagen)</string>
+    <string name="dashboard_chart_empty">Geen verkoopgegevens</string>
+    <string name="dashboard_chart_average">Ø %1$s</string>
+
+    <!-- Dashboard: cash book (Barkasse) summary tile -->
+    <string name="dashboard_cash_book_title">Kasboek</string>
+    <string name="dashboard_cash_book_setup_hint">Stel een kasboek in via het webdashboard</string>
+    <string name="dashboard_cash_book_in_box">In kasla</string>
+    <string name="dashboard_cash_book_in_machines">In machines</string>
+    <string name="dashboard_cash_book_last_deposit">Laatste bankstorting</string>
+    <string name="dashboard_cash_book_no_deposit">Nog geen storting</string>
+    <string name="dashboard_cash_book_deposit_today">Vandaag</string>
+    <plurals name="dashboard_cash_book_deposit_days_ago">
+        <item quantity="one">%1$d dag geleden</item>
+        <item quantity="other">%1$d dagen geleden</item>
+    </plurals>
+
+    <!-- Dashboard: needs attention -->
+    <string name="dashboard_needs_attention_title">Vraagt aandacht</string>
+    <plurals name="dashboard_trays_need_refill">
+        <item quantity="one">%1$d product moet worden bijgevuld</item>
+        <item quantity="other">%1$d producten moeten worden bijgevuld</item>
+    </plurals>
+
+    <!-- Dashboard: recent activity feed -->
+    <string name="dashboard_recent_activity_title">Recente activiteit</string>
+    <string name="dashboard_no_recent_activity">Geen recente activiteit</string>
+    <string name="dashboard_day_today">Vandaag</string>
+    <string name="dashboard_day_yesterday">Gisteren</string>
+    <plurals name="dashboard_entries_count">
+        <item quantity="one">%1$d boeking</item>
+        <item quantity="other">%1$d boekingen</item>
+    </plurals>
+    <string name="dashboard_retry">Opnieuw proberen</string>
+    <string name="dashboard_tour_started">Ronde gestart</string>
+    <string name="dashboard_stock_intake">Voorraadinname</string>
+    <string name="dashboard_filled_by">Gevuld door %1$s</string>
+    <string name="dashboard_slots_rebuilt">Vakken omgebouwd</string>
+    <string name="dashboard_slots_not_rebuilt">%1$d niet omgebouwd</string>
+    <plurals name="dashboard_items_count">
+        <item quantity="one">%1$d stuk</item>
+        <item quantity="other">%1$d stuks</item>
+    </plurals>
+    <plurals name="dashboard_machines_count">
+        <item quantity="one">%1$d machine</item>
+        <item quantity="other">%1$d machines</item>
+    </plurals>
+    <plurals name="dashboard_products_count">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d producten</item>
+    </plurals>
+
+    <!-- Cash book entry types (feed rows) -->
+    <string name="cash_book_type_initial">Beginsaldo</string>
+    <string name="cash_book_type_withdrawal">Uit machine</string>
+    <string name="cash_book_type_correction">Correctie</string>
+    <string name="cash_book_type_payout">Bankstorting</string>
+    <string name="cash_book_type_expense">Uitgave</string>
+    <string name="cash_book_type_reversal">Storno</string>
+    <string name="cash_book_type_unknown">Kasboek</string>
+    <string name="cash_book_category_rent">Huur</string>
+    <string name="cash_book_category_goods">Aankoop goederen</string>
+    <string name="cash_book_category_cleaning">Schoonmaak</string>
+    <string name="cash_book_category_fees">Kosten</string>
+    <string name="cash_book_category_other">Overig</string>
+
+    <!-- Machine list: per-product warehouse-availability deficit list (MachineCard) -->
+    <string name="machine_card_badge_empty">%1$d zonder voorraad</string>
+    <string name="machine_card_badge_low">%1$d bijvulling(en) nodig</string>
+    <string name="machine_card_badge_swap">%1$d product(en) te vervangen</string>
+    <string name="machine_card_badge_no_stock">%1$d geen voorraad</string>
+    <string name="machine_card_badge_topoff">%1$d bijvullen aanbevolen</string>
+    <string name="machine_card_no_trays">Geen vakken geconfigureerd</string>
+    <plurals name="machine_card_all_stocked">
+        <item quantity="one">Alles gevuld (%1$d vak)</item>
+        <item quantity="other">Alles gevuld (%1$d vakken)</item>
+    </plurals>
+    <string name="machine_card_deficit_amount">(-%1$d)</string>
+    <string name="machine_card_deficit_discontinued">UF</string>
+    <string name="machine_card_deficit_in_stock">Op voorraad</string>
+    <string name="machine_card_deficit_needs_swap">Vervangen</string>
+    <string name="machine_card_deficit_no_stock">Geen voorraad</string>
+    <string name="machine_card_deficit_show_more">+%1$d meer</string>
+    <string name="machine_card_deficit_show_less">Minder tonen</string>
+    <string name="machine_card_unassigned_slot">Vak %1$d</string>
+    <plurals name="machine_card_empty_slots_with_stock">
+        <item quantity="one">%1$d vak leeg, product in ander vak</item>
+        <item quantity="other">%1$d vakken leeg, product in ander vak</item>
+    </plurals>
+
+    <!-- Machine Analysis tab -->
+    <string name="analysis_tab_title">Analyse</string>
+    <string name="analysis_loading">Bezig met analyseren…</string>
+    <string name="analysis_empty_title">Geen vakken geconfigureerd</string>
+    <string name="analysis_window_label">Periode</string>
+    <string name="analysis_window_7d">7d</string>
+    <string name="analysis_window_30d">30d</string>
+    <string name="analysis_window_90d">90d</string>
+    <string name="analysis_layout_title">Machine-indeling</string>
+    <string name="analysis_legend_strong">Sterk</string>
+    <string name="analysis_legend_ok">OK</string>
+    <string name="analysis_legend_testing">In test</string>
+    <string name="analysis_legend_weak">Zwak</string>
+    <string name="analysis_legend_dead">Dood</string>
+    <string name="analysis_legend_empty">leeg</string>
+    <string name="analysis_products_to_review">Producten om te controleren</string>
+    <string name="analysis_sell_through_sold">%1$d%% doorverkocht · %2$d verkocht</string>
+    <string name="analysis_tenure_suffix">" · %1$d d in machine"</string>
+    <string name="analysis_try_instead">Probeer in plaats daarvan: %1$s</string>
+    <string name="analysis_slot_empty">Vak %1$d, leeg</string>
+    <string name="analysis_replace_title">Product vervangen</string>
+    <string name="analysis_replace_suggestions">Suggesties</string>
+    <string name="analysis_replace_search">Catalogus doorzoeken</string>
+    <string name="analysis_replace_search_hint">Producten zoeken</string>
+    <string name="analysis_replace_no_matches">Geen resultaten</string>
+    <string name="analysis_replace_bestseller">Vlootbestseller</string>
+    <string name="analysis_replace_newcomer">Nooit verkocht — testkandidaat</string>
+    <string name="analysis_confirm_title">Vervanging inplannen?</string>
+    <string name="analysis_confirm_message">\"%1$s\" in vak %2$d vervangen door \"%3$s\"? De wijziging wordt in het wijzigingsverzoek ingepland en bij de volgende bijvulronde omgebouwd.</string>
+    <string name="analysis_confirm_message_empty">\"%1$s\" inplannen voor leeg vak %2$d? Het wordt bij de volgende bijvulronde gevuld.</string>
+    <string name="analysis_action_queue">Inplannen</string>
+    <string name="analysis_queued">Vak %1$d is aan het wijzigingsverzoek toegevoegd. Het wordt bij de volgende vulronde omgebouwd.</string>
+    <string name="analysis_slot_has_request">Voor dit vak is al een wijziging ingepland. Een nieuw product vervangt die.</string>
+    <string name="analysis_legend_pending">Wijziging ingepland</string>
+    <string name="analysis_slot_pending">%1$s, wijziging ingepland</string>
+    <string name="analysis_error_title">Fout</string>
+    <string name="action_replace">Vervangen</string>
+    <string name="product_unnamed">Naamloos</string>
+
+    <!-- Machine detail: Sales tab (day-grouped feed with suppressed rows) -->
+    <string name="sales_tab_empty">Nog geen verkopen geregistreerd</string>
+    <string name="sales_item_slot">Vak %1$d</string>
+    <string name="sales_item_generic">Verkoop</string>
+    <string name="suppressed_badge_auto_removed">Automatisch verwijderd</string>
+    <string name="suppressed_reason_clock_unsynced">Klok niet gesynchroniseerd</string>
+    <string name="suppressed_reason_no_clock">Apparaat had geen klok</string>
+    <string name="suppressed_reason_gap">identieke verkoop %1$d s eerder</string>
+    <string name="suppressed_reason_near_duplicate">bijna-duplicaat van een recente verkoop</string>
+    <string name="restore_sale_action">Als verkoop registreren</string>
+    <string name="restore_sale_dialog_title">Als echte verkoop registreren?</string>
+    <string name="restore_sale_dialog_message">Voegt een echte verkoop toe en verlaagt de voorraad met 1.</string>
+
+    <!-- Machine detail: Trays tab -->
+    <string name="tray_fill_action">Vullen tot capaciteit</string>
+    <string name="tray_delete_action">Vak verwijderen</string>
+    <string name="machine_detail_title_fallback">Machine</string>
+
+    <!-- Machine detail: Send Credit sheet -->
+    <string name="send_credit_action">Tegoed verzenden</string>
+    <string name="send_credit_title">Tegoed verzenden</string>
+    <string name="send_credit_amount_label">Bedrag</string>
+    <string name="send_credit_amount_placeholder">0,00</string>
+    <string name="send_credit_currency_suffix">€</string>
+    <string name="send_credit_footer">Schrijft de automaat tegoed bij alsof er met munten of kaart betaald is. Er wordt pas een verkoop geregistreerd zodra de automaat een uitgifte meldt.</string>
+    <string name="send_credit_no_device_error">Aan deze machine is geen apparaat gekoppeld.</string>
+    <string name="send_credit_generic_error">Verzenden van tegoed mislukt.</string>
+    <string name="send_credit_confirm_title">Tegoed verzenden?</string>
+    <string name="send_credit_confirm_message">%1$s tegoed naar \"%2$s\" verzenden?</string>
+    <string name="action_send">Verzenden</string>
+
+    <!-- Machine detail: Device Health sheet -->
+    <string name="device_health_action">Apparaatstatus</string>
+    <string name="device_health_title">Apparaatstatus</string>
+    <string name="device_health_section_uptime">Uptime</string>
+    <string name="device_health_offline">Offline</string>
+    <string name="device_health_last_restart_summary">%1$s · %2$s</string>
+    <string name="device_health_section_mdb_status">MDB-status</string>
+    <string name="device_health_no_mdb_diagnostics">Nog geen MDB-diagnosegegevens.</string>
+    <string name="device_health_mdb_state">Status</string>
+    <string name="device_health_mdb_address">Adres</string>
+    <string name="device_health_mdb_vmc_level">VMC-niveau</string>
+    <string name="device_health_mdb_polls">Polls</string>
+    <string name="device_health_mdb_checksum_errors">Checksum-fouten</string>
+    <string name="device_health_mdb_last_command">Laatste commando</string>
+    <string name="device_health_mdb_updated">Bijgewerkt: %1$s</string>
+    <string name="device_health_section_restart_history">Herstartgeschiedenis</string>
+    <string name="device_health_no_restarts">Geen herstarts geregistreerd.</string>
+    <string name="device_health_restart_uptime">%1$s actief</string>
+    <string name="device_health_section_mdb_state_changes">MDB-statuswijzigingen</string>
+    <string name="device_health_no_state_changes">Geen statuswijzigingen geregistreerd.</string>
+    <string name="device_health_state_transition">%1$s → %2$s</string>
+    <string name="device_health_state_initial">Begintoestand: %1$s</string>
+    <string name="device_health_state_cmd">Opdracht: %1$s</string>
+    <plurals name="device_health_polls_count">
+        <item quantity="one">%1$d poll</item>
+        <item quantity="other">%1$d polls</item>
+    </plurals>
+    <string name="device_health_section_duplicates">Automatisch verwijderde duplicaten</string>
+    <string name="device_health_no_duplicates">Geen — geen duplicaten automatisch verwijderd.</string>
+    <string name="device_health_duplicates_footer">Verkopen automatisch verwijderd als vermoedelijke herrapportages door stroomonderbreking.</string>
+    <string name="device_health_reason_mqtt_watchdog">MQTT-watchdog</string>
+    <string name="device_health_reason_ota">OTA-update</string>
+    <string name="device_health_reason_config">Configuratiewijziging</string>
+    <string name="device_health_reason_provisioning">Provisioning</string>
+    <string name="device_health_reason_factory_reset">Fabrieksreset</string>
+    <string name="device_health_reason_power_on">Inschakelen</string>
+    <string name="device_health_reason_panic">Systeemcrash</string>
+    <string name="device_health_reason_brownout">Onderspanning</string>
+    <string name="device_health_reason_hw_watchdog">Hardware-watchdog</string>
+    <string name="device_health_unknown">Onbekend</string>
+    <string name="device_health_just_now">Zonet</string>
+    <plurals name="device_health_minutes_ago">
+        <item quantity="one">%1$d minuut geleden</item>
+        <item quantity="other">%1$d minuten geleden</item>
+    </plurals>
+    <plurals name="device_health_hours_ago">
+        <item quantity="one">%1$d uur geleden</item>
+        <item quantity="other">%1$d uur geleden</item>
+    </plurals>
+    <plurals name="device_health_days_ago">
+        <item quantity="one">%1$d dag geleden</item>
+        <item quantity="other">%1$d dagen geleden</item>
+    </plurals>
+
+    <!-- Machine detail: Machine Settings sheet -->
+    <string name="machine_settings_action">Automaatinstellingen</string>
+    <string name="machine_settings_title">Automaatinstellingen</string>
+    <string name="machine_settings_section_nayax">Nayax</string>
+    <string name="machine_settings_nayax_label">Nayax-automaat-ID</string>
+    <string name="machine_settings_section_country">Land</string>
+    <string name="machine_settings_country_none">Geen</string>
+    <string name="machine_settings_section_location">Locatie</string>
+    <string name="machine_settings_location_footer">Gebruik uw huidige locatie om deze machine te plaatsen.</string>
+    <string name="machine_settings_use_location">Mijn locatie gebruiken</string>
+    <string name="machine_settings_clear_location">Locatie wissen</string>
+    <string name="machine_settings_location_error">Kon uw locatie niet bepalen.</string>
+    <string name="machine_settings_location_permission_denied">Locatietoegang is nodig om uw huidige locatie te gebruiken.</string>
+    <string name="machine_settings_grant_location_permission">Locatietoegang toestaan</string>
+    <string name="machine_settings_section_public">Openbare statuspagina</string>
+    <string name="machine_settings_public_toggle">Openbare statuspagina</string>
+    <string name="machine_settings_public_origin_label">Openbare URL</string>
+    <string name="machine_settings_public_footer">Iedereen met deze link kan de live status van deze automaat zien, zonder in te loggen.</string>
+    <string name="machine_settings_qr_content_description">QR-code voor de openbare statuspagina</string>
+    <string name="machine_settings_save_error">Instellingen opslaan mislukt.</string>
+    <!-- Refill wizard — pack step (Phase 5 Task 10) -->
+    <string name="refill_pack_unknown_product">Onbekend product</string>
+    <string name="refill_pack_stock_unavailable_title">Magazijnvoorraad niet beschikbaar</string>
+    <string name="refill_pack_stock_unavailable_body">De inpakhoeveelheden worden momenteel niet door de voorraad begrensd.</string>
+    <string name="refill_pack_stock_retry">Opnieuw laden</string>
+    <string name="refill_pack_chip_all">Alle</string>
+    <string name="refill_pack_chip_count">· %1$d</string>
+    <string name="refill_pack_header_all">Alle machines</string>
+    <string name="refill_pack_status_complete">Doos compleet</string>
+    <string name="refill_pack_status_partial">Doos gedeeltelijk</string>
+    <string name="refill_pack_status_pending">Nog niets ingepakt</string>
+    <plurals name="refill_pack_items">
+        <item quantity="one">%1$d stuk</item>
+        <item quantity="other">%1$d stuks</item>
+    </plurals>
+    <plurals name="refill_pack_short">
+        <item quantity="one">%1$d tekort</item>
+        <item quantity="other">%1$d tekort</item>
+    </plurals>
+    <plurals name="refill_pack_machines_packed">
+        <item quantity="one">%1$d van %2$d machine ingepakt</item>
+        <item quantity="other">%1$d van %2$d machines ingepakt</item>
+    </plurals>
+    <string name="refill_pack_toggle_all_machines">%1$s inpakken voor alle machines</string>
+    <string name="refill_pack_toggle_machine">Inpakken voor %1$s</string>
+    <string name="refill_pack_total_quantity">%1$d×</string>
+    <string name="refill_pack_stock_none">Niet in magazijn</string>
+    <string name="refill_pack_stock_committed">%1$d van %2$d gereserveerd</string>
+    <string name="refill_pack_stock_left">%1$d op voorraad · %2$d vrij</string>
+    <string name="refill_pack_stock_in">%1$d op voorraad</string>
+    <string name="refill_pack_need">nodig %1$d / %2$d</string>
+    <string name="refill_pack_badge_no_stock">Geen voorraad</string>
+    <string name="refill_pack_badge_partial">Gedeeltelijk</string>
+    <string name="refill_pack_decrement">Hoeveelheid voor %1$s verlagen</string>
+    <string name="refill_pack_increment">Hoeveelheid voor %1$s verhogen</string>
+    <string name="refill_pack_pack_all">Alles inpakken</string>
+    <string name="refill_pack_pack_all_for">Alles inpakken voor %1$s</string>
+    <string name="refill_pack_start_tour">Ronde starten</string>
+    <string name="refill_pack_empty_title">Alles bevoorraad!</string>
+    <string name="refill_pack_empty_body">Geen enkele machine hoeft nu te worden bijgevuld.</string>
+    <string name="refill_pack_empty_machine">Niets in te pakken voor deze machine.</string>
+    <!-- Refill wizard — refill step + wizard shell (Phase 5 Task 11) -->
+    <string name="refill_wizard_title">Bijvulronde</string>
+    <string name="refill_step_title_review">Controle</string>
+    <string name="refill_step_title_packing">Inpakken</string>
+    <string name="refill_step_title_refill">Bijvullen</string>
+    <string name="refill_step_title_summary">Samenvatting</string>
+    <string name="refill_step_completed">Voltooid</string>
+    <string name="refill_loading_machines">Machines laden…</string>
+    <string name="refill_finishing_up">Bezig met afronden…</string>
+    <string name="refill_resume_title">Ronde hervatten?</string>
+    <string name="refill_resume_message">U heeft een onafgeronde bijvulronde. Wilt u doorgaan waar u gebleven was?</string>
+    <string name="refill_resume_confirm">Hervatten</string>
+    <string name="refill_resume_discard">Nieuwe ronde</string>
+    <string name="refill_step_machine_progress">Machine %1$d van %2$d</string>
+    <plurals name="refill_step_trays_to_refill">
+        <item quantity="one">%1$d vak bij te vullen</item>
+        <item quantity="other">%1$d vakken bij te vullen</item>
+    </plurals>
+    <string name="refill_step_change_machine">Andere machine</string>
+    <string name="refill_step_picker_title">Machine selecteren</string>
+    <string name="refill_step_picker_summary">%1$d vakken · %2$d stuks</string>
+    <string name="refill_step_picker_current">Huidige machine</string>
+    <string name="refill_step_fill_all">Alles tot capaciteit vullen</string>
+    <string name="refill_step_fill_max">Max</string>
+    <string name="refill_step_fill_amount">+%1$d</string>
+    <plurals name="refill_step_fill_unit">
+        <item quantity="one">stuk</item>
+        <item quantity="other">stuks</item>
+    </plurals>
+    <string name="refill_step_of_capacity">/ %1$d</string>
+    <string name="refill_step_decrement">Eén minder in %1$s vullen</string>
+    <string name="refill_step_increment">Eén meer in %1$s vullen</string>
+    <plurals name="refill_step_full_trays">
+        <item quantity="one">%1$d vak al vol</item>
+        <item quantity="other">%1$d vakken al vol</item>
+    </plurals>
+    <string name="refill_step_full_trays_expand">Volle vakken tonen</string>
+    <string name="refill_step_full_trays_collapse">Volle vakken verbergen</string>
+    <string name="refill_step_no_trays">Niets te vullen bij deze machine.</string>
+    <!-- Refill step — machine layout grid (Phase 5b Task 7) -->
+    <string name="refill_step_layout_title">Machine-indeling</string>
+    <string name="refill_step_layout_hint">Tik op een vak om naar de kaart ervan te gaan.</string>
+    <string name="refill_step_layout_slot">Vak %1$d, %2$s, %3$s</string>
+    <string name="refill_step_layout_slot_empty">Vak %1$d, geen product, %2$s</string>
+    <string name="refill_step_layout_slot_selected">%1$s, geselecteerd</string>
+    <string name="refill_step_layout_state_not_in_tour">niet in deze ronde</string>
+    <string name="refill_step_layout_state_filling">%1$d te vullen</string>
+    <string name="refill_step_layout_state_empty">leeg</string>
+    <string name="refill_step_layout_state_low">Laag</string>
+    <string name="refill_step_layout_state_full">gevuld</string>
+    <string name="refill_step_skip">Overslaan</string>
+    <string name="refill_step_skip_machine">Automaat overslaan</string>
+    <string name="refill_step_more_actions">Meer acties</string>
+    <string name="refill_tour_note_title">Notitie voor de volgende ronde</string>
+    <string name="refill_tour_note_hint">Wordt bij de volgende ronde bovenaan de inpakstap getoond.</string>
+    <string name="refill_tour_note_placeholder">bijv. nieuwe spiralen, verhogers voor blikjes …</string>
+    <string name="refill_tour_note_save_failed">De notitie kon niet worden opgeslagen.</string>
+    <string name="refill_tour_note_save_failed_detail">De notitie kon niet worden opgeslagen: %1$s</string>
+    <string name="refill_tour_notes_title">Notities van de vorige keer</string>
+    <string name="refill_tour_notes_subtitle">Vink af zodra het gedaan is. Tot dan staan ze bij elke ronde hier.</string>
+    <string name="refill_tour_notes_mark_done">Klaar</string>
+    <string name="refill_step_confirm">Bijvullen bevestigen</string>
+    <string name="refill_step_saving">Opslaan…</string>
+    <string name="refill_error_unknown">onbekende fout</string>
+    <plurals name="refill_error_max_attempts">
+        <item quantity="one">Het bijvullen kon na %1$d poging niet worden opgeslagen: %2$s. Probeer het opnieuw.</item>
+        <item quantity="other">Het bijvullen kon na %1$d pogingen niet worden opgeslagen: %2$s. Probeer het opnieuw.</item>
+    </plurals>
+    <!-- Refill wizard — warehouse deduction that never reached the ledger (final review fix 2) -->
+    <plurals name="refill_deduction_failed">
+        <item quantity="one">%1$d magazijnafboeking is niet geregistreerd. De goederen hebben het magazijn verlaten, corrigeer de voorraad handmatig.</item>
+        <item quantity="other">%1$d magazijnafboekingen zijn niet geregistreerd. De goederen hebben het magazijn verlaten, corrigeer de voorraad handmatig.</item>
+    </plurals>
+    <!-- Refill wizard — summary step (Phase 5 Task 12) -->
+    <string name="refill_summary_title">Ronde voltooid!</string>
+    <string name="refill_summary_subtitle_all_done">Alle machines zijn bijgevuld</string>
+    <plurals name="refill_summary_subtitle_partial">
+        <item quantity="one">%1$d van %2$d machine bijgevuld</item>
+        <item quantity="other">%1$d van %2$d machines bijgevuld</item>
+    </plurals>
+    <string name="refill_summary_stat_machines_visited">Machines bezocht</string>
+    <string name="refill_summary_stat_trays_refilled">Vakken bijgevuld</string>
+    <string name="refill_summary_stat_items_added">Totaal toegevoegde stuks</string>
+    <string name="refill_summary_stat_machines_skipped">Machines overgeslagen</string>
+    <string name="refill_summary_machines_header">Machines</string>
+    <plurals name="refill_summary_row_trays">
+        <item quantity="one">%1$d vak</item>
+        <item quantity="other">%1$d vakken</item>
+    </plurals>
+    <string name="refill_summary_row_contribution">%1$s · %2$s</string>
+    <string name="refill_summary_row_skipped">Overgeslagen</string>
+    <!-- Refill wizard — review step (Phase 5b Task 5) -->
+    <string name="refill_review_title">Productcontrole</string>
+    <string name="refill_review_subtitle">De volgende vakken hebben aandacht nodig — uitgefaseerde, verlopen, niet-voorradige of niet-toegewezen producten. Kies een vervanging of sla over.</string>
+    <string name="refill_review_reason_discontinued">Uitgefaseerd</string>
+    <string name="refill_review_reason_expired">Verlopen</string>
+    <string name="refill_review_reason_no_stock">Geen voorraad</string>
+    <string name="refill_review_reason_unassigned">Niet toegewezen</string>
+    <plurals name="refill_review_stock_remaining">
+        <item quantity="one">%1$d stuk nog in de machine</item>
+        <item quantity="other">%1$d stuks nog in de machine</item>
+    </plurals>
+    <string name="refill_review_stock_empty">0 stuks in de machine</string>
+    <string name="refill_review_applied">Ingepland in het wijzigingsverzoek</string>
+    <string name="refill_review_skipped_keeping">Overgeslagen — huidig product behouden</string>
+    <string name="refill_review_skipped_unassigned">Overgeslagen — vak blijft niet toegewezen</string>
+    <string name="refill_review_action_replace">Vervangen</string>
+    <string name="refill_review_action_assign">Toewijzen</string>
+    <string name="refill_review_action_change">Wijzigen</string>
+    <string name="refill_review_action_choose">Vervanging kiezen</string>
+    <string name="refill_review_action_skip">Overslaan</string>
+    <string name="refill_review_skip_all">Rest overslaan</string>
+    <string name="refill_review_continue">Doorgaan</string>
+    <string name="refill_review_apply_continue">Inplannen en doorgaan</string>
+    <!-- Refill wizard — replacement product picker (Phase 5b Task 6) -->
+    <string name="refill_picker_title">Vervanging selecteren</string>
+    <string name="refill_picker_for_slot">Vak %1$d · %2$s</string>
+    <string name="refill_picker_search_hint">Producten zoeken</string>
+    <string name="refill_picker_search_clear">Zoekopdracht wissen</string>
+    <string name="refill_picker_bucket_in_stock">Op voorraad</string>
+    <string name="refill_picker_bucket_out_of_stock">Niet op voorraad</string>
+    <string name="refill_picker_uncategorized">Zonder categorie</string>
+    <string name="refill_picker_category_current">%1$s · huidig</string>
+    <plurals name="refill_picker_stock">
+        <item quantity="one">%1$d op voorraad</item>
+        <item quantity="other">%1$d op voorraad</item>
+    </plurals>
+    <plurals name="refill_picker_product_count">
+        <item quantity="one">%1$d product</item>
+        <item quantity="other">%1$d producten</item>
+    </plurals>
+    <string name="refill_picker_slot_badge">Vak %1$s</string>
+    <string name="refill_picker_slot_badge_overflow">Vak %1$s +%2$d</string>
+    <string name="refill_picker_removed_badge">Verwijderd op %1$s</string>
+    <plurals name="refill_picker_removed_units">
+        <item quantity="one">%d verkocht</item>
+        <item quantity="other">%d verkocht</item>
+    </plurals>
+    <plurals name="refill_picker_removed_units_in_days">
+        <item quantity="one">%1$s in %2$d dag</item>
+        <item quantity="other">%1$s in %2$d dagen</item>
+    </plurals>
+    <plurals name="refill_picker_slot_badge_a11y">
+        <item quantity="one">Al in vak %1$s</item>
+        <item quantity="other">Al in vakken %1$s</item>
+    </plurals>
+    <string name="refill_picker_expand_group">Groep uitklappen</string>
+    <string name="refill_picker_collapse_group">Groep inklappen</string>
+    <string name="refill_picker_selected">Geselecteerd</string>
+    <string name="refill_picker_no_matches">Geen producten die overeenkomen met \"%1$s\"</string>
+    <string name="refill_picker_empty">Geen producten beschikbaar</string>
+    <!-- Deals -->
+    <string name="deals_title">Aanbiedingen</string>
+    <string name="deals_open">Aanbiedingen openen</string>
+    <string name="deals_refresh">Vernieuwen</string>
+    <string name="deals_close">Sluiten</string>
+    <string name="deals_list_active">Actief</string>
+    <string name="deals_list_archived">Gearchiveerd</string>
+    <string name="deals_list_archived_count">Gearchiveerd (%1$d)</string>
+    <string name="deals_group_validity">Geldigheid</string>
+    <string name="deals_group_retailer">Winkel</string>
+    <string name="deals_group_product">Product</string>
+    <string name="deals_search_hint">Aanbiedingen zoeken…</string>
+    <string name="deals_section_pinned">Vastgepind</string>
+    <string name="deals_section_valid_now">Nu geldig</string>
+    <string name="deals_section_expired">Verlopen</string>
+    <string name="deals_valid_from">geldig vanaf %1$s</string>
+    <plurals name="deals_starts_in_days">
+        <item quantity="one">morgen</item>
+        <item quantity="other">over %1$d dagen</item>
+    </plurals>
+    <string name="deals_valid_until">tot %1$s</string>
+    <plurals name="deals_days_left">
+        <item quantity="one">nog %1$d dag</item>
+        <item quantity="other">nog %1$d dagen</item>
+    </plurals>
+    <string name="deals_last_day">laatste dag!</string>
+    <string name="deals_status_active">Geldig</string>
+    <string name="deals_status_expired">Verlopen</string>
+    <string name="deals_not_valid_yet">Nog niet geldig</string>
+    <string name="deals_not_valid_yet_body">Deze aanbieding geldt pas vanaf %1$s (%2$s). Eerder heeft de winkel deze prijs nog niet.</string>
+    <plurals name="deals_count">
+        <item quantity="one">%1$d aanbieding</item>
+        <item quantity="other">%1$d aanbiedingen</item>
+    </plurals>
+    <string name="deals_avg_discount">gem. −%1$d%%</string>
+    <plurals name="deals_upcoming_hint">
+        <item quantity="one">waarvan %1$d nog niet geldig</item>
+        <item quantity="other">waarvan %1$d nog niet geldig</item>
+    </plurals>
+    <string name="deals_new">NIEUW</string>
+    <string name="deals_app">App</string>
+    <string name="deals_pin">Vastzetten</string>
+    <string name="deals_unpin">Losmaken</string>
+    <string name="deals_archive">Archiveren</string>
+    <string name="deals_restore">Herstellen</string>
+    <plurals name="deals_matched_products_count">
+        <item quantity="one">%1$d gekoppeld product</item>
+        <item quantity="other">%1$d gekoppelde producten</item>
+    </plurals>
+    <string name="deals_ek_below_pct">%1$d%% onder uw kostprijs</string>
+    <string name="deals_ek_below">onder uw kostprijs</string>
+    <string name="deals_ek_similar">≈ uw kostprijs</string>
+    <string name="deals_ek_above_pct">%1$d%% boven uw kostprijs</string>
+    <string name="deals_ek_above">boven uw kostprijs</string>
+    <string name="deals_ek_cost">Kostprijs %1$s</string>
+    <plurals name="deals_ek_hidden">
+        <item quantity="one">%1$d verborgen — boven uw hoogste kostprijs</item>
+        <item quantity="other">%1$d verborgen — boven uw hoogste kostprijs</item>
+    </plurals>
+    <string name="deals_ek_likely_mismatch">waarschijnlijk niet overeenkomend</string>
+    <string name="deals_ek_offer_vs_usual">Aanbieding %1$s vs gebruikelijke kostprijs %2$s</string>
+    <string name="deals_ek_margin">Marge %1$d%% → %2$d%%</string>
+    <string name="deals_from_cache">Geladen uit cache</string>
+    <string name="deals_low_confidence">Onzekere match</string>
+    <string name="deals_disabled_title">Zoeken naar aanbiedingen is uitgeschakeld</string>
+    <string name="deals_disabled_body">Schakel het zoeken naar aanbiedingen in via de instellingen van de webapp om aanbiedingen van winkels voor uw producten te vinden.</string>
+    <string name="deals_no_providers_title">Geen bron voor aanbiedingen ingesteld</string>
+    <string name="deals_no_providers_body">Een beheerder moet een bron voor aanbiedingen inschakelen in de instellingen van de webapp.</string>
+    <string name="deals_empty_active">Geen aanbiedingen gevonden</string>
+    <string name="deals_empty_archived">Geen gearchiveerde aanbiedingen</string>
+    <string name="deals_empty_search">Probeer een andere zoekterm.</string>
+    <string name="deals_empty_active_hint">Trek omlaag om te vernieuwen.</string>
+    <string name="deals_empty_archived_hint">Archiveer aanbiedingen die u niet interesseren om de lijst overzichtelijk te houden.</string>
+    <string name="deals_detail_validity">Geldigheid</string>
+    <string name="deals_requires_app_title">Vereist loyaliteitsapp</string>
+    <string name="deals_requires_app_body">Deze prijs vereist mogelijk de klantenapp of klantenkaart van de winkel.</string>
+    <string name="deals_keywords_title">Overeenkomende trefwoordgroepen</string>
+    <string name="deals_matched_via">overeenkomst via \"%1$s\"</string>
+    <string name="deals_keyword_no_products">Nog geen producten gekoppeld aan deze groep</string>
+    <plurals name="deals_matched_products_title">
+        <item quantity="one">Gekoppeld product</item>
+        <item quantity="other">%1$d gekoppelde producten</item>
+    </plurals>
+    <string name="deals_view_prospekt">Folder bekijken</string>
+    <string name="deals_view_all_offers">Alle aanbiedingen bekijken</string>
+    <string name="deals_stock_warehouse">In magazijn</string>
+    <string name="deals_stock_machines">In machines</string>
+    <!-- Machine detail: tray list grouped by product (mirrors PWA machineDetail.*) -->
+    <string name="tray_view_by_product">Per product</string>
+    <string name="tray_view_by_slot">Per vak</string>
+    <plurals name="tray_group_slots">
+        <item quantity="one">%d vak</item>
+        <item quantity="other">%d vakken</item>
+    </plurals>
+    <plurals name="tray_group_missing">
+        <item quantity="one">%d ontbreekt</item>
+        <item quantity="other">%d ontbreken</item>
+    </plurals>
+    <plurals name="tray_group_empty_slots">
+        <item quantity="one">%d vak leeg</item>
+        <item quantity="other">%d vakken leeg</item>
+    </plurals>
+    <string name="tray_slot_empty_elsewhere">Vak leeg, product in ander vak</string>
+    <string name="tray_group_state_critical">Uitverkocht</string>
+    <string name="tray_group_state_low">Laag</string>
+    <string name="tray_group_state_fill">Bijvullen</string>
+    <string name="tray_group_state_ok">OK</string>
+    <string name="tray_unassigned">Geen product</string>
+    <string name="machine_detail_products_sold_out">Uitverkochte producten</string>
+    <string name="machine_detail_products_low">Producten met lage voorraad</string>
+    <string name="machine_detail_products_fill">Aan te vullen producten</string>
+    <string name="machine_detail_stock_summary">Voorraadoverzicht</string>
+    <string name="machine_detail_total_stock">Totale voorraad</string>
+    <string name="machine_detail_stock_of_capacity">%1$d / %2$d</string>
+    <string name="machine_detail_tray_count">Vakken</string>
+    <string name="tray_search_hint">Zoeken…</string>
+    <!-- Refill wizard — slot change requests ("Umbelegen"): change note while packing, rebuild at the machine -->
+    <string name="refill_rebuild_change_note">Wijzigingsnotitie</string>
+    <string name="refill_rebuild_accepted_of">%1$d van %2$d overgenomen</string>
+    <string name="refill_rebuild_change_note_hint">Gevraagd door kantoor. Vink een vak uit om het deze keer te laten zoals het is; het blijft open voor een latere ronde.</string>
+    <string name="refill_rebuild_toggle_item">Vak %1$d in deze ronde ombouwen</string>
+    <string name="refill_rebuild_empty_slot">leeg</string>
+    <string name="refill_rebuild_change_spiral">Spiraal wisselen (%1$d → %2$d)</string>
+    <string name="refill_rebuild_new_price">nieuwe prijs %1$s</string>
+    <string name="refill_rebuild_not_this_tour">niet deze ronde</string>
+    <string name="refill_rebuild_needed">(%1$d nodig)</string>
+    <string name="refill_rebuild_at_machine_title">Vakken ombouwen</string>
+    <string name="refill_rebuild_live_stock">Nu in het vak: %1$d van %2$d (verkopen sinds het inpakken al afgetrokken)</string>
+    <string name="refill_rebuild_removed">Uitgenomen</string>
+    <string name="refill_rebuild_filled">Ingevuld (max. %1$d)</string>
+    <string name="refill_rebuild_fill_source">%1$d verplaatst · %2$d uit de bus</string>
+    <string name="refill_rebuild_price_set">Prijs van selectie %1$d ingesteld op %2$s</string>
+    <string name="refill_rebuild_age_set">Leeftijdsinstelling op de automaat aangepast</string>
+    <string name="refill_rebuild_age_none">geen leeftijdsgrens</string>
+    <string name="refill_rebuild_age_min">%1$d+</string>
+    <string name="refill_rebuild_age_confirm_first">Bevestig eerst de leeftijdsinstelling.</string>
+    <string name="refill_rebuild_rebuilt">Omgebouwd</string>
+    <string name="refill_rebuild_not_rebuilt">Niet omgebouwd</string>
+    <string name="refill_rebuild_stays_open">Blijft zoals het is en komt bij de volgende ronde terug.</string>
+    <string name="refill_rebuild_decide_all">Markeer eerst elk vak van de wijzigingsnotitie als omgebouwd of niet omgebouwd.</string>
+    <string name="refill_rebuild_to_warehouse">Naar magazijn</string>
+    <string name="refill_rebuild_write_off">Afschrijven</string>
+    <string name="refill_rebuild_best_before">Ten minste houdbaar tot</string>
+    <string name="refill_rebuild_best_before_unset">niet ingesteld</string>
+    <string name="refill_rebuild_best_before_clear">Geen datum</string>
+    <string name="refill_rebuild_van_back_hint">Ongebruikte waren gaan terug naar de partij waaruit ze zijn ingepakt.</string>
+    <string name="refill_rebuild_machine_back_hint">Waren uit de automaat worden een nieuwe partij met deze datum.</string>
+    <string name="refill_rebuild_return_batch">Retour uit automaat</string>
+    <string name="refill_pack_rebuild_badge">+%1$d ombouw</string>
+    <string name="refill_pack_rebuild_label">Ombouw</string>
+    <string name="refill_pack_rebuild_needs">Ombouw · nodig %1$d</string>
+    <string name="refill_pack_rebuild_decrement">Eén minder inpakken voor de ombouw in %1$s</string>
+    <string name="refill_pack_rebuild_increment">Eén meer inpakken voor de ombouw in %1$s</string>
+    <string name="refill_rebuild_goods_in_pack_list">De goederen hiervoor zijn paars gemarkeerd in de paklijst.</string>
+    <string name="refill_rebuild_take_along_hint">Neem de verwijderde goederen mee – ze worden aan het einde van de ronde in het magazijn teruggeboekt.</string>
+    <string name="refill_leftover_title">Overgebleven goederen uit ombouw</string>
+    <string name="refill_leftover_hint">Tel wat er echt over is en boek het terug.</string>
+    <string name="refill_leftover_van">Niet gebruikt (bus)</string>
+    <string name="refill_leftover_machine">Uit automaten gehaald</string>
+    <string name="refill_leftover_book">Terugboeken</string>
+    <string name="refill_leftover_booked">Overgebleven goederen geboekt</string>
+    <string name="refill_leftover_error">Boeken mislukt: %1$s</string>
+    <string name="refill_leftover_unreturned_message">Overgebleven goederen zijn nog niet teruggeboekt. Toch afronden?</string>
+    <string name="refill_leftover_finish_anyway">Toch afronden</string>
+    <string name="refill_summary_stat_slots_rebuilt">Vakken omgebouwd</string>
+    <plurals name="refill_review_queued">
+        <item quantity="one">%1$d vak toegevoegd aan het wijzigingsverzoek. Het wordt tijdens de ronde bij de machine omgebouwd.</item>
+        <item quantity="other">%1$d vakken toegevoegd aan het wijzigingsverzoek. Ze worden tijdens de ronde bij de machine omgebouwd.</item>
+    </plurals>
+
+    <!-- Auth, machine list/detail, tray editor -->
+    <string name="login_subtitle">Beheer van verkoopautomaten</string>
+    <string name="auth_email">E-mail</string>
+    <string name="auth_password">Wachtwoord</string>
+    <string name="auth_show_password">Wachtwoord tonen</string>
+    <string name="auth_hide_password">Wachtwoord verbergen</string>
+    <string name="auth_sign_in">Inloggen</string>
+    <string name="auth_no_account_register">Nog geen account? Registreren</string>
+    <string name="register_title">Account aanmaken</string>
+    <string name="register_success_title">Registratie gelukt</string>
+    <string name="register_success_message">Controleer uw e-mail om uw account te bevestigen en log daarna in.</string>
+    <string name="register_back_to_sign_in">Terug naar inloggen</string>
+    <string name="register_confirm_password">Wachtwoord bevestigen</string>
+    <string name="register_passwords_mismatch">Wachtwoorden komen niet overeen</string>
+    <string name="register_have_account">Al een account? Inloggen</string>
+    <string name="status_online">Online</string>
+    <string name="status_offline">Offline</string>
+    <string name="machine_revenue_today">Vandaag</string>
+    <string name="machine_revenue_yesterday">Gisteren</string>
+    <string name="machine_card_sales">Verkopen</string>
+    <string name="machine_detail_revenue">Omzet</string>
+    <string name="machine_detail_sales_today">Verkopen vandaag</string>
+    <string name="machine_detail_visitors">Bezoekers</string>
+    <string name="machine_detail_device_info">Apparaatinfo</string>
+    <string name="machine_detail_status">Status</string>
+    <string name="machine_detail_firmware">Firmware</string>
+    <string name="machine_detail_subdomain">Subdomein</string>
+    <string name="machine_detail_tab_overview">Overzicht</string>
+    <string name="machine_detail_tab_trays">Vakken</string>
+    <string name="machine_detail_tab_sales">Verkopen</string>
+    <string name="machine_list_search_hint">Machines zoeken…</string>
+    <string name="machine_list_search_clear">Zoekopdracht wissen</string>
+    <string name="machine_list_no_match">Geen machines gevonden voor uw zoekopdracht</string>
+    <string name="machine_list_empty">Geen machines gevonden</string>
+    <string name="tray_edit_title">Vak #%1$d bewerken</string>
+    <string name="tray_add_title">Vak toevoegen</string>
+    <string name="tray_slot_number">Vaknummer</string>
+    <string name="tray_product">Product</string>
+    <string name="tray_unnamed_product">Naamloos</string>
+    <string name="tray_capacity">Capaciteit</string>
+    <string name="tray_stock">Voorraad</string>
+    <string name="tray_min_stock">Min. voorraad</string>
+    <string name="tray_fill_below">Vullen onder</string>
+    <string name="tray_batch_title">Vakken in bulk toevoegen</string>
+    <string name="tray_batch_description">Voeg meerdere vakken toe met opeenvolgende vaknummers.</string>
+    <string name="tray_batch_start_slot">Eerste vak</string>
+    <string name="tray_batch_count">Aantal vakken</string>
+    <string name="tray_batch_capacity_each">Capaciteit (per vak)</string>
+    <string name="tray_batch_preview">Hiermee worden de vakken %1$d t/m %2$d aangemaakt</string>
+    <string name="tray_empty_hint">Voeg vakken toe om de voorraad bij te houden</string>
+    <string name="tray_decrease">Verlagen</string>
+    <string name="tray_increase">Verhogen</string>
+    <plurals name="machine_card_visitors">
+        <item quantity="one">%1$d bezoeker</item>
+        <item quantity="other">%1$d bezoekers</item>
+    </plurals>
+    <plurals name="tray_batch_submit">
+        <item quantity="one">%1$d vak toevoegen</item>
+        <item quantity="other">%1$d vakken toevoegen</item>
+    </plurals>
+</resources>

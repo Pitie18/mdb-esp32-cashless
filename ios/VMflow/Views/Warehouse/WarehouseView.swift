@@ -140,7 +140,7 @@ struct WarehouseView: View {
                             viewModel.intakeProductId = productId
                             selectedTab = .incoming
                         } else {
-                            scanError = "No product found for barcode \"\(code)\""
+                            scanError = String(localized: "No product found for barcode \"\(code)\"")
                         }
                     }
                 }
@@ -670,7 +670,7 @@ struct WarehouseView: View {
 
         guard let productId = viewModel.intakeProductId else { return }
         guard viewModel.intakeQuantity > 0 else {
-            viewModel.error = "Quantity must be greater than 0"
+            viewModel.error = String(localized: "Quantity must be greater than 0")
             return
         }
 

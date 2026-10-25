@@ -33,9 +33,11 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import xyz.vmflow.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +49,7 @@ fun MachineListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Machines") })
+            TopAppBar(title = { Text(stringResource(R.string.nav_machines)) })
         }
     ) { padding ->
         PullToRefreshBox(
@@ -75,14 +77,14 @@ fun MachineListScreen(
                             value = uiState.searchQuery,
                             onValueChange = { viewModel.updateSearch(it) },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Search machines...") },
+                            placeholder = { Text(stringResource(R.string.machine_list_search_hint)) },
                             leadingIcon = {
                                 Icon(Icons.Default.Search, contentDescription = null)
                             },
                             trailingIcon = {
                                 if (uiState.searchQuery.isNotEmpty()) {
                                     IconButton(onClick = { viewModel.updateSearch("") }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Clear")
+                                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.machine_list_search_clear))
                                     }
                                 }
                             },
@@ -99,8 +101,8 @@ fun MachineListScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = if (uiState.searchQuery.isNotEmpty()) "No machines match your search"
-                                    else "No machines found",
+                                    text = if (uiState.searchQuery.isNotEmpty()) stringResource(R.string.machine_list_no_match)
+                                    else stringResource(R.string.machine_list_empty),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

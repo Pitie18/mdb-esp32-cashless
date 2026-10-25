@@ -2703,7 +2703,7 @@ final class RefillWizardViewModel: ObservableObject {
                 }
             }
         }
-        let reason = lastError?.localizedDescription ?? "unknown error"
+        let reason = lastError?.localizedDescription ?? String(localized: "unknown error")
         self.error = String(localized: "The slot change could not be saved: \(reason). Please try again.")
         return nil
     }
@@ -3186,7 +3186,8 @@ final class RefillWizardViewModel: ObservableObject {
         }
 
         // All 3 attempts failed. Leave machine in the tour so the user can retry.
-        self.error = "Refill could not be saved after 3 attempts: \(lastError?.localizedDescription ?? "unknown error"). Please try again."
+        let reason = lastError?.localizedDescription ?? String(localized: "unknown error")
+        self.error = String(localized: "Refill could not be saved after 3 attempts: \(reason). Please try again.")
     }
 
     /// Shared post-success bookkeeping: tour log, activity log, advance.
