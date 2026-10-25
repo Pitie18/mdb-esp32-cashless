@@ -162,7 +162,12 @@ fun MachineDetailScreen(
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Tabs
-                    val tabs = listOf("Overview", "Trays", "Sales", stringResource(R.string.analysis_tab_title))
+                    val tabs = listOf(
+                        stringResource(R.string.machine_detail_tab_overview),
+                        stringResource(R.string.machine_detail_tab_trays),
+                        stringResource(R.string.machine_detail_tab_sales),
+                        stringResource(R.string.analysis_tab_title)
+                    )
                     TabRow(selectedTabIndex = uiState.selectedTab) {
                         tabs.forEachIndexed { index, title ->
                             Tab(
@@ -443,7 +448,7 @@ private fun OverviewTab(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Revenue",
+                        text = stringResource(R.string.machine_detail_revenue),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -454,7 +459,7 @@ private fun OverviewTab(
                     ) {
                         Column {
                             Text(
-                                "Today",
+                                stringResource(R.string.machine_revenue_today),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -466,7 +471,7 @@ private fun OverviewTab(
                         }
                         Column {
                             Text(
-                                "Yesterday",
+                                stringResource(R.string.machine_revenue_yesterday),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -490,7 +495,7 @@ private fun OverviewTab(
                 Card(modifier = Modifier.weight(1f)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "Sales Today",
+                            stringResource(R.string.machine_detail_sales_today),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -505,7 +510,7 @@ private fun OverviewTab(
                 Card(modifier = Modifier.weight(1f)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "Visitors",
+                            stringResource(R.string.machine_detail_visitors),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -526,15 +531,18 @@ private fun OverviewTab(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            "Device Info",
+                            stringResource(R.string.machine_detail_device_info),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        DeviceInfoRow("Status", if (embedded.isOnline) "Online" else "Offline")
+                        DeviceInfoRow(
+                            stringResource(R.string.machine_detail_status),
+                            stringResource(if (embedded.isOnline) R.string.status_online else R.string.status_offline)
+                        )
                         embedded.macAddress?.let { DeviceInfoRow("MAC", it) }
-                        embedded.firmwareVersion?.let { DeviceInfoRow("Firmware", it) }
-                        embedded.subdomain?.let { DeviceInfoRow("Subdomain", it.toString()) }
+                        embedded.firmwareVersion?.let { DeviceInfoRow(stringResource(R.string.machine_detail_firmware), it) }
+                        embedded.subdomain?.let { DeviceInfoRow(stringResource(R.string.machine_detail_subdomain), it.toString()) }
                     }
                 }
             }

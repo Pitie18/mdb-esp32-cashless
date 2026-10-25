@@ -382,7 +382,7 @@ struct DealDetailSheet: View {
                 ForEach(Array(deal.matchedKeywords.enumerated()), id: \.offset) { _, kw in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
-                            Text(kw.label ?? kw.terms?.first ?? "Keyword")
+                            Text(kw.label ?? kw.terms?.first ?? String(localized: "Keyword"))
                                 .font(.subheadline.weight(.medium))
                             if let term = primary.matchedTerm, !term.isEmpty {
                                 Text("matched via \"\(term)\"")

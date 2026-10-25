@@ -194,7 +194,7 @@ struct VendingMachine: Codable, Identifiable, Equatable {
 
     /// Display name, falling back to "Unnamed Machine".
     var displayName: String {
-        name ?? "Unnamed Machine"
+        name ?? String(localized: "Unnamed Machine")
     }
 
     /// Whether the linked device is online.

@@ -324,7 +324,7 @@ final class AuthService: ObservableObject {
             if code == 400 && serverError?.error == "company_name_mismatch" {
                 return .companyNameMismatch
             }
-            return .failure(serverError?.error ?? "Account deletion failed (\(code)).")
+            return .failure(serverError?.error ?? String(localized: "Account deletion failed (\(code))."))
         } catch {
             return .failure(error.localizedDescription)
         }

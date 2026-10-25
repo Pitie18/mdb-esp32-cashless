@@ -82,13 +82,13 @@ fun TrayListContent(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "No trays configured",
+                    text = stringResource(R.string.machine_card_no_trays),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Add trays to track stock levels",
+                    text = stringResource(R.string.tray_empty_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -184,12 +184,12 @@ fun TrayListContent(
                 onClick = { showBatchDialog = true },
                 containerColor = MaterialTheme.colorScheme.secondaryContainer
             ) {
-                Icon(Icons.Default.PlaylistAdd, contentDescription = "Batch add trays")
+                Icon(Icons.Default.PlaylistAdd, contentDescription = stringResource(R.string.tray_batch_title))
             }
             ExtendedFloatingActionButton(
                 onClick = { showAddDialog = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add Tray") }
+                text = { Text(stringResource(R.string.tray_add_title)) }
             )
         }
     }

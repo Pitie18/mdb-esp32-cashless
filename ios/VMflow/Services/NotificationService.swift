@@ -136,7 +136,7 @@ final class NotificationService: ObservableObject {
         print("[Push] Registration error: \(error)")
         // Don't show error for simulator (push not supported)
         #if !targetEnvironment(simulator)
-        self.error = "Push registration failed"
+        self.error = String(localized: "Push registration failed")
         #endif
     }
 
@@ -165,7 +165,7 @@ final class NotificationService: ObservableObject {
             print("[Push] Registered device token with backend")
         } catch {
             print("[Push] Backend registration failed: \(error)")
-            self.error = "Failed to register for push notifications"
+            self.error = String(localized: "Failed to register for push notifications")
         }
     }
 
@@ -258,7 +258,7 @@ final class NotificationService: ObservableObject {
                 options: .init(method: .post)
             )
         } catch {
-            self.error = "Test notification failed: \(error.localizedDescription)"
+            self.error = String(localized: "Test notification failed: \(error.localizedDescription)")
         }
     }
 

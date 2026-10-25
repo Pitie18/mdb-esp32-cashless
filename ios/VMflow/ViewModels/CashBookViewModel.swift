@@ -437,7 +437,7 @@ enum CashBookError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notAuthenticated: return "Not authenticated"
+        case .notAuthenticated: return String(localized: "Not authenticated")
         }
     }
 }

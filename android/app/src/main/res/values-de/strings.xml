@@ -816,4 +816,65 @@
         <item quantity="one">%1$d Fach im Änderungsvermerk vorgemerkt. Umgebaut wird am Automaten während der Tour.</item>
         <item quantity="other">%1$d Fächer im Änderungsvermerk vorgemerkt. Umgebaut wird am Automaten während der Tour.</item>
     </plurals>
+
+    <!-- Auth, machine list/detail, tray editor -->
+    <string name="login_subtitle">Automatenverwaltung</string>
+    <string name="auth_email">E-Mail</string>
+    <string name="auth_password">Passwort</string>
+    <string name="auth_show_password">Passwort anzeigen</string>
+    <string name="auth_hide_password">Passwort verbergen</string>
+    <string name="auth_sign_in">Anmelden</string>
+    <string name="auth_no_account_register">Noch kein Konto? Registrieren</string>
+    <string name="register_title">Konto erstellen</string>
+    <string name="register_success_title">Registrierung erfolgreich</string>
+    <string name="register_success_message">Bitte bestätige dein Konto über den Link in deiner E-Mail und melde dich dann an.</string>
+    <string name="register_back_to_sign_in">Zurück zur Anmeldung</string>
+    <string name="register_confirm_password">Passwort bestätigen</string>
+    <string name="register_passwords_mismatch">Passwörter stimmen nicht überein</string>
+    <string name="register_have_account">Bereits ein Konto? Anmelden</string>
+    <string name="status_online">Online</string>
+    <string name="status_offline">Offline</string>
+    <string name="machine_revenue_today">Heute</string>
+    <string name="machine_revenue_yesterday">Gestern</string>
+    <string name="machine_card_sales">Verkäufe</string>
+    <string name="machine_detail_revenue">Umsatz</string>
+    <string name="machine_detail_sales_today">Verkäufe heute</string>
+    <string name="machine_detail_visitors">Besucher</string>
+    <string name="machine_detail_device_info">Geräteinfo</string>
+    <string name="machine_detail_status">Status</string>
+    <string name="machine_detail_firmware">Firmware</string>
+    <string name="machine_detail_subdomain">Subdomain</string>
+    <string name="machine_detail_tab_overview">Übersicht</string>
+    <string name="machine_detail_tab_trays">Fächer</string>
+    <string name="machine_detail_tab_sales">Verkäufe</string>
+    <string name="machine_list_search_hint">Automaten suchen…</string>
+    <string name="machine_list_search_clear">Suche leeren</string>
+    <string name="machine_list_no_match">Keine Automaten passen zu deiner Suche</string>
+    <string name="machine_list_empty">Keine Automaten gefunden</string>
+    <string name="tray_edit_title">Fach #%1$d bearbeiten</string>
+    <string name="tray_add_title">Fach hinzufügen</string>
+    <string name="tray_slot_number">Fachnummer</string>
+    <string name="tray_product">Produkt</string>
+    <string name="tray_unnamed_product">Unbenannt</string>
+    <string name="tray_capacity">Kapazität</string>
+    <string name="tray_stock">Bestand</string>
+    <string name="tray_min_stock">Mindestbestand</string>
+    <string name="tray_fill_below">Auffüllen unter</string>
+    <string name="tray_batch_title">Mehrere Fächer hinzufügen</string>
+    <string name="tray_batch_description">Mehrere Fächer mit fortlaufenden Fachnummern hinzufügen.</string>
+    <string name="tray_batch_start_slot">Erstes Fach</string>
+    <string name="tray_batch_count">Anzahl Fächer</string>
+    <string name="tray_batch_capacity_each">Kapazität (je Fach)</string>
+    <string name="tray_batch_preview">Erstellt die Fächer %1$d bis %2$d</string>
+    <string name="tray_empty_hint">Füge Fächer hinzu, um den Bestand zu verfolgen</string>
+    <string name="tray_decrease">Verringern</string>
+    <string name="tray_increase">Erhöhen</string>
+    <plurals name="machine_card_visitors">
+        <item quantity="one">%1$d Besucher</item>
+        <item quantity="other">%1$d Besucher</item>
+    </plurals>
+    <plurals name="tray_batch_submit">
+        <item quantity="one">%1$d Fach hinzufügen</item>
+        <item quantity="other">%1$d Fächer hinzufügen</item>
+    </plurals>
 </resources>
