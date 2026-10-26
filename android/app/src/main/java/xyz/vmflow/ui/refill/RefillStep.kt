@@ -26,13 +26,18 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
@@ -42,6 +47,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -145,7 +151,11 @@ fun RefillStepContent(
     onSkipMachine: () -> Unit,
     modifier: Modifier = Modifier,
     rebuild: RebuildSectionState? = null,
-    rebuildActions: RebuildActions? = null
+    rebuildActions: RebuildActions? = null,
+    tourNote: TourNoteEditorState? = null,
+    onOpenTourNote: () -> Unit = {},
+    onSaveTourNote: (text: String) -> Unit = {},
+    onDismissTourNote: () -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
     // The machine can only be confirmed once every slot of its change note is
@@ -327,10 +337,20 @@ fun RefillStepContent(
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onSkipMachine()
             },
+            onTourNote = onOpenTourNote,
             onConfirm = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onConfirmRefill()
             }
+        )
+    }
+
+    if (tourNote != null && tourNote.machineId == machine.machine.id) {
+        TourNoteSheet(
+            state = tourNote,
+            machineName = machine.machine.displayName,
+            onSave = onSaveTourNote,
+            onDismiss = onDismissTourNote
         )
     }
 
@@ -1284,9 +1304,9 @@ private fun NothingToFill(modifier: Modifier = Modifier) {
 }
 
 /**
- * Skip + confirm.
+ * More actions (skip, note for next tour) + confirm.
  *
- * Both are disabled for the whole [isSaving] window — which the ViewModel
+ * Everything is disabled for the whole [isSaving] window — which the ViewModel
  * holds across the audit write that follows a successful booking — and
  * Confirm shows a spinner while it lasts, so a tap the re-entrancy guard
  * would have dropped can't be made in the first place.
@@ -1295,10 +1315,12 @@ private fun NothingToFill(modifier: Modifier = Modifier) {
 private fun RefillBottomBar(
     isSaving: Boolean,
     onSkip: () -> Unit,
+    onTourNote: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
     confirmBlockedHint: String? = null
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxWidth()) {
         HorizontalDivider()
         if (confirmBlockedHint != null) {
@@ -1316,37 +1338,44 @@ private fun RefillBottomBar(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // No icon and tighter horizontal content padding, unlike Confirm:
-            // at 360 dp (the most common Android width, and the test
-            // device's) this button gets 1/3 of (328 dp row − 12 dp gap) ≈
-            // 105 dp. The default OutlinedButton content padding (24 dp each
-            // side = 48 dp) plus a 20 dp icon and a 6 dp spacer left only
-            // ~31 dp for text — enough for "Skip" but not for "Überspringen"
-            // (~85-90 dp at 14 sp), which rendered mid-word-clipped. Dropping
-            // the icon and both spacer and reducing content padding to 8 dp
-            // a side (16 dp total) frees the full ~89 dp of the button for
-            // text. Confirm keeps its icon: at weight 2f it has roughly
-            // double the width and headroom to wrap to a second line inside
-            // its 60 dp minimum height, which it already does for German.
-            OutlinedButton(
-                onClick = onSkip,
-                enabled = !isSaving,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .defaultMinSize(minHeight = 60.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.refill_step_skip),
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1
-                )
+            // Skip lives in the overflow menu next to "note for next tour"
+            // (web and iOS alike); a 60 dp outlined icon button keeps the
+            // touch target large for a driver standing at the machine.
+            Box {
+                OutlinedIconButton(
+                    onClick = { menuOpen = true },
+                    modifier = Modifier.size(60.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(R.string.refill_step_more_actions)
+                    )
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.refill_step_skip_machine)) },
+                        leadingIcon = { Icon(Icons.Default.SkipNext, contentDescription = null) },
+                        enabled = !isSaving,
+                        onClick = {
+                            menuOpen = false
+                            onSkip()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.refill_tour_note_title)) },
+                        leadingIcon = { Icon(Icons.Default.EditNote, contentDescription = null) },
+                        onClick = {
+                            menuOpen = false
+                            onTourNote()
+                        }
+                    )
+                }
             }
             Button(
                 onClick = onConfirm,
                 enabled = !isSaving && confirmBlockedHint == null,
                 modifier = Modifier
-                    .weight(2f)
+                    .weight(1f)
                     .defaultMinSize(minHeight = 60.dp)
             ) {
                 if (isSaving) {

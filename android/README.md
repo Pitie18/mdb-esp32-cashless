@@ -80,6 +80,8 @@ app/src/main/java/xyz/vmflow/
     SlotChange.kt            — Slot change maths (pack needs, fill plan, leftovers)
     SlotChangeRepository.kt  — Slot change requests (load, queue, apply)
     WarehouseRepository.kt   — Warehouse stock queries
+    PurchaseOrderRepository.kt — Order list, purchase orders, expected deliveries
+    OrderSuggestion.kt       — Order suggestion (port of the web's orderSuggestion.ts)
   ui/
     auth/                    — Login, Register screens
     dashboard/               — Dashboard, KPI cards

@@ -253,7 +253,8 @@ fun RefillWizardScreen(
                         onStartTour = viewModel::startTour,
                         onToggleRebuildItem = viewModel::toggleRebuildItem,
                         onSetRebuildQuantity = viewModel::setRebuildQuantity,
-                        onToggleRebuildTick = viewModel::toggleRebuildTick
+                        onToggleRebuildTick = viewModel::toggleRebuildTick,
+                        onCompleteTourNote = viewModel::completeTourNote
                     )
 
                     RefillStep.REFILL -> {
@@ -317,7 +318,13 @@ fun RefillWizardScreen(
                                     onAction = viewModel::setRebuildAction,
                                     onPriceSet = viewModel::setRebuildPriceSet,
                                     onAgeSet = viewModel::setRebuildAgeSet
-                                )
+                                ),
+                                tourNote = uiState.tourNoteEditor,
+                                onOpenTourNote = {
+                                    viewModel.openTourNote(currentMachine.machine.id)
+                                },
+                                onSaveTourNote = viewModel::saveTourNote,
+                                onDismissTourNote = viewModel::dismissTourNote
                             )
                         }
                     }

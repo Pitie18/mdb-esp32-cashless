@@ -234,7 +234,7 @@ struct MachineAnalysisView: View {
                     .background(product.tier.color.opacity(0.15), in: Capsule())
                     .foregroundStyle(product.tier.color)
             }
-            Text("\(Int(product.sellThroughPct))% sell-through · \(product.unitsSold) sold" + tenureSuffix(product))
+            Text(String(localized: "\(Int(product.sellThroughPct))% sell-through · \(product.unitsSold) sold") + tenureSuffix(product))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if !product.suggestions.isEmpty {
@@ -250,7 +250,7 @@ struct MachineAnalysisView: View {
 
     private func tenureSuffix(_ product: ProductAnalysis) -> String {
         guard let tenure = product.tenureDays else { return "" }
-        return " · \(tenure)d in machine"
+        return String(localized: " · \(tenure)d in machine")
     }
 
     private func tierLabel(_ tier: SlotTier) -> String { tier.label }

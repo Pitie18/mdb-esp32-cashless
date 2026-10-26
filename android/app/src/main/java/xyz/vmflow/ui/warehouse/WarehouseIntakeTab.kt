@@ -105,6 +105,9 @@ fun WarehouseIntakeTab(
         supplierName: String?
     ) -> Unit,
     onLookupBarcode: (barcode: String, onFound: (productId: String) -> Unit, onNotFound: () -> Unit) -> Unit,
+    /** Opens the receive sheet of an expected delivery (open purchase order). */
+    onCheckDelivery: (xyz.vmflow.data.PurchaseOrder) -> Unit = {},
+    onCancelOrder: (xyz.vmflow.data.PurchaseOrder) -> Unit = {},
 ) {
     var selectedProductId by remember { mutableStateOf<String?>(null) }
     var productSearchText by remember { mutableStateOf("") }
@@ -147,6 +150,25 @@ fun WarehouseIntakeTab(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Expected deliveries first: what was ordered gets booked here in one go.
+        if (uiState.openOrders.isNotEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.warehouse_delivery_expected),
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+            items(uiState.openOrders, key = { "order-" + it.id }) { order ->
+                OpenOrderRow(
+                    order = order,
+                    isAdmin = uiState.isAdmin,
+                    actionLabel = stringResource(R.string.warehouse_delivery_check),
+                    onAction = { onCheckDelivery(order) },
+                    onCancel = { onCancelOrder(order) }
+                )
+            }
+        }
+
         item {
             Text(
                 text = stringResource(R.string.warehouse_intake_form_header),
@@ -423,7 +445,7 @@ private fun ProductPickerField(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExpirationDateField(expirationIso: String?, onExpirationChange: (String?) -> Unit) {
+internal fun ExpirationDateField(expirationIso: String?, onExpirationChange: (String?) -> Unit) {
     var showDialog by remember { mutableStateOf(false) }
 
     OutlinedTextField(

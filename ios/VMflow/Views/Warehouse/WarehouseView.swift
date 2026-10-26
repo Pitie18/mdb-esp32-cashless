@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// Warehouse management page with stock overview and intake booking.
+/// Warehouse page: Stock / Order / Incoming segments, History behind the
+/// toolbar icon. Same structure as the web's warehouse page.
 struct WarehouseView: View {
     @StateObject private var viewModel = WarehouseViewModel()
     @EnvironmentObject private var realtime: RealtimeService
+    @EnvironmentObject private var auth: AuthService
     @Environment(\.locale) private var locale
-    @State private var selectedTab = 0
+    @State private var selectedTab = Tab.stock
     /// Raw text for the quantity field — supports expressions like "2*12", "100+50".
     @State private var quantityText = ""
     @State private var showScanner = false
@@ -25,6 +27,10 @@ struct WarehouseView: View {
     private var intakeExpirationInvalid: Bool {
         !viewModel.intakeExpirationText.isEmpty && intakeExpirationISO == nil
     }
+
+    enum Tab: Hashable { case stock, order, incoming }
+
+    private var isAdmin: Bool { auth.role == .admin }
 
     /// Identifies the product whose detail sheet is presented (image tap).
     private struct ProductDetailSelection: Identifiable {
@@ -46,12 +52,27 @@ struct WarehouseView: View {
 
             // Tab selector
             Picker("Section", selection: $selectedTab) {
-                Text("Stock").tag(0)
-                Text("Incoming").tag(1)
+                Text("Stock").tag(Tab.stock)
+                Text(orderTabTitle).tag(Tab.order)
+                Text("Incoming").tag(Tab.incoming)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
             .padding(.vertical, 8)
+
+            if let notice = viewModel.notice {
+                Label(notice, systemImage: "checkmark.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.green)
+                    .padding(.horizontal)
+                    .padding(.bottom, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.opacity)
+                    .task(id: notice) {
+                        try? await Task.sleep(for: .seconds(4))
+                        if viewModel.notice == notice { withAnimation { viewModel.notice = nil } }
+                    }
+            }
 
             // Tab content
             if viewModel.isLoading && viewModel.productSummaries.isEmpty {
@@ -62,20 +83,40 @@ struct WarehouseView: View {
                 emptyWarehouseState
             } else {
                 switch selectedTab {
-                case 0:
+                case .stock:
                     stockOverviewTab
-                case 1:
+                case .order:
+                    WarehouseOrderView(
+                        viewModel: viewModel,
+                        isAdmin: isAdmin,
+                        onShowProductDetail: { p in
+                            productDetailSelection = ProductDetailSelection(
+                                id: p.productId,
+                                name: p.productName,
+                                imagePath: p.imagePath
+                            )
+                        },
+                        onCheckDelivery: { selectedTab = .incoming }
+                    )
+                case .incoming:
                     incomingTab
-                default:
-                    stockOverviewTab
                 }
             }
         }
         .navigationTitle("Warehouse")
         .toolbar {
-            if selectedTab == 0 {
+            if selectedTab == .stock {
                 ToolbarItem(placement: .topBarTrailing) {
                     stockFilterMenu
+                }
+            }
+            if let warehouseId = viewModel.selectedWarehouseId {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        WarehouseHistoryView(warehouseId: warehouseId)
+                    } label: {
+                        Label(String(localized: "History"), systemImage: "clock.arrow.circlepath")
+                    }
                 }
             }
         }
@@ -84,6 +125,9 @@ struct WarehouseView: View {
         }
         .onChange(of: realtime.warehouseVersion) { _, _ in
             Task { await viewModel.loadAll() }
+        }
+        .onChange(of: realtime.orderingVersion) { _, _ in
+            Task { await viewModel.loadWarehouseOrdering() }
         }
         .dataRefreshable {
             await viewModel.loadAll()
@@ -94,9 +138,9 @@ struct WarehouseView: View {
                     Task {
                         if let productId = await viewModel.lookupBarcode(code) {
                             viewModel.intakeProductId = productId
-                            selectedTab = 1  // Switch to Incoming tab
+                            selectedTab = .incoming
                         } else {
-                            scanError = "No product found for barcode \"\(code)\""
+                            scanError = String(localized: "No product found for barcode \"\(code)\"")
                         }
                     }
                 }
@@ -167,6 +211,12 @@ struct WarehouseView: View {
             .padding(.vertical, 4)
         }
         .buttonStyle(.plain)
+    }
+
+    /// "Order (3)" while something is on the order list.
+    private var orderTabTitle: String {
+        let count = OrderSuggestion.lineCount(viewModel.orderGroups)
+        return count > 0 ? String(localized: "Order (\(count))") : String(localized: "Order")
     }
 
     private var selectedWarehouseName: String {
@@ -307,22 +357,32 @@ struct WarehouseView: View {
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                     } else {
+                        let onList = viewModel.orderListProductIds
                         ForEach(viewModel.filteredSummaries) { summary in
+                            let manual = viewModel.manualEntry(for: summary.productId)
                             NavigationLink {
                                 ProductBatchesView(
                                     productId: summary.productId,
                                     productName: summary.productName,
-                                    productImagePath: summary.imagePath
+                                    productImagePath: summary.imagePath,
+                                    isAdmin: isAdmin
                                 )
                                 .environmentObject(viewModel)
                             } label: {
-                                StockSummaryRow(summary: summary) {
+                                StockSummaryRow(
+                                    summary: summary,
+                                    onOrder: viewModel.onOrder(summary.productId),
+                                    orderState: manual != nil ? .manual : (onList.contains(summary.productId) ? .auto : nil)
+                                ) {
                                     productDetailSelection = ProductDetailSelection(
                                         id: summary.productId,
                                         name: summary.productName,
                                         imagePath: summary.imagePath
                                     )
                                 }
+                            }
+                            .contextMenu {
+                                orderListMenu(summary: summary, manual: manual, onList: onList.contains(summary.productId))
                             }
                         }
                     }
@@ -333,10 +393,53 @@ struct WarehouseView: View {
         }
     }
 
+    /// Long press on a stock row: put it on the order list (or take it off).
+    @ViewBuilder
+    private func orderListMenu(summary: WarehouseProductSummary, manual: ManualOrderEntry?, onList: Bool) -> some View {
+        if let manual {
+            Text(String(localized: "Manually on the order list · \(manual.addedByName ?? "—"), \(OrderBadge.viaLabel(manual.addedVia))"))
+            Button(String(localized: "Remove from order list"), systemImage: "cart.badge.minus", role: .destructive) {
+                Task { await viewModel.removeFromOrderList(summary.productId) }
+            }
+        } else {
+            if onList {
+                Text(String(localized: "On the order list automatically"))
+            }
+            Button(String(localized: "Add to order list"), systemImage: "cart.badge.plus") {
+                Task { await viewModel.addToOrderList(summary.productId) }
+            }
+        }
+        let onOrder = viewModel.onOrder(summary.productId)
+        if onOrder > 0 {
+            Text(String(localized: "\(onOrder) units are ordered and on the way."))
+        }
+    }
+
     // MARK: - Incoming Tab
 
     private var incomingTab: some View {
         List {
+            // Orders placed with a supplier: book what arrived.
+            if !viewModel.openOrders.isEmpty {
+                Section {
+                    ForEach(viewModel.openOrders) { order in
+                        NavigationLink {
+                            DeliveryReceiveView(order: order, viewModel: viewModel)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(order.supplierName ?? "—")
+                                    .font(.body.weight(.medium))
+                                Text(String(localized: "ordered \(order.createdAt.formatted(date: .abbreviated, time: .omitted)) · \(order.lines.count) items · \(order.totalUnits) units"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                } header: {
+                    Text(String(localized: "Expected deliveries"))
+                }
+            }
+
             // Intake form section
             Section {
                 intakeFormContent
@@ -567,7 +670,7 @@ struct WarehouseView: View {
 
         guard let productId = viewModel.intakeProductId else { return }
         guard viewModel.intakeQuantity > 0 else {
-            viewModel.error = "Quantity must be greater than 0"
+            viewModel.error = String(localized: "Quantity must be greater than 0")
             return
         }
 
@@ -592,6 +695,10 @@ struct WarehouseView: View {
 
 struct StockSummaryRow: View {
     let summary: WarehouseProductSummary
+    /// Units in open orders.
+    var onOrder: Int = 0
+    /// On the order list, and why (nil = not on it).
+    var orderState: OrderBadge.Kind?
     /// Tapping the product image opens the product detail (separate from the
     /// row's NavigationLink, which goes to the batches view).
     var onImageTap: () -> Void = {}
@@ -609,6 +716,15 @@ struct StockSummaryRow: View {
                     Text(summary.productName)
                         .font(.body)
                         .lineLimit(1)
+
+                    if orderState != nil {
+                        Image(systemName: "cart.fill")
+                            .font(.caption2)
+                            .foregroundStyle(orderState == .manual ? Color.purple : Color.blue)
+                            .accessibilityLabel(orderState == .manual
+                                ? String(localized: "Manual")
+                                : String(localized: "On the order list automatically"))
+                    }
 
                     if summary.discontinued {
                         Text("Archived")
@@ -629,6 +745,12 @@ struct StockSummaryRow: View {
                     if let exp = summary.earliestExpiration {
                         expirationBadge(exp)
                     }
+                }
+
+                if onOrder > 0 {
+                    Label(String(localized: "\(onOrder) on the way"), systemImage: "shippingbox")
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
                 }
             }
 

@@ -86,6 +86,92 @@
     <string name="warehouse_adjust_submit_remove">Remove stock</string>
     <string name="warehouse_adjust_submit_add">Add stock</string>
 
+    <!-- Warehouse ordering (Order tab, expected deliveries, history) -->
+    <string name="warehouse_tab_order">Order</string>
+    <string name="warehouse_tab_order_count">Order (%1$d)</string>
+    <string name="warehouse_order_intro">Suggestion for the next order cycle: lasts until the delivery after next plus a %1$d-day buffer. Goods already on order are subtracted.</string>
+    <string name="warehouse_order_intro_machines">Suggestion for the next order cycle: lasts until the delivery after next plus a %1$d-day buffer. Machine stock and goods already on order are subtracted.</string>
+    <string name="warehouse_order_badge_auto">Automatic</string>
+    <string name="warehouse_order_badge_manual">Manual</string>
+    <string name="warehouse_order_nothing">Everything lasts until the delivery after next. Nothing to order.</string>
+    <string name="warehouse_order_nothing_due">Nothing due</string>
+    <string name="warehouse_order_no_supplier">No supplier</string>
+    <string name="warehouse_order_rhythm">Lead time %1$d days · ordered every %2$d days</string>
+    <string name="warehouse_order_no_supplier_hint_admin">Assign a supplier right in the row and the product moves into that supplier\'s order.</string>
+    <string name="warehouse_order_no_supplier_hint">An admin can assign a supplier to these products.</string>
+    <string name="warehouse_order_has_empty">Contains empty products</string>
+    <string name="warehouse_order_below_min">Minimum order value %1$s not reached yet</string>
+    <string name="warehouse_order_in_stock">%1$d in stock</string>
+    <string name="warehouse_order_search_product">Search product</string>
+    <string name="warehouse_order_add_product">Add product</string>
+    <string name="warehouse_order_available">Available %1$d</string>
+    <string name="warehouse_order_on_the_way_units">%1$d on the way</string>
+    <string name="warehouse_order_lasts">lasts %1$d of %2$d d</string>
+    <string name="warehouse_order_via_ios">iPhone</string>
+    <string name="warehouse_order_via_android">Android</string>
+    <string name="warehouse_order_via_web">web</string>
+    <string name="warehouse_order_more">More</string>
+    <string name="warehouse_order_less">less</string>
+    <string name="warehouse_order_more_units">more</string>
+    <string name="warehouse_order_carton_units">Carton of %1$d = %2$d units</string>
+    <string name="warehouse_order_reset_quantity">Reset quantity</string>
+    <string name="warehouse_order_assign_supplier">Assign supplier …</string>
+    <string name="warehouse_order_assigned">%1$s now belongs to %2$s.</string>
+    <string name="warehouse_order_net_cost">Net cost</string>
+    <string name="warehouse_order_copy">Copy list</string>
+    <string name="warehouse_order_copied">Copied</string>
+    <string name="warehouse_order_share">Share</string>
+    <string name="warehouse_order_customer_no">Customer no.</string>
+    <string name="warehouse_order_mark_ordered">Mark as ordered</string>
+    <string name="warehouse_order_marked_ordered">%1$s: marked as ordered. The goods now count as on the way.</string>
+    <string name="warehouse_order_on_the_way">On the way</string>
+    <string name="warehouse_order_ordered_on">ordered %1$s</string>
+    <string name="warehouse_order_cancel">Cancel order</string>
+    <string name="warehouse_order_cancel_message">Cancel the order with %1$s? Its goods no longer count as on the way.</string>
+    <string name="warehouse_order_keep">Keep</string>
+    <string name="warehouse_order_on_list">On the order list</string>
+    <string name="warehouse_order_list_add">Add to order list</string>
+    <string name="warehouse_order_list_remove">Remove from order list</string>
+    <string name="warehouse_order_section">Order</string>
+    <string name="warehouse_order_manual_on_list">Manually on the order list · %1$s, %2$s</string>
+    <string name="warehouse_order_auto_on_list">On the order list automatically</string>
+    <string name="warehouse_order_main_supplier">Main supplier</string>
+    <string name="warehouse_order_supplier_none">None</string>
+    <string name="warehouse_order_unit_size">Units per carton</string>
+    <string name="warehouse_order_save">Save</string>
+    <string name="warehouse_order_supplier_value">Supplier: %1$s</string>
+    <plurals name="warehouse_order_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="warehouse_order_units">
+        <item quantity="one">%1$d unit</item>
+        <item quantity="other">%1$d units</item>
+    </plurals>
+    <plurals name="warehouse_order_units_on_the_way">
+        <item quantity="one">%1$d unit is ordered and on the way.</item>
+        <item quantity="other">%1$d units are ordered and on the way.</item>
+    </plurals>
+    <string name="warehouse_delivery_expected">Expected deliveries</string>
+    <string name="warehouse_delivery_check">Check delivery</string>
+    <string name="warehouse_delivery_ordered_qty">ordered %1$d</string>
+    <string name="warehouse_delivery_delivered">Delivered</string>
+    <string name="warehouse_delivery_book_all">Book all</string>
+    <string name="warehouse_delivery_booked">Delivery booked: %1$d units.</string>
+    <string name="warehouse_delivery_close">Already booked · mark as delivered</string>
+    <string name="warehouse_delivery_close_hint">For goods that were already booked by hand, e.g. with an older app. Books nothing.</string>
+    <string name="warehouse_delivery_close_confirm">Mark the order as delivered without booking anything?</string>
+    <string name="warehouse_history_title">History</string>
+    <string name="warehouse_history_back">Back</string>
+    <string name="warehouse_history_empty">No movements yet</string>
+    <string name="warehouse_history_load_more">Load more</string>
+    <string name="warehouse_history_filter_all">All</string>
+    <string name="warehouse_history_filter_corrections">Corrections</string>
+    <string name="warehouse_history_type_refill">Refill</string>
+    <string name="warehouse_history_type_correction">Correction</string>
+    <string name="warehouse_history_type_transfer_out">Transfer out</string>
+    <string name="warehouse_history_type_transfer_in">Transfer in</string>
+
     <!-- StockBar accessibility -->
     <string name="stock_bar_description">Stock %1$d of %2$d</string>
 
@@ -466,6 +552,16 @@
     <string name="refill_step_layout_state_low">low</string>
     <string name="refill_step_layout_state_full">stocked</string>
     <string name="refill_step_skip">Skip</string>
+    <string name="refill_step_skip_machine">Skip machine</string>
+    <string name="refill_step_more_actions">More actions</string>
+    <string name="refill_tour_note_title">Note for next tour</string>
+    <string name="refill_tour_note_hint">Shown at the top of the packing step on the next tour.</string>
+    <string name="refill_tour_note_placeholder">e.g. new spirals, can risers …</string>
+    <string name="refill_tour_note_save_failed">Could not save the note.</string>
+    <string name="refill_tour_note_save_failed_detail">Could not save the note: %1$s</string>
+    <string name="refill_tour_notes_title">Notes from last time</string>
+    <string name="refill_tour_notes_subtitle">Tick off once done. Until then they show on every tour.</string>
+    <string name="refill_tour_notes_mark_done">Done</string>
     <string name="refill_step_confirm">Confirm refill</string>
     <string name="refill_step_saving">Saving…</string>
     <string name="refill_error_unknown">unknown error</string>
@@ -538,6 +634,15 @@
     </plurals>
     <string name="refill_picker_slot_badge">Slot %1$s</string>
     <string name="refill_picker_slot_badge_overflow">Slot %1$s +%2$d</string>
+    <string name="refill_picker_removed_badge">Removed %1$s</string>
+    <plurals name="refill_picker_removed_units">
+        <item quantity="one">%d sold</item>
+        <item quantity="other">%d sold</item>
+    </plurals>
+    <plurals name="refill_picker_removed_units_in_days">
+        <item quantity="one">%1$s in %2$d day</item>
+        <item quantity="other">%1$s in %2$d days</item>
+    </plurals>
     <plurals name="refill_picker_slot_badge_a11y">
         <item quantity="one">Already in slot %1$s</item>
         <item quantity="other">Already in slots %1$s</item>
@@ -715,5 +820,66 @@
     <plurals name="refill_review_queued">
         <item quantity="one">%1$d slot added to the change request. It is rebuilt at the machine during the tour.</item>
         <item quantity="other">%1$d slots added to the change request. They are rebuilt at the machine during the tour.</item>
+    </plurals>
+
+    <!-- Auth, machine list/detail, tray editor -->
+    <string name="login_subtitle">Vending Machine Management</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_show_password">Show password</string>
+    <string name="auth_hide_password">Hide password</string>
+    <string name="auth_sign_in">Sign In</string>
+    <string name="auth_no_account_register">Don\'t have an account? Register</string>
+    <string name="register_title">Create Account</string>
+    <string name="register_success_title">Registration Successful</string>
+    <string name="register_success_message">Please check your email to confirm your account, then sign in.</string>
+    <string name="register_back_to_sign_in">Back to Sign In</string>
+    <string name="register_confirm_password">Confirm Password</string>
+    <string name="register_passwords_mismatch">Passwords do not match</string>
+    <string name="register_have_account">Already have an account? Sign In</string>
+    <string name="status_online">Online</string>
+    <string name="status_offline">Offline</string>
+    <string name="machine_revenue_today">Today</string>
+    <string name="machine_revenue_yesterday">Yesterday</string>
+    <string name="machine_card_sales">Sales</string>
+    <string name="machine_detail_revenue">Revenue</string>
+    <string name="machine_detail_sales_today">Sales Today</string>
+    <string name="machine_detail_visitors">Visitors</string>
+    <string name="machine_detail_device_info">Device Info</string>
+    <string name="machine_detail_status">Status</string>
+    <string name="machine_detail_firmware">Firmware</string>
+    <string name="machine_detail_subdomain">Subdomain</string>
+    <string name="machine_detail_tab_overview">Overview</string>
+    <string name="machine_detail_tab_trays">Trays</string>
+    <string name="machine_detail_tab_sales">Sales</string>
+    <string name="machine_list_search_hint">Search machines…</string>
+    <string name="machine_list_search_clear">Clear search</string>
+    <string name="machine_list_no_match">No machines match your search</string>
+    <string name="machine_list_empty">No machines found</string>
+    <string name="tray_edit_title">Edit Tray #%1$d</string>
+    <string name="tray_add_title">Add Tray</string>
+    <string name="tray_slot_number">Slot Number</string>
+    <string name="tray_product">Product</string>
+    <string name="tray_unnamed_product">Unnamed</string>
+    <string name="tray_capacity">Capacity</string>
+    <string name="tray_stock">Stock</string>
+    <string name="tray_min_stock">Min Stock</string>
+    <string name="tray_fill_below">Fill Below</string>
+    <string name="tray_batch_title">Batch Add Trays</string>
+    <string name="tray_batch_description">Add multiple trays with sequential slot numbers.</string>
+    <string name="tray_batch_start_slot">Starting Slot</string>
+    <string name="tray_batch_count">Number of Trays</string>
+    <string name="tray_batch_capacity_each">Capacity (each)</string>
+    <string name="tray_batch_preview">This will create slots %1$d through %2$d</string>
+    <string name="tray_empty_hint">Add trays to track stock levels</string>
+    <string name="tray_decrease">Decrease</string>
+    <string name="tray_increase">Increase</string>
+    <plurals name="machine_card_visitors">
+        <item quantity="one">%1$d visitor</item>
+        <item quantity="other">%1$d visitors</item>
+    </plurals>
+    <plurals name="tray_batch_submit">
+        <item quantity="one">Add %1$d Tray</item>
+        <item quantity="other">Add %1$d Trays</item>
     </plurals>
 </resources>

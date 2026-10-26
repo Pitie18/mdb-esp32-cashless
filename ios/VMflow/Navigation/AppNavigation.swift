@@ -17,16 +17,16 @@ enum SidebarItem: String, Hashable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .dashboard: "Dashboard"
+        case .dashboard: NSLocalizedString("Dashboard", comment: "")
         case .analytics: NSLocalizedString("Analytics", comment: "")
-        case .machines: "Machines"
-        case .refill: "Refill"
-        case .inbox: "Inbox"
+        case .machines: NSLocalizedString("Machines", comment: "")
+        case .refill: NSLocalizedString("Refill", comment: "")
+        case .inbox: NSLocalizedString("Inbox", comment: "")
         case .cashBook: NSLocalizedString("cash_book_title", comment: "")
-        case .products: "Products"
-        case .warehouse: "Warehouse"
-        case .deals: "Deals"
-        case .settings: "Settings"
+        case .products: NSLocalizedString("Products", comment: "")
+        case .warehouse: NSLocalizedString("Warehouse", comment: "")
+        case .deals: NSLocalizedString("Deals", comment: "")
+        case .settings: NSLocalizedString("Settings", comment: "")
         }
     }
 

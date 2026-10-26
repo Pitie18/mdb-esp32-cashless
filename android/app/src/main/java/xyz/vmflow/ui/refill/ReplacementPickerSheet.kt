@@ -1,6 +1,9 @@
 package xyz.vmflow.ui.refill
 
 import android.content.Context
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,7 +53,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import xyz.vmflow.R
+import kotlinx.datetime.toJavaInstant
 import xyz.vmflow.data.PickerStockBucketKind
+import xyz.vmflow.data.RecentRemoval
 import xyz.vmflow.data.RefillTourLogic
 import xyz.vmflow.data.ReplacementPickerLogic
 import xyz.vmflow.ui.components.ProductImage
@@ -69,6 +74,9 @@ import xyz.vmflow.ui.theme.StockRed
  * stock pill plus a badge for the slots this product already occupies in the
  * same machine — is carried over as-is; the grouping, sorting and search
  * themselves live in [ReplacementPickerLogic] where they can be unit-tested.
+ * A product taken out of this machine within the cool-down
+ * ([RefillUiState.recentRemovals]) gets a red "removed on" pill plus what it
+ * sold back then, and sorts last in its group.
  *
  * Two adaptations, both Android idiom rather than a change of behaviour:
  *
@@ -248,6 +256,10 @@ private sealed interface PickerListItem {
         /** `null` unless this product already sits in other slots here. */
         val slotLabel: String?,
         val slotA11y: String?,
+        /** "Removed Oct 10, 2026" — taken out of this machine recently. */
+        val removedLabel: String?,
+        /** "3 sold in 14 days" — what it sold while it was offered here. */
+        val removedDetail: String?,
         val isSelected: Boolean,
         val selectedLabel: String
     ) : PickerListItem
@@ -343,12 +355,15 @@ private fun pickerModel(
         }
     }
 
+    val removals = uiState.recentRemovals[suggestion?.machineId].orEmpty()
+
     val buckets = remember(
         uiState.availableProducts,
         uiState.productCategories,
         stockByProduct,
         uiState.stockLoaded,
         existingSlots,
+        removals,
         currentCategoryId,
         query
     ) {
@@ -359,7 +374,8 @@ private fun pickerModel(
             stockKnown = uiState.stockLoaded,
             existingSlotsByProduct = existingSlots,
             currentCategoryId = currentCategoryId,
-            query = query
+            query = query,
+            recentRemovals = removals
         )
     }
 
@@ -440,6 +456,13 @@ private fun pickerModel(
                                         slotNumbers
                                     )
                                 },
+                                removedLabel = row.recentRemoval?.let {
+                                    context.getString(
+                                        R.string.refill_picker_removed_badge,
+                                        removalDate(it)
+                                    )
+                                },
+                                removedDetail = row.recentRemoval?.let { removalDetail(context, it) },
                                 isSelected = row.productId == selectedProductId,
                                 selectedLabel = selectedLabel
                             )
@@ -448,6 +471,28 @@ private fun pickerModel(
                 }
             )
         }
+    )
+}
+
+private fun removalDate(removal: RecentRemoval): String =
+    removal.removedAt.toJavaInstant()
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate()
+        .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+
+/** "3 sold in 14 days", or "3 sold" when the offering's start is unknown. */
+private fun removalDetail(context: Context, removal: RecentRemoval): String {
+    val units = context.resources.getQuantityString(
+        R.plurals.refill_picker_removed_units,
+        removal.unitsSold,
+        removal.unitsSold
+    )
+    val days = removal.daysOffered ?: return units
+    return context.resources.getQuantityString(
+        R.plurals.refill_picker_removed_units_in_days,
+        days,
+        units,
+        days
     )
 }
 
@@ -642,7 +687,7 @@ private fun ProductRow(
                     MaterialTheme.colorScheme.onSurface
                 }
             )
-            if (row.stockLabel != null || row.slotLabel != null) {
+            if (row.stockLabel != null || row.slotLabel != null || row.removedLabel != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -665,7 +710,18 @@ private fun ProductRow(
                             contentDescriptionOverride = row.slotA11y
                         )
                     }
+                    row.removedLabel?.let { label ->
+                        Pill(text = label, color = StockRed)
+                    }
                 }
+            }
+            row.removedDetail?.let { detail ->
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = StockRed
+                )
             }
         }
         if (row.isSelected) {

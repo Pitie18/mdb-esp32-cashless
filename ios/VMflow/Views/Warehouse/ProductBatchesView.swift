@@ -10,29 +10,38 @@ struct ProductBatchesView: View {
     @EnvironmentObject private var viewModel: WarehouseViewModel
     @State private var selectedBatch: WarehouseStockBatch?
 
+    /// Admins edit the main supplier and carton size here.
+    var isAdmin = false
+
     var body: some View {
         Group {
             if viewModel.isLoadingBatches && viewModel.drilldownBatches.isEmpty {
                 ProgressView(String(localized: "Loading batches..."))
-            } else if viewModel.drilldownBatches.isEmpty {
-                VStack(spacing: 12) {
-                    Spacer()
-                    Image(systemName: "shippingbox")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.secondary)
-                    Text(String(localized: "No batches in stock"))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
             } else {
                 List {
-                    ForEach(viewModel.drilldownBatches) { batch in
-                        Button {
-                            selectedBatch = batch
-                        } label: {
-                            BatchRow(batch: batch)
+                    // Order list, supplier and carton size first: this view is
+                    // also where the Order tab's lines lead.
+                    ProductOrderingSection(productId: productId, isAdmin: isAdmin)
+                    if viewModel.drilldownBatches.isEmpty {
+                        Section {
+                            Label(String(localized: "No batches in stock"), systemImage: "shippingbox")
+                                .foregroundStyle(.secondary)
+                        } header: {
+                            Text(String(localized: "Batches"))
                         }
-                        .buttonStyle(.plain)
+                    } else {
+                        Section {
+                            ForEach(viewModel.drilldownBatches) { batch in
+                                Button {
+                                    selectedBatch = batch
+                                } label: {
+                                    BatchRow(batch: batch)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        } header: {
+                            Text(String(localized: "Batches"))
+                        }
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -60,6 +69,81 @@ struct ProductBatchesView: View {
                 )
             }
         }
+    }
+}
+
+/// Ordering of one product: order-list state with add/remove, units on the
+/// way, and for admins the main supplier and carton size (web parity with
+/// `WarehouseProductSheet.vue`).
+private struct ProductOrderingSection: View {
+    let productId: UUID
+    let isAdmin: Bool
+
+    @EnvironmentObject private var viewModel: WarehouseViewModel
+    @State private var unitSizeText = ""
+
+    var body: some View {
+        let manual = viewModel.manualEntry(for: productId)
+        let onList = viewModel.orderListProductIds.contains(productId)
+        let onOrder = viewModel.onOrder(productId)
+        let info = viewModel.productOrderInfo[productId]
+        Section {
+            if let manual {
+                Label(String(localized: "Manually on the order list · \(manual.addedByName ?? "—"), \(OrderBadge.viaLabel(manual.addedVia))"),
+                      systemImage: "cart.fill")
+                    .foregroundStyle(.purple)
+                Button(String(localized: "Remove from order list"), systemImage: "cart.badge.minus", role: .destructive) {
+                    Task { await viewModel.removeFromOrderList(productId) }
+                }
+            } else {
+                if onList {
+                    Label(String(localized: "On the order list automatically"), systemImage: "cart.fill")
+                        .foregroundStyle(.blue)
+                }
+                Button(String(localized: "Add to order list"), systemImage: "cart.badge.plus") {
+                    Task { await viewModel.addToOrderList(productId) }
+                }
+            }
+            if onOrder > 0 {
+                Label(String(localized: "\(onOrder) units are ordered and on the way."), systemImage: "shippingbox")
+                    .foregroundStyle(.secondary)
+            }
+
+            if isAdmin {
+                Picker(String(localized: "Main supplier"), selection: Binding(
+                    get: { info?.preferredSupplierId },
+                    set: { id in Task { await viewModel.assignSupplier(productId, supplierId: id) } }
+                )) {
+                    Text(String(localized: "None")).tag(UUID?.none)
+                    ForEach(viewModel.orderSuppliers) { s in
+                        Text(s.name).tag(UUID?.some(s.id))
+                    }
+                }
+                HStack {
+                    Text(String(localized: "Units per carton"))
+                    Spacer()
+                    TextField(String(info?.unitSize ?? 1), text: $unitSizeText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 80)
+                        .onSubmit(saveUnitSize)
+                    if let n = Int(unitSizeText), n >= 1, n != (info?.unitSize ?? 1) {
+                        Button(String(localized: "Save"), action: saveUnitSize)
+                            .buttonStyle(.borderless)
+                    }
+                }
+            } else if let id = info?.supplierId, let name = viewModel.orderSuppliers.first(where: { $0.id == id })?.name {
+                LabeledContent(String(localized: "Supplier"), value: name)
+            }
+        } header: {
+            Text(String(localized: "Order"))
+        }
+        .onAppear { unitSizeText = String(info?.unitSize ?? 1) }
+    }
+
+    private func saveUnitSize() {
+        guard let n = Int(unitSizeText), n >= 1 else { return }
+        Task { await viewModel.saveUnitSize(productId, n) }
     }
 }
 

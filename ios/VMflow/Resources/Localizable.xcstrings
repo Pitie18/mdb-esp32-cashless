@@ -200,6 +200,12 @@
             "state": "translated",
             "value": " · "
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · "
+          }
         }
       }
     },
@@ -214,6 +220,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · %@"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": " · %@"
@@ -257,6 +269,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "-%@ tekort"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "-%@ fehlen"
           }
         }
       }
@@ -468,6 +486,12 @@
             "state": "translated",
             "value": "—"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "—"
+          }
         }
       }
     },
@@ -482,6 +506,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "·"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "·"
@@ -504,6 +534,12 @@
             "state": "translated",
             "value": "· %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· %@"
+          }
         }
       }
     },
@@ -522,6 +558,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· %1$@ %2$@"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "· %1$@ %2$@"
@@ -590,6 +632,12 @@
             "state": "translated",
             "value": "· vullen ≤ %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· auffüllen ≤ %@"
+          }
         }
       }
     },
@@ -602,6 +650,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(-%@)"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "(-%@)"
@@ -622,6 +676,12 @@
             "state": "translated",
             "value": "/ %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/ %@"
+          }
         }
       }
     },
@@ -634,6 +694,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "%@"
@@ -658,6 +724,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ · %2$@"
@@ -715,6 +787,12 @@
             "state": "translated",
             "value": "%1$@ (%2$@)"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ (%2$@)"
+          }
         }
       }
     },
@@ -730,6 +808,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ meldingen"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Warnungen"
           }
         }
       }
@@ -769,6 +853,12 @@
             "state": "translated",
             "value": "%@ op voorraad"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ auf Lager"
+          }
         }
       }
     },
@@ -791,6 +881,12 @@
             "state": "translated",
             "value": "%1$@ op voorraad (%2$@ over)"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ auf Lager (%2$@ frei)"
+          }
         }
       }
     },
@@ -806,6 +902,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ stuks nog in de machine"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Artikel noch im Automaten"
           }
         }
       }
@@ -823,6 +925,12 @@
             "state": "translated",
             "value": "%@ stuks in te pakken"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Artikel zu packen"
+          }
         }
       }
     },
@@ -839,6 +947,12 @@
             "state": "translated",
             "value": "%@ machines offline"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Automaten offline"
+          }
         }
       }
     },
@@ -854,6 +968,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ machines klaar"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Automaten bereit"
           }
         }
       }
@@ -873,6 +993,12 @@
             "state": "translated",
             "value": "%@ overeenkomende producten"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ gematchte Produkte"
+          }
         }
       }
     },
@@ -888,6 +1014,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ producten"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Produkte"
           }
         }
       }
@@ -929,6 +1061,12 @@
             "state": "translated",
             "value": "%@ Vakken"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Fächer"
+          }
         }
       }
     },
@@ -951,6 +1089,12 @@
             "state": "translated",
             "value": "%1$@ vakken · %2$@ stuks"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ Fächer · %2$@ Artikel"
+          }
         }
       }
     },
@@ -969,6 +1113,12 @@
             "state": "translated",
             "value": "%@ vakken al vol"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Fächer bereits voll"
+          }
         }
       }
     },
@@ -984,6 +1134,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ vakken bij te vullen"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Fächer auffüllen"
           }
         }
       }
@@ -1002,6 +1158,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ eenheden"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ Stück"
           }
         }
       }
@@ -1025,6 +1187,12 @@
             "state": "translated",
             "value": "%1$@: %2$@ · %3$@%%"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ : %2$@ · %3$@%%"
+          }
         }
       }
     },
@@ -1043,6 +1211,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@/%2$@"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "%1$@/%2$@"
@@ -1069,6 +1243,12 @@
             "state": "translated",
             "value": "%1$@/%2$@ toegewezen"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@/%2$@ verplant"
+          }
         }
       }
     },
@@ -1085,6 +1265,12 @@
             "state": "translated",
             "value": "%@%%"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%%"
+          }
         }
       }
     },
@@ -1097,6 +1283,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@×"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "%@×"
@@ -2062,6 +2254,12 @@
             "state": "translated",
             "value": "• %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "• %@"
+          }
         }
       }
     },
@@ -2076,6 +2274,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "→ %@"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "→ %@"
@@ -2098,6 +2302,12 @@
             "state": "translated",
             "value": "+ %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ %@"
+          }
         }
       }
     },
@@ -2110,6 +2320,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%@"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "+%@"
@@ -2153,6 +2369,12 @@
             "state": "translated",
             "value": "="
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "="
+          }
         }
       }
     },
@@ -2165,6 +2387,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "= %@"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "= %@"
@@ -2206,6 +2434,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "− %@"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "− %@"
@@ -2365,6 +2599,12 @@
             "state": "translated",
             "value": "€"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "€"
+          }
         }
       }
     },
@@ -2441,6 +2681,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Über"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À propos"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Over"
           }
         }
       }
@@ -2816,6 +3068,12 @@
             "state": "translated",
             "value": "Alle machines zijn bevoorraad"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Automaten bestückt"
+          }
         }
       }
     },
@@ -2852,6 +3110,12 @@
           }
         },
         "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App"
+          }
+        },
+        "de": {
           "stringUnit": {
             "state": "translated",
             "value": "App"
@@ -2963,6 +3227,12 @@
             "state": "translated",
             "value": "Weet u zeker dat u vak %@ wilt verwijderen?"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Möchtest du Fach %@ wirklich löschen?"
+          }
         }
       }
     },
@@ -3047,6 +3317,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vindt automatisch aanbiedingen van winkels die overeenkomen met uw producten, op basis van uw postcode."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Findet anhand deiner Postleitzahl automatisch Händlerangebote zu deinen Produkten."
           }
         }
       }
@@ -4911,6 +5187,12 @@
             "state": "translated",
             "value": "Kies een machine uit de lijst om de details te zien."
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle einen Automaten aus der Liste, um Details zu sehen."
+          }
         }
       }
     },
@@ -4950,6 +5232,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kies een item uit de zijbalk."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle einen Eintrag in der Seitenleiste."
           }
         }
       }
@@ -5378,6 +5666,12 @@
             "state": "translated",
             "value": "UF"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AB"
+          }
         }
       }
     },
@@ -5395,6 +5689,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aanbiedingen uitgeschakeld"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angebote deaktiviert"
           }
         }
       }
@@ -5706,6 +6006,12 @@
             "state": "translated",
             "value": "EAN / Barcode"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EAN / Barcode"
+          }
         }
       }
     },
@@ -5839,6 +6145,12 @@
             "state": "translated",
             "value": "Aanbiedingen zoeken inschakelen"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angebotssuche aktivieren"
+          }
         }
       }
     },
@@ -5856,6 +6168,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Schakel het zoeken naar aanbiedingen in bij Instellingen om automatisch aanbiedingen te vinden die bij uw producten passen."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiviere die Angebotssuche in den Einstellungen, um automatisch Händlerangebote zu deinen Produkten zu finden."
           }
         }
       }
@@ -6492,6 +6810,12 @@
             "state": "translated",
             "value": "inname %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eingang %@"
+          }
         }
       }
     },
@@ -6926,6 +7250,12 @@
             "state": "translated",
             "value": "Machine %1$@ van %2$@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automat %1$@ von %2$@"
+          }
         }
       }
     },
@@ -7127,6 +7457,12 @@
             "state": "translated",
             "value": "Machines verschijnen hier zodra ze geregistreerd zijn."
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automaten erscheinen hier, sobald sie registriert sind."
+          }
         }
       }
     },
@@ -7168,6 +7504,12 @@
             "state": "translated",
             "value": "Overeenkomende trefwoordgroepen"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gematchte Suchbegriff-Gruppen"
+          }
         }
       }
     },
@@ -7185,6 +7527,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "overeenkomst via \"%@\""
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gefunden über „%@“"
           }
         }
       }
@@ -7225,6 +7573,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "min %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min. %@"
           }
         }
       }
@@ -7386,6 +7740,12 @@
             "state": "translated",
             "value": "nodig %1$@ / %2$@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "braucht %1$@ / %2$@"
+          }
         }
       }
     },
@@ -7453,6 +7813,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "NIEUW"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NEU"
           }
         }
       }
@@ -7589,6 +7955,12 @@
             "state": "translated",
             "value": "Geen partijen"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Chargen"
+          }
         }
       }
     },
@@ -7719,6 +8091,12 @@
             "state": "translated",
             "value": "Geen organisatie"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Organisation"
+          }
         }
       }
     },
@@ -7780,6 +8158,12 @@
             "state": "translated",
             "value": "Nog geen producten gekoppeld aan deze groep"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Gruppe sind noch keine Produkte zugeordnet"
+          }
         }
       }
     },
@@ -7795,6 +8179,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geen producten komen overeen met de huidige filters"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Produkte passen zu den aktuellen Filtern"
           }
         }
       }
@@ -8197,6 +8587,12 @@
             "state": "translated",
             "value": "Ø %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ø %@"
+          }
         }
       }
     },
@@ -8329,6 +8725,12 @@
             "state": "translated",
             "value": "Slechts %@ beschikbaar"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur %@ verfügbar"
+          }
         }
       }
     },
@@ -8346,6 +8748,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Open"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offen"
           }
         }
       }
@@ -9046,6 +9454,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vereist loyaliteitsapp"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunden-App erforderlich"
           }
         }
       }
@@ -9973,6 +10387,12 @@
             "state": "translated",
             "value": "Vak %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fach %@"
+          }
         }
       }
     },
@@ -9994,6 +10414,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vak %1$@ · bevat %2$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fach %1$@ · fasst %2$@"
           }
         }
       }
@@ -10079,6 +10505,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vakcapaciteit: %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fachkapazität: %@"
           }
         }
       }
@@ -10577,6 +11009,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deze aanbieding vereist mogelijk de loyaliteitsapp of ledenkaart van de winkel."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Angebot gilt evtl. nur mit der Kunden-App oder Kundenkarte des Händlers."
           }
         }
       }
@@ -11168,6 +11606,12 @@
             "state": "translated",
             "value": "v%@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "v%@"
+          }
         }
       }
     },
@@ -11177,6 +11621,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Version"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versie"
           }
         }
       }
@@ -11287,6 +11743,12 @@
             "state": "translated",
             "value": "Wanneer klanten een probleem melden, feedback achterlaten of een productwens indienen vanaf een machinepagina, verschijnt dit hier."
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn Kunden auf einer Automatenseite ein Problem melden, Feedback hinterlassen oder einen Produktwunsch abgeben, erscheint es hier."
+          }
         }
       }
     },
@@ -11308,6 +11770,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Maakt vakken %1$@ tot %2$@ aan"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erstellt die Fächer %1$@ bis %2$@"
           }
         }
       }
@@ -11393,6 +11861,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "U bent nog geen lid van een organisatie. Maak er een aan of word lid via het webdashboard."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du bist noch kein Mitglied einer Organisation. Bitte erstelle eine oder tritt einer bei – über das Web-Dashboard."
           }
         }
       }
@@ -11500,6 +11974,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Postcode"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Postleitzahl"
           }
         }
       }
@@ -16461,6 +16941,18 @@
             "state": "translated",
             "value": "%@ /Tag"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ /jour"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ /dag"
+          }
         }
       }
     },
@@ -16470,6 +16962,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "%d von %d Plätzen gefüllt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d emplacements remplis sur %2$d"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d van %2$d vakken gevuld"
           }
         }
       }
@@ -16481,6 +16985,18 @@
             "state": "translated",
             "value": "Alle Kategorien"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toutes les catégories"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle categorieën"
+          }
         }
       }
     },
@@ -16490,6 +17006,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alle Automaten"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toutes les machines"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle machines"
           }
         }
       }
@@ -16501,6 +17029,18 @@
             "state": "translated",
             "value": "Auswertung"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analyses"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analyse"
+          }
         }
       }
     },
@@ -16510,6 +17050,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Auswertung nicht verfügbar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analyses indisponibles"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analyse niet beschikbaar"
           }
         }
       }
@@ -16521,6 +17073,18 @@
             "state": "translated",
             "value": "Zeitraum übernehmen"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appliquer la période"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Periode toepassen"
+          }
         }
       }
     },
@@ -16530,6 +17094,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aufschlüsselung"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répartition"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uitsplitsing"
           }
         }
       }
@@ -16541,6 +17117,18 @@
             "state": "translated",
             "value": "Bar"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Espèces"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contant"
+          }
         }
       }
     },
@@ -16550,6 +17138,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bargeldlos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sans espèces"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cashless"
           }
         }
       }
@@ -16561,6 +17161,18 @@
             "state": "translated",
             "value": "Klasse %@ · %.1f %% vom Umsatz"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Classe %@ · %.1f %% du chiffre d'affaires"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasse %@ · %.1f %% van de omzet"
+          }
         }
       }
     },
@@ -16570,6 +17182,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eigener Zeitraum"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Période personnalisée"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aangepaste periode"
           }
         }
       }
@@ -16581,6 +17205,18 @@
             "state": "translated",
             "value": "Von"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Van"
+          }
         }
       }
     },
@@ -16590,6 +17226,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rohertrag"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marge brute"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brutowinst"
           }
         }
       }
@@ -16601,6 +17249,18 @@
             "state": "translated",
             "value": "Letzte 30 Tage"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 derniers jours"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laatste 30 dagen"
+          }
         }
       }
     },
@@ -16610,6 +17270,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Letzte 7 Tage"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 derniers jours"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laatste 7 dagen"
           }
         }
       }
@@ -16621,6 +17293,18 @@
             "state": "translated",
             "value": "Letzte 90 Tage"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "90 derniers jours"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laatste 90 dagen"
+          }
         }
       }
     },
@@ -16630,6 +17314,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Letzter Monat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mois dernier"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorige maand"
           }
         }
       }
@@ -16641,6 +17337,18 @@
             "state": "translated",
             "value": "Reicht noch etwa %.0f Tage"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encore environ %.0f jours"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nog ongeveer %.0f dagen voorraad"
+          }
         }
       }
     },
@@ -16650,6 +17358,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Neuester EK %.2f € netto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dernier prix d'achat %.2f € HT"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laatste inkoopprijs %.2f € netto"
           }
         }
       }
@@ -16661,6 +17381,18 @@
             "state": "translated",
             "value": "Keine Verkäufe in diesem Zeitraum."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune vente sur cette période."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen verkopen in deze periode."
+          }
         }
       }
     },
@@ -16670,6 +17402,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zahlungsarten"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moyens de paiement"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Betaalmethoden"
           }
         }
       }
@@ -16681,6 +17425,18 @@
             "state": "translated",
             "value": "Stoßzeiten"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heures de pointe"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Piekuren"
+          }
         }
       }
     },
@@ -16690,6 +17446,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Je Automat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Par machine"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per machine"
           }
         }
       }
@@ -16701,6 +17469,18 @@
             "state": "translated",
             "value": "Rohertrag"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marge brute"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brutowinst"
+          }
         }
       }
     },
@@ -16710,6 +17490,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Einkauf"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Achat"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inkoop"
           }
         }
       }
@@ -16721,6 +17513,18 @@
             "state": "translated",
             "value": "Abverkauf %.1f %%"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Écoulement %.1f %%"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doorverkoop %.1f %%"
+          }
         }
       }
     },
@@ -16730,6 +17534,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dieser Monat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce mois-ci"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze maand"
           }
         }
       }
@@ -16741,6 +17557,18 @@
             "state": "translated",
             "value": "Dieser Server unterstützt die Auswertung noch nicht. Bitte aktualisiere das Backend."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce serveur ne prend pas encore en charge les analyses. Veuillez mettre à jour le backend."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze server ondersteunt nog geen analyse. Werk de backend bij."
+          }
         }
       }
     },
@@ -16750,6 +17578,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zeitraum"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Période"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Periode"
           }
         }
       }
@@ -16761,6 +17601,18 @@
             "state": "translated",
             "value": "Bis"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Au"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tot"
+          }
         }
       }
     },
@@ -16770,6 +17622,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verlauf"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Évolution"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verloop"
           }
         }
       }
@@ -16781,6 +17645,18 @@
             "state": "translated",
             "value": "leer"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vide"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "leeg"
+          }
         }
       }
     },
@@ -16790,6 +17666,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "kein EK-Preis"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pas de prix d'achat"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "geen inkoopprijs"
           }
         }
       }
@@ -16801,6 +17689,18 @@
             "state": "translated",
             "value": "Spanne %.2f – %.2f € brutto"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fourchette %.2f – %.2f € TTC"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bereik %.2f – %.2f € bruto"
+          }
         }
       }
     },
@@ -16811,6 +17711,18 @@
             "state": "translated",
             "value": "Bestand %d/%d"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "stock %d/%d"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "voorraad %d/%d"
+          }
         }
       }
     },
@@ -16820,6 +17732,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "⌀ %.1f/Tag"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌀ %.1f/jour"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌀ %.1f/dag"
           }
         }
       }
@@ -16858,6 +17782,42 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld Kategorien"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld catégorie"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld catégories"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld categorie"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld categorieën"
                 }
               }
             }
@@ -16903,6 +17863,42 @@
               }
             }
           }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pièce"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pièces"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld stuk"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld stuks"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -16940,6 +17936,42 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld Artikel"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld produit"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld produits"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld product"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld producten"
                 }
               }
             }
@@ -16985,6 +18017,42 @@
               }
             }
           }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld relevé"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld relevés"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld notering"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld noteringen"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -17022,6 +18090,42 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld Stk · ⌀ %@"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pièce · ⌀ %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pièces · ⌀ %@"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld stuk · ⌀ %@"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld stuks · ⌀ %@"
                 }
               }
             }
@@ -17067,6 +18171,42 @@
               }
             }
           }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Marge brute hors taxes. %lld produit sans prix d'achat est exclu."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Marge brute hors taxes. %lld produits sans prix d'achat sont exclus."
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Brutowinst exclusief btw. %lld product zonder inkoopprijs is niet meegerekend."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Brutowinst exclusief btw. %lld producten zonder inkoopprijs zijn niet meegerekend."
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -17076,6 +18216,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Größte zuerst"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le plus élevé d'abord"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoogste eerst"
           }
         }
       }
@@ -17087,6 +18239,18 @@
             "state": "translated",
             "value": "Kleinste zuerst"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le plus bas d'abord"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laagste eerst"
+          }
         }
       }
     },
@@ -17096,6 +18260,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gefiltert"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtré"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gefilterd"
           }
         }
       }
@@ -17107,6 +18283,18 @@
             "state": "translated",
             "value": "Gesamte Zeit"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Depuis le début"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles"
+          }
         }
       }
     },
@@ -17117,6 +18305,18 @@
             "state": "translated",
             "value": "Letztes Jahr"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'année dernière"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorig jaar"
+          }
         }
       }
     },
@@ -17126,6 +18326,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dieses Jahr"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette année"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dit jaar"
           }
         }
       }
@@ -18394,6 +19606,3190 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ombouw · nodig %lld"
+          }
+        }
+      }
+    },
+    "Skip machine": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automaten überspringen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorer le distributeur"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automaat overslaan"
+          }
+        }
+      }
+    },
+    "Note for next tour": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notiz für nächste Tour"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note pour la prochaine tournée"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notitie voor de volgende ronde"
+          }
+        }
+      }
+    },
+    "More actions": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weitere Aktionen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus d’actions"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meer acties"
+          }
+        }
+      }
+    },
+    "e.g. new spirals, can risers …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "z. B. neue Spiralen, Erhöhungen für Dosen …"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "p. ex. nouvelles spirales, rehausses pour canettes …"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bijv. nieuwe spiralen, verhogers voor blikjes …"
+          }
+        }
+      }
+    },
+    "Shown at the top of the packing step on the next tour.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird beim Packen der nächsten Tour oben angezeigt."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affichée en haut de l’étape de préparation lors de la prochaine tournée."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wordt bij de volgende ronde bovenaan de inpakstap getoond."
+          }
+        }
+      }
+    },
+    "Notes from last time": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notizen vom letzten Mal"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes de la dernière fois"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notities van de vorige keer"
+          }
+        }
+      }
+    },
+    "Tick off once done. Until then they show on every tour.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abhaken, sobald erledigt. Bis dahin stehen sie bei jeder Tour hier."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cochez une fois fait. D'ici là, elles s'affichent à chaque tournée."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vink af zodra het gedaan is. Tot dan staan ze bij elke ronde hier."
+          }
+        }
+      }
+    },
+    "Removed %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernt am %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retiré le %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwijderd op %@"
+          }
+        }
+      }
+    },
+    "%lld sold in %lld days": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld verkauft in %2$lld Tagen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld vendus en %2$lld jours"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld verkocht in %2$lld dagen"
+          }
+        }
+      }
+    },
+    "%lld sold": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld verkauft"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld vendus"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld verkocht"
+          }
+        }
+      }
+    },
+    "Everything lasts until the delivery after next. Nothing to order.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles reicht bis zur übernächsten Lieferung. Nichts zu bestellen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout tient jusqu’à la livraison d’après. Rien à commander."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles houdt het uit tot de levering daarna. Niets te bestellen."
+          }
+        }
+      }
+    },
+    "On the way": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unterwegs"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En route"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onderweg"
+          }
+        }
+      }
+    },
+    "Cancel order": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stornieren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler la commande"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestelling annuleren"
+          }
+        }
+      }
+    },
+    "Keep": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Behalten"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conserver"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Behouden"
+          }
+        }
+      }
+    },
+    "Cancel the order with %@? Its goods no longer count as on the way.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestellung bei %@ stornieren? Die Ware zählt dann nicht mehr als unterwegs."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler la commande chez %@ ? Ses articles ne comptent plus comme en route."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestelling bij %@ annuleren? De goederen tellen dan niet meer als onderweg."
+          }
+        }
+      }
+    },
+    "Suggestion for the next order cycle: lasts until the delivery after next plus a %lld-day buffer. Machine stock and goods already on order are subtracted.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschlag für den nächsten Bestellzyklus: reicht bis zur übernächsten Lieferung plus %lld Tage Puffer. Automatenbestand und bereits bestellte Ware sind abgezogen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggestion pour le prochain cycle de commande : tient jusqu’à la livraison d’après plus %lld jours de marge. Le stock des distributeurs et les articles déjà commandés sont déduits."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voorstel voor de volgende bestelcyclus: houdt het uit tot de levering daarna plus %lld dagen buffer. Automaatvoorraad en reeds bestelde goederen zijn afgetrokken."
+          }
+        }
+      }
+    },
+    "Suggestion for the next order cycle: lasts until the delivery after next plus a %lld-day buffer. Goods already on order are subtracted.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschlag für den nächsten Bestellzyklus: reicht bis zur übernächsten Lieferung plus %lld Tage Puffer. Bereits bestellte Ware ist abgezogen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggestion pour le prochain cycle de commande : tient jusqu’à la livraison d’après plus %lld jours de marge. Les articles déjà commandés sont déduits."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voorstel voor de volgende bestelcyclus: houdt het uit tot de levering daarna plus %lld dagen buffer. Reeds bestelde goederen zijn afgetrokken."
+          }
+        }
+      }
+    },
+    "Nothing due": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts fällig"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien à commander"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niets nodig"
+          }
+        }
+      }
+    },
+    "Remove from order list": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Von der Bestellliste entfernen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer de la liste de commande"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Van de bestellijst verwijderen"
+          }
+        }
+      }
+    },
+    "Add to order list": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zur Bestellliste hinzufügen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter à la liste de commande"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aan de bestellijst toevoegen"
+          }
+        }
+      }
+    },
+    "Reset quantity": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menge zurücksetzen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réinitialiser la quantité"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoeveelheid herstellen"
+          }
+        }
+      }
+    },
+    "Add product": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Produkt hinzufügen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter un produit"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Product toevoegen"
+          }
+        }
+      }
+    },
+    "No supplier": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ohne Lieferant"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sans fournisseur"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zonder leverancier"
+          }
+        }
+      }
+    },
+    "Lead time %lld days · ordered every %lld days": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lieferzeit %lld Tage · bestellt alle %lld Tage"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Délai %lld jours · commandé tous les %lld jours"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Levertijd %lld dagen · elke %lld dagen besteld"
+          }
+        }
+      }
+    },
+    "Assign a supplier right in the row and the product moves into that supplier's order.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lieferant direkt in der Zeile zuordnen, dann wandert das Produkt in dessen Bestellung."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attribuez un fournisseur directement dans la ligne et le produit rejoint sa commande."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wijs direct in de regel een leverancier toe, dan gaat het product naar diens bestelling."
+          }
+        }
+      }
+    },
+    "An admin can assign a supplier to these products.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Admin kann diesen Produkten einen Lieferanten zuordnen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un administrateur peut attribuer un fournisseur à ces produits."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Een beheerder kan deze producten aan een leverancier toewijzen."
+          }
+        }
+      }
+    },
+    "Contains empty products": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enthält leere Produkte"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contient des produits épuisés"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bevat lege producten"
+          }
+        }
+      }
+    },
+    "Minimum order value %@ not reached yet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mindestbestellwert %@ noch nicht erreicht"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Montant minimum de commande %@ pas encore atteint"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minimale bestelwaarde %@ nog niet bereikt"
+          }
+        }
+      }
+    },
+    "Customer no.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kd.-Nr."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "N° client"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klantnr."
+          }
+        }
+      }
+    },
+    "Net cost": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EK netto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coût net"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inkoop netto"
+          }
+        }
+      }
+    },
+    "Copied": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiert"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copié"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gekopieerd"
+          }
+        }
+      }
+    },
+    "Copy list": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liste kopieren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier la liste"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lijst kopiëren"
+          }
+        }
+      }
+    },
+    "Mark as ordered": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als bestellt markieren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marquer comme commandé"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als besteld markeren"
+          }
+        }
+      }
+    },
+    "ordered %@ · %lld items · %lld units": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bestellt am %@ · %lld Pos. · %lld Stück"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "commandé le %@ · %lld art. · %lld unités"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "besteld op %@ · %lld art. · %lld stuks"
+          }
+        }
+      }
+    },
+    "Check delivery": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lieferung prüfen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifier la livraison"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Levering controleren"
+          }
+        }
+      }
+    },
+    "less": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "weniger"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "moins"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "minder"
+          }
+        }
+      }
+    },
+    "more": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mehr"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "plus"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "meer"
+          }
+        }
+      }
+    },
+    "Assign supplier …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lieferant zuordnen …"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attribuer un fournisseur …"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leverancier toewijzen …"
+          }
+        }
+      }
+    },
+    "Carton of %lld = %lld units": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karton à %lld = %lld Stück"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carton de %lld = %lld unités"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doos van %lld = %lld stuks"
+          }
+        }
+      }
+    },
+    "lasts %lld of %lld d": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reicht %lld von %lld T."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tient %lld sur %lld j"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "houdt %lld van %lld d"
+          }
+        }
+      }
+    },
+    "no sales": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "keine Verkäufe"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aucune vente"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "geen verkopen"
+          }
+        }
+      }
+    },
+    "Available %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verfügbar %lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponible %lld"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beschikbaar %lld"
+          }
+        }
+      }
+    },
+    "%lld on the way": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld unterwegs"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld en route"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld onderweg"
+          }
+        }
+      }
+    },
+    "Automatic": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatique"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch"
+          }
+        }
+      }
+    },
+    "Manual": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manuell"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manuel"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Handmatig"
+          }
+        }
+      }
+    },
+    "iPhone": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone"
+          }
+        }
+      }
+    },
+    "Android": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        }
+      }
+    },
+    "web": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "web"
+          }
+        }
+      }
+    },
+    "%@ now belongs to %@.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ gehört jetzt zu %@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ appartient maintenant à %@."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ hoort nu bij %@."
+          }
+        }
+      }
+    },
+    "%@: marked as ordered. The goods now count as on the way.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: als bestellt markiert. Die Ware zählt jetzt als unterwegs."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ : marqué comme commandé. Les articles comptent maintenant comme en route."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: als besteld gemarkeerd. De goederen tellen nu als onderweg."
+          }
+        }
+      }
+    },
+    "Delivery booked: %lld units.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lieferung eingebucht: %lld Stück."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Livraison enregistrée : %lld unités."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Levering ingeboekt: %lld stuks."
+          }
+        }
+      }
+    },
+    "Delivered": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geliefert"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Livré"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geleverd"
+          }
+        }
+      }
+    },
+    "Book all": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles einbuchen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout enregistrer"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles inboeken"
+          }
+        }
+      }
+    },
+    "Already booked · mark as delivered": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schon eingebucht · als geliefert abschließen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déjà enregistré · marquer comme livré"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al ingeboekt · als geleverd afsluiten"
+          }
+        }
+      }
+    },
+    "For goods that were already booked by hand, e.g. with an older app. Books nothing.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für Ware, die schon von Hand eingebucht wurde, zum Beispiel mit einer älteren App. Bucht nichts ein."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour des articles déjà enregistrés à la main, par exemple avec une ancienne version de l’app. N’enregistre rien."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voor goederen die al met de hand zijn ingeboekt, bijvoorbeeld met een oudere app. Boekt niets in."
+          }
+        }
+      }
+    },
+    "Mark the order as delivered without booking anything?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestellung als geliefert abschließen, ohne etwas einzubuchen?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marquer la commande comme livrée sans rien enregistrer ?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestelling als geleverd afsluiten zonder iets in te boeken?"
+          }
+        }
+      }
+    },
+    "ordered %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bestellt %lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "commandé %lld"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "besteld %lld"
+          }
+        }
+      }
+    },
+    "Corrections": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korrekturen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corrections"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correcties"
+          }
+        }
+      }
+    },
+    "Type": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Art"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soort"
+          }
+        }
+      }
+    },
+    "No movements yet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Bewegungen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun mouvement pour l’instant"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nog geen bewegingen"
+          }
+        }
+      }
+    },
+    "History": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verlauf"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historique"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geschiedenis"
+          }
+        }
+      }
+    },
+    "Correction": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korrektur"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correction"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correctie"
+          }
+        }
+      }
+    },
+    "Transfer out": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umlagerung aus"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfert sortant"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overboeking uit"
+          }
+        }
+      }
+    },
+    "Transfer in": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umlagerung ein"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transfert entrant"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overboeking in"
+          }
+        }
+      }
+    },
+    "Order (%lld)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestellen (%lld)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commander (%lld)"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestellen (%lld)"
+          }
+        }
+      }
+    },
+    "Order": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestellen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commander"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestellen"
+          }
+        }
+      }
+    },
+    "Manually on the order list · %@, %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manuell auf der Bestellliste · %@, %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouté à la main à la liste · %@, %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Handmatig op de bestellijst · %@, %@"
+          }
+        }
+      }
+    },
+    "On the order list automatically": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch auf der Bestellliste"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sur la liste de commande automatiquement"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch op de bestellijst"
+          }
+        }
+      }
+    },
+    "%lld units are ordered and on the way.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Stück sind bestellt und unterwegs."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld unités sont commandées et en route."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld stuks zijn besteld en onderweg."
+          }
+        }
+      }
+    },
+    "Expected deliveries": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erwartete Lieferungen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Livraisons attendues"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwachte leveringen"
+          }
+        }
+      }
+    },
+    "Main supplier": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stammlieferant"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fournisseur principal"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoofdleverancier"
+          }
+        }
+      }
+    },
+    "Units per carton": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stück pro Karton"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unités par carton"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stuks per doos"
+          }
+        }
+      }
+    },
+    "Batches": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lots"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partijen"
+          }
+        }
+      }
+    },
+    "Deals": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angebote"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offres"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aanbiedingen"
+          }
+        }
+      }
+    },
+    "Select an Item": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eintrag auswählen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez un élément"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecteer een item"
+          }
+        }
+      }
+    },
+    "Select a Machine": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automat auswählen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez une machine"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecteer een machine"
+          }
+        }
+      }
+    },
+    "Unknown Product": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekanntes Produkt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Produit inconnu"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onbekend product"
+          }
+        }
+      }
+    },
+    "Unnamed Machine": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbenannter Automat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Machine sans nom"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Naamloze machine"
+          }
+        }
+      }
+    },
+    "Keyword": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suchbegriff"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mot-clé"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trefwoord"
+          }
+        }
+      }
+    },
+    "Matched Product": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gematchtes Produkt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Produit associé"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gekoppeld product"
+          }
+        }
+      }
+    },
+    "%lld Matched Products": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld gematchte Produkte"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld produits associés"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld gekoppelde producten"
+          }
+        }
+      }
+    },
+    "Pin to top": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oben anpinnen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Épingler en haut"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bovenaan vastzetten"
+          }
+        }
+      }
+    },
+    "Pin": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anpinnen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Épingler"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vastzetten"
+          }
+        }
+      }
+    },
+    "Unpin": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lösen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désépingler"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Losmaken"
+          }
+        }
+      }
+    },
+    "Archive": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivieren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiver"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiveren"
+          }
+        }
+      }
+    },
+    "Restore": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiederherstellen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurer"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herstellen"
+          }
+        }
+      }
+    },
+    "Skipped — slot stays unassigned": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersprungen — Fach bleibt nicht zugewiesen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignoré — l'emplacement reste non attribué"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overgeslagen — vak blijft niet toegewezen"
+          }
+        }
+      }
+    },
+    "Assign": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zuweisen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attribuer"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toewijzen"
+          }
+        }
+      }
+    },
+    "Unknown machine": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannter Automat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Machine inconnue"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onbekende machine"
+          }
+        }
+      }
+    },
+    "%lld%% sell-through · %lld sold": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %% Abverkauf · %lld verkauft"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %% écoulé · %lld vendus"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% doorverkocht · %lld verkocht"
+          }
+        }
+      }
+    },
+    " · %lldd in machine": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · %lld T im Automat"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · %lld j dans la machine"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " · %lld d in machine"
+          }
+        }
+      }
+    },
+    "Try instead: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stattdessen versuchen: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Essayer plutôt : %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probeer in plaats daarvan: %@"
+          }
+        }
+      }
+    },
+    "Cmd: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Befehl: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cmd : %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opdracht: %@"
+          }
+        }
+      }
+    },
+    "%lld polls": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld poll"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld polls"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Abfrage"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Abfragen"
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld interrogation"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld interrogations"
+                }
+              }
+            }
+          }
+        },
+        "nl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld poll"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld polls"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Up %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ gelaufen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actif %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ actief"
+          }
+        }
+      }
+    },
+    "Initial: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfangszustand: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Initial : %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Begintoestand: %@"
+          }
+        }
+      }
+    },
+    "Slot %@ +%lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fach %@ +%lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emplacement %@ +%lld"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vak %@ +%lld"
+          }
+        }
+      }
+    },
+    "%@, current category": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, aktuelle Kategorie"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, catégorie actuelle"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, huidige categorie"
+          }
+        }
+      }
+    },
+    "Already in slot %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liegt schon in Fach %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déjà dans l'emplacement %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al in vak %@"
+          }
+        }
+      }
+    },
+    "Already in slots %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liegt schon in Fächern %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déjà dans les emplacements %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al in vakken %@"
+          }
+        }
+      }
+    },
+    "your company": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "deine Firma"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "votre entreprise"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "uw bedrijf"
+          }
+        }
+      }
+    },
+    "Scan barcode": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barcode scannen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanner le code-barres"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barcode scannen"
+          }
+        }
+      }
+    },
+    "Camera not available": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera nicht verfügbar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caméra non disponible"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera niet beschikbaar"
+          }
+        }
+      }
+    },
+    "Barcode \"%@\" is already added.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barcode „%@“ ist bereits hinzugefügt."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le code-barres « %@ » est déjà ajouté."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barcode \"%@\" is al toegevoegd."
+          }
+        }
+      }
+    },
+    "Quantity must be greater than 0": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menge muss größer als 0 sein"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La quantité doit être supérieure à 0"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoeveelheid moet groter zijn dan 0"
+          }
+        }
+      }
+    },
+    "Account deletion failed (%lld).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontolöschung fehlgeschlagen (%lld)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La suppression du compte a échoué (%lld)."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account verwijderen mislukt (%lld)."
+          }
+        }
+      }
+    },
+    "Push registration failed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Push-Registrierung fehlgeschlagen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de l'inscription aux notifications push"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registratie voor pushmeldingen mislukt"
+          }
+        }
+      }
+    },
+    "Failed to register for push notifications": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrierung für Push-Mitteilungen fehlgeschlagen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de s'inscrire aux notifications push"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registreren voor pushmeldingen mislukt"
+          }
+        }
+      }
+    },
+    "Test notification failed: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testmitteilung fehlgeschlagen: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de la notification de test : %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testmelding mislukt: %@"
+          }
+        }
+      }
+    },
+    "unknown error": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unbekannter Fehler"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "erreur inconnue"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "onbekende fout"
+          }
+        }
+      }
+    },
+    "Refill could not be saved after 3 attempts: %@. Please try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Befüllung konnte nach 3 Versuchen nicht gespeichert werden: %@. Bitte versuche es erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le réapprovisionnement n'a pas pu être enregistré après 3 tentatives : %@. Veuillez réessayer."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Het bijvullen kon na 3 pogingen niet worden opgeslagen: %@. Probeer het opnieuw."
+          }
+        }
+      }
+    },
+    "Not authenticated": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht angemeldet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non authentifié"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet aangemeld"
+          }
+        }
+      }
+    },
+    "Customer Inbox": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunden-Posteingang"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boîte de réception clients"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klanteninbox"
+          }
+        }
+      }
+    },
+    "Get notified when a customer reports a problem, leaves feedback, or submits a product wish": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Werde benachrichtigt, wenn ein Kunde ein Problem meldet, Feedback hinterlässt oder einen Produktwunsch abgibt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soyez averti lorsqu'un client signale un problème, laisse un avis ou soumet un souhait de produit"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ontvang een melding wanneer een klant een probleem meldt, feedback geeft of een productwens indient"
+          }
+        }
+      }
+    },
+    "New Deals": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Angebote"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouvelles offres"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieuwe aanbiedingen"
+          }
+        }
+      }
+    },
+    "Get a daily push when new retailer offers match your products": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erhalte täglich eine Push-Mitteilung, wenn neue Händlerangebote zu deinen Produkten passen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recevez une notification quotidienne lorsque de nouvelles offres d'enseignes correspondent à vos produits"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ontvang dagelijks een pushmelding wanneer nieuwe winkelaanbiedingen bij uw producten passen"
+          }
+        }
+      }
+    },
+    "This machine has no linked device.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesem Automaten ist kein Gerät zugeordnet."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun appareil n'est associé à cette machine."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aan deze machine is geen apparaat gekoppeld."
+          }
+        }
+      }
+    },
+    "vs. %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vs. %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vs %@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vs. %@"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bearbeiten"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewerken"
+          }
+        }
+      }
+    },
+    "Delete Server": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server löschen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer le serveur"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server verwijderen"
+          }
+        }
+      }
+    },
+    "1 new deal": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 neues Angebot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 nouvelle offre"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 nieuwe aanbieding"
+          }
+        }
+      }
+    },
+    "%lld new deals": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld neue Angebote"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld nouvelles offres"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld nieuwe aanbiedingen"
+          }
+        }
+      }
+    },
+    "View Prospekt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prospekt ansehen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View leaflet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voir le dépliant"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder bekijken"
+          }
+        }
+      }
+    },
+    "View All Offers": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Angebote ansehen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voir toutes les offres"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle aanbiedingen bekijken"
+          }
+        }
+      }
+    },
+    "Loading deals...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angebote werden geladen…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement des offres…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aanbiedingen laden…"
+          }
+        }
+      }
+    },
+    "Loaded from cache": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus dem Cache geladen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargé depuis le cache"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geladen uit cache"
+          }
+        }
+      }
+    },
+    "Avg": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ø"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moy."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gem."
+          }
+        }
+      }
+    },
+    "List mode": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listenmodus"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mode liste"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lijstmodus"
+          }
+        }
+      }
+    },
+    "Group by": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gruppieren nach"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grouper par"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groeperen op"
+          }
+        }
+      }
+    },
+    "Loading inbox…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posteingang wird geladen…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement de la boîte de réception…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inbox laden…"
+          }
+        }
+      }
+    },
+    "Reopen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wieder öffnen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rouvrir"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heropenen"
+          }
+        }
+      }
+    },
+    "Delete Notification": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benachrichtigung löschen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la notification"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melding verwijderen"
+          }
+        }
+      }
+    },
+    "Section": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereich"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Section"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sectie"
+          }
+        }
+      }
+    },
+    "Delete Category": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kategorie löschen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la catégorie"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Categorie verwijderen"
+          }
+        }
+      }
+    },
+    "Delete Purchase Price": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einkaufspreis löschen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer le prix d'achat"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inkoopprijs verwijderen"
+          }
+        }
+      }
+    },
+    "Delete Supplier": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lieferant löschen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer le fournisseur"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leverancier verwijderen"
+          }
+        }
+      }
+    },
+    "Sold during tour": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Während der Tour verkauft"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vendu pendant la tournée"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verkocht tijdens de ronde"
+          }
+        }
+      }
+    },
+    "Stock changed since tour start": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestand seit Tourbeginn geändert"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stock modifié depuis le début de la tournée"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voorraad gewijzigd sinds de start van de ronde"
+          }
+        }
+      }
+    },
+    "Out of warehouse stock": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht auf Lager"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus en stock à l'entrepôt"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niet op voorraad in magazijn"
+          }
+        }
+      }
+    },
+    "%lld units in warehouse stock": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Stück im Lager"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld unités en stock à l'entrepôt"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld stuks op voorraad in magazijn"
+          }
+        }
+      }
+    },
+    "Remove stock": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestand entnehmen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer du stock"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voorraad afboeken"
+          }
+        }
+      }
+    },
+    "Add stock": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestand hinzufügen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter du stock"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voorraad toevoegen"
           }
         }
       }

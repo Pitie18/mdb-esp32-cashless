@@ -205,6 +205,49 @@ struct ReplacementSuggestion: Identifiable, Equatable, Codable {
     var id: UUID { trayId }
 }
 
+/// A product taken out of a machine within the company's cool-down
+/// (`companies.product_removal_cooldown_days`, default 30) and not back in it
+/// since. The replacement picker marks it and sorts it last, so a slow seller
+/// with warehouse stock left does not walk straight back into the machine it
+/// was just taken out of. Read from `get_recent_product_removals` — Android
+/// reads the same RPC (`RecentRemovals.kt`).
+struct RecentRemoval: Decodable, Equatable {
+    let machineId: UUID
+    let productId: UUID
+    let removedAt: Date
+    /// Start of the offering that ended; `nil` only for one that predates the
+    /// offering history.
+    let offeredSince: Date?
+    /// Whole days between `offeredSince` and `removedAt`, at least 1.
+    let daysOffered: Int?
+    /// Sales of the product in this machine during that offering.
+    let unitsSold: Int
+    /// Removed before removals were recorded: the date is the slot change
+    /// that took it out, else its last sale.
+    let estimated: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case machineId = "machine_id"
+        case productId = "product_id"
+        case removedAt = "removed_at"
+        case offeredSince = "offered_since"
+        case daysOffered = "days_offered"
+        case unitsSold = "units_sold"
+        case estimated
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        machineId = try c.decode(UUID.self, forKey: .machineId)
+        productId = try c.decode(UUID.self, forKey: .productId)
+        removedAt = try c.decode(Date.self, forKey: .removedAt)
+        offeredSince = try c.decodeIfPresent(Date.self, forKey: .offeredSince)
+        daysOffered = try c.decodeIfPresent(Int.self, forKey: .daysOffered)
+        unitsSold = try c.decodeIfPresent(Int.self, forKey: .unitsSold) ?? 0
+        estimated = try c.decodeIfPresent(Bool.self, forKey: .estimated) ?? false
+    }
+}
+
 // MARK: - Slot Rebuild (change note)
 
 /// One slot of the change note, as handled at the machine.
@@ -358,6 +401,10 @@ final class RefillWizardViewModel: ObservableObject {
     /// Product categories used to label/group products in the replacement
     /// picker. Loaded alongside `availableProducts` in `loadData()`.
     @Published var productCategories: [ProductCategory] = []
+    /// machine id → product id → removal: products taken out of a machine
+    /// within the cool-down, marked and sorted last in the replacement
+    /// picker. Empty when the lookup fails — advice, never a blocker.
+    @Published var recentRemovals: [UUID: [UUID: RecentRemoval]] = [:]
     /// Set after review step completes, so re-loading data doesn't re-trigger review.
     private var reviewCompleted = false
     @Published var warehouses: [Warehouse] = []
@@ -447,6 +494,19 @@ final class RefillWizardViewModel: ObservableObject {
     @Published var replacementNotice: String?
     /// Machine whose rebuild cards are being loaded (guards double loads).
     private var preparingRebuildFor: UUID?
+
+    // MARK: Notes for the next tour
+    //
+    // Open `machine_tour_notes`, shown at the top of the packing step of
+    // every tour until the refiller ticks them off
+    // (`complete_machine_tour_notes`). Only the packing step reads them, so
+    // they are not part of the persisted tour state. Mirrors the PWA's
+    // `useRefillWizard.ts`.
+
+    /// Open notes shown on the packing step (oldest first).
+    @Published var tourNotes: [MachineTourNote] = []
+    /// Last failure ticking a note off, shown under the notes card.
+    @Published var tourNoteError: String?
 
     /// Raw data of the last load, kept so the tour list can be rebuilt when
     /// the refiller accepts or declines a slot of a change note.
@@ -1621,6 +1681,8 @@ final class RefillWizardViewModel: ObservableObject {
             // Open slot change requests become change notes. A failing lookup
             // must never block a normal tour.
             self.changeRequests = await fetchOpenChangeRequests(machineIds: allMachines.map(\.id))
+            // Notes from the last tour — same rule: never block the tour.
+            await loadTourNotes()
             storeTourSource(allMachines: allMachines, allTrays: allTrays, availability: availability)
             rebuildTourList()
             let traysByMachine = allTraysByMachine
@@ -1742,6 +1804,11 @@ final class RefillWizardViewModel: ObservableObject {
 
                 self.replacements = suggestions
                 print("[RefillWizard] Found \(suggestions.count) replacement suggestions")
+                if !suggestions.isEmpty {
+                    self.recentRemovals = await fetchRecentRemovals(
+                        machineIds: Array(Set(suggestions.map(\.machineId)))
+                    )
+                }
 
                 // If no replacements needed, skip review step
                 if suggestions.isEmpty {
@@ -1762,6 +1829,30 @@ final class RefillWizardViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    /// Products recently taken out of these machines, for the replacement
+    /// picker (`get_recent_product_removals`). A failing lookup returns
+    /// nothing rather than blocking the review.
+    private func fetchRecentRemovals(machineIds: [UUID]) async -> [UUID: [UUID: RecentRemoval]] {
+        struct Response: Decodable {
+            let removals: [RecentRemoval]
+        }
+        do {
+            let response: Response = try await client.rpc("get_recent_product_removals", params: [
+                "p_machine_ids": AnyJSON.array(machineIds.map { AnyJSON.string($0.uuidString) }),
+            ]).execute().value
+            var result: [UUID: [UUID: RecentRemoval]] = [:]
+            for removal in response.removals {
+                if let known = result[removal.machineId]?[removal.productId],
+                   known.removedAt >= removal.removedAt { continue }
+                result[removal.machineId, default: [:]][removal.productId] = removal
+            }
+            return result
+        } catch {
+            print("[RefillWizard] get_recent_product_removals failed: \(error)")
+            return [:]
+        }
     }
 
     /// Load stock for a specific warehouse. Also loads the physical pick
@@ -2481,6 +2572,71 @@ final class RefillWizardViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Notes for the next tour
+
+    /// Load the open notes for the packing step. A failing lookup is only
+    /// logged: the tour goes on without the notes.
+    func loadTourNotes() async {
+        do {
+            let rows: [MachineTourNote] = try await client
+                .from("machine_tour_notes")
+                .select(MachineTourNote.selectColumns)
+                .is("done_at", value: nil)
+                .order("created_at", ascending: true)
+                .execute()
+                .value
+            tourNotes = MachineTourNotes.notesForPacking(rows, currentTourId: tourId)
+        } catch {
+            print("[RefillWizard] tour notes unavailable: \(error)")
+            tourNotes = []
+        }
+    }
+
+    /// Tick a note off while packing. It is removed right away and put
+    /// back (with an error) if the server refuses.
+    func completeTourNote(_ noteId: UUID) async {
+        guard let note = tourNotes.first(where: { $0.id == noteId }) else { return }
+        tourNoteError = nil
+        tourNotes.removeAll { $0.id == noteId }
+        do {
+            try await client.rpc("complete_machine_tour_notes", params: [
+                "p_note_ids": AnyJSON.array([AnyJSON.string(noteId.uuidString)]),
+                "p_tour_id": tourId.isEmpty ? AnyJSON.null : AnyJSON.string(tourId),
+            ]).execute()
+        } catch {
+            print("[RefillWizard] complete_machine_tour_notes failed: \(error)")
+            tourNotes = MachineTourNotes.notesForPacking(tourNotes + [note], currentTourId: tourId)
+            tourNoteError = error.localizedDescription
+        }
+    }
+
+    /// This tour's open note for a machine (prefills the note sheet), nil
+    /// when there is none.
+    func currentTourNote(machineId: UUID) async throws -> String? {
+        guard !tourId.isEmpty else { return nil }
+        struct NoteRow: Decodable { let note: String }
+        let rows: [NoteRow] = try await client
+            .from("machine_tour_notes")
+            .select("note")
+            .eq("machine_id", value: machineId.uuidString)
+            .eq("written_in_tour", value: tourId)
+            .is("done_at", value: nil)
+            .limit(1)
+            .execute()
+            .value
+        return rows.first?.note
+    }
+
+    /// Write (or overwrite) this tour's note for a machine via
+    /// `save_machine_tour_note`; an empty text deletes it.
+    func saveTourNote(machineId: UUID, text: String) async throws {
+        try await client.rpc("save_machine_tour_note", params: [
+            "p_machine_id": AnyJSON.string(machineId.uuidString),
+            "p_tour_id": tourId.isEmpty ? AnyJSON.null : AnyJSON.string(tourId),
+            "p_note": AnyJSON.string(MachineTourNotes.normalized(text)),
+        ]).execute()
+    }
+
     // MARK: - Quit the change note
 
     /// Quit the change note of a machine via `apply_slot_change` — before the
@@ -2547,7 +2703,7 @@ final class RefillWizardViewModel: ObservableObject {
                 }
             }
         }
-        let reason = lastError?.localizedDescription ?? "unknown error"
+        let reason = lastError?.localizedDescription ?? String(localized: "unknown error")
         self.error = String(localized: "The slot change could not be saved: \(reason). Please try again.")
         return nil
     }
@@ -3030,7 +3186,8 @@ final class RefillWizardViewModel: ObservableObject {
         }
 
         // All 3 attempts failed. Leave machine in the tour so the user can retry.
-        self.error = "Refill could not be saved after 3 attempts: \(lastError?.localizedDescription ?? "unknown error"). Please try again."
+        let reason = lastError?.localizedDescription ?? String(localized: "unknown error")
+        self.error = String(localized: "Refill could not be saved after 3 attempts: \(reason). Please try again.")
     }
 
     /// Shared post-success bookkeeping: tour log, activity log, advance.
@@ -3255,6 +3412,8 @@ final class RefillWizardViewModel: ObservableObject {
         leftoverExpiry = [:]
         expirySuggestionsLoaded = false
         replacementNotice = nil
+        tourNotes = []
+        tourNoteError = nil
         resetCurrentRebuild()
         // Re-arm the entry gate so the next Refill-tab appearance reloads
         // fresh machine data for a brand-new tour instead of being skipped.

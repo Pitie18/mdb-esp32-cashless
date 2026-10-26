@@ -99,7 +99,7 @@ fun MachineCard(
             ) {
                 Column {
                     Text(
-                        text = "Today",
+                        text = stringResource(R.string.machine_revenue_today),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -111,7 +111,7 @@ fun MachineCard(
                 }
                 Column {
                     Text(
-                        text = "Sales",
+                        text = stringResource(R.string.machine_card_sales),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -123,7 +123,7 @@ fun MachineCard(
                 }
                 Column {
                     Text(
-                        text = "Yesterday",
+                        text = stringResource(R.string.machine_revenue_yesterday),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -258,7 +258,7 @@ fun MachineCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = formatTimeAgo(dateStr),
+                            text = relativeTimeAgo(dateStr),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -266,7 +266,7 @@ fun MachineCard(
                 }
                 if (machineStats.paxCount > 0) {
                     Text(
-                        text = "${machineStats.paxCount} visitors",
+                        text = pluralStringResource(R.plurals.machine_card_visitors, machineStats.paxCount, machineStats.paxCount),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -411,22 +411,5 @@ private fun DeficitRow(deficit: TrayDeficit) {
             )
             WarehouseAvailability.UNKNOWN -> Unit
         }
-    }
-}
-
-private fun formatTimeAgo(isoString: String): String {
-    return try {
-        val instant = kotlinx.datetime.Instant.parse(isoString)
-        val now = kotlinx.datetime.Clock.System.now()
-        val diff = now - instant
-        when {
-            diff.inWholeMinutes < 1 -> "Just now"
-            diff.inWholeMinutes < 60 -> "${diff.inWholeMinutes}m ago"
-            diff.inWholeHours < 24 -> "${diff.inWholeHours}h ago"
-            diff.inWholeDays < 7 -> "${diff.inWholeDays}d ago"
-            else -> isoString.take(10)
-        }
-    } catch (_: Exception) {
-        isoString.take(16)
     }
 }

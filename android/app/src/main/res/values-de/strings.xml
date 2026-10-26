@@ -82,6 +82,92 @@
     <string name="warehouse_adjust_submit_remove">Bestand entnehmen</string>
     <string name="warehouse_adjust_submit_add">Bestand hinzufügen</string>
 
+    <!-- Warehouse ordering (Order tab, expected deliveries, history) -->
+    <string name="warehouse_tab_order">Bestellen</string>
+    <string name="warehouse_tab_order_count">Bestellen (%1$d)</string>
+    <string name="warehouse_order_intro">Vorschlag für den nächsten Bestellzyklus: reicht bis zur übernächsten Lieferung plus %1$d Tage Puffer. Bereits bestellte Ware ist abgezogen.</string>
+    <string name="warehouse_order_intro_machines">Vorschlag für den nächsten Bestellzyklus: reicht bis zur übernächsten Lieferung plus %1$d Tage Puffer. Automatenbestand und bereits bestellte Ware sind abgezogen.</string>
+    <string name="warehouse_order_badge_auto">Automatisch</string>
+    <string name="warehouse_order_badge_manual">Manuell</string>
+    <string name="warehouse_order_nothing">Alles reicht bis zur übernächsten Lieferung. Nichts zu bestellen.</string>
+    <string name="warehouse_order_nothing_due">Nichts fällig</string>
+    <string name="warehouse_order_no_supplier">Ohne Lieferant</string>
+    <string name="warehouse_order_rhythm">Lieferzeit %1$d Tage · Bestellung alle %2$d Tage</string>
+    <string name="warehouse_order_no_supplier_hint_admin">Weise direkt in der Zeile einen Lieferanten zu, dann wandert das Produkt in dessen Bestellung.</string>
+    <string name="warehouse_order_no_supplier_hint">Ein Admin kann diesen Produkten einen Lieferanten zuweisen.</string>
+    <string name="warehouse_order_has_empty">Enthält leere Produkte</string>
+    <string name="warehouse_order_below_min">Mindestbestellwert %1$s noch nicht erreicht</string>
+    <string name="warehouse_order_in_stock">%1$d auf Lager</string>
+    <string name="warehouse_order_search_product">Produkt suchen</string>
+    <string name="warehouse_order_add_product">Produkt hinzufügen</string>
+    <string name="warehouse_order_available">Verfügbar %1$d</string>
+    <string name="warehouse_order_on_the_way_units">%1$d unterwegs</string>
+    <string name="warehouse_order_lasts">reicht %1$d von %2$d T</string>
+    <string name="warehouse_order_via_ios">iPhone</string>
+    <string name="warehouse_order_via_android">Android</string>
+    <string name="warehouse_order_via_web">Web</string>
+    <string name="warehouse_order_more">Mehr</string>
+    <string name="warehouse_order_less">weniger</string>
+    <string name="warehouse_order_more_units">mehr</string>
+    <string name="warehouse_order_carton_units">Karton à %1$d = %2$d Stück</string>
+    <string name="warehouse_order_reset_quantity">Menge zurücksetzen</string>
+    <string name="warehouse_order_assign_supplier">Lieferant zuweisen …</string>
+    <string name="warehouse_order_assigned">%1$s gehört jetzt zu %2$s.</string>
+    <string name="warehouse_order_net_cost">Netto-Einkauf</string>
+    <string name="warehouse_order_copy">Liste kopieren</string>
+    <string name="warehouse_order_copied">Kopiert</string>
+    <string name="warehouse_order_share">Teilen</string>
+    <string name="warehouse_order_customer_no">Kd.-Nr.</string>
+    <string name="warehouse_order_mark_ordered">Als bestellt markieren</string>
+    <string name="warehouse_order_marked_ordered">%1$s: als bestellt markiert. Die Ware zählt jetzt als unterwegs.</string>
+    <string name="warehouse_order_on_the_way">Unterwegs</string>
+    <string name="warehouse_order_ordered_on">bestellt %1$s</string>
+    <string name="warehouse_order_cancel">Bestellung stornieren</string>
+    <string name="warehouse_order_cancel_message">Bestellung bei %1$s stornieren? Die Ware zählt dann nicht mehr als unterwegs.</string>
+    <string name="warehouse_order_keep">Behalten</string>
+    <string name="warehouse_order_on_list">Auf der Bestellliste</string>
+    <string name="warehouse_order_list_add">Zur Bestellliste hinzufügen</string>
+    <string name="warehouse_order_list_remove">Von der Bestellliste entfernen</string>
+    <string name="warehouse_order_section">Bestellen</string>
+    <string name="warehouse_order_manual_on_list">Manuell auf der Bestellliste · %1$s, %2$s</string>
+    <string name="warehouse_order_auto_on_list">Automatisch auf der Bestellliste</string>
+    <string name="warehouse_order_main_supplier">Hauptlieferant</string>
+    <string name="warehouse_order_supplier_none">Keiner</string>
+    <string name="warehouse_order_unit_size">Stück pro Karton</string>
+    <string name="warehouse_order_save">Speichern</string>
+    <string name="warehouse_order_supplier_value">Lieferant: %1$s</string>
+    <plurals name="warehouse_order_items">
+        <item quantity="one">%1$d Artikel</item>
+        <item quantity="other">%1$d Artikel</item>
+    </plurals>
+    <plurals name="warehouse_order_units">
+        <item quantity="one">%1$d Stück</item>
+        <item quantity="other">%1$d Stück</item>
+    </plurals>
+    <plurals name="warehouse_order_units_on_the_way">
+        <item quantity="one">%1$d Stück ist bestellt und unterwegs.</item>
+        <item quantity="other">%1$d Stück sind bestellt und unterwegs.</item>
+    </plurals>
+    <string name="warehouse_delivery_expected">Erwartete Lieferungen</string>
+    <string name="warehouse_delivery_check">Lieferung prüfen</string>
+    <string name="warehouse_delivery_ordered_qty">bestellt %1$d</string>
+    <string name="warehouse_delivery_delivered">Geliefert</string>
+    <string name="warehouse_delivery_book_all">Alles einbuchen</string>
+    <string name="warehouse_delivery_booked">Lieferung eingebucht: %1$d Stück.</string>
+    <string name="warehouse_delivery_close">Bereits gebucht · als geliefert abschließen</string>
+    <string name="warehouse_delivery_close_hint">Für Ware, die schon von Hand eingebucht wurde, z. B. mit einer älteren App. Bucht nichts.</string>
+    <string name="warehouse_delivery_close_confirm">Bestellung als geliefert abschließen, ohne etwas einzubuchen?</string>
+    <string name="warehouse_history_title">Verlauf</string>
+    <string name="warehouse_history_back">Zurück</string>
+    <string name="warehouse_history_empty">Noch keine Bewegungen</string>
+    <string name="warehouse_history_load_more">Mehr laden</string>
+    <string name="warehouse_history_filter_all">Alle</string>
+    <string name="warehouse_history_filter_corrections">Korrekturen</string>
+    <string name="warehouse_history_type_refill">Befüllung</string>
+    <string name="warehouse_history_type_correction">Korrektur</string>
+    <string name="warehouse_history_type_transfer_out">Umlagerung raus</string>
+    <string name="warehouse_history_type_transfer_in">Umlagerung rein</string>
+
     <!-- StockBar accessibility -->
     <string name="stock_bar_description">Bestand %1$d von %2$d</string>
 
@@ -462,6 +548,16 @@
     <string name="refill_step_layout_state_low">niedrig</string>
     <string name="refill_step_layout_state_full">gefüllt</string>
     <string name="refill_step_skip">Überspringen</string>
+    <string name="refill_step_skip_machine">Automaten überspringen</string>
+    <string name="refill_step_more_actions">Weitere Aktionen</string>
+    <string name="refill_tour_note_title">Notiz für nächste Tour</string>
+    <string name="refill_tour_note_hint">Wird beim Packen der nächsten Tour oben angezeigt.</string>
+    <string name="refill_tour_note_placeholder">z. B. neue Spiralen, Erhöhungen für Dosen …</string>
+    <string name="refill_tour_note_save_failed">Die Notiz konnte nicht gespeichert werden.</string>
+    <string name="refill_tour_note_save_failed_detail">Die Notiz konnte nicht gespeichert werden: %1$s</string>
+    <string name="refill_tour_notes_title">Notizen vom letzten Mal</string>
+    <string name="refill_tour_notes_subtitle">Abhaken, sobald erledigt. Bis dahin stehen sie bei jeder Tour hier.</string>
+    <string name="refill_tour_notes_mark_done">Erledigt</string>
     <string name="refill_step_confirm">Befüllung bestätigen</string>
     <string name="refill_step_saving">Wird gespeichert…</string>
     <string name="refill_error_unknown">unbekannter Fehler</string>
@@ -534,6 +630,15 @@
     </plurals>
     <string name="refill_picker_slot_badge">Fach %1$s</string>
     <string name="refill_picker_slot_badge_overflow">Fach %1$s +%2$d</string>
+    <string name="refill_picker_removed_badge">Entfernt am %1$s</string>
+    <plurals name="refill_picker_removed_units">
+        <item quantity="one">%d verkauft</item>
+        <item quantity="other">%d verkauft</item>
+    </plurals>
+    <plurals name="refill_picker_removed_units_in_days">
+        <item quantity="one">%1$s in %2$d Tag</item>
+        <item quantity="other">%1$s in %2$d Tagen</item>
+    </plurals>
     <plurals name="refill_picker_slot_badge_a11y">
         <item quantity="one">Liegt schon in Fach %1$s</item>
         <item quantity="other">Liegt schon in Fächern %1$s</item>
@@ -711,5 +816,66 @@
     <plurals name="refill_review_queued">
         <item quantity="one">%1$d Fach im Änderungsvermerk vorgemerkt. Umgebaut wird am Automaten während der Tour.</item>
         <item quantity="other">%1$d Fächer im Änderungsvermerk vorgemerkt. Umgebaut wird am Automaten während der Tour.</item>
+    </plurals>
+
+    <!-- Auth, machine list/detail, tray editor -->
+    <string name="login_subtitle">Automatenverwaltung</string>
+    <string name="auth_email">E-Mail</string>
+    <string name="auth_password">Passwort</string>
+    <string name="auth_show_password">Passwort anzeigen</string>
+    <string name="auth_hide_password">Passwort verbergen</string>
+    <string name="auth_sign_in">Anmelden</string>
+    <string name="auth_no_account_register">Noch kein Konto? Registrieren</string>
+    <string name="register_title">Konto erstellen</string>
+    <string name="register_success_title">Registrierung erfolgreich</string>
+    <string name="register_success_message">Bitte bestätige dein Konto über den Link in deiner E-Mail und melde dich dann an.</string>
+    <string name="register_back_to_sign_in">Zurück zur Anmeldung</string>
+    <string name="register_confirm_password">Passwort bestätigen</string>
+    <string name="register_passwords_mismatch">Passwörter stimmen nicht überein</string>
+    <string name="register_have_account">Bereits ein Konto? Anmelden</string>
+    <string name="status_online">Online</string>
+    <string name="status_offline">Offline</string>
+    <string name="machine_revenue_today">Heute</string>
+    <string name="machine_revenue_yesterday">Gestern</string>
+    <string name="machine_card_sales">Verkäufe</string>
+    <string name="machine_detail_revenue">Umsatz</string>
+    <string name="machine_detail_sales_today">Verkäufe heute</string>
+    <string name="machine_detail_visitors">Besucher</string>
+    <string name="machine_detail_device_info">Geräteinfo</string>
+    <string name="machine_detail_status">Status</string>
+    <string name="machine_detail_firmware">Firmware</string>
+    <string name="machine_detail_subdomain">Subdomain</string>
+    <string name="machine_detail_tab_overview">Übersicht</string>
+    <string name="machine_detail_tab_trays">Fächer</string>
+    <string name="machine_detail_tab_sales">Verkäufe</string>
+    <string name="machine_list_search_hint">Automaten suchen…</string>
+    <string name="machine_list_search_clear">Suche leeren</string>
+    <string name="machine_list_no_match">Keine Automaten passen zu deiner Suche</string>
+    <string name="machine_list_empty">Keine Automaten gefunden</string>
+    <string name="tray_edit_title">Fach #%1$d bearbeiten</string>
+    <string name="tray_add_title">Fach hinzufügen</string>
+    <string name="tray_slot_number">Fachnummer</string>
+    <string name="tray_product">Produkt</string>
+    <string name="tray_unnamed_product">Unbenannt</string>
+    <string name="tray_capacity">Kapazität</string>
+    <string name="tray_stock">Bestand</string>
+    <string name="tray_min_stock">Mindestbestand</string>
+    <string name="tray_fill_below">Auffüllen unter</string>
+    <string name="tray_batch_title">Mehrere Fächer hinzufügen</string>
+    <string name="tray_batch_description">Mehrere Fächer mit fortlaufenden Fachnummern hinzufügen.</string>
+    <string name="tray_batch_start_slot">Erstes Fach</string>
+    <string name="tray_batch_count">Anzahl Fächer</string>
+    <string name="tray_batch_capacity_each">Kapazität (je Fach)</string>
+    <string name="tray_batch_preview">Erstellt die Fächer %1$d bis %2$d</string>
+    <string name="tray_empty_hint">Füge Fächer hinzu, um den Bestand zu verfolgen</string>
+    <string name="tray_decrease">Verringern</string>
+    <string name="tray_increase">Erhöhen</string>
+    <plurals name="machine_card_visitors">
+        <item quantity="one">%1$d Besucher</item>
+        <item quantity="other">%1$d Besucher</item>
+    </plurals>
+    <plurals name="tray_batch_submit">
+        <item quantity="one">%1$d Fach hinzufügen</item>
+        <item quantity="other">%1$d Fächer hinzufügen</item>
     </plurals>
 </resources>

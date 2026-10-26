@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import xyz.vmflow.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,10 +81,10 @@ fun RegisterScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Create Account") },
+                title = { Text(stringResource(R.string.register_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_back))
                     }
                 }
             )
@@ -111,20 +113,20 @@ fun RegisterScreen(
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        text = "Registration Successful",
+                        text = stringResource(R.string.register_success_title),
                         style = MaterialTheme.typography.headlineSmall,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Please check your email to confirm your account, then sign in.",
+                        text = stringResource(R.string.register_success_message),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     Button(onClick = onNavigateBack) {
-                        Text("Back to Sign In")
+                        Text(stringResource(R.string.register_back_to_sign_in))
                     }
                 }
             } else {
@@ -141,7 +143,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = { Text("Email") },
+                        label = { Text(stringResource(R.string.auth_email)) },
                         leadingIcon = {
                             Icon(Icons.Default.Email, contentDescription = null)
                         },
@@ -162,7 +164,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Password") },
+                        label = { Text(stringResource(R.string.auth_password)) },
                         leadingIcon = {
                             Icon(Icons.Default.Lock, contentDescription = null)
                         },
@@ -171,7 +173,7 @@ fun RegisterScreen(
                                 Icon(
                                     if (passwordVisible) Icons.Default.VisibilityOff
                                     else Icons.Default.Visibility,
-                                    contentDescription = if (passwordVisible) "Hide" else "Show"
+                                    contentDescription = stringResource(if (passwordVisible) R.string.auth_hide_password else R.string.auth_show_password)
                                 )
                             }
                         },
@@ -194,7 +196,7 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
-                        label = { Text("Confirm Password") },
+                        label = { Text(stringResource(R.string.register_confirm_password)) },
                         leadingIcon = {
                             Icon(Icons.Default.Lock, contentDescription = null)
                         },
@@ -210,7 +212,7 @@ fun RegisterScreen(
                         ),
                         isError = confirmPassword.isNotEmpty() && password != confirmPassword,
                         supportingText = if (confirmPassword.isNotEmpty() && password != confirmPassword) {
-                            { Text("Passwords do not match") }
+                            { Text(stringResource(R.string.register_passwords_mismatch)) }
                         } else null,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isLoading
@@ -237,14 +239,14 @@ fun RegisterScreen(
                             )
                         }
                         AnimatedVisibility(visible = !uiState.isLoading) {
-                            Text("Create Account", style = MaterialTheme.typography.labelLarge)
+                            Text(stringResource(R.string.register_title), style = MaterialTheme.typography.labelLarge)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     TextButton(onClick = onNavigateBack) {
-                        Text("Already have an account? Sign In")
+                        Text(stringResource(R.string.register_have_account))
                     }
 
                     Spacer(modifier = Modifier.height(48.dp))

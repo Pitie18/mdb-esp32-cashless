@@ -297,7 +297,7 @@ struct DealsView: View {
         HStack(spacing: 12) {
             kpiBadge(
                 value: "-\(viewModel.avgDiscount)%",
-                label: "Avg",
+                label: String(localized: "Avg"),
                 icon: "percent",
                 color: .green
             )

@@ -27,8 +27,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import xyz.vmflow.R
 import xyz.vmflow.models.Product
 import xyz.vmflow.models.Tray
 
@@ -54,7 +57,12 @@ fun TrayEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEditing) "Edit Tray #${tray?.itemNumber}" else "Add Tray") },
+        title = {
+            Text(
+                if (isEditing) stringResource(R.string.tray_edit_title, tray?.itemNumber ?: 0)
+                else stringResource(R.string.tray_add_title)
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -63,7 +71,7 @@ fun TrayEditDialog(
                 OutlinedTextField(
                     value = itemNumber.toString(),
                     onValueChange = { itemNumber = it.toIntOrNull() ?: itemNumber },
-                    label = { Text("Slot Number") },
+                    label = { Text(stringResource(R.string.tray_slot_number)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -74,10 +82,10 @@ fun TrayEditDialog(
                     onExpandedChange = { productDropdownExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedProduct?.name ?: "No product",
+                        value = selectedProduct?.name ?: stringResource(R.string.tray_unassigned),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Product") },
+                        label = { Text(stringResource(R.string.tray_product)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = productDropdownExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -88,7 +96,7 @@ fun TrayEditDialog(
                         onDismissRequest = { productDropdownExpanded = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("No product") },
+                            text = { Text(stringResource(R.string.tray_unassigned)) },
                             onClick = {
                                 selectedProductId = null
                                 productDropdownExpanded = false
@@ -96,7 +104,7 @@ fun TrayEditDialog(
                         )
                         products.forEach { product ->
                             DropdownMenuItem(
-                                text = { Text(product.name ?: "Unnamed") },
+                                text = { Text(product.name ?: stringResource(R.string.tray_unnamed_product)) },
                                 onClick = {
                                     selectedProductId = product.id
                                     productDropdownExpanded = false
@@ -113,7 +121,7 @@ fun TrayEditDialog(
                     OutlinedTextField(
                         value = capacity.toString(),
                         onValueChange = { capacity = it.toIntOrNull() ?: capacity },
-                        label = { Text("Capacity") },
+                        label = { Text(stringResource(R.string.tray_capacity)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.weight(1f)
@@ -121,7 +129,7 @@ fun TrayEditDialog(
                     OutlinedTextField(
                         value = currentStock.toString(),
                         onValueChange = { currentStock = it.toIntOrNull() ?: currentStock },
-                        label = { Text("Stock") },
+                        label = { Text(stringResource(R.string.tray_stock)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.weight(1f)
@@ -135,7 +143,7 @@ fun TrayEditDialog(
                     OutlinedTextField(
                         value = minStock.toString(),
                         onValueChange = { minStock = it.toIntOrNull() ?: minStock },
-                        label = { Text("Min Stock") },
+                        label = { Text(stringResource(R.string.tray_min_stock)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.weight(1f)
@@ -143,7 +151,7 @@ fun TrayEditDialog(
                     OutlinedTextField(
                         value = fillWhenBelow.toString(),
                         onValueChange = { fillWhenBelow = it.toIntOrNull() ?: fillWhenBelow },
-                        label = { Text("Fill Below") },
+                        label = { Text(stringResource(R.string.tray_fill_below)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.weight(1f)
@@ -164,12 +172,12 @@ fun TrayEditDialog(
                     )
                 }
             ) {
-                Text("Save")
+                Text(stringResource(R.string.action_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -187,18 +195,18 @@ fun BatchAddDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Batch Add Trays") },
+        title = { Text(stringResource(R.string.tray_batch_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Add multiple trays with sequential slot numbers.",
+                    text = stringResource(R.string.tray_batch_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 OutlinedTextField(
                     value = startSlot.toString(),
                     onValueChange = { startSlot = it.toIntOrNull() ?: startSlot },
-                    label = { Text("Starting Slot") },
+                    label = { Text(stringResource(R.string.tray_batch_start_slot)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -206,7 +214,7 @@ fun BatchAddDialog(
                 OutlinedTextField(
                     value = count.toString(),
                     onValueChange = { count = it.toIntOrNull() ?: count },
-                    label = { Text("Number of Trays") },
+                    label = { Text(stringResource(R.string.tray_batch_count)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -214,7 +222,7 @@ fun BatchAddDialog(
                 OutlinedTextField(
                     value = capacity.toString(),
                     onValueChange = { capacity = it.toIntOrNull() ?: capacity },
-                    label = { Text("Capacity (each)") },
+                    label = { Text(stringResource(R.string.tray_batch_capacity_each)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -222,7 +230,7 @@ fun BatchAddDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "This will create slots $startSlot through ${startSlot + count - 1}",
+                    text = stringResource(R.string.tray_batch_preview, startSlot, startSlot + count - 1),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -233,12 +241,12 @@ fun BatchAddDialog(
                 onClick = { onSave(startSlot, count, capacity) },
                 enabled = count > 0 && capacity > 0
             ) {
-                Text("Add ${count} Trays")
+                Text(pluralStringResource(R.plurals.tray_batch_submit, count, count))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )

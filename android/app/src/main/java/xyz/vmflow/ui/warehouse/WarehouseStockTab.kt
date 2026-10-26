@@ -1,7 +1,8 @@
 package xyz.vmflow.ui.warehouse
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,9 +20,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.RemoveShoppingCart
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,7 +36,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -72,9 +82,14 @@ fun WarehouseStockTab(
     onToggleArchived: () -> Unit,
     onExpirationFilterChange: (ExpirationFilter) -> Unit,
     onToggleSortByReach: () -> Unit,
-    onProductClick: (productId: String) -> Unit
+    onProductClick: (productId: String) -> Unit,
+    onAddToOrderList: (productId: String) -> Unit = {},
+    onRemoveFromOrderList: (productId: String) -> Unit = {}
 ) {
     val filtered = uiState.filteredSummaries
+    val onList = uiState.orderListProductIds
+    val manualIds = uiState.manualEntries.map { it.productId }.toSet()
+    val onOrder = uiState.onOrderByProduct
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -170,12 +185,22 @@ fun WarehouseStockTab(
             items(filtered, key = { it.productId }) { summary ->
                 WarehouseStockRow(
                     summary = summary,
-                    onClick = { onProductClick(summary.productId) }
+                    orderState = StockOrderState(
+                        onList = summary.productId in onList,
+                        manual = summary.productId in manualIds,
+                        onOrder = onOrder[summary.productId] ?: 0
+                    ),
+                    onClick = { onProductClick(summary.productId) },
+                    onAdd = { onAddToOrderList(summary.productId) },
+                    onRemove = { onRemoveFromOrderList(summary.productId) }
                 )
             }
         }
     }
 }
+
+/** Order-list state shown on a stock row (cart = on the list, truck = units on the way). */
+private data class StockOrderState(val onList: Boolean, val manual: Boolean, val onOrder: Int)
 
 /**
  * One product row: image, name (+ "DC" badge when discontinued), throughput
@@ -183,97 +208,157 @@ fun WarehouseStockTab(
  * of stock) with an "Out of Stock" pill, else the stock-reach pill ("~12
  * days", coloured by [ReachLevel]), else "Low" for products without sales. Mirrors iOS `StockSummaryRow`.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WarehouseStockRow(
     summary: WarehouseProductSummary,
-    onClick: () -> Unit
+    orderState: StockOrderState,
+    onClick: () -> Unit,
+    onAdd: () -> Unit,
+    onRemove: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .alpha(if (summary.discontinued) 0.55f else 1f)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        ProductImage(
-            imagePath = summary.imagePath,
-            contentDescription = summary.productName,
-            size = 48.dp
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = summary.productName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
+    // Long-press: "Add to order list" (or remove a manual entry), like the
+    // iPhone's context menu.
+    var menuOpen by remember { mutableStateOf(false) }
+    Box {
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            if (orderState.manual) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.warehouse_order_list_remove)) },
+                    leadingIcon = { Icon(Icons.Default.RemoveShoppingCart, contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        onRemove()
+                    }
                 )
-                if (summary.discontinued) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = 4.dp, vertical = 1.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.machine_card_deficit_discontinued),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            } else {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.warehouse_order_list_add)) },
+                    leadingIcon = { Icon(Icons.Default.AddShoppingCart, contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        onAdd()
+                    }
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
+                .alpha(if (summary.discontinued) 0.55f else 1f)
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ProductImage(
+                imagePath = summary.imagePath,
+                contentDescription = summary.productName,
+                size = 48.dp
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = summary.productName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (summary.discontinued) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.machine_card_deficit_discontinued),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val throughput = if (summary.avgDailySales > 0) {
+                        stringResource(R.string.warehouse_stock_per_day, formatDailySales(summary.avgDailySales))
+                    } else {
+                        stringResource(R.string.warehouse_stock_no_sales)
+                    }
+                    Text(
+                        text = throughput + " · " +
+                            pluralStringResource(R.plurals.warehouse_batch_count, summary.batchCount, summary.batchCount),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    val expirationColor = when (summary.expirationStatus) {
+                        ExpirationStatus.CRITICAL -> StockRed
+                        ExpirationStatus.WARNING -> StockOrange
+                        ExpirationStatus.OK -> null
+                    }
+                    val expirationDate = summary.earliestExpiration
+                    if (expirationColor != null && expirationDate != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        ExpirationBadge(dateIso = expirationDate, color = expirationColor)
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val throughput = if (summary.avgDailySales > 0) {
-                    stringResource(R.string.warehouse_stock_per_day, formatDailySales(summary.avgDailySales))
-                } else {
-                    stringResource(R.string.warehouse_stock_no_sales)
-                }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = throughput + " · " +
-                        pluralStringResource(R.plurals.warehouse_batch_count, summary.batchCount, summary.batchCount),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = summary.totalQuantity.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (summary.isOutOfStock) StockRed else MaterialTheme.colorScheme.onSurface
                 )
-                val expirationColor = when (summary.expirationStatus) {
-                    ExpirationStatus.CRITICAL -> StockRed
-                    ExpirationStatus.WARNING -> StockOrange
-                    ExpirationStatus.OK -> null
+                val daysRemaining = summary.daysRemaining
+                if (summary.isOutOfStock) {
+                    StockStatusPill(text = stringResource(R.string.warehouse_stock_out_of_stock), color = StockRed)
+                } else if (daysRemaining != null) {
+                    StockStatusPill(text = reachText(daysRemaining), color = reachColor(summary.reachLevel))
+                } else if (summary.isLow) {
+                    StockStatusPill(text = stringResource(R.string.warehouse_stock_low), color = StockOrange)
                 }
-                val expirationDate = summary.earliestExpiration
-                if (expirationColor != null && expirationDate != null) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    ExpirationBadge(dateIso = expirationDate, color = expirationColor)
+                if (orderState.onList || orderState.onOrder > 0) {
+                    Row(
+                        modifier = Modifier.padding(top = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (orderState.onList) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = stringResource(R.string.warehouse_order_on_list),
+                                tint = if (orderState.manual) Color(0xFF8B5CF6) else Color(0xFF3B82F6),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                        if (orderState.onOrder > 0) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.LocalShipping,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                text = orderState.onOrder.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = summary.totalQuantity.toString(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (summary.isOutOfStock) StockRed else MaterialTheme.colorScheme.onSurface
-            )
-            val daysRemaining = summary.daysRemaining
-            if (summary.isOutOfStock) {
-                StockStatusPill(text = stringResource(R.string.warehouse_stock_out_of_stock), color = StockRed)
-            } else if (daysRemaining != null) {
-                StockStatusPill(text = reachText(daysRemaining), color = reachColor(summary.reachLevel))
-            } else if (summary.isLow) {
-                StockStatusPill(text = stringResource(R.string.warehouse_stock_low), color = StockOrange)
             }
         }
     }

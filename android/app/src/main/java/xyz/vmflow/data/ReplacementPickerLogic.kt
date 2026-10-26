@@ -29,13 +29,16 @@ enum class PickerStockBucketKind { IN_STOCK, OUT_OF_STOCK }
  *   the overwhelming majority of products (one product per machine is the
  *   norm in real data), which is why the badge is nearly invisible in
  *   practice — that is correct, not a bug.
+ * @property recentRemoval set when the product was taken out of *this
+ *   machine* within the cool-down — the row is marked and sorted last.
  */
 data class PickerProductRow(
     val productId: String,
     val name: String?,
     val imagePath: String?,
     val warehouseStock: Int?,
-    val existingSlots: List<Int>
+    val existingSlots: List<Int>,
+    val recentRemoval: RecentRemoval? = null
 )
 
 /**
@@ -181,7 +184,9 @@ object ReplacementPickerLogic {
      * anywhere: `Map` iteration order is not a contract, and a picker whose
      * rows swap places between recompositions makes the driver tap the
      * wrong product. Keys, in order: products not already in this machine
-     * first, then the fuzzy score (all-zero when the query is blank), then
+     * first, products already in it next, products recently *removed* from
+     * it last ([recentRemovals] — still pickable, but a product taken out
+     * for selling badly is the worst default); then the fuzzy score (all-zero when the query is blank), then
      * the product name via [nameComparator], then `productId` — the last
      * key is what makes it total, because a [Collator] returns 0 for
      * strings it considers equal and two products may genuinely share a
@@ -205,6 +210,8 @@ object ReplacementPickerLogic {
      *   resolved fresh per call (never cached in a top-level `val`, so it
      *   follows the JVM's current default locale). Tests pin a locale by
      *   passing their own.
+     * @param recentRemovals `productId -> removal` for this machine
+     *   ([RecentRemovalRepository]); empty when unknown or switched off.
      */
     fun buildBuckets(
         products: List<Product>,
@@ -214,6 +221,7 @@ object ReplacementPickerLogic {
         existingSlotsByProduct: Map<String, List<Int>>,
         currentCategoryId: String?,
         query: String,
+        recentRemovals: Map<String, RecentRemoval> = emptyMap(),
         nameComparator: Comparator<String?> = defaultProductNameComparator()
     ): List<PickerStockBucket> {
         // ── 1. search ────────────────────────────────────────────────────
@@ -248,6 +256,7 @@ object ReplacementPickerLogic {
                     stockKnown = stockKnown,
                     existingSlotsByProduct = existingSlotsByProduct,
                     currentCategoryId = currentCategoryId,
+                    recentRemovals = recentRemovals,
                     nameComparator = nameComparator
                 )
             ),
@@ -260,6 +269,7 @@ object ReplacementPickerLogic {
                     stockKnown = stockKnown,
                     existingSlotsByProduct = existingSlotsByProduct,
                     currentCategoryId = currentCategoryId,
+                    recentRemovals = recentRemovals,
                     nameComparator = nameComparator
                 )
             )
@@ -287,6 +297,7 @@ object ReplacementPickerLogic {
         stockKnown: Boolean,
         existingSlotsByProduct: Map<String, List<Int>>,
         currentCategoryId: String?,
+        recentRemovals: Map<String, RecentRemoval>,
         nameComparator: Comparator<String?>
     ): List<PickerCategoryGroup> {
         if (scored.isEmpty()) return emptyList()
@@ -306,7 +317,11 @@ object ReplacementPickerLogic {
         }
 
         val rowComparator = compareBy<ScoredProduct> { entry ->
-            existingSlotsByProduct[entry.product.id]?.isNotEmpty() == true
+            when {
+                recentRemovals.containsKey(entry.product.id) -> 2
+                existingSlotsByProduct[entry.product.id]?.isNotEmpty() == true -> 1
+                else -> 0
+            }
         }
             .thenBy { it.score }
             .thenBy(nameComparator) { it.product.name }
@@ -325,7 +340,8 @@ object ReplacementPickerLogic {
                         null
                     },
                     existingSlots = existingSlotsByProduct[entry.product.id]?.sorted()
-                        ?: emptyList()
+                        ?: emptyList(),
+                    recentRemoval = recentRemovals[entry.product.id]
                 )
             }
 

@@ -15,11 +15,11 @@ func slotBadgeLabel(_ slots: [Int]) -> String {
     let sorted = slots.sorted()
     guard !sorted.isEmpty else { return "" }
     if sorted.count <= 3 {
-        return "Slot \(sorted.map(String.init).joined(separator: ", "))"
+        return String(localized: "Slot \(sorted.map(String.init).joined(separator: ", "))")
     }
     let first = sorted.prefix(3).map(String.init).joined(separator: ", ")
     let extra = sorted.count - 3
-    return "Slot \(first) +\(extra)"
+    return String(localized: "Slot \(first) +\(extra)")
 }
 
 // MARK: - Replacement Product Picker
@@ -51,6 +51,10 @@ struct ReplacementProductPicker: View {
     /// products will still render; products whose `category` UUID is not
     /// present in the array fall back to the "Uncategorized" group.
     var categories: [ProductCategory] = []
+    /// Products taken out of this machine within the cool-down, by product
+    /// id. They stay pickable but are marked with the removal date and what
+    /// they sold back then, and sort last in their group.
+    var recentRemovals: [UUID: RecentRemoval] = [:]
     let onSelect: (UUID) -> Void
 
     @State private var searchText = ""
@@ -109,8 +113,9 @@ struct ReplacementProductPicker: View {
     /// 1. Filter by search (existing fuzzyMatch, keep score)
     /// 2. Partition by stock (nil or >0 = inStock, ==0 = outOfStock)
     /// 3. Group by category within each bucket (current first, others A-Z, uncategorized last)
-    /// 4. Sort within each (stock × category) group: not-in-machine first, then
-    ///    fuzzy score (search-active only), then alphabetical
+    /// 4. Sort within each (stock × category) group: not-in-machine first,
+    ///    already-in-machine next, recently removed last, then fuzzy score
+    ///    (search-active only), then alphabetical
     private var stockBuckets: [StockBucket] {
         // Step 1: filter by search
         let scored: [(Product, Int?)]
@@ -166,20 +171,28 @@ struct ReplacementProductPicker: View {
         }
 
         // Sort products within each category bucket using the multi-key sort:
-        // (not-in-machine, fuzzyScore?, alphabetical)
-        func sortKey(_ entry: (Product, Int?)) -> (Bool, Int, String) {
-            let inMachine = existingSlotsByProduct[entry.0.id]?.isEmpty == false
+        // (placement rank, fuzzyScore?, alphabetical). Rank: 0 = not in the
+        // machine, 1 = already in another slot, 2 = recently removed from it.
+        func sortKey(_ entry: (Product, Int?)) -> (Int, Int, String) {
+            let rank: Int
+            if recentRemovals[entry.0.id] != nil {
+                rank = 2
+            } else if existingSlotsByProduct[entry.0.id]?.isEmpty == false {
+                rank = 1
+            } else {
+                rank = 0
+            }
             let score = entry.1 ?? 0
             let name = entry.0.name ?? ""
             // Treat empty/nil name as last by prepending a high-codepoint marker
             let nameKey = name.isEmpty ? "\u{FFFF}" : name.lowercased()
-            return (inMachine, score, nameKey)
+            return (rank, score, nameKey)
         }
         for key in byCategoryId.keys {
             byCategoryId[key]?.sort { a, b in
                 let ka = sortKey(a)
                 let kb = sortKey(b)
-                if ka.0 != kb.0 { return !ka.0 && kb.0 }
+                if ka.0 != kb.0 { return ka.0 < kb.0 }
                 if ka.1 != kb.1 { return ka.1 < kb.1 }
                 return ka.2.localizedCaseInsensitiveCompare(kb.2) == .orderedAscending
             }
@@ -242,7 +255,7 @@ struct ReplacementProductPicker: View {
             uncategorizedEntries.sort { a, b in
                 let ka = sortKey(a)
                 let kb = sortKey(b)
-                if ka.0 != kb.0 { return !ka.0 && kb.0 }
+                if ka.0 != kb.0 { return ka.0 < kb.0 }
                 if ka.1 != kb.1 { return ka.1 < kb.1 }
                 return ka.2.localizedCaseInsensitiveCompare(kb.2) == .orderedAscending
             }
@@ -285,7 +298,7 @@ struct ReplacementProductPicker: View {
         .selectionDisabled()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(title), \(bucket.totalCount) \(bucket.totalCount == 1 ? "product" : "products")"
+            "\(title), " + String(localized: "\(bucket.totalCount) product")
         )
         .accessibilityAddTraits(.isHeader)
     }
@@ -316,7 +329,7 @@ struct ReplacementProductPicker: View {
         .listRowSeparator(.hidden)
         .selectionDisabled()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(group.isCurrent ? "\(name), current category" : name)
+        .accessibilityLabel(group.isCurrent ? String(localized: "\(name), current category") : name)
         .accessibilityAddTraits(.isHeader)
     }
 
@@ -360,6 +373,30 @@ struct ReplacementProductPicker: View {
             Spacer()
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Red pill plus a caption: "Removed 10 Oct 2026" / "3 sold in 14 days".
+    @ViewBuilder
+    private func removalInfo(_ removal: RecentRemoval) -> some View {
+        let date = removal.removedAt.formatted(date: .abbreviated, time: .omitted)
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Removed \(date)")
+                .font(.caption2.weight(.semibold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Color.red.opacity(0.15)))
+                .foregroundStyle(.red)
+            Group {
+                if let days = removal.daysOffered {
+                    Text("\(removal.unitsSold) sold in \(days) days")
+                } else {
+                    Text("\(removal.unitsSold) sold")
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(.red)
+        }
         .accessibilityElement(children: .combine)
     }
 
@@ -438,8 +475,13 @@ struct ReplacementProductPicker: View {
             HStack(spacing: 12) {
                 ProductImage(imagePath: product.imagePath, size: 36)
                     .opacity(outOfStock ? 0.45 : 1.0)
-                Text(product.name ?? "Unnamed")
-                    .foregroundStyle(outOfStock ? .secondary : .primary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(product.name ?? "Unnamed")
+                        .foregroundStyle(outOfStock ? .secondary : .primary)
+                    if let removal = recentRemovals[product.id] {
+                        removalInfo(removal)
+                    }
+                }
                 if let stock {
                     stockPill(stock)
                 }
@@ -450,7 +492,9 @@ struct ReplacementProductPicker: View {
                         .padding(.vertical, 2)
                         .background(Capsule().fill(.orange.opacity(0.15)))
                         .foregroundStyle(.orange)
-                        .accessibilityLabel("Already in \(slots.count == 1 ? "slot" : "slots") \(slots.sorted().map(String.init).joined(separator: ", "))")
+                        .accessibilityLabel(slots.count == 1
+                            ? String(localized: "Already in slot \(slots.sorted().map(String.init).joined(separator: ", "))")
+                            : String(localized: "Already in slots \(slots.sorted().map(String.init).joined(separator: ", "))"))
                 }
                 Spacer()
                 if selectedProductId == product.id {

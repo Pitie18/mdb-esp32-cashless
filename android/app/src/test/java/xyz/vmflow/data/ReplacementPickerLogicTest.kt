@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import xyz.vmflow.models.Product
 import xyz.vmflow.models.ProductCategory
+import kotlinx.datetime.Instant
 import xyz.vmflow.models.Tray
 
 /**
@@ -49,7 +50,8 @@ class ReplacementPickerLogicTest {
         stockKnown: Boolean = true,
         existingSlots: Map<String, List<Int>> = emptyMap(),
         currentCategoryId: String? = null,
-        query: String = ""
+        query: String = "",
+        removals: Map<String, RecentRemoval> = emptyMap()
     ) = ReplacementPickerLogic.buildBuckets(
         products = products,
         categories = categories,
@@ -58,6 +60,7 @@ class ReplacementPickerLogicTest {
         existingSlotsByProduct = existingSlots,
         currentCategoryId = currentCategoryId,
         query = query,
+        recentRemovals = removals,
         nameComparator = germanNames
     )
 
@@ -475,5 +478,59 @@ class ReplacementPickerLogicTest {
     @Test
     fun `no products means no buckets`() {
         assertEquals(emptyList<PickerStockBucket>(), buckets(products = emptyList()))
+    }
+
+    // ─── recently removed products ───────────────────────────────────────
+
+    private fun removal(productId: String, removedAt: String = "2026-10-10T08:00:00Z") =
+        RecentRemoval(
+            machineId = "m1",
+            productId = productId,
+            removedAt = Instant.parse(removedAt),
+            daysOffered = 14,
+            unitsSold = 3
+        )
+
+    @Test
+    fun `recently removed products sort after new and already placed ones`() {
+        val result = buckets(
+            products = listOf(product("a", "Apfel"), product("b", "Birne"), product("c", "Cola")),
+            stock = mapOf("a" to 5, "b" to 5, "c" to 5),
+            existingSlots = mapOf("c" to listOf(12)),
+            removals = mapOf("a" to removal("a"))
+        )
+        val rows = result.single().groups.single().rows
+        assertEquals(listOf("b", "c", "a"), rows.map { it.productId })
+        assertEquals("a", rows.last().recentRemoval?.productId)
+        assertNull(rows.first().recentRemoval)
+    }
+
+    @Test
+    fun `a recently removed product stays pickable and in its stock bucket`() {
+        val result = buckets(
+            products = listOf(product("a", "Apfel"), product("b", "Birne")),
+            stock = mapOf("a" to 0, "b" to 4),
+            removals = mapOf("b" to removal("b"))
+        )
+        assertEquals(
+            listOf(PickerStockBucketKind.IN_STOCK, PickerStockBucketKind.OUT_OF_STOCK),
+            result.map { it.kind }
+        )
+        assertEquals("b", result[0].groups.single().rows.single().productId)
+        assertEquals(3, result[0].groups.single().rows.single().recentRemoval?.unitsSold)
+    }
+
+    @Test
+    fun `byMachine keeps the latest removal per product`() {
+        val grouped = RecentRemovalRepository.byMachine(
+            listOf(
+                removal("a", "2026-10-01T08:00:00Z"),
+                removal("a", "2026-10-12T08:00:00Z"),
+                removal("b").copy(machineId = "m2")
+            )
+        )
+        assertEquals(setOf("m1", "m2"), grouped.keys)
+        assertEquals(Instant.parse("2026-10-12T08:00:00Z"), grouped["m1"]?.get("a")?.removedAt)
+        assertTrue(grouped["m2"]?.containsKey("b") == true)
     }
 }

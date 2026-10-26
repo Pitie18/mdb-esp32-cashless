@@ -166,7 +166,7 @@ private struct InboxRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 kindBadge
-                Text(item.machineName ?? "Unknown machine")
+                Text(item.machineName ?? String(localized: "Unknown machine"))
                     .font(.subheadline.weight(.semibold))
                 if !item.isOpen {
                     Text(item.status.rawValue.capitalized)

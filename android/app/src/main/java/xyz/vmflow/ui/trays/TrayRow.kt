@@ -148,7 +148,7 @@ fun TrayRow(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     ) {
-                        Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.tray_decrease), modifier = Modifier.size(18.dp))
                     }
 
                     Text(
@@ -170,7 +170,7 @@ fun TrayRow(
                             containerColor = MaterialTheme.colorScheme.primaryContainer
                         )
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.tray_increase), modifier = Modifier.size(18.dp))
                     }
                 }
 

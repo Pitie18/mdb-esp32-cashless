@@ -6,6 +6,13 @@ struct RefillStepView: View {
     @ObservedObject var viewModel: RefillWizardViewModel
     @State private var showMachinePicker = false
     @State private var selectedProduct: ProductSelection?
+    /// Machine whose "note for next tour" sheet is open.
+    @State private var noteMachine: NoteTarget?
+
+    struct NoteTarget: Identifiable {
+        let id: UUID
+        let name: String
+    }
 
     struct ProductSelection: Identifiable {
         let id: UUID
@@ -102,6 +109,9 @@ struct RefillStepView: View {
                     fallbackImagePath: sel.imagePath,
                     fallbackSellprice: sel.sellprice
                 )
+            }
+            .sheet(item: $noteMachine) { target in
+                MachineTourNoteSheet(viewModel: viewModel, machineId: target.id, machineName: target.name)
             }
         } else {
             // No more machines - should transition to summary
@@ -453,17 +463,29 @@ struct RefillStepView: View {
                     .background(.bar)
             }
             HStack(spacing: 12) {
-                // Skip button
-                Button {
-                    Task { await viewModel.skipMachine(machineId: machine.id) }
+                // More actions: skip the machine, note for the next tour
+                Menu {
+                    Button {
+                        Task { await viewModel.skipMachine(machineId: machine.id) }
+                    } label: {
+                        Label("Skip machine", systemImage: "forward.end")
+                    }
+                    .disabled(viewModel.isSaving)
+
+                    Button {
+                        noteMachine = NoteTarget(id: machine.id, name: machine.machine.displayName)
+                    } label: {
+                        Label("Note for next tour", systemImage: "square.and.pencil")
+                    }
                 } label: {
-                    Text("Skip")
-                        .font(.subheadline.weight(.medium))
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 14)
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3.weight(.medium))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
                 }
+                .menuStyle(.button)
                 .buttonStyle(.bordered)
-                .disabled(viewModel.isSaving)
+                .accessibilityLabel(Text("More actions"))
 
                 Spacer()
 

@@ -118,7 +118,7 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
         ])
 
         let label = UILabel()
-        label.text = "Scan barcode"
+        label.text = String(localized: "Scan barcode")
         label.textColor = .white.withAlphaComponent(0.8)
         label.font = .systemFont(ofSize: 14, weight: .medium)
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -132,7 +132,7 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
 
     private func showNoCameraLabel() {
         let label = UILabel()
-        label.text = "Camera not available"
+        label.text = String(localized: "Camera not available")
         label.textColor = .white
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false

@@ -5,7 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -34,11 +38,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import xyz.vmflow.R
+import xyz.vmflow.data.OrderSuggestion
+import xyz.vmflow.data.PurchaseOrder
 import xyz.vmflow.models.Warehouse
 
 /**
  * Warehouse management screen: warehouse picker (only shown when the
- * company has more than one warehouse) plus a Stock/Incoming tab switcher.
+ * company has more than one warehouse) plus a Stock/Order/Incoming tab
+ * switcher and a History toolbar icon.
  * The Stock tab renders [WarehouseStockTab] (Task 9); the Incoming tab
  * renders [WarehouseIntakeTab] (Task 10) — both tabs only receive already
  * ViewModel-bound callback lambdas here, never the `viewModel` itself.
@@ -65,6 +72,9 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
     // showing the refreshed batch list).
     var drilldownProductId by remember { mutableStateOf<String?>(null) }
     var adjustBatchId by remember { mutableStateOf<String?>(null) }
+    var receiveOrderId by remember { mutableStateOf<String?>(null) }
+    var cancelCandidate by remember { mutableStateOf<PurchaseOrder?>(null) }
+    var showHistory by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.error) {
@@ -73,10 +83,56 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
             viewModel.clearError()
         }
     }
+    LaunchedEffect(uiState.notice) {
+        uiState.notice?.let {
+            viewModel.clearNotice()
+            snackbarHostState.showSnackbar(it)
+        }
+    }
+
+    val historyWarehouseId = uiState.selectedWarehouseId
+    if (showHistory && historyWarehouseId != null) {
+        WarehouseHistoryScreen(warehouseId = historyWarehouseId, onBack = { showHistory = false })
+        return
+    }
+
+    val assignedTemplate = stringResource(R.string.warehouse_order_assigned)
+    val orderedTemplate = stringResource(R.string.warehouse_order_marked_ordered)
+    val bookedTemplate = stringResource(R.string.warehouse_delivery_booked)
+    val orderActions = OrderTabActions(
+        onCartons = viewModel::setCartons,
+        onReset = viewModel::resetCartons,
+        onAdd = viewModel::addToOrderList,
+        onRemove = viewModel::removeFromOrderList,
+        onAssignSupplier = { productId, supplierId ->
+            viewModel.assignSupplier(productId, supplierId) { product, supplier -> assignedTemplate.format(product, supplier) }
+        },
+        onPlaceOrder = { group -> viewModel.placeOrder(group, orderedTemplate.format(group.supplier?.name.orEmpty())) },
+        onCancelOrder = { order -> cancelCandidate = order },
+        onCheckDelivery = { order ->
+            selectedTab = 2
+            receiveOrderId = order.id
+        },
+        onNotice = viewModel::showNotice,
+        onOpenProduct = { productId ->
+            drilldownProductId = productId
+            adjustBatchId = null
+            viewModel.loadBatchesForProduct(productId)
+        }
+    )
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.warehouse_screen_title)) })
+            TopAppBar(
+                title = { Text(stringResource(R.string.warehouse_screen_title)) },
+                actions = {
+                    if (uiState.selectedWarehouseId != null) {
+                        IconButton(onClick = { showHistory = true }) {
+                            Icon(Icons.Default.History, contentDescription = stringResource(R.string.warehouse_history_title))
+                        }
+                    }
+                }
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -124,8 +180,11 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
                         )
                     }
 
+                    val orderCount = OrderSuggestion.lineCount(uiState.orderGroups)
                     val tabs = listOf(
                         stringResource(R.string.warehouse_tab_stock),
+                        if (orderCount > 0) stringResource(R.string.warehouse_tab_order_count, orderCount)
+                        else stringResource(R.string.warehouse_tab_order),
                         stringResource(R.string.warehouse_tab_incoming)
                     )
                     TabRow(selectedTabIndex = selectedTab) {
@@ -150,16 +209,21 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
                                 drilldownProductId = productId
                                 adjustBatchId = null
                                 viewModel.loadBatchesForProduct(productId)
-                            }
+                            },
+                            onAddToOrderList = viewModel::addToOrderList,
+                            onRemoveFromOrderList = viewModel::removeFromOrderList
                         )
-                        1 -> WarehouseIntakeTab(
+                        1 -> WarehouseOrderTab(uiState = uiState, actions = orderActions)
+                        2 -> WarehouseIntakeTab(
                             uiState = uiState,
                             onSubmit = { productId, quantityText, batchNumber, expirationIso, supplierName ->
                                 viewModel.bookIntake(productId, quantityText, batchNumber, expirationIso, supplierName)
                             },
                             onLookupBarcode = { barcode, onFound, onNotFound ->
                                 viewModel.lookupBarcode(barcode, onFound, onNotFound)
-                            }
+                            },
+                            onCheckDelivery = { order -> receiveOrderId = order.id },
+                            onCancelOrder = { order -> cancelCandidate = order }
                         )
                     }
                 }
@@ -177,7 +241,17 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
                 batches = uiState.drilldownBatches,
                 isLoading = uiState.isLoadingBatches,
                 onAdjust = { batchId -> adjustBatchId = batchId },
-                onDismiss = { drilldownProductId = null }
+                onDismiss = { drilldownProductId = null },
+                orderingSection = {
+                    ProductOrderingSection(
+                        productId = openProductId,
+                        uiState = uiState,
+                        onAdd = { viewModel.addToOrderList(openProductId) },
+                        onRemove = { viewModel.removeFromOrderList(openProductId) },
+                        onAssignSupplier = { supplierId -> viewModel.assignSupplier(openProductId, supplierId) },
+                        onSaveUnitSize = { size -> viewModel.saveUnitSize(openProductId, size) }
+                    )
+                }
             )
         } else {
             val batch = uiState.drilldownBatches.firstOrNull { it.id == openBatchId }
@@ -198,6 +272,33 @@ fun WarehouseScreen(viewModel: WarehouseViewModel = viewModel()) {
                 )
             }
         }
+    }
+
+    val receiveOrder = uiState.openOrders.firstOrNull { it.id == receiveOrderId }
+    if (receiveOrder != null) {
+        DeliveryReceiveSheet(
+            order = receiveOrder,
+            isBusy = uiState.busyOrderId == receiveOrder.id,
+            onReceive = { lines ->
+                viewModel.receiveOrder(receiveOrder, lines) { units ->
+                    receiveOrderId = null
+                    viewModel.showNotice(bookedTemplate.format(units))
+                }
+            },
+            onClose = { viewModel.closeOrder(receiveOrder) { receiveOrderId = null } },
+            onDismiss = { receiveOrderId = null }
+        )
+    }
+
+    cancelCandidate?.let { order ->
+        CancelOrderDialog(
+            order = order,
+            onConfirm = {
+                viewModel.cancelOrder(order)
+                cancelCandidate = null
+            },
+            onDismiss = { cancelCandidate = null }
+        )
     }
 }
 

@@ -15,10 +15,14 @@ final class RealtimeService: ObservableObject {
     @Published var embeddedVersion: Int = 0
     @Published var warehouseVersion: Int = 0
     @Published var activityVersion: Int = 0
+    /// Order list entries and purchase orders (warehouse "Order" segment).
+    @Published var orderingVersion: Int = 0
 
     private var client: SupabaseClient { SupabaseService.shared.client }
     private var channel: RealtimeChannelV2?
     private var listenTask: Task<Void, Never>?
+    private var orderingChannel: RealtimeChannelV2?
+    private var orderingTask: Task<Void, Never>?
 
     private init() {}
 
@@ -64,16 +68,35 @@ final class RealtimeService: ObservableObject {
             async let a: () = consumeActivity(activityStream)
             _ = await (s, t, m, e, w, a)
         }
+
+        // Ordering tables on their own channel: a backend without them yet
+        // rejects the join, which must not take the main channel down with it.
+        let oc = client.realtimeV2.channel("app-ordering")
+        self.orderingChannel = oc
+        let orderListStream = oc.postgresChange(AnyAction.self, schema: "public", table: "order_list_items")
+        let purchaseOrdersStream = oc.postgresChange(AnyAction.self, schema: "public", table: "purchase_orders")
+        orderingTask = Task {
+            await oc.subscribe()
+            async let o: () = consumeOrdering(orderListStream)
+            async let p: () = consumeOrdering(purchaseOrdersStream)
+            _ = await (o, p)
+        }
     }
 
     /// Disconnect and clean up.
     func stop() {
         listenTask?.cancel()
         listenTask = nil
+        orderingTask?.cancel()
+        orderingTask = nil
         if let ch = channel {
             Task { await ch.unsubscribe() }
         }
+        if let oc = orderingChannel {
+            Task { await oc.unsubscribe() }
+        }
         channel = nil
+        orderingChannel = nil
     }
 
     // MARK: - Stream Consumers
@@ -110,6 +133,13 @@ final class RealtimeService: ObservableObject {
         for await _ in stream {
             warehouseVersion += 1
             print("[Realtime] Warehouse stock change detected")
+        }
+    }
+
+    private func consumeOrdering(_ stream: AsyncStream<AnyAction>) async {
+        for await _ in stream {
+            orderingVersion += 1
+            print("[Realtime] Order list / purchase order change detected")
         }
     }
 

@@ -1,0 +1,31 @@
+name: Android Check
+
+# Compiles the app and runs the JVM unit tests on every pull request that
+# touches the Android project — the release workflow only runs on demand, so
+# without this a broken build would first show up at release time.
+on:
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-check.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests and debug build
+        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
