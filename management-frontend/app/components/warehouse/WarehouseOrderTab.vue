@@ -29,6 +29,7 @@ const emit = defineEmits<{
   cancelOrder: [order: PurchaseOrder]
   checkDelivery: [order: PurchaseOrder]
   openSetup: [section: 'suppliers' | 'calculation']
+  openProduct: [productId: string]
 }>()
 
 const { t, locale } = useI18n()
@@ -127,11 +128,16 @@ const pill = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs fo
           <tbody>
             <tr v-for="l in g.lines" :key="l.product.product_id" class="border-t align-top">
               <td class="px-4 py-2.5">
-                <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="group flex items-center gap-2 text-left"
+                  :aria-label="t('warehouse.order.openProduct', { name: l.product.product_name })"
+                  @click="emit('openProduct', l.product.product_id)"
+                >
                   <img v-if="l.product.image_path" :src="getProductImageUrl(l.product.image_path)" class="size-8 rounded object-cover" alt="" />
                   <div v-else class="flex size-8 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">{{ l.product.product_name.charAt(0) }}</div>
-                  <span class="font-medium">{{ l.product.product_name }}</span>
-                </div>
+                  <span class="font-medium underline-offset-2 group-hover:underline">{{ l.product.product_name }}</span>
+                </button>
               </td>
               <td class="px-4 py-2.5">
                 <div class="flex flex-wrap gap-1.5">

@@ -1208,6 +1208,7 @@
       "resetQuantity": "Quantité modifiée · réinitialiser",
       "assignSupplier": "Attribuer un fournisseur …",
       "assignSupplierFor": "Attribuer un fournisseur à {name}",
+      "openProduct": "Ouvrir {name}",
       "noSales": "aucune vente",
       "lasts": "couvre {days} j",
       "onTheWayUnits": "{count} en route",

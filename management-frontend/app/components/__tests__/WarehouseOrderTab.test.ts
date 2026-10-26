@@ -62,6 +62,13 @@ describe('WarehouseOrderTab', () => {
     expect(w.emitted('assignSupplier')?.[0]).toEqual(['p1', 's1'])
   })
 
+  it('opens the product sheet from the product name', async () => {
+    const w = mountTab([product()])
+    const open = w.findAll('button').find(b => b.attributes('aria-label') === 'warehouse.order.openProduct:Cola')!
+    await open.trigger('click')
+    expect(w.emitted('openProduct')?.[0]).toEqual(['p1'])
+  })
+
   it('says when there is nothing to order', () => {
     const w = mountTab([product({ warehouse_qty: 500 })])
     expect(w.text()).toContain('warehouse.order.nothingToOrder')
