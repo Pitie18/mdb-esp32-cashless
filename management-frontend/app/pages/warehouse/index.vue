@@ -446,6 +446,8 @@ async function onSaveOrdering(productId: string, updates: { preferred_supplier_i
   try {
     await ordering.updateProductOrdering(productId, updates)
     onResetCartons(productId)
+    // Reload so the order list is computed from what the server now holds.
+    await ordering.fetchProductInfo()
   } catch (e) {
     showNotice('error', errorText(e))
   }
@@ -1412,6 +1414,29 @@ async function onVelocityDaysChange(e: Event) {
       {{ notice.text }}
     </div>
 
+    <!-- Product sheet, shared by the stock and the order tab -->
+    <WarehouseProductSheet
+      :open="detailProductId !== null"
+      :summary="detailSummary"
+      :batches="detailProductId ? batchesForProduct(detailProductId) : []"
+      :machine-stock="detailProductId ? machineStockFor(detailProductId) : 0"
+      :assigned="detailProductId ? isAssignedToMachine(detailProductId) : false"
+      :is-admin="isAdmin"
+      :on-order="detailProductId ? ordering.onOrderFor(detailProductId) : 0"
+      :auto-order="!!detailOrderLine?.auto"
+      :manual-entry="detailOrderLine?.manual ?? manualEntries.find(m => m.product_id === detailProductId) ?? null"
+      :suppliers="orderSuppliers"
+      :supplier-id="detailProductId ? ordering.supplierFor(detailProductId) : null"
+      :unit-size="detailProductId ? (productInfo.get(detailProductId)?.order_unit_size ?? 1) : 1"
+      @update:open="(v: boolean) => { if (!v) detailProductId = null }"
+      @adjust="openAdjust"
+      @save-min-stock="onSaveMinStock"
+      @toggle-discontinued="onToggleDiscontinued"
+      @add-to-order-list="detailProductId && onAddToOrderList(detailProductId)"
+      @remove-from-order-list="detailProductId && onRemoveFromOrderList(detailProductId)"
+      @save-ordering="(u: { preferred_supplier_id?: string | null; order_unit_size?: number }) => detailProductId && onSaveOrdering(detailProductId, u)"
+    />
+
     <!-- Tabs -->
     <Tabs v-if="warehouses.length > 0 && activeTab !== 'setup'" :model-value="activeTab" @update:model-value="setTab($event as WarehouseTab)">
       <div class="overflow-x-auto -mx-4 px-4 scrollbar-none">
@@ -1616,27 +1641,6 @@ async function onVelocityDaysChange(e: Event) {
           <p class="text-xs text-muted-foreground">{{ t('warehouse.stockTableHint') }}</p>
         </div>
 
-        <WarehouseProductSheet
-          :open="detailProductId !== null"
-          :summary="detailSummary"
-          :batches="detailProductId ? batchesForProduct(detailProductId) : []"
-          :machine-stock="detailProductId ? machineStockFor(detailProductId) : 0"
-          :assigned="detailProductId ? isAssignedToMachine(detailProductId) : false"
-          :is-admin="isAdmin"
-          :on-order="detailProductId ? ordering.onOrderFor(detailProductId) : 0"
-          :auto-order="!!detailOrderLine?.auto"
-          :manual-entry="detailOrderLine?.manual ?? manualEntries.find(m => m.product_id === detailProductId) ?? null"
-          :suppliers="orderSuppliers"
-          :supplier-id="detailProductId ? ordering.supplierFor(detailProductId) : null"
-          :unit-size="detailProductId ? (productInfo.get(detailProductId)?.order_unit_size ?? 1) : 1"
-          @update:open="(v: boolean) => { if (!v) detailProductId = null }"
-          @adjust="openAdjust"
-          @save-min-stock="onSaveMinStock"
-          @toggle-discontinued="onToggleDiscontinued"
-          @add-to-order-list="detailProductId && onAddToOrderList(detailProductId)"
-          @remove-from-order-list="detailProductId && onRemoveFromOrderList(detailProductId)"
-          @save-ordering="(u: { preferred_supplier_id?: string | null; order_unit_size?: number }) => detailProductId && onSaveOrdering(detailProductId, u)"
-        />
       </TabsContent>
 
       <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -1659,6 +1663,7 @@ async function onVelocityDaysChange(e: Event) {
           @cancel-order="onCancelOrder"
           @check-delivery="onCheckDelivery"
           @open-setup="(s: SetupSection) => { setupSection = s; setTab('setup') }"
+          @open-product="openDetail"
         />
       </TabsContent>
 

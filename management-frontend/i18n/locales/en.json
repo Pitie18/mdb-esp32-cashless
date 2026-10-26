@@ -1208,6 +1208,7 @@
       "resetQuantity": "Quantity changed · reset",
       "assignSupplier": "Assign supplier …",
       "assignSupplierFor": "Assign supplier for {name}",
+      "openProduct": "Open {name}",
       "noSales": "no sales",
       "lasts": "lasts {days} d",
       "onTheWayUnits": "{count} on the way",

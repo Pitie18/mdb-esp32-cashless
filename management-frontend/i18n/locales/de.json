@@ -1208,6 +1208,7 @@
       "resetQuantity": "Menge angepasst · zurücksetzen",
       "assignSupplier": "Lieferant zuordnen …",
       "assignSupplierFor": "Lieferant für {name} zuordnen",
+      "openProduct": "{name} öffnen",
       "noSales": "keine Verkäufe",
       "lasts": "reicht {days} T.",
       "onTheWayUnits": "{count} unterwegs",

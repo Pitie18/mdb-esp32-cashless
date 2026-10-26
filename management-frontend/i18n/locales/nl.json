@@ -1208,6 +1208,7 @@
       "resetQuantity": "Aantal aangepast · herstellen",
       "assignSupplier": "Leverancier toewijzen …",
       "assignSupplierFor": "Leverancier voor {name} toewijzen",
+      "openProduct": "{name} openen",
       "noSales": "geen verkopen",
       "lasts": "genoeg voor {days} d.",
       "onTheWayUnits": "{count} onderweg",
